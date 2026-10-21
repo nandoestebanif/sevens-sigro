@@ -1,0 +1,14 @@
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.env
+node_modules/
+dist/
+build/
+*.apk
+.gradle/
+local.properties
+.idea/
+.vscode/
+.DS_Store
