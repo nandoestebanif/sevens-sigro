@@ -1,0 +1,135 @@
+/* ─────────────────────────────────────────────────────────────────────────────
+   SIGRO · tokens de la dirección G «Pulido» (web clara y cálida)
+   Única fuente de verdad del estilo. Las pantallas no declaran colores propios:
+   si un color no está aquí, no existe. Todos los pares texto/fondo de este
+   archivo están medidos contra WCAG AA (peor par: 4.54:1).
+   ───────────────────────────────────────────────────────────────────────── */
+:root {
+  /* superficies */
+  --fondo: #f6f6f3;
+  --tarjeta: #ffffff;
+  --tarjeta-suave: #fafaf7;
+  --borde: #e9e9e4;
+  --linea: #f1f1ec;
+  --pista: #efefea; /* fondo de los medidores */
+
+  /* tinta */
+  --tinta: #1c1d1f;
+  --tinta-2: #4c5257;
+  --tinta-3: #70777d;
+
+  /* marca: el naranja es identidad; la acción rellena usa el naranja oscuro,
+     porque #FF7700 con texto blanco da 2.6:1 y no se usa jamás así */
+  --marca: #ff7700;
+  --accion: #c2410c;
+  --accion-tinta: #ffffff;
+  --marca-tinte: #fff1e5; /* fondo del ítem activo del menú */
+  --marca-tinte-tinta: #9a3e00;
+
+  /* estados · nunca solos: siempre con su etiqueta */
+  --bien: #15803d;
+  --bien-tinte: #e7f6ec;
+  --aviso: #b45309;
+  --aviso-tinte: #fdf2e3;
+  --grave: #b91c1c;
+  --grave-tinte: #fcebeb;
+
+  /* familias de recurso · paleta categórica validada (daltonismo y contraste) */
+  --fam-materiales: #c2410c;
+  --fam-herramientas: #0369a1;
+  --fam-horas: #4d7c0f;
+
+  /* forma */
+  --radio: 16px;
+  --radio-chico: 12px;
+  --radio-pildora: 99px;
+  --sombra: 0 1px 2px rgba(20, 20, 20, 0.04), 0 10px 28px rgba(20, 20, 20, 0.05);
+  --sombra-accion: 0 4px 14px rgba(194, 65, 12, 0.25);
+
+  /* tipografía */
+  --fuente: 'Inter', system-ui, sans-serif;
+
+  /* velo de los modales */
+  --velo: rgba(28, 29, 31, 0.4);
+}
+
+/* ── modo oscuro: el mismo sistema, segundo juego de valores ──
+   Tokens medidos sobre #17191D: blanco 17.6 · tinta-2 9.6 · tinta-3 6.9 ·
+   botón naranja con texto oscuro 7.2. Nada por debajo de AA. */
+:root[data-tema='oscuro'] {
+  color-scheme: dark;
+
+  --fondo: #0e0f12;
+  --tarjeta: #17191d;
+  --tarjeta-suave: #1e2126;
+  --borde: rgba(255, 255, 255, 0.08);
+  --linea: rgba(255, 255, 255, 0.06);
+  --pista: #262b31;
+
+  --tinta: #ffffff;
+  --tinta-2: #b9c0c7;
+  --tinta-3: #9ba3ac;
+
+  --accion: #ff7700;
+  --accion-tinta: #180d00;
+  --marca-tinte: rgba(255, 119, 0, 0.16);
+  --marca-tinte-tinta: #ffb36b;
+
+  --bien: #7ce8af;
+  --bien-tinte: rgba(74, 222, 128, 0.14);
+  --aviso: #ffcf7d;
+  --aviso-tinte: rgba(255, 196, 0, 0.12);
+  --grave: #ff9d93;
+  --grave-tinte: rgba(255, 107, 91, 0.14);
+
+  --sombra: none;
+  --sombra-accion: 0 4px 18px rgba(255, 119, 0, 0.35);
+  --velo: rgba(0, 0, 0, 0.62); /* en oscuro el velo claro no separaba el modal */
+}
+
+/* ── escala de texto (panel de accesibilidad) ──
+   El zoom escala texto y espaciado en proporción, como el zoom del navegador,
+   y los medidores y tablas no se rompen. */
+:root[data-escala='90'] body { zoom: 0.9; }
+:root[data-escala='110'] body { zoom: 1.1; }
+:root[data-escala='125'] body { zoom: 1.25; }
+
+:root {
+  color-scheme: light;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--fondo);
+  color: var(--tinta);
+  font-family: var(--fuente);
+  font-size: 14px;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* cifras: siempre tabulares para que las columnas de números queden alineadas */
+.n {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+
+h1,
+h2,
+h3,
+p {
+  margin: 0;
+}
+
+button {
+  font-family: inherit;
+}
