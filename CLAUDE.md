@@ -72,10 +72,10 @@ El detalle y las alternativas descartadas están en `docs/decisiones-arquitectur
 ## Estructura del repositorio
 
 ```
-api/            Henry Ticona      · FastAPI, módulos de dominio, migraciones
+api/            Adiel Luján       · FastAPI, módulos de dominio, migraciones
 integraciones/  Fernando Istaña   · microservicio S10 y SUNAT
 android/        Nicolás Pachamora · app del almacenero
-web/            Víctor Luján      · React de oficina
+web/            Fernando y Henry  · React de oficina
 docs/                             · historias, reglas, permisos, decisiones
 equipo/                           · qué hace cada uno esta semana
 ```
@@ -89,7 +89,7 @@ editando el mismo archivo; con módulos separados eso deja de pasar.
 - Una rama por historia, con su código: `hu-39-salida-material`.
 - Todo entra por **Pull Request aprobado por alguien distinto del autor**, aunque el
   cambio sea de una línea. El PR dice qué historia cubre y qué criterios de aceptación.
-- **Solo Henry crea migraciones.** Si necesitas una tabla, pídesela. Dos migraciones
+- **Solo Adiel crea migraciones.** Si necesitas una tabla, pídesela. Dos migraciones
   simultáneas chocan.
 - Una rama que vive más de dos días acumula conflictos: si la historia no cierra en dos
   días, se parte.
@@ -109,7 +109,7 @@ Una historia está terminada cuando, además de cumplir sus criterios de aceptac
 - está desplegada en el ambiente de pruebas y alguien distinto del autor la ejecutó ahí;
 - se demuestra desde la interfaz, no abriendo una tabla de la base;
 - el endpoint quedó documentado y toda regla que la historia precisó quedó escrita aquí;
-- el Product Owner (Víctor) la aceptó.
+- el Product Owner (Adiel) la aceptó.
 
 ## Datos reales del cliente
 
@@ -147,6 +147,7 @@ probada con datos inventados **no está terminada**.
 | `docs/historias-sprint-2.md` | Las 31 del Sprint 2 |
 | `docs/siguiente-iteracion.md` | Las 5 que quedaron fuera a propósito |
 | `docs/permisos.md` | Matriz de roles y permisos |
+| `docs/scrum/tablero-sprint-1.md` | Tablero del Sprint 1: tareas por HU, responsables, reglas To Do → Doing → Done |
 | `docs/decisiones-arquitectura.md` | Por qué el sistema es como es |
 | `docs/flujo-de-trabajo.md` | Git, ramas, PR y pruebas |
 | `equipo/*.md` | Qué le toca a cada uno |

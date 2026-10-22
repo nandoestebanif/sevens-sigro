@@ -1,0 +1,157 @@
+ID,HU,Historia,Fase,Tarea,Responsable,Horas,Estado,Fecha limite,Nota,Depende de
+T-001,HU-01,Crear proyecto,Backend,"Programar el endpoint para crear la obra, validando nombre y plazo obligatorios, fin ≥ inicio y estado inicial «en ejecución»",Adiel,2,Done,25/10,"hecho en la API de Adiel (PR #1 fusionado a main), con pruebas",
+T-002,HU-01,Crear proyecto,Web,Programar la pantalla web para crear la obra,Fernando,2,Done,26/10,pantalla hecha con datos simulados; falta conectarla a la API real,
+T-003,HU-01,Crear proyecto,Web,Conectar la pantalla «Crear la obra» con el endpoint real de la API,Fernando,2,To Do,26/10,,"T-001, T-140"
+T-004,HU-01,Crear proyecto,Pruebas,Probar HU-01 en el ambiente de pruebas contra sus condiciones finales y aprobar su PR,Henry,1,To Do,27/10,"alguien distinto del autor (T1, T5, T8)","T-001, T-002, T-003, T-139"
+T-005,HU-01,Crear proyecto,Aceptación,Aceptar HU-01 como Product Owner desde la interfaz y moverla a Done,Adiel,0.5,To Do,27/10,mueve la HU a Done,T-004
+T-006,HU-03,Reportar la obra en semanas,Backend,"Programar la generación automática de semanas al crear la obra y al ampliar el plazo, con sus pruebas",Adiel,2,Done,25/10,en la API: GET /obras/{id}/periodos y POST /obras/{id}/ampliar-plazo,
+T-007,HU-03,Reportar la obra en semanas,Web,"Programar la tira de semanas en la web (cerrada, en curso, por venir)",Fernando,2,Done,26/10,pantalla hecha con datos simulados; falta conectarla a la API real,
+T-008,HU-03,Reportar la obra en semanas,Web,Conectar la tira de semanas con la API real,Fernando,2,To Do,26/10,,"T-006, T-140"
+T-009,HU-03,Reportar la obra en semanas,Pruebas,Probar HU-03 en el ambiente de pruebas contra sus condiciones finales y aprobar su PR,Henry,1,To Do,27/10,"alguien distinto del autor (T1, T5, T8)","T-006, T-007, T-008, T-139"
+T-010,HU-03,Reportar la obra en semanas,Aceptación,Aceptar HU-03 como Product Owner desde la interfaz y moverla a Done,Adiel,0.5,To Do,27/10,mueve la HU a Done,T-009
+T-011,HU-07,Importar catálogo de insumos del S10,Integraciones,Programar el lector del PDF «Relación de insumos» del S10 en el microservicio,Fernando,4,Done,25/10,"probado con el archivo real: 284 insumos, 0 fallidos, total exacto",
+T-012,HU-07,Importar catálogo de insumos del S10,Backend,Programar el endpoint que aplica la importación: crear o actualizar insumos por código sin tocar saldos,Adiel,4,To Do,25/10,,
+T-013,HU-07,Importar catálogo de insumos del S10,Backend,Configurar la llamada de la API a Integraciones con el token de servicio en docker compose,Adiel,4,To Do,25/10,decisión B del 22/10,
+T-014,HU-07,Importar catálogo de insumos del S10,Web,"Programar la pantalla web «Importar del S10» con el resumen de creados, actualizados y fallidos",Fernando,4,Done,26/10,conectada al micro real,
+T-015,HU-07,Importar catálogo de insumos del S10,Pruebas,Probar HU-07 en el ambiente de pruebas contra sus condiciones finales y aprobar su PR,Henry,1,To Do,27/10,"alguien distinto del autor (T1, T5, T8)","T-011, T-012, T-013, T-014, T-139"
+T-016,HU-07,Importar catálogo de insumos del S10,Aceptación,Aceptar HU-07 como Product Owner desde la interfaz y moverla a Done,Adiel,0.5,To Do,27/10,mueve la HU a Done,T-015
+T-017,HU-08,Registrar insumos,Backend,"Programar el endpoint del catálogo: generar código único, rechazar duplicados y marcar «por verificar»",Adiel,3,To Do,25/10,,
+T-018,HU-08,Registrar insumos,Web,"Programar la pantalla web del catálogo para ver, dar de alta y editar insumos",Fernando,3,Done,26/10,pantalla hecha con datos simulados; falta conectarla a la API real,
+T-019,HU-08,Registrar insumos,Web,Conectar la pantalla del catálogo con la API real,Fernando,3,To Do,26/10,,"T-017, T-140"
+T-020,HU-08,Registrar insumos,Pruebas,Probar HU-08 en el ambiente de pruebas contra sus condiciones finales y aprobar su PR,Henry,1,To Do,27/10,"alguien distinto del autor (T1, T5, T8)","T-017, T-018, T-019, T-139"
+T-021,HU-08,Registrar insumos,Aceptación,Aceptar HU-08 como Product Owner desde la interfaz y moverla a Done,Adiel,0.5,To Do,27/10,mueve la HU a Done,T-020
+T-022,HU-12,Loguear usuario,Backend,"Programar el login con Argon2id, sesión que caduca y se renueva, y bloqueo por intentos fallidos",Adiel,3,Done,25/10,"hecho en la API de Adiel (PR #1 fusionado a main), con pruebas",
+T-023,HU-12,Loguear usuario,Web,Programar la pantalla web de login y el manejo de la sesión,Henry,3,To Do,26/10,,
+T-024,HU-12,Loguear usuario,Android,Programar el login en la app del almacenero,Nicolás,3,To Do,26/10,,T-141
+T-025,HU-12,Loguear usuario,Pruebas,Probar HU-12 en el ambiente de pruebas contra sus condiciones finales y aprobar su PR,Fernando,1,To Do,27/10,"alguien distinto del autor (T1, T5, T8)","T-022, T-023, T-024, T-139"
+T-026,HU-12,Loguear usuario,Aceptación,Aceptar HU-12 como Product Owner desde la interfaz y moverla a Done,Adiel,0.5,To Do,27/10,mueve la HU a Done,T-025
+T-027,HU-13,Asignar roles,Backend,Programar los roles y verificar sus permisos en el servidor,Adiel,4,Done,25/10,"hecho en la API de Adiel (PR #1 fusionado a main), con pruebas",
+T-028,HU-13,Asignar roles,Web,"Programar la pantalla web para crear usuarios, asignar su rol y darlos de baja",Henry,4,To Do,26/10,,
+T-029,HU-13,Asignar roles,Pruebas,Probar HU-13 en el ambiente de pruebas contra sus condiciones finales y aprobar su PR,Fernando,1,To Do,27/10,"alguien distinto del autor (T1, T5, T8)","T-027, T-028, T-139"
+T-030,HU-13,Asignar roles,Aceptación,Aceptar HU-13 como Product Owner desde la interfaz y moverla a Done,Adiel,0.5,To Do,27/10,mueve la HU a Done,T-029
+T-031,HU-14,Asignar usuarios a obras,Backend,Programar el endpoint para asignar usuarios a obras,Adiel,2,Done,25/10,"hecho en la API de Adiel (PR #1 fusionado a main), con pruebas",
+T-032,HU-14,Asignar usuarios a obras,Web,Programar la pantalla web para asignar usuarios a obras,Henry,2,To Do,26/10,,
+T-033,HU-14,Asignar usuarios a obras,Pruebas,Probar HU-14 en el ambiente de pruebas contra sus condiciones finales y aprobar su PR,Fernando,1,To Do,27/10,"alguien distinto del autor (T1, T5, T8)","T-031, T-032, T-139"
+T-034,HU-14,Asignar usuarios a obras,Aceptación,Aceptar HU-14 como Product Owner desde la interfaz y moverla a Done,Adiel,0.5,To Do,27/10,mueve la HU a Done,T-033
+T-035,HU-15,Autorizar celular de la obra,Backend,Programar el registro de dispositivos autorizados por obra (máximo dos) y el rechazo del no autorizado,Adiel,3,Done,25/10,"hecho en la API de Adiel (PR #1 fusionado a main), con pruebas",
+T-036,HU-15,Autorizar celular de la obra,Android,Programar en la app la generación del código del dispositivo en la primera instalación,Nicolás,3,To Do,26/10,,T-141
+T-037,HU-15,Autorizar celular de la obra,Web,Programar la pantalla web para autorizar o cambiar el celular de la obra,Henry,3,To Do,26/10,,
+T-038,HU-15,Autorizar celular de la obra,Pruebas,Probar HU-15 en el ambiente de pruebas contra sus condiciones finales y aprobar su PR,Fernando,1,To Do,27/10,"alguien distinto del autor (T1, T5, T8)","T-035, T-036, T-037, T-139"
+T-039,HU-15,Autorizar celular de la obra,Aceptación,Aceptar HU-15 como Product Owner desde la interfaz y moverla a Done,Adiel,0.5,To Do,27/10,mueve la HU a Done,T-038
+T-040,HU-16,Importar precios unitarios,Integraciones,"Programar el lector del PDF del APU (371 páginas), identificando la partida por código y descripción",Fernando,5,Doing,25/10,"extracción ya probada: 6 902 filas, 1 217 partidas",
+T-041,HU-16,Importar precios unitarios,Backend,Crear la tabla partida–recurso y programar el endpoint que la guarda,Adiel,5,To Do,25/10,,
+T-042,HU-16,Importar precios unitarios,Web,Programar la pantalla web para importar el APU,Fernando,5,To Do,26/10,,
+T-043,HU-16,Importar precios unitarios,Pruebas,Probar HU-16 en el ambiente de pruebas contra sus condiciones finales y aprobar su PR,Henry,1,To Do,27/10,"alguien distinto del autor (T1, T5, T8)","T-040, T-041, T-042, T-139"
+T-044,HU-16,Importar precios unitarios,Aceptación,Aceptar HU-16 como Product Owner desde la interfaz y moverla a Done,Adiel,0.5,To Do,27/10,mueve la HU a Done,T-043
+T-045,HU-17,Convertir unidades (kg a varillas),Backend,Programar el registro del factor de conversión con su fecha y su usuario,Adiel,2,To Do,25/10,,
+T-046,HU-17,Convertir unidades (kg a varillas),Web,Programar el formulario web del factor de conversión (kg ↔ varillas),Fernando,2,To Do,26/10,,
+T-047,HU-17,Convertir unidades (kg a varillas),Pruebas,Probar HU-17 en el ambiente de pruebas contra sus condiciones finales y aprobar su PR,Henry,1,To Do,27/10,"alguien distinto del autor (T1, T5, T8)","T-045, T-046, T-139"
+T-048,HU-17,Convertir unidades (kg a varillas),Aceptación,Aceptar HU-17 como Product Owner desde la interfaz y moverla a Done,Adiel,0.5,To Do,27/10,mueve la HU a Done,T-047
+T-049,HU-19,Importar requerimiento de la obra,Integraciones,Adaptar el lector de la Relación de insumos para obtener el requerimiento total,Fernando,3,To Do,25/10,el lector ya trae cantidades y precios,
+T-050,HU-19,Importar requerimiento de la obra,Backend,Programar el guardado del requerimiento total y de sus ajustes con motivo,Adiel,3,To Do,25/10,,
+T-051,HU-19,Importar requerimiento de la obra,Web,Programar la pantalla web del requerimiento total,Fernando,3,To Do,26/10,,
+T-052,HU-19,Importar requerimiento de la obra,Pruebas,Probar HU-19 en el ambiente de pruebas contra sus condiciones finales y aprobar su PR,Henry,1,To Do,27/10,"alguien distinto del autor (T1, T5, T8)","T-049, T-050, T-051, T-139"
+T-053,HU-19,Importar requerimiento de la obra,Aceptación,Aceptar HU-19 como Product Owner desde la interfaz y moverla a Done,Adiel,0.5,To Do,27/10,mueve la HU a Done,T-052
+T-054,HU-23,Consultar cuánto se compró y consumió,Backend,"Programar la consulta de avance: requerido, comprado, recibido y consumido por insumo",Adiel,3,To Do,25/10,,
+T-055,HU-23,Consultar cuánto se compró y consumió,Web,Programar la pantalla web de avance de compra y consumo,Fernando,3,Done,26/10,pantalla hecha con datos simulados; falta conectarla a la API real,
+T-056,HU-23,Consultar cuánto se compró y consumió,Web,Conectar la pantalla de avance con la API real,Fernando,3,To Do,26/10,,"T-054, T-140"
+T-057,HU-23,Consultar cuánto se compró y consumió,Pruebas,Probar HU-23 en el ambiente de pruebas contra sus condiciones finales y aprobar su PR,Henry,1,To Do,27/10,"alguien distinto del autor (T1, T5, T8)","T-054, T-055, T-056, T-139"
+T-058,HU-23,Consultar cuánto se compró y consumió,Aceptación,Aceptar HU-23 como Product Owner desde la interfaz y moverla a Done,Adiel,0.5,To Do,27/10,mueve la HU a Done,T-057
+T-059,HU-24,Consultar cuánto falta comprar,Backend,Programar la consulta de lo que falta comprar por insumo,Adiel,2,To Do,25/10,,
+T-060,HU-24,Consultar cuánto falta comprar,Web,Programar la pantalla web «Saldo por comprar» con filtros y exportación CSV,Fernando,2,Done,26/10,pantalla hecha con datos simulados; falta conectarla a la API real,
+T-061,HU-24,Consultar cuánto falta comprar,Web,Conectar la pantalla de saldo por comprar con la API real,Fernando,2,To Do,26/10,,"T-059, T-140"
+T-062,HU-24,Consultar cuánto falta comprar,Pruebas,Probar HU-24 en el ambiente de pruebas contra sus condiciones finales y aprobar su PR,Henry,1,To Do,27/10,"alguien distinto del autor (T1, T5, T8)","T-059, T-060, T-061, T-139"
+T-063,HU-24,Consultar cuánto falta comprar,Aceptación,Aceptar HU-24 como Product Owner desde la interfaz y moverla a Done,Adiel,0.5,To Do,27/10,mueve la HU a Done,T-062
+T-064,HU-25,Definir punto de reposición,Backend,"Programar el registro del stock de seguridad y del punto de reposición, con histórico",Adiel,4,To Do,25/10,,
+T-065,HU-25,Definir punto de reposición,Web,Programar el formulario web de parámetros de reposición,Fernando,4,To Do,26/10,,
+T-066,HU-25,Definir punto de reposición,Pruebas,Probar HU-25 en el ambiente de pruebas contra sus condiciones finales y aprobar su PR,Henry,1,To Do,27/10,"alguien distinto del autor (T1, T5, T8)","T-064, T-065, T-139"
+T-067,HU-25,Definir punto de reposición,Aceptación,Aceptar HU-25 como Product Owner desde la interfaz y moverla a Done,Adiel,0.5,To Do,27/10,mueve la HU a Done,T-066
+T-068,HU-26,Avisar cuándo reponer,Backend,Programar el motor de alertas: una por insumo y marcada como atendida al comprar,Adiel,3,To Do,25/10,,
+T-069,HU-26,Avisar cuándo reponer,Web,Programar las alertas de reposición en la web,Fernando,3,Done,26/10,pantalla hecha con datos simulados; falta conectarla a la API real,
+T-070,HU-26,Avisar cuándo reponer,Web,Conectar las alertas con la API real,Fernando,3,To Do,26/10,,"T-068, T-140"
+T-071,HU-26,Avisar cuándo reponer,Pruebas,Probar HU-26 en el ambiente de pruebas contra sus condiciones finales y aprobar su PR,Henry,1,To Do,27/10,"alguien distinto del autor (T1, T5, T8)","T-068, T-069, T-070, T-139"
+T-072,HU-26,Avisar cuándo reponer,Aceptación,Aceptar HU-26 como Product Owner desde la interfaz y moverla a Done,Adiel,0.5,To Do,27/10,mueve la HU a Done,T-071
+T-073,HU-27,Sugerir cuánto comprar,Backend,Programar el cálculo de la sugerencia de compra con su criterio,Adiel,3,To Do,25/10,,
+T-074,HU-27,Sugerir cuánto comprar,Web,Programar la sugerencia editable dentro de la alerta,Fernando,3,Done,26/10,pantalla hecha con datos simulados; falta conectarla a la API real,
+T-075,HU-27,Sugerir cuánto comprar,Web,Conectar la sugerencia con la API real,Fernando,3,To Do,26/10,,"T-073, T-140"
+T-076,HU-27,Sugerir cuánto comprar,Pruebas,Probar HU-27 en el ambiente de pruebas contra sus condiciones finales y aprobar su PR,Henry,1,To Do,27/10,"alguien distinto del autor (T1, T5, T8)","T-073, T-074, T-075, T-139"
+T-077,HU-27,Sugerir cuánto comprar,Aceptación,Aceptar HU-27 como Product Owner desde la interfaz y moverla a Done,Adiel,0.5,To Do,27/10,mueve la HU a Done,T-076
+T-078,HU-29,Consultar proveedores,Backend,Programar la búsqueda de proveedores por razón social o RUC,Adiel,2,Done,25/10,"hecho en la API de Adiel (PR #1 fusionado a main), con pruebas",
+T-079,HU-29,Consultar proveedores,Web,Programar la pantalla web de proveedores con los 626 reales,Fernando,2,Done,26/10,pantalla hecha con datos simulados; falta conectarla a la API real,
+T-080,HU-29,Consultar proveedores,Web,Conectar la pantalla de proveedores con la API real,Henry,2,To Do,26/10,,"T-078, T-140"
+T-081,HU-29,Consultar proveedores,Pruebas,Probar HU-29 en el ambiente de pruebas contra sus condiciones finales y aprobar su PR,Fernando,1,To Do,27/10,"alguien distinto del autor (T1, T5, T8)","T-078, T-079, T-080, T-139"
+T-082,HU-29,Consultar proveedores,Aceptación,Aceptar HU-29 como Product Owner desde la interfaz y moverla a Done,Adiel,0.5,To Do,27/10,mueve la HU a Done,T-081
+T-083,HU-30,Registrar proveedores,Backend,Programar el alta de proveedor rechazando RUC o DNI repetidos,Adiel,2,Done,25/10,"hecho en la API de Adiel (PR #1 fusionado a main), con pruebas",
+T-084,HU-30,Registrar proveedores,Web,Programar el alta rápida de proveedor desde la compra,Fernando,2,Done,26/10,pantalla hecha con datos simulados; falta conectarla a la API real,
+T-085,HU-30,Registrar proveedores,Web,Conectar el alta de proveedor con la API real,Henry,2,To Do,26/10,,"T-083, T-140"
+T-086,HU-30,Registrar proveedores,Pruebas,Probar HU-30 en el ambiente de pruebas contra sus condiciones finales y aprobar su PR,Fernando,1,To Do,27/10,"alguien distinto del autor (T1, T5, T8)","T-083, T-084, T-085, T-139"
+T-087,HU-30,Registrar proveedores,Aceptación,Aceptar HU-30 como Product Owner desde la interfaz y moverla a Done,Adiel,0.5,To Do,27/10,mueve la HU a Done,T-086
+T-088,HU-32,Registrar compras,Backend,"Programar el registro de compra: comprobante único, base, IGV y total, sin mover stock",Adiel,5,Done,25/10,"hecho en la API de Adiel (PR #1 fusionado a main), con pruebas",
+T-089,HU-32,Registrar compras,Web,Programar la pantalla web de compras,Fernando,5,Done,26/10,pantalla hecha con datos simulados; falta conectarla a la API real,
+T-090,HU-32,Registrar compras,Web,Conectar la pantalla de compras con la API real,Henry,5,To Do,26/10,,"T-088, T-140"
+T-091,HU-32,Registrar compras,Pruebas,Probar HU-32 en el ambiente de pruebas contra sus condiciones finales y aprobar su PR,Fernando,1,To Do,27/10,"alguien distinto del autor (T1, T5, T8)","T-088, T-089, T-090, T-139"
+T-092,HU-32,Registrar compras,Aceptación,Aceptar HU-32 como Product Owner desde la interfaz y moverla a Done,Adiel,0.5,To Do,27/10,mueve la HU a Done,T-091
+T-093,HU-35,Recibir compras,Backend,Programar la recepción total o parcial que genera el ingreso al kárdex,Adiel,4,To Do,25/10,,
+T-094,HU-35,Recibir compras,Web,"Programar el registro de recepción en la web (pedido, recibido, pendiente)",Fernando,4,Done,26/10,pantalla hecha con datos simulados; falta conectarla a la API real,
+T-095,HU-35,Recibir compras,Web,Conectar la recepción con la API real,Henry,4,To Do,26/10,,"T-093, T-140"
+T-096,HU-35,Recibir compras,Android,Programar la recepción de compras en la app del almacenero,Nicolás,4,To Do,26/10,,T-141
+T-097,HU-35,Recibir compras,Pruebas,Probar HU-35 en el ambiente de pruebas contra sus condiciones finales y aprobar su PR,Fernando,1,To Do,27/10,"alguien distinto del autor (T1, T5, T8)","T-093, T-094, T-095, T-096, T-139"
+T-098,HU-35,Recibir compras,Aceptación,Aceptar HU-35 como Product Owner desde la interfaz y moverla a Done,Adiel,0.5,To Do,27/10,mueve la HU a Done,T-097
+T-099,HU-37,Registrar sin señal,Android,"Programar la cola local (Room) con uuid_cliente y hora del celular, y mostrar «pendiente de enviar» en cada movimiento",Nicolás,14,To Do,26/10,,T-141
+T-100,HU-37,Registrar sin señal,Pruebas,Probar HU-37 en el ambiente de pruebas contra sus condiciones finales y aprobar su PR,Henry,1,To Do,27/10,"alguien distinto del autor (T1, T5, T8)","T-099, T-139"
+T-101,HU-37,Registrar sin señal,Aceptación,Aceptar HU-37 como Product Owner desde la interfaz y moverla a Done,Adiel,0.5,To Do,27/10,mueve la HU a Done,T-100
+T-102,HU-38,Sincronizar pendientes,Android,Programar el envío automático de pendientes al volver la señal (WorkManager),Nicolás,4,To Do,26/10,,T-141
+T-103,HU-38,Sincronizar pendientes,Backend,Programar la idempotencia por uuid_cliente y devolver el motivo del rechazo,Adiel,4,To Do,25/10,,
+T-104,HU-38,Sincronizar pendientes,Pruebas,Probar HU-38 en el ambiente de pruebas contra sus condiciones finales y aprobar su PR,Henry,1,To Do,27/10,"alguien distinto del autor (T1, T5, T8)","T-102, T-103, T-139"
+T-105,HU-38,Sincronizar pendientes,Aceptación,Aceptar HU-38 como Product Owner desde la interfaz y moverla a Done,Adiel,0.5,To Do,27/10,mueve la HU a Done,T-104
+T-106,HU-40,Registrar salidas de material,Backend,Programar la salida: rechazar si supera el saldo y congelar el costo promedio,Adiel,7,To Do,25/10,,
+T-107,HU-40,Registrar salidas de material,Android,"Programar la pantalla de salida en la app (insumo, cantidad, motivo, quién retira)",Nicolás,7,To Do,26/10,,T-141
+T-108,HU-40,Registrar salidas de material,Pruebas,Probar HU-40 en el ambiente de pruebas contra sus condiciones finales y aprobar su PR,Henry,1,To Do,27/10,"alguien distinto del autor (T1, T5, T8)","T-106, T-107, T-139"
+T-109,HU-40,Registrar salidas de material,Aceptación,Aceptar HU-40 como Product Owner desde la interfaz y moverla a Done,Adiel,0.5,To Do,27/10,mueve la HU a Done,T-108
+T-110,HU-43,Consultar stock,Backend,"Programar el cálculo del stock desde el libro de movimientos, por almacén y consolidado",Adiel,2,To Do,25/10,,
+T-111,HU-43,Consultar stock,Web,Programar la pantalla web de stock y kárdex,Fernando,2,Done,26/10,pantalla hecha con datos simulados; falta conectarla a la API real,
+T-112,HU-43,Consultar stock,Web,Conectar la pantalla de stock y kárdex con la API real,Henry,2,To Do,26/10,,"T-110, T-140"
+T-113,HU-43,Consultar stock,Android,Programar la consulta de stock en la app,Nicolás,2,To Do,26/10,,T-141
+T-114,HU-43,Consultar stock,Pruebas,Probar HU-43 en el ambiente de pruebas contra sus condiciones finales y aprobar su PR,Fernando,1,To Do,27/10,"alguien distinto del autor (T1, T5, T8)","T-110, T-111, T-112, T-113, T-139"
+T-115,HU-43,Consultar stock,Aceptación,Aceptar HU-43 como Product Owner desde la interfaz y moverla a Done,Adiel,0.5,To Do,27/10,mueve la HU a Done,T-114
+T-116,HU-45,Corregir movimientos,Backend,"Programar el reverso que apunta al original, sin UPDATE ni DELETE",Adiel,3,To Do,25/10,,
+T-117,HU-45,Corregir movimientos,Web,Programar la corrección con reverso desde el kárdex web,Fernando,3,Done,26/10,pantalla hecha con datos simulados; falta conectarla a la API real,
+T-118,HU-45,Corregir movimientos,Web,Conectar el reverso con la API real,Henry,3,To Do,26/10,,"T-116, T-140"
+T-119,HU-45,Corregir movimientos,Pruebas,Probar HU-45 en el ambiente de pruebas contra sus condiciones finales y aprobar su PR,Fernando,1,To Do,27/10,"alguien distinto del autor (T1, T5, T8)","T-116, T-117, T-118, T-139"
+T-120,HU-45,Corregir movimientos,Aceptación,Aceptar HU-45 como Product Owner desde la interfaz y moverla a Done,Adiel,0.5,To Do,27/10,mueve la HU a Done,T-119
+T-121,HU-55,Valorizar salidas,Backend,"Programar el costo promedio ponderado congelado en cada salida, sin IGV de factura (NIC 2)",Adiel,7,To Do,25/10,,
+T-122,HU-55,Valorizar salidas,Web,Mostrar la salida valorizada en el kárdex y en el reporte web,Henry,7,To Do,26/10,,
+T-123,HU-55,Valorizar salidas,Pruebas,Probar HU-55 en el ambiente de pruebas contra sus condiciones finales y aprobar su PR,Fernando,1,To Do,27/10,"alguien distinto del autor (T1, T5, T8)","T-121, T-122, T-139"
+T-124,HU-55,Valorizar salidas,Aceptación,Aceptar HU-55 como Product Owner desde la interfaz y moverla a Done,Adiel,0.5,To Do,27/10,mueve la HU a Done,T-123
+T-125,HU-57,Comparar consumo vs. lo planificado,Backend,Programar la comparación del consumo contra lo planificado en el S10,Adiel,5,To Do,25/10,,
+T-126,HU-57,Comparar consumo vs. lo planificado,Web,Programar la pantalla web «Gasto en recursos» con la desviación,Fernando,5,Done,26/10,pantalla hecha con datos simulados; falta conectarla a la API real,
+T-127,HU-57,Comparar consumo vs. lo planificado,Web,Conectar la pantalla de desviación con la API real,Henry,5,To Do,26/10,,"T-125, T-140"
+T-128,HU-57,Comparar consumo vs. lo planificado,Pruebas,Probar HU-57 en el ambiente de pruebas contra sus condiciones finales y aprobar su PR,Fernando,1,To Do,27/10,"alguien distinto del autor (T1, T5, T8)","T-125, T-126, T-127, T-139"
+T-129,HU-57,Comparar consumo vs. lo planificado,Aceptación,Aceptar HU-57 como Product Owner desde la interfaz y moverla a Done,Adiel,0.5,To Do,27/10,mueve la HU a Done,T-128
+T-130,HU-62,Registrar trabajadores,Backend,Programar el registro de trabajadores: único por obra y baja con fecha,Adiel,2,Done,25/10,"hecho en la API de Adiel (PR #1 fusionado a main), con pruebas",
+T-131,HU-62,Registrar trabajadores,Integraciones,Programar la consulta de DNI en RENIEC desde el microservicio,Fernando,2,Done,25/10,probado con Factiliza,
+T-132,HU-62,Registrar trabajadores,Android,Programar en la app el registro de trabajadores con consulta de DNI,Nicolás,2,To Do,26/10,,T-141
+T-133,HU-62,Registrar trabajadores,Pruebas,Probar HU-62 en el ambiente de pruebas contra sus condiciones finales y aprobar su PR,Henry,1,To Do,27/10,"alguien distinto del autor (T1, T5, T8)","T-130, T-131, T-132, T-139"
+T-134,HU-62,Registrar trabajadores,Aceptación,Aceptar HU-62 como Product Owner desde la interfaz y moverla a Done,Adiel,0.5,To Do,27/10,mueve la HU a Done,T-133
+T-135,HU-63,Tomar asistencia,Backend,"Programar la asistencia: una jornada por trabajador y fecha, corrección sin borrar",Adiel,4,Done,25/10,tareo hecho en la API de Adiel; confirmar criterios,
+T-136,HU-63,Tomar asistencia,Android,Programar la pantalla de asistencia del día en la app (horas normales y extra),Nicolás,4,To Do,26/10,,T-141
+T-137,HU-63,Tomar asistencia,Pruebas,Probar HU-63 en el ambiente de pruebas contra sus condiciones finales y aprobar su PR,Henry,1,To Do,27/10,"alguien distinto del autor (T1, T5, T8)","T-135, T-136, T-139"
+T-138,HU-63,Tomar asistencia,Aceptación,Aceptar HU-63 como Product Owner desde la interfaz y moverla a Done,Adiel,0.5,To Do,27/10,mueve la HU a Done,T-137
+T-139,—,Transversal,DevOps,"Desplegar el ambiente de pruebas (API, base de datos y web) que exige el T8 de la DoD",Fernando,6,To Do,24/10,sin esto ninguna HU puede quedar Done,
+T-140,—,Transversal,Web,"Programar el ClienteHttp para que la web hable con la API real (snake_case ↔ camelCase, errores {codigo, mensaje})",Henry,4,To Do,26/10,desbloquea todas las tareas «Conectar…»,
+T-141,—,Transversal,Android,"Crear el proyecto base de la app: Compose, Room, WorkManager y cliente de la API",Nicolás,6,To Do,26/10,desbloquea todas las tareas Android,
+T-142,—,Transversal,Backend,Cargar en la base las semillas de los 626 proveedores reales,Adiel,1,To Do,25/10,,
+T-143,—,Transversal,DevOps,Configurar las pruebas automáticas en cada PR con GitHub Actions,Adiel,3,To Do,24/10,T5 de la DoD,
+T-144,—,Transversal,Scrum,Poner el repositorio en privado e invitar al docente como lector,Fernando,0.5,To Do,23/10,hoy está público,
+T-145,—,Transversal,Scrum,Armar el tablero en GitHub Projects con las plantillas de DoR y DoD,Fernando,2,Doing,23/10,,
+T-146,—,Transversal,Scrum,"Facilitar el Daily Scrum de 15 minutos cada día, registrarlo y actualizar el burndown",Fernando,2,Doing,27/10,hasta el 28/10,
+T-147,—,Transversal,UX,"Simplificar los textos de cada pantalla web: título y una línea, con ayuda «?» bajo demanda",Fernando,3,To Do,26/10,observación de Fernando: hoy hay demasiado texto,
+T-148,—,Transversal,UX,Validar las pantallas con el cliente (Pool) en una sesión corta y registrar sus observaciones,Fernando,1.5,To Do,26/10,que lo use quien lo va a usar,
+T-149,—,Transversal,UX,"Revisar la app con guantes y al sol: botones grandes, una acción por pantalla, contraste AA",Nicolás,2,To Do,26/10,el almacenero trabaja en obra,
+T-150,—,Transversal,Diseño UI,Diseñar las 23 pantallas del Sprint 1 y los mapas de navegación,Fernando,2,Done,23/10,"lienzo «SIGRO · Pantallas y diagramas del Sprint 1», WCAG AA",
+T-151,—,Transversal,Modelado UML,"Modelar los 3 diagramas de casos de uso y los 3 de secuencia (importación S10, salida sin señal, recepción y costo promedio)",Fernando,2,Done,24/10,"en el lienzo; cubren HU-07, 35, 37, 38, 40 y 55",
+T-152,—,Transversal,Modelado UML,Modelar la secuencia del login y del permiso verificado en el servidor (HU-12 a HU-15),Henry,1.5,To Do,24/10,,
+T-153,—,Transversal,Modelado UML,Modelar la secuencia de la alerta de reposición con Notificaciones (HU-25 a HU-27),Fernando,1.5,To Do,24/10,,
+T-154,—,Transversal,Modelado UML,Dibujar los diagramas de actividades del negocio y de estados,Nicolás,2,Done,24/10,14 hojas: A1–A4 y E1–E3 (22/10),
+T-155,—,Transversal,Modelado UML,Dibujar la arquitectura en las cuatro vistas del C4 a partir del diagrama de microservicios,Nicolás,4,To Do,24/10,parte de api/docs/diagrama-microservicios.png,
+T-156,—,Transversal,Review,"Preparar la demo de la Sprint Review: una compra que cruza recepción, salida y costo de punta a punta",Fernando,2,To Do,27/10,,
