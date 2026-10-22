@@ -1,0 +1,77 @@
+# SIGRO · toda la plataforma con un comando:   cp .env.example .env && docker compose up --build
+# Primer administrador (una sola vez):
+#   docker compose run --rm -e SIGRO_ADMIN_CLAVE='tu-clave' api python -m app.cli primer-admin \
+#       --usuario adiel --nombre "Víctor Adiel Luján" --obra "Multifamiliar Flores" --inicio 2026-10-19 --fin 2027-10-17
+name: sigro
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: sigro_owner
+      POSTGRES_PASSWORD: ${POSTGRES_OWNER_CLAVE:?define POSTGRES_OWNER_CLAVE en .env}
+      POSTGRES_DB: sigro
+    volumes: [datos_db:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sigro_owner -d sigro"]
+      interval: 3s
+      retries: 20
+
+  migrar:                       # corre, termina y se va: migra y configura el usuario de la aplicación
+    build: ./api
+    entrypoint: ["sh", "/infra/migrar.sh"]
+    environment:
+      SIGRO_DATABASE_URL: postgresql+psycopg://sigro_owner:${POSTGRES_OWNER_CLAVE}@db:5432/sigro
+      SIGRO_OWNER_DSN: postgresql://sigro_owner:${POSTGRES_OWNER_CLAVE}@db:5432/sigro
+      SIGRO_API_CLAVE: ${SIGRO_API_CLAVE:?define SIGRO_API_CLAVE en .env}
+    volumes: ["./infra:/infra:ro"]
+    user: root
+    depends_on: {db: {condition: service_healthy}}
+    restart: "no"
+
+  api:
+    build: ./api
+    environment: &api_env
+      SIGRO_ENTORNO: produccion
+      SIGRO_APP_DATABASE_URL: postgresql+psycopg://sigro_api:${SIGRO_API_CLAVE}@db:5432/sigro
+      SIGRO_JWT_SECRET: ${SIGRO_JWT_SECRET:?define SIGRO_JWT_SECRET en .env}
+      SIGRO_INTEGRACIONES_URL: http://integraciones:8000
+      SIGRO_NOTIFICACIONES_URL: http://notificaciones:8000
+      SIGRO_SERVICIO_TOKEN: ${SIGRO_SERVICIO_TOKEN:?define SIGRO_SERVICIO_TOKEN en .env}
+      SIGRO_CORS: ${SIGRO_CORS:-http://localhost:5173}
+    ports: ["8000:8000"]
+    depends_on: {migrar: {condition: service_completed_successfully}}
+
+  relevo:                       # entrega la bandeja de salida (outbox) al microservicio de Notificaciones
+    build: ./api
+    command: ["python", "-m", "app.relay"]
+    environment: *api_env
+    depends_on: {migrar: {condition: service_completed_successfully}}
+    restart: unless-stopped
+
+  notificaciones:
+    build: ./notificaciones
+    environment:
+      NOTIF_TOKEN: ${SIGRO_SERVICIO_TOKEN}
+    volumes: [datos_notif:/datos]
+    restart: unless-stopped
+
+  integraciones:                # servicio de Fernando, empaquetado sin tocar su carpeta
+    build:
+      context: ${INTEGRACIONES_DIR:-./integraciones}
+      dockerfile_inline: |
+        FROM python:3.13-slim
+        ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
+        WORKDIR /app
+        COPY requirements.txt .
+        RUN pip install --no-cache-dir -r requirements.txt
+        COPY . .
+        RUN useradd --system --no-create-home sigro && chown -R sigro /app
+        USER sigro
+        CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+    environment:
+      FACTILIZA_TOKEN: ${FACTILIZA_TOKEN:-}
+    restart: unless-stopped
+
+volumes:
+  datos_db:
+  datos_notif:
