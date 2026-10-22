@@ -1,6 +1,6 @@
 # Sprint 1 · Tablero Scrum (tareas)
 
-Sprint 1: **15 al 28 de octubre de 2026** · 29 HU · 153 puntos · **247 tareas**.
+Sprint 1: **15 al 28 de octubre de 2026** · 29 HU · 153 puntos · **261 tareas**.
 Fuente única: `docs/scrum/sigro-sprint1-tareas.csv` (se importa a GitHub Projects o Jira) y el Excel
 `docs/scrum/SIGRO - Sprint 1 · Tablero Scrum (tareas).xlsx` (hoja «Validar HU y tareas» para revisar,
 hoja «Resumen» que se actualiza sola). Registro de incidencias y bitácora de trabajo: `docs/scrum/SIGRO - Sprint 1 · Información del Sprint.xlsx`.
@@ -39,34 +39,49 @@ Cada HU se parte en las tareas del modelo del docente, en este orden (solo las q
 9. **Probar la funcionalidad** (endpoints con Postman e interfaz contra las condiciones finales) y aprobar el PR, siempre alguien distinto del autor.
 10. **Aceptar** como Product Owner → la HU pasa a Done.
 
+## Historias técnicas (habilitadoras) · 22/10
+
+No entregan una función al usuario: entregan lo que el equipo necesita para que las HU se construyan, se prueben y se acepten. Se estiman con Planning Poker en el próximo Daily y pasan por la misma DoR y DoD.
+
+| Código | Historia técnica | Qué destraba | Responsable |
+|---|---|---|---|
+| HT-01 | Desplegar el ambiente de pruebas | T8 de la DoD: sin esto ninguna HU llega a Done | Fernando |
+| HT-02 | Configurar la integración continua | T1 y T5 de la DoD | Adiel |
+| HT-03 | Proteger el repositorio y main | T1 de la DoD y la confidencialidad de los datos de SEVENS | Fernando |
+| HT-04 | Conectar la web con la API real | Todas las tareas «Conectar con la API» de la web | Henry |
+| HT-05 | Crear la base de la app Android | Todas las HU de la app (HU-12, 15, 35, 37, 38, 40, 43, 62 y 63) | Nicolás |
+| HT-06 | Publicar el contrato de la API y Postman | La prueba con Postman de cada HU (modelo del docente) | Adiel |
+| HT-07 | Cargar los datos de prueba reales | L8 de la DoR y las pruebas de importación | Adiel |
+| HT-08 | Autenticar a los servicios entre sí | La seguridad de las integraciones (incidencia del 22/10) | Fernando |
+
 ## Lo que se hace primero (bloquea a las demás)
 
 | ID | Tarea | Responsable | Límite |
 |---|---|---|---|
 | T-233 | Desplegar el ambiente de pruebas (API, base y web) — sin esto ninguna HU cumple T8 | Fernando | 24/10 |
-| T-234 | Programar el ClienteHttp: la web habla con la API real | Henry | 26/10 (cuanto antes) |
-| T-235 | Crear el proyecto base de la app Android | Nicolás | 26/10 (cuanto antes) |
+| T-240 | Programar el ClienteHttp: la web habla con la API real | Henry | 26/10 (cuanto antes) |
+| T-242 | Crear el proyecto base de la app Android | Nicolás | 26/10 (cuanto antes) |
 
 ## Carga al 22/10
 
-Horas pendientes: Fernando ~79 · Henry ~70 · Nicolás ~61 · Adiel ~109.5. Es más de lo que cabe hasta el 27:
+Horas pendientes: Fernando ~79.5 · Henry ~73 · Nicolás ~61 · Adiel ~117. Es más de lo que cabe hasta el 27:
 el Product Owner y el equipo deben decidir qué HU se quedan en el sprint (recorte de alcance manteniendo el
 objetivo) y medir la velocidad real en la Review.
 
 ## Tareas por persona
 
-### Fernando · 96 tareas · 79 h pendientes
+### Fernando · 98 tareas · 79.5 h pendientes
 
 | ID | HU | Fase | Tarea | h | Estado | Límite | Depende de |
 |---|---|---|---|--:|---|---|---|
 | T-001 | HU-01 | Diseño UI | Diseñar la interfaz de usuario de HU-01: pantalla 9 · Crear la obra | 1 | Done | 23/10 | — |
 | T-002 | HU-01 | Modelado UML | Modelar la funcionalidad de HU-01 con el diagrama UML de estados de la obra (en ejecución → ampliada → cerrada) | 1 | To Do | 24/10 | T-001 |
 | T-006 | HU-01 | Front-end web | Programar la pantalla web para crear la obra | 2 | Done | 26/10 | — |
-| T-007 | HU-01 | Conexión API | Conectar la pantalla «Crear la obra» con el endpoint real de la API | 2 | To Do | 26/10 | T-004, T-006, T-234 |
+| T-007 | HU-01 | Conexión API | Conectar la pantalla «Crear la obra» con el endpoint real de la API | 2 | To Do | 26/10 | T-004, T-006, T-240 |
 | T-010 | HU-03 | Diseño UI | Diseñar la interfaz de usuario de HU-03: pantalla 9 · Crear la obra y 22 · Detalle de la obra | 1 | Done | 23/10 | — |
 | T-011 | HU-03 | Modelado UML | Modelar la funcionalidad de HU-03 con el diagrama UML de actividades de la generación de semanas | 1 | To Do | 24/10 | T-010 |
 | T-014 | HU-03 | Front-end web | Programar la tira de semanas en la web (cerrada, en curso, por venir) | 2 | Done | 26/10 | — |
-| T-015 | HU-03 | Conexión API | Conectar la tira de semanas con la API real | 2 | To Do | 26/10 | T-013, T-014, T-234 |
+| T-015 | HU-03 | Conexión API | Conectar la tira de semanas con la API real | 2 | To Do | 26/10 | T-013, T-014, T-240 |
 | T-018 | HU-07 | Diseño UI | Diseñar la interfaz de usuario de HU-07: pantalla 11 · Importar el catálogo del S10 | 1 | Done | 23/10 | — |
 | T-019 | HU-07 | Modelado UML | Modelar la funcionalidad de HU-07 con el diagrama UML de secuencia de la importación del S10 por el microservicio | 1 | Done | 24/10 | — |
 | T-023 | HU-07 | Integración | Programar el lector del PDF «Relación de insumos» del S10 en el microservicio — integración con S10 (relación de insumos) | 4 | Done | 25/10 | — |
@@ -74,7 +89,7 @@ objetivo) y medir la velocidad real en la Review.
 | T-027 | HU-08 | Diseño UI | Diseñar la interfaz de usuario de HU-08: pantalla 16 · Catálogo e insumo | 1 | Done | 23/10 | — |
 | T-028 | HU-08 | Modelado UML | Modelar la funcionalidad de HU-08 con el diagrama UML de secuencia del alta de insumo con verificación de duplicado | 1 | To Do | 24/10 | T-027 |
 | T-031 | HU-08 | Front-end web | Programar la pantalla web del catálogo para ver, dar de alta y editar insumos | 3 | Done | 26/10 | — |
-| T-032 | HU-08 | Conexión API | Conectar la pantalla del catálogo con la API real | 3 | To Do | 26/10 | T-030, T-031, T-234 |
+| T-032 | HU-08 | Conexión API | Conectar la pantalla del catálogo con la API real | 3 | To Do | 26/10 | T-030, T-031, T-240 |
 | T-035 | HU-12 | Diseño UI | Diseñar la interfaz de usuario de HU-12: pantalla 1 (app) y 20 (web) · Login | 1 | Done | 23/10 | — |
 | T-041 | HU-12 | Pruebas | Probar la funcionalidad de HU-12 (la API con Postman, la pantalla web y la app) contra cada condición final y aprobar su PR | 1 | To Do | 27/10 | T-037, T-038, T-039, T-040, T-233 |
 | T-043 | HU-13 | Diseño UI | Diseñar la interfaz de usuario de HU-13: pantalla 10 · Usuarios, roles y dispositivos | 1 | Done | 23/10 | — |
@@ -97,22 +112,22 @@ objetivo) y medir la velocidad real en la Review.
 | T-088 | HU-23 | Diseño UI | Diseñar la interfaz de usuario de HU-23: pantalla 13 · Gasto en recursos | 1 | Done | 23/10 | — |
 | T-089 | HU-23 | Modelado UML | Modelar la funcionalidad de HU-23 con el diagrama UML de secuencia del cálculo del avance | 1 | To Do | 24/10 | T-088 |
 | T-092 | HU-23 | Front-end web | Programar la pantalla web de avance de compra y consumo | 3 | Done | 26/10 | — |
-| T-093 | HU-23 | Conexión API | Conectar la pantalla de avance con la API real | 3 | To Do | 26/10 | T-091, T-092, T-234 |
+| T-093 | HU-23 | Conexión API | Conectar la pantalla de avance con la API real | 3 | To Do | 26/10 | T-091, T-092, T-240 |
 | T-096 | HU-24 | Diseño UI | Diseñar la interfaz de usuario de HU-24: pantalla 8 · Reposición | 1 | Done | 23/10 | — |
 | T-097 | HU-24 | Modelado UML | Modelar la funcionalidad de HU-24 con el diagrama UML de secuencia de la consulta de lo que falta comprar | 1 | To Do | 24/10 | T-096 |
 | T-100 | HU-24 | Front-end web | Programar la pantalla web «Saldo por comprar» con filtros y exportación CSV | 2 | Done | 26/10 | — |
-| T-101 | HU-24 | Conexión API | Conectar la pantalla de saldo por comprar con la API real | 2 | To Do | 26/10 | T-099, T-100, T-234 |
+| T-101 | HU-24 | Conexión API | Conectar la pantalla de saldo por comprar con la API real | 2 | To Do | 26/10 | T-099, T-100, T-240 |
 | T-104 | HU-25 | Diseño UI | Diseñar la interfaz de usuario de HU-25: pantalla 17 · Parámetros de reposición | 1 | Done | 23/10 | — |
 | T-105 | HU-25 | Modelado UML | Modelar la funcionalidad de HU-25 con el diagrama UML de clases de los parámetros de reposición | 1 | To Do | 24/10 | T-104 |
 | T-108 | HU-25 | Front-end web | Programar el formulario web de parámetros de reposición | 4 | To Do | 26/10 | T-104 |
 | T-111 | HU-26 | Diseño UI | Diseñar la interfaz de usuario de HU-26: pantalla 8 · Reposición y 5 · Consultar stock | 1 | Done | 23/10 | — |
 | T-112 | HU-26 | Modelado UML | Modelar la funcionalidad de HU-26 con el diagrama UML de secuencia de la alerta de reposición con Notificaciones | 1 | To Do | 24/10 | T-111 |
 | T-116 | HU-26 | Front-end web | Programar las alertas de reposición en la web | 2 | Done | 26/10 | — |
-| T-117 | HU-26 | Conexión API | Conectar las alertas con la API real | 2 | To Do | 26/10 | T-114, T-116, T-234 |
+| T-117 | HU-26 | Conexión API | Conectar las alertas con la API real | 2 | To Do | 26/10 | T-114, T-116, T-240 |
 | T-120 | HU-27 | Diseño UI | Diseñar la interfaz de usuario de HU-27: pantalla 8 · Reposición | 1 | Done | 23/10 | — |
 | T-121 | HU-27 | Modelado UML | Modelar la funcionalidad de HU-27 con el diagrama UML de actividades del cálculo de la sugerencia | 1 | To Do | 24/10 | T-120 |
 | T-124 | HU-27 | Front-end web | Programar la sugerencia editable dentro de la alerta | 3 | Done | 26/10 | — |
-| T-125 | HU-27 | Conexión API | Conectar la sugerencia con la API real | 3 | To Do | 26/10 | T-123, T-124, T-234 |
+| T-125 | HU-27 | Conexión API | Conectar la sugerencia con la API real | 3 | To Do | 26/10 | T-123, T-124, T-240 |
 | T-128 | HU-29 | Diseño UI | Diseñar la interfaz de usuario de HU-29: pantalla 18 · Proveedores | 1 | Done | 23/10 | — |
 | T-132 | HU-29 | Front-end web | Programar la pantalla web de proveedores con los 626 reales | 2 | Done | 26/10 | — |
 | T-134 | HU-29 | Pruebas | Probar la funcionalidad de HU-29 (la API con Postman y la pantalla web) contra cada condición final y aprobar su PR | 1 | To Do | 27/10 | T-130, T-131, T-132, T-133, T-233 |
@@ -147,16 +162,18 @@ objetivo) y medir la velocidad real en la Review.
 | T-217 | HU-62 | Diseño UI | Diseñar la interfaz de usuario de HU-62: pantalla 6 · Registrar trabajador | 1 | Done | 23/10 | — |
 | T-221 | HU-62 | Integración | Programar la consulta de DNI en RENIEC desde el microservicio — integración con RENIEC (DNI) vía Factiliza | 2 | Done | 25/10 | — |
 | T-225 | HU-63 | Diseño UI | Diseñar la interfaz de usuario de HU-63: pantalla 7 · Asistencia de la jornada | 1 | Done | 23/10 | — |
-| T-233 | — | DevOps | Desplegar el ambiente de pruebas (API, base de datos y web) que exige el T8 de la DoD | 6 | To Do | 24/10 | — |
-| T-238 | — | Scrum | Poner el repositorio en privado e invitar al docente como lector | 0.5 | To Do | 23/10 | — |
-| T-239 | — | Scrum | Armar el tablero en GitHub Projects con las plantillas de DoR y DoD | 2 | Doing | 23/10 | — |
-| T-240 | — | Scrum | Facilitar el Daily Scrum de 15 minutos cada día, registrarlo y actualizar el burndown | 2 | Doing | 27/10 | — |
-| T-241 | — | UX | Simplificar los textos de cada pantalla web: título y una línea, con ayuda «?» bajo demanda | 3 | To Do | 26/10 | — |
-| T-242 | — | UX | Validar las pantallas con el cliente (Pool) en una sesión corta y registrar sus observaciones | 1.5 | To Do | 26/10 | — |
-| T-244 | — | Modelado UML | Modelar los 3 diagramas de casos de uso y los 3 de secuencia (importación S10, salida sin señal, recepción y costo promedio) | 2 | Done | 24/10 | — |
-| T-247 | — | Review | Preparar la demo de la Sprint Review: una compra que cruza recepción, salida y costo de punta a punta | 2 | To Do | 27/10 | — |
+| T-233 | HT-01 | DevOps | Desplegar el ambiente de pruebas (API, base de datos y web) que exige el T8 de la DoD | 6 | To Do | 24/10 | — |
+| T-237 | HT-03 | DevOps | Poner el repositorio en privado e invitar al docente como lector | 0.5 | To Do | 24/10 | — |
+| T-238 | HT-03 | DevOps | Proteger la rama main: PR obligatorio con una aprobación de otro integrante | 0.5 | To Do | 24/10 | — |
+| T-250 | HT-08 | Integración | Exigir el token de servicio en Integraciones | 1 | Done | 25/10 | — |
+| T-253 | — | Scrum | Armar el tablero en GitHub Projects con las plantillas de DoR y DoD | 2 | Doing | 23/10 | — |
+| T-254 | — | Scrum | Facilitar el Daily Scrum de 15 minutos cada día, registrarlo y actualizar el burndown | 2 | Doing | 27/10 | — |
+| T-255 | — | UX | Simplificar los textos de cada pantalla web: título y una línea, con ayuda «?» bajo demanda | 3 | To Do | 26/10 | — |
+| T-256 | — | UX | Validar las pantallas con el cliente (Pool) en una sesión corta y registrar sus observaciones | 1.5 | To Do | 26/10 | — |
+| T-258 | — | Modelado UML | Modelar los 3 diagramas de casos de uso y los 3 de secuencia (importación S10, salida sin señal, recepción y costo promedio) | 2 | Done | 24/10 | — |
+| T-261 | — | Review | Preparar la demo de la Sprint Review: una compra que cruza recepción, salida y costo de punta a punta | 2 | To Do | 27/10 | — |
 
-### Henry · 37 tareas · 70 h pendientes
+### Henry · 38 tareas · 73 h pendientes
 
 | ID | HU | Fase | Tarea | h | Estado | Límite | Depende de |
 |---|---|---|---|--:|---|---|---|
@@ -179,50 +196,51 @@ objetivo) y medir la velocidad real en la Review.
 | T-118 | HU-26 | Pruebas | Probar la funcionalidad de HU-26 (la API con Postman y la pantalla web) contra cada condición final y aprobar su PR | 1 | To Do | 27/10 | T-113, T-114, T-115, T-116, T-117, T-233 |
 | T-126 | HU-27 | Pruebas | Probar la funcionalidad de HU-27 (la API con Postman y la pantalla web) contra cada condición final y aprobar su PR | 1 | To Do | 27/10 | T-122, T-123, T-124, T-125, T-233 |
 | T-129 | HU-29 | Modelado UML | Modelar la funcionalidad de HU-29 con el diagrama UML de secuencia de la búsqueda de proveedores | 1 | To Do | 24/10 | T-128 |
-| T-133 | HU-29 | Conexión API | Conectar la pantalla de proveedores con la API real | 2 | To Do | 26/10 | T-131, T-132, T-234 |
+| T-133 | HU-29 | Conexión API | Conectar la pantalla de proveedores con la API real | 2 | To Do | 26/10 | T-131, T-132, T-240 |
 | T-137 | HU-30 | Modelado UML | Modelar la funcionalidad de HU-30 con el diagrama UML de secuencia del alta rápida de proveedor | 1 | To Do | 24/10 | T-136 |
-| T-141 | HU-30 | Conexión API | Conectar el alta de proveedor con la API real | 2 | To Do | 26/10 | T-139, T-140, T-234 |
+| T-141 | HU-30 | Conexión API | Conectar el alta de proveedor con la API real | 2 | To Do | 26/10 | T-139, T-140, T-240 |
 | T-145 | HU-32 | Modelado UML | Modelar la funcionalidad de HU-32 con el diagrama UML de secuencia del registro de la compra | 1 | To Do | 24/10 | T-144 |
-| T-149 | HU-32 | Conexión API | Conectar la pantalla de compras con la API real | 5 | To Do | 26/10 | T-147, T-148, T-234 |
-| T-158 | HU-35 | Conexión API | Conectar la recepción con la API real | 4 | To Do | 26/10 | T-155, T-156, T-234 |
+| T-149 | HU-32 | Conexión API | Conectar la pantalla de compras con la API real | 5 | To Do | 26/10 | T-147, T-148, T-240 |
+| T-158 | HU-35 | Conexión API | Conectar la recepción con la API real | 4 | To Do | 26/10 | T-155, T-156, T-240 |
 | T-165 | HU-37 | Pruebas | Probar la funcionalidad de HU-37 (la app en modo avión y al volver la señal) contra cada condición final y aprobar su PR | 1 | To Do | 27/10 | T-163, T-164, T-233 |
 | T-173 | HU-38 | Pruebas | Probar la funcionalidad de HU-38 (la API con Postman y la app en modo avión y al volver la señal) contra cada condición final y aprobar su PR | 1 | To Do | 27/10 | T-169, T-170, T-171, T-172, T-233 |
 | T-181 | HU-40 | Pruebas | Probar la funcionalidad de HU-40 (la API con Postman y la app en modo avión y al volver la señal) contra cada condición final y aprobar su PR | 1 | To Do | 27/10 | T-177, T-178, T-179, T-180, T-233 |
-| T-190 | HU-43 | Conexión API | Conectar la pantalla de stock y kárdex con la API real | 2 | To Do | 26/10 | T-186, T-188, T-234 |
+| T-190 | HU-43 | Conexión API | Conectar la pantalla de stock y kárdex con la API real | 2 | To Do | 26/10 | T-186, T-188, T-240 |
 | T-194 | HU-45 | Modelado UML | Modelar la funcionalidad de HU-45 con el diagrama UML de estados del movimiento (vigente → revertido) | 1 | To Do | 24/10 | T-193 |
-| T-198 | HU-45 | Conexión API | Conectar el reverso con la API real | 3 | To Do | 26/10 | T-196, T-197, T-234 |
+| T-198 | HU-45 | Conexión API | Conectar el reverso con la API real | 3 | To Do | 26/10 | T-196, T-197, T-240 |
 | T-206 | HU-55 | Front-end web | Mostrar la salida valorizada en el kárdex y en el reporte web | 7 | To Do | 26/10 | T-201 |
 | T-210 | HU-57 | Modelado UML | Modelar la funcionalidad de HU-57 con el diagrama UML de actividades de la comparación contra lo planificado | 1 | To Do | 24/10 | T-209 |
-| T-214 | HU-57 | Conexión API | Conectar la pantalla de desviación con la API real | 5 | To Do | 26/10 | T-212, T-213, T-234 |
+| T-214 | HU-57 | Conexión API | Conectar la pantalla de desviación con la API real | 5 | To Do | 26/10 | T-212, T-213, T-240 |
 | T-223 | HU-62 | Pruebas | Probar la funcionalidad de HU-62 (la API con Postman y la app) contra cada condición final y aprobar su PR | 1 | To Do | 27/10 | T-219, T-220, T-221, T-222, T-233 |
 | T-231 | HU-63 | Pruebas | Probar la funcionalidad de HU-63 (la API con Postman y la app en modo avión y al volver la señal) contra cada condición final y aprobar su PR | 1 | To Do | 27/10 | T-227, T-228, T-229, T-230, T-233 |
-| T-234 | — | Web | Programar el ClienteHttp para que la web hable con la API real (snake_case ↔ camelCase, errores {codigo, mensaje}) | 4 | To Do | 26/10 | — |
+| T-240 | HT-04 | Web | Programar el ClienteHttp para que la web hable con la API real (snake_case ↔ camelCase, errores {codigo, mensaje}) | 4 | To Do | 26/10 | — |
+| T-245 | HT-06 | Pruebas | Armar y compartir la colección de Postman con entorno de pruebas, login y un ejemplo correcto y uno de error por endpoint | 3 | To Do | 24/10 | — |
 
 ### Nicolás · 19 tareas · 61 h pendientes
 
 | ID | HU | Fase | Tarea | h | Estado | Límite | Depende de |
 |---|---|---|---|--:|---|---|---|
 | T-036 | HU-12 | Modelado UML | Modelar la funcionalidad de HU-12 con el diagrama UML de secuencia del login y la renovación de la sesión | 1 | To Do | 24/10 | T-035 |
-| T-040 | HU-12 | Front-end app | Programar el login en la app del almacenero | 3 | To Do | 26/10 | T-035, T-235 |
+| T-040 | HU-12 | Front-end app | Programar el login en la app del almacenero | 3 | To Do | 26/10 | T-035, T-242 |
 | T-058 | HU-15 | Modelado UML | Modelar la funcionalidad de HU-15 con el diagrama UML de secuencia del registro desde un dispositivo no autorizado | 1 | To Do | 24/10 | T-057 |
-| T-061 | HU-15 | Front-end app | Programar en la app la generación del código del dispositivo en la primera instalación | 3 | To Do | 26/10 | T-057, T-235 |
-| T-157 | HU-35 | Front-end app | Programar la recepción de compras en la app del almacenero | 4 | To Do | 26/10 | T-152, T-235 |
+| T-061 | HU-15 | Front-end app | Programar en la app la generación del código del dispositivo en la primera instalación | 3 | To Do | 26/10 | T-057, T-242 |
+| T-157 | HU-35 | Front-end app | Programar la recepción de compras en la app del almacenero | 4 | To Do | 26/10 | T-152, T-242 |
 | T-163 | HU-37 | Base de datos | Implementar las tablas asociadas a HU-37: cola local en Room (movimiento_pendiente) en el celular | 1 | To Do | 24/10 | T-162 |
-| T-164 | HU-37 | Front-end app | Programar la cola local (Room) con uuid_cliente y hora del celular, y mostrar «pendiente de enviar» en cada movimiento | 14 | To Do | 26/10 | T-161, T-235 |
-| T-172 | HU-38 | Front-end app | Programar el envío automático de pendientes al volver la señal (WorkManager) | 4 | To Do | 26/10 | T-167, T-235 |
-| T-180 | HU-40 | Front-end app | Programar la pantalla de salida en la app (insumo, cantidad, motivo, quién retira) | 7 | To Do | 26/10 | T-175, T-235 |
+| T-164 | HU-37 | Front-end app | Programar la cola local (Room) con uuid_cliente y hora del celular, y mostrar «pendiente de enviar» en cada movimiento | 14 | To Do | 26/10 | T-161, T-242 |
+| T-172 | HU-38 | Front-end app | Programar el envío automático de pendientes al volver la señal (WorkManager) | 4 | To Do | 26/10 | T-167, T-242 |
+| T-180 | HU-40 | Front-end app | Programar la pantalla de salida en la app (insumo, cantidad, motivo, quién retira) | 7 | To Do | 26/10 | T-175, T-242 |
 | T-184 | HU-43 | Modelado UML | Modelar la funcionalidad de HU-43 con el diagrama UML de secuencia del cálculo del stock desde el libro | 1 | To Do | 24/10 | T-183 |
-| T-189 | HU-43 | Front-end app | Programar la consulta de stock en la app | 2 | To Do | 26/10 | T-183, T-235 |
+| T-189 | HU-43 | Front-end app | Programar la consulta de stock en la app | 2 | To Do | 26/10 | T-183, T-242 |
 | T-218 | HU-62 | Modelado UML | Modelar la funcionalidad de HU-62 con el diagrama UML de secuencia del registro con consulta de DNI | 1 | To Do | 24/10 | T-217 |
-| T-222 | HU-62 | Front-end app | Programar en la app el registro de trabajadores con consulta de DNI | 2 | To Do | 26/10 | T-217, T-235 |
+| T-222 | HU-62 | Front-end app | Programar en la app el registro de trabajadores con consulta de DNI | 2 | To Do | 26/10 | T-217, T-242 |
 | T-226 | HU-63 | Modelado UML | Modelar la funcionalidad de HU-63 con el diagrama UML de actividades de la toma de asistencia | 1 | To Do | 24/10 | T-225 |
-| T-230 | HU-63 | Front-end app | Programar la pantalla de asistencia del día en la app (horas normales y extra) | 4 | To Do | 26/10 | T-225, T-235 |
-| T-235 | — | Android | Crear el proyecto base de la app: Compose, Room, WorkManager y cliente de la API | 6 | To Do | 26/10 | — |
-| T-243 | — | UX | Revisar la app con guantes y al sol: botones grandes, una acción por pantalla, contraste AA | 2 | To Do | 26/10 | — |
-| T-245 | — | Modelado UML | Dibujar los diagramas de actividades del negocio y de estados | 2 | Done | 24/10 | — |
-| T-246 | — | Modelado UML | Dibujar la arquitectura en las cuatro vistas del C4 a partir del diagrama de microservicios | 4 | To Do | 24/10 | — |
+| T-230 | HU-63 | Front-end app | Programar la pantalla de asistencia del día en la app (horas normales y extra) | 4 | To Do | 26/10 | T-225, T-242 |
+| T-242 | HT-05 | Android | Crear el proyecto base de la app: Compose, Room, WorkManager y cliente de la API | 6 | To Do | 26/10 | — |
+| T-257 | — | UX | Revisar la app con guantes y al sol: botones grandes, una acción por pantalla, contraste AA | 2 | To Do | 26/10 | — |
+| T-259 | — | Modelado UML | Dibujar los diagramas de actividades del negocio y de estados | 2 | Done | 24/10 | — |
+| T-260 | — | Modelado UML | Dibujar la arquitectura en las cuatro vistas del C4 a partir del diagrama de microservicios | 4 | To Do | 24/10 | — |
 
-### Adiel · 95 tareas · 109.5 h pendientes
+### Adiel · 106 tareas · 117 h pendientes
 
 | ID | HU | Fase | Tarea | h | Estado | Límite | Depende de |
 |---|---|---|---|--:|---|---|---|
@@ -319,5 +337,16 @@ objetivo) y medir la velocidad real en la Review.
 | T-228 | HU-63 | Backend | Programar el back-end de HU-63 (entidad, repositorio, servicio y controlador): la asistencia: una jornada por trabajador y fecha, corrección sin borrar | 4 | Done | 25/10 | — |
 | T-229 | HU-63 | Triggers y funciones | Implementar el índice único parcial (trabajador, fecha) entre las jornadas vigentes (HU-63) | 1 | Done | 25/10 | — |
 | T-232 | HU-63 | Aceptación | Aceptar HU-63 como Product Owner desde la interfaz y moverla a Done | 0.5 | To Do | 27/10 | T-231 |
-| T-236 | — | Backend | Cargar en la base las semillas de los 626 proveedores reales | 1 | To Do | 25/10 | — |
-| T-237 | — | DevOps | Configurar las pruebas automáticas en cada PR con GitHub Actions | 3 | To Do | 24/10 | — |
+| T-234 | HT-01 | Aceptación | Aceptar HT-01 como Product Owner y moverla a Done | 0.5 | To Do | 27/10 | — |
+| T-235 | HT-02 | DevOps | Configurar las pruebas automáticas en cada PR con GitHub Actions | 3 | To Do | 24/10 | — |
+| T-236 | HT-02 | Aceptación | Aceptar HT-02 como Product Owner y moverla a Done | 0.5 | To Do | 27/10 | — |
+| T-239 | HT-03 | Aceptación | Aceptar HT-03 como Product Owner y moverla a Done | 0.5 | To Do | 27/10 | — |
+| T-241 | HT-04 | Aceptación | Aceptar HT-04 como Product Owner y moverla a Done | 0.5 | To Do | 27/10 | — |
+| T-243 | HT-05 | Aceptación | Aceptar HT-05 como Product Owner y moverla a Done | 0.5 | To Do | 27/10 | — |
+| T-244 | HT-06 | Backend | Publicar el OpenAPI de la API en el ambiente de pruebas | 1 | Doing | 25/10 | — |
+| T-246 | HT-06 | Aceptación | Aceptar HT-06 como Product Owner y moverla a Done | 0.5 | To Do | 27/10 | — |
+| T-247 | HT-07 | Backend | Cargar en la base los 626 proveedores y el catálogo de insumos del cliente | 1 | To Do | 25/10 | — |
+| T-248 | HT-07 | Backend | Crear la obra Multifamiliar Flores con su relación de insumos del S10 en la base de pruebas | 1 | To Do | 25/10 | — |
+| T-249 | HT-07 | Aceptación | Aceptar HT-07 como Product Owner y moverla a Done | 0.5 | To Do | 27/10 | — |
+| T-251 | HT-08 | DevOps | Configurar el token de servicio en docker compose y enviarlo desde la API a Integraciones y Notificaciones | 1.5 | To Do | 24/10 | — |
+| T-252 | HT-08 | Aceptación | Aceptar HT-08 como Product Owner y moverla a Done | 0.5 | To Do | 27/10 | — |

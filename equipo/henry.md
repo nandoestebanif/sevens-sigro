@@ -6,7 +6,7 @@ datos simulados y hable con esa API real, y que las pantallas de administración
 
 Tu carpeta es `web/`. Fuera de ahí, solo con Pull Request y aviso.
 
-## Lo primero: T-234 · el ClienteHttp (desbloquea 8 tareas tuyas y varias de Fernando)
+## Lo primero: T-240 · el ClienteHttp (historia técnica HT-04; desbloquea tus tareas «Conectar…» y varias de Fernando)
 
 Hoy toda la web pasa por una sola interfaz, `ClienteSigro` (`web/src/api/cliente.ts`), implementada por
 `ClienteSimulado`. **No toques las pantallas para conectarlas:** escribe una segunda implementación,
@@ -38,19 +38,20 @@ esos métodos al simulado es válido mientras tanto.
 | T-054 | HU-14 | Front-end web | Programar la pantalla web para asignar usuarios a obras | 2 | 26/10 | T-050 |
 | T-062 | HU-15 | Front-end web | Programar la pantalla web para autorizar o cambiar el celular de la obra | 3 | 26/10 | T-057 |
 | T-129 | HU-29 | Modelado UML | Modelar la funcionalidad de HU-29 con el diagrama UML de secuencia de la búsqueda de proveedores | 1 | 24/10 | T-128 |
-| T-133 | HU-29 | Conexión API | Conectar la pantalla de proveedores con la API real | 2 | 26/10 | T-131, T-132, T-234 |
+| T-133 | HU-29 | Conexión API | Conectar la pantalla de proveedores con la API real | 2 | 26/10 | T-131, T-132, T-240 |
 | T-137 | HU-30 | Modelado UML | Modelar la funcionalidad de HU-30 con el diagrama UML de secuencia del alta rápida de proveedor | 1 | 24/10 | T-136 |
-| T-141 | HU-30 | Conexión API | Conectar el alta de proveedor con la API real | 2 | 26/10 | T-139, T-140, T-234 |
+| T-141 | HU-30 | Conexión API | Conectar el alta de proveedor con la API real | 2 | 26/10 | T-139, T-140, T-240 |
 | T-145 | HU-32 | Modelado UML | Modelar la funcionalidad de HU-32 con el diagrama UML de secuencia del registro de la compra | 1 | 24/10 | T-144 |
-| T-149 | HU-32 | Conexión API | Conectar la pantalla de compras con la API real | 5 | 26/10 | T-147, T-148, T-234 |
-| T-158 | HU-35 | Conexión API | Conectar la recepción con la API real | 4 | 26/10 | T-155, T-156, T-234 |
-| T-190 | HU-43 | Conexión API | Conectar la pantalla de stock y kárdex con la API real | 2 | 26/10 | T-186, T-188, T-234 |
+| T-149 | HU-32 | Conexión API | Conectar la pantalla de compras con la API real | 5 | 26/10 | T-147, T-148, T-240 |
+| T-158 | HU-35 | Conexión API | Conectar la recepción con la API real | 4 | 26/10 | T-155, T-156, T-240 |
+| T-190 | HU-43 | Conexión API | Conectar la pantalla de stock y kárdex con la API real | 2 | 26/10 | T-186, T-188, T-240 |
 | T-194 | HU-45 | Modelado UML | Modelar la funcionalidad de HU-45 con el diagrama UML de estados del movimiento (vigente → revertido) | 1 | 24/10 | T-193 |
-| T-198 | HU-45 | Conexión API | Conectar el reverso con la API real | 3 | 26/10 | T-196, T-197, T-234 |
+| T-198 | HU-45 | Conexión API | Conectar el reverso con la API real | 3 | 26/10 | T-196, T-197, T-240 |
 | T-206 | HU-55 | Front-end web | Mostrar la salida valorizada en el kárdex y en el reporte web | 7 | 26/10 | T-201 |
 | T-210 | HU-57 | Modelado UML | Modelar la funcionalidad de HU-57 con el diagrama UML de actividades de la comparación contra lo planificado | 1 | 24/10 | T-209 |
-| T-214 | HU-57 | Conexión API | Conectar la pantalla de desviación con la API real | 5 | 26/10 | T-212, T-213, T-234 |
-| T-234 | — | Web | Programar el ClienteHttp para que la web hable con la API real (snake_case ↔ camelCase, errores {codigo, mensaje}) | 4 | 26/10 | — |
+| T-214 | HU-57 | Conexión API | Conectar la pantalla de desviación con la API real | 5 | 26/10 | T-212, T-213, T-240 |
+| T-240 | HT-04 | Web | Programar el ClienteHttp para que la web hable con la API real (snake_case ↔ camelCase, errores {codigo, mensaje}) | 4 | 26/10 | — |
+| T-245 | HT-06 | Pruebas | Armar y compartir la colección de Postman con entorno de pruebas, login y un ejemplo correcto y uno de error por endpoint | 3 | 24/10 | — |
 
 Las pantallas de HU-12 a HU-15 ya están diseñadas: **pantallas 10 y 20 del lienzo** «SIGRO · Pantallas y
 diagramas del Sprint 1» (pídele el enlace a Fernando). Usa los componentes de `web/src/ui/base.tsx` y los
