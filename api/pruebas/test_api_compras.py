@@ -435,3 +435,27 @@ def test_una_solicitud_ajena_es_404_para_otra_obra(mundo, eq):
     s = solicitar(mundo, otra, [sl()]).json()
     assert get(mundo, f"/obras/{eq['proyecto']}/solicitudes/{s['id']}", eq["residente"]).status_code == 404
     assert post(mundo, f"/obras/{eq['proyecto']}/solicitudes/{s['id']}/anular", eq["residente"], motivo="Ajena a mi obra").status_code == 404
+
+
+# ───────────────────────── D-C5: persona natural con DNI de 8 dígitos
+def test_un_proveedor_con_dni_se_acepta_queda_sin_validar_y_no_se_consulta_a_sunat(mundo, eq, monkeypatch):
+    def no_debe_llamarse(*a, **k):
+        raise AssertionError("un DNI no es un RUC: no se consulta a SUNAT")
+
+    monkeypatch.setattr(integraciones, "consultar_ruc", no_debe_llamarse)
+    r = post(mundo, "/proveedores", eq["residente"], ruc="45678912", razon_social="Juan Pérez Quispe")
+    assert r.status_code == 201
+    p = r.json()
+    assert p["ruc"] == "45678912" and p["estado"] == "sin_validar" and "DNI" in p["advertencia"]
+    v = post(mundo, f"/proveedores/{p['id']}/validar", eq["residente"])           # validar tampoco lo consulta
+    assert v.status_code == 200 and v.json()["estado"] == "sin_validar"
+    assert [x["id"] for x in get(mundo, "/proveedores?q=45678912", eq["residente"]).json()] == [p["id"]]
+
+
+def test_el_dni_tambien_es_unico_y_un_documento_de_otra_longitud_se_rechaza(mundo, eq, monkeypatch):
+    monkeypatch.setattr(integraciones, "consultar_ruc", lambda ruc, cliente=None: None)
+    assert post(mundo, "/proveedores", eq["residente"], ruc="45678912", razon_social="Juan Pérez Quispe").status_code == 201
+    r = post(mundo, "/proveedores", eq["admin"], ruc="45678912", razon_social="Otro Juan SAC")
+    assert r.status_code == 409 and r.json()["codigo"] == "uq_proveedor_ruc"
+    for malo in ("4567891", "456789123", "4567891A"):                              # 7, 9 dígitos y letras
+        assert post(mundo, "/proveedores", eq["residente"], ruc=malo, razon_social="Alguien SAC").status_code == 422

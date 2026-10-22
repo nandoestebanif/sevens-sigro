@@ -32,6 +32,17 @@ no puede borrar nada ni editar ningún libro.
 | 0005 | **solicitud de materiales** (CR-04, Sprint 2): solicitud, líneas, correlativo, vistas de estado derivado |
 | 0006 | **outbox**: bandeja de salida de eventos hacia Notificaciones (inmutable, sin borrado) |
 
+## Diagramas (`api/docs/`)
+
+| Diagrama | Archivo | Cómo se mantiene |
+|---|---|---|
+| **Físico** (tablas, claves, índices únicos, disparadores) | `diagrama-fisico.png` / `.svg` | `SIGRO_DB=sigro_dev python docs/generar_diagrama.py` lo genera **desde la base migrada** |
+| **Entidad-relación** (modelo lógico: nombres de negocio, cardinalidades) | `diagrama-er.png` / `.svg` | `SIGRO_DB=sigro_dev python docs/generar_er.py`; **falla** si un atributo, una tabla, una relación o un valor de estado no coincide con la base |
+| **Microservicios** (frontera API ↔ Integraciones ↔ Notificaciones) | `diagrama-microservicios.png` / `.svg` | Dibujado a mano en `diagrama-microservicios.dot` (Graphviz: `dot -Tpng`) |
+
+Requieren Graphviz (`dot`) y una base migrada (`alembic upgrade head`). El de microservicios deja a la vista un riesgo:
+**Integraciones no autentica a quien le llama** y la web lo llama directo; está por decidir con Fernando.
+
 ## Reglas del CLAUDE.md y dónde las sostiene el motor
 
 | Regla | Mecanismo |
@@ -113,15 +124,15 @@ Argon2id, bloqueo a los 5 intentos (15 min), misma respuesta para usuario inexis
 Errores: `{"codigo": "...", "mensaje": "..."}`, igual que `ErrorApi` en `web/src/api/cliente.ts`. Los campos van en
 `snake_case`; `ClienteSigro` los pasa a `camelCase`.
 
-## Decisiones nuevas de la API (ratificar)
+## Decisiones nuevas de la API · ratificadas por Adiel (PO) el 22 de octubre de 2026
 
 | # | Decisión | Por qué |
 |---|---|---|
 | D-A1 | `python -m app.cli primer-admin` crea el primer usuario, obra y asignación; solo en sistema vacío | Todo permiso vive en una asignación a una obra: sin esto, nadie podría crear nada |
-| D-A2 | Ampliar plazo lo hacen residente y administrador; **falta la autorización del gerente «A»** | La matriz no dice cómo se autoriza; no se inventó |
+| D-A2 | Ampliar plazo lo hacen residente y administrador; **sigue pendiente la autorización del gerente «A»** (queda fuera del Sprint 1) | La matriz no dice cómo se autoriza; no se inventó |
 | D-C3 | Los precios de una compra **incluyen IGV** por defecto (`precios_incluyen_igv=true`): 400 × 29.23 = 11 692.00 → base 9 908.47 + IGV 1 783.53 | Así vienen las facturas de materiales en el archivo del cliente; el servidor calcula los totales, el cliente no los manda |
 | D-C4 | Emitir solicitud: solo residente | La matriz no lista la acción; se tomó lo más restrictivo |
-| D-C5 | La API exige RUC de 11 dígitos con dígito verificador para proveedores **nuevos**; la semilla carga los sucios como «sin validar» | No se descarta ni se corrige a mano nada del cliente |
+| D-C5 | Un proveedor nuevo se registra con **RUC (11 dígitos) o DNI (8, persona natural)**. El DNI queda «sin validar» y nunca se consulta a SUNAT; la semilla carga además los documentos sucios del cliente como «sin validar» | El archivo real trae personas naturales con DNI: exigir solo RUC no las dejaría registrar. No se descarta ni se corrige a mano nada del cliente |
 | D-N1 | Los avisos los resuelve la API (destinatarios) y nunca incluyen a quien hizo la acción | Nadie necesita que le avisen de lo que acaba de hacer |
 
 ## Qué NO está hecho

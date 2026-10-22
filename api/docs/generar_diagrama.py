@@ -18,12 +18,13 @@ BASE = os.environ.get("SIGRO_DB", "sigro_dev")
 DSN = os.environ.get("SIGRO_DSN", f"postgresql://sigro_owner:sigro_owner_dev@localhost:5432/{BASE}")
 SALIDA = Path(__file__).resolve().parent
 
-ESQUEMAS = ["obra", "catalogo", "compras", "tareo"]
+ESQUEMAS = ["obra", "catalogo", "compras", "tareo", "outbox"]
 COLOR = {  # cabecera, fondo del grupo
     "obra": ("#1F4E79", "#EAF1F8"),
     "catalogo": ("#7A4B00", "#FBF3E4"),
     "compras": ("#2E6B3A", "#EAF5EC"),
     "tareo": ("#6B2E6B", "#F6ECF6"),
+    "outbox": ("#8A3B12", "#FBEDE6"),
 }
 LIBROS = {"obra.proyecto_plazo_historial", "tareo.jornada", "compras.compra_detalle", "compras.compra_adjunto",
           "compras.solicitud_linea"}
@@ -93,7 +94,7 @@ def main() -> None:
     L = ['digraph SIGRO {', '  graph [rankdir=LR, fontname="Helvetica", fontsize=26, labelloc=t, pad=0.4, nodesep=0.35, ranksep=1.3, '
          'splines=true, compound=true, newrank=true, '
          'label=<<B>SIGRO · Diagrama físico de la base de datos (PostgreSQL)</B><BR/><FONT POINT-SIZE="15">'
-         'Módulos obra, catálogo, compras y tareo · generado desde la base migrada (migraciones 0001 a 0005)</FONT>>];',
+         'Módulos obra, catálogo, compras, tareo y outbox · generado desde la base migrada (migraciones 0001 a 0006)</FONT>>];',
          '  node [shape=plain, fontname="Helvetica", fontsize=11];',
          '  edge [color="#555555", arrowsize=0.7, fontname="Helvetica", fontsize=9];']
 
@@ -103,6 +104,8 @@ def main() -> None:
         insignias = []
         if clave in LIBROS:
             insignias.append('<FONT COLOR="#FFD966"> APPEND-ONLY</FONT>')
+        elif clave == "outbox.evento":
+            insignias.append('<FONT COLOR="#FFD966"> bandeja de salida</FONT>')
         elif clave == "compras.solicitud_correlativo":
             insignias.append('<FONT COLOR="#FFD966"> contador del servidor</FONT>')
         filas = [f'<TR><TD COLSPAN="3" BGCOLOR="{cab}"><FONT COLOR="white"><B>{esc(esquema)}.</B><B>{esc(nombre)}</B></FONT>{"".join(insignias)}</TD></TR>']
@@ -177,7 +180,8 @@ def main() -> None:
              '<TR><TD ALIGN="LEFT"><B>APPEND-ONLY</B>  libro: solo se inserta (disparador + sin permiso de UPDATE/DELETE para la aplicación)</TD></TR>'
              f'<TR><TD ALIGN="LEFT">Vistas derivadas: {esc(", ".join(v.split(".")[1] for v in vistas))}</TD></TR>'
              f'<TR><TD ALIGN="LEFT">Funciones SECURITY DEFINER (únicas que escriben periodos, plazo y correlativos): {esc(", ".join(funciones))}</TD></TR>'
-             '<TR><TD ALIGN="LEFT" BGCOLOR="#E8E8E8"><B>Frontera:</B> el microservicio de integraciones (S10, SUNAT, RENIEC) NO escribe en esta base: devuelve datos y la API decide qué guardar.</TD></TR>'
+             '<TR><TD ALIGN="LEFT" BGCOLOR="#E8E8E8"><B>Frontera:</B> los microservicios NO leen ni escriben en esta base. Integraciones (S10, SUNAT, RENIEC) devuelve datos y la API decide qué guardar;</TD></TR>'
+             '<TR><TD ALIGN="LEFT" BGCOLOR="#E8E8E8">Notificaciones recibe por HTTP lo que el relevo toma de <B>outbox.evento</B> (escrito en la misma transacción que el hecho) y guarda su propia copia.</TD></TR>'
              '</TABLE>>];')
     L.append("  }")
     L.append("}")
