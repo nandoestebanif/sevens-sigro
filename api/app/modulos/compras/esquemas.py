@@ -14,7 +14,10 @@ class Estricto(BaseModel):
 
 # --- proveedores (HU-29 · HU-30 · HU-31)
 class ProveedorIn(Estricto):
-    ruc: str = Field(pattern=r"^\d{11}$", description="Único en todo el sistema (HU-30).")
+    ruc: str = Field(
+        pattern=r"^(\d{11}|\d{8})$",
+        description="RUC (11 dígitos) o DNI (8, persona natural; queda sin validar). Único en todo el sistema (HU-30, D-C5).",
+    )
     razon_social: str = Field(min_length=3, max_length=200)
 
 

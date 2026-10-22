@@ -44,6 +44,8 @@ _SQL_PROV = (
 
 def _validar_en_sunat(ruc: str) -> tuple[bool, str | None]:
     """(validado, advertencia). Si SUNAT/el micro no responden, queda sin validar y NO se bloquea (HU-31)."""
+    if len(ruc) == 8:       # D-C5: persona natural con DNI. No es un RUC: no se consulta a SUNAT y queda sin validar.
+        return False, "Es un DNI (persona natural): queda sin validar; solo los RUC se validan en SUNAT."
     if not ruc_valido(ruc):
         return False, "El dígito verificador del RUC no coincide: revisa que esté bien escrito."
     r = integraciones.consultar_ruc(ruc)
