@@ -2,6 +2,8 @@
 
 Estado: **propuesto** (amplía [ADR-01](decisiones-arquitectura.md): monolito modular + integraciones), para ratificar en equipo · Autor: Adiel (Product Owner) · SIGRO · SEVENS INGENIEROS SAC
 
+Diagrama: `api/docs/diagrama-microservicios.png` (con qué pasa si cae cada pieza).
+
 ## Contexto
 Tres personas, un semestre, una obra real que registra horas, compras e inventario desde celulares con mala señal.
 Las reglas más importantes del negocio (nada se borra, el saldo se calcula, un reenvío no duplica, un rol vive junto a la
@@ -43,3 +45,8 @@ obra) son **reglas de datos**: necesitan transacciones y restricciones de Postgr
 ## Alternativas descartadas
 - *Broker de mensajes (RabbitMQ/Kafka):* una pieza más que operar; el outbox sobre PostgreSQL cubre el volumen de una obra.
 - *Notificaciones como módulo del monolito:* viable, pero se pierde la demostración de un servicio con su propio ciclo de vida.
+
+## Riesgo abierto (a decidir con Fernando)
+El servicio de Integraciones **no autentica a quien le llama** y hoy la web lo llama directo (`localhost:8001`). Quien lo
+alcance puede gastar las 100 consultas mensuales de Factiliza y subir archivos. Opciones: (a) la web pasa por la API, que sí
+autentica; (b) Integraciones exige un token de servicio, como ya hace Notificaciones.

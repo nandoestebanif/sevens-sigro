@@ -1,0 +1,77 @@
+digraph SIGRO_ARQ {
+  graph [rankdir=TB, fontname="Helvetica", fontsize=26, labelloc=t, pad=0.4, nodesep=0.6, ranksep=1.0, splines=true, newrank=true, compound=true,
+         label=<<B>SIGRO · Esquema de microservicios (frontera API ↔ servicios)</B><BR/><FONT POINT-SIZE="15">Monolito modular + 2 microservicios · ADR-01 y ADR-07 · estado al 22 de octubre de 2026</FONT>>];
+  node [shape=plain, fontname="Helvetica", fontsize=11];
+  edge [fontname="Helvetica", fontsize=10, color="#444444", arrowsize=0.9];
+
+  subgraph cluster_clientes { label=<<B>Clientes</B>>; fontsize=17; style="rounded,filled"; fillcolor="#F2F2F2"; color="#666666";
+    web [label=<<TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="5" COLOR="#555555"><TR><TD BGCOLOR="#555555"><FONT COLOR="white"><B>Web de oficina</B></FONT></TD></TR>
+      <TR><TD ALIGN="LEFT">React + Vite · <I>web/</I></TD></TR><TR><TD ALIGN="LEFT">residente · administrador · gerente</TD></TR></TABLE>>];
+    android [label=<<TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="5" COLOR="#555555"><TR><TD BGCOLOR="#555555"><FONT COLOR="white"><B>App Android</B></FONT></TD></TR>
+      <TR><TD ALIGN="LEFT">almacenero · SSOMA</TD></TR><TR><TD ALIGN="LEFT">cola local: registra sin señal</TD></TR>
+      <TR><TD ALIGN="LEFT" BGCOLOR="#FFF2CC"><FONT POINT-SIZE="10" COLOR="#7F6000"><I>cada registro lleva su uuid_cliente</I></FONT></TD></TR></TABLE>>];
+  }
+
+  subgraph cluster_api { label=<<B>API SIGRO · monolito modular (FastAPI) · /api/v1</B>>; fontsize=17; style="rounded,filled"; fillcolor="#EAF1F8"; color="#1F4E79"; penwidth=2;
+    seg [label=<<TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="4" COLOR="#1F4E79"><TR><TD BGCOLOR="#1F4E79"><FONT COLOR="white"><B>Seguridad (transversal)</B></FONT></TD></TR>
+      <TR><TD ALIGN="LEFT">JWT: solo dice <B>quién</B> eres</TD></TR><TR><TD ALIGN="LEFT">rol y obra se leen de <I>asignación</I> en cada petición</TD></TR>
+      <TR><TD ALIGN="LEFT">login Argon2id · bloqueo a los 5 intentos</TD></TR>
+      <TR><TD ALIGN="LEFT" BGCOLOR="#FFF2CC"><FONT POINT-SIZE="10" COLOR="#7F6000"><I>esconder un botón no es control de acceso</I></FONT></TD></TR></TABLE>>];
+    mods [label=<<TABLE BORDER="1" CELLBORDER="1" CELLSPACING="0" CELLPADDING="5" COLOR="#1F4E79"><TR><TD COLSPAN="2" BGCOLOR="#1F4E79"><FONT COLOR="white"><B>Módulos (un esquema cada uno)</B></FONT></TD></TR>
+      <TR><TD BGCOLOR="#D9E7F5"><B>obra</B><BR/><FONT POINT-SIZE="9">accesos, plazos, periodos</FONT></TD><TD BGCOLOR="#D9E7F5"><B>tareo</B><BR/><FONT POINT-SIZE="9">trabajadores y jornadas</FONT></TD></TR>
+      <TR><TD BGCOLOR="#D9E7F5"><B>compras</B><BR/><FONT POINT-SIZE="9">proveedores, compras, solicitudes</FONT></TD><TD BGCOLOR="#D9E7F5"><B>catálogo</B><BR/><FONT POINT-SIZE="9">insumos (provisional)</FONT></TD></TR>
+      <TR><TD STYLE="dashed" BGCOLOR="#EEEEEE"><B>almacén</B><BR/><FONT POINT-SIZE="9">Henry · pendiente</FONT></TD><TD STYLE="dashed" BGCOLOR="#EEEEEE"><B>costo</B><BR/><FONT POINT-SIZE="9">Henry · pendiente</FONT></TD></TR>
+      <TR><TD COLSPAN="2" ALIGN="LEFT"><FONT POINT-SIZE="10">Dependencias solo hacia <B>obra</B> y <B>catálogo</B> (una prueba lo vigila)</FONT></TD></TR></TABLE>>];
+    db [label=<<TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="4" COLOR="#333333"><TR><TD BGCOLOR="#333333"><FONT COLOR="white"><B>PostgreSQL 16</B></FONT></TD></TR>
+      <TR><TD ALIGN="LEFT">esquemas: obra · catálogo · compras · tareo · <B>outbox</B></TD></TR>
+      <TR><TD ALIGN="LEFT">la API entra como <B>sigro_app</B>: sin DELETE, sin UPDATE en libros</TD></TR>
+      <TR><TD ALIGN="LEFT">migraciones con el usuario dueño (Alembic)</TD></TR>
+      <TR><TD ALIGN="LEFT" BGCOLOR="#FFF2CC"><FONT POINT-SIZE="10" COLOR="#7F6000"><B>Ningún microservicio lee ni escribe esta base</B></FONT></TD></TR></TABLE>>];
+    seg -> mods [style=invis]; mods -> db [label=" misma transacción\n hecho + evento ", dir=both, arrowtail=none, arrowhead=normal];
+  }
+
+  relevo [label=<<TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="5" COLOR="#8A3B12"><TR><TD BGCOLOR="#8A3B12"><FONT COLOR="white"><B>Relevo (worker)</B></FONT></TD></TR>
+    <TR><TD ALIGN="LEFT"><I>python -m app.relay</I></TD></TR><TR><TD ALIGN="LEFT">toma lo pendiente de outbox.evento</TD></TR>
+    <TR><TD ALIGN="LEFT">FOR UPDATE SKIP LOCKED: varios relevos no repiten</TD></TR><TR><TD ALIGN="LEFT">reintentos: 5 s → 10 → 20 … hasta 1 h</TD></TR>
+    <TR><TD ALIGN="LEFT" BGCOLOR="#FFF2CC"><FONT POINT-SIZE="10" COLOR="#7F6000"><I>al menos una vez; el receptor deduplica</I></FONT></TD></TR></TABLE>>];
+
+  subgraph cluster_notif { label=<<B>Microservicio · Notificaciones</B>>; fontsize=17; style="rounded,filled"; fillcolor="#FBEDE6"; color="#8A3B12"; penwidth=2;
+    notif [label=<<TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="5" COLOR="#8A3B12"><TR><TD BGCOLOR="#8A3B12"><FONT COLOR="white"><B>FastAPI · SQLite propia</B></FONT></TD></TR>
+      <TR><TD ALIGN="LEFT"><B>POST</B> /eventos  <FONT POINT-SIZE="10">(token de servicio)</FONT></TD></TR>
+      <TR><TD ALIGN="LEFT"><B>GET</B> /notificaciones · <B>POST</B> …/{id}/leida</TD></TR>
+      <TR><TD ALIGN="LEFT">deduplica por <I>evento_id</I> · una fila por destinatario</TD></TR>
+      <TR><TD ALIGN="LEFT" BGCOLOR="#FFF2CC"><FONT POINT-SIZE="10" COLOR="#7F6000"><I>los destinatarios los decide la API (solo ella sabe quién es qué en cada obra)</I></FONT></TD></TR></TABLE>>];
+  }
+
+  subgraph cluster_integ { label=<<B>Microservicio · Integraciones (Fernando)</B>>; fontsize=17; style="rounded,filled"; fillcolor="#FBF3E4"; color="#7A4B00"; penwidth=2;
+    integ [label=<<TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="5" COLOR="#7A4B00"><TR><TD BGCOLOR="#7A4B00"><FONT COLOR="white"><B>FastAPI · sin base de datos</B></FONT></TD></TR>
+      <TR><TD ALIGN="LEFT"><B>GET</B> /ruc/{ruc}  <FONT POINT-SIZE="10">HU-31</FONT></TD></TR><TR><TD ALIGN="LEFT"><B>GET</B> /dni/{dni}  <FONT POINT-SIZE="10">HU-62</FONT></TD></TR>
+      <TR><TD ALIGN="LEFT"><B>POST</B> /s10/relacion-insumos  <FONT POINT-SIZE="10">HU-07</FONT></TD></TR>
+      <TR><TD ALIGN="LEFT">caché de 24 h · el token de Factiliza solo vive aquí</TD></TR>
+      <TR><TD ALIGN="LEFT" BGCOLOR="#FDE0E0"><FONT POINT-SIZE="10" COLOR="#9C0006"><B>Riesgo: no autentica a quien le llama.</B><BR ALIGN="LEFT"/>Quien lo alcance gasta las 100 consultas del mes.<BR ALIGN="LEFT"/></FONT></TD></TR></TABLE>>];
+  }
+  factiliza [label=<<TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="5" COLOR="#999999" STYLE="dashed"><TR><TD><B>Factiliza</B></TD></TR><TR><TD>SUNAT (RUC) · RENIEC (DNI)</TD></TR><TR><TD><FONT POINT-SIZE="10">100 consultas gratis al mes</FONT></TD></TR></TABLE>>];
+  s10 [label=<<TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="5" COLOR="#999999" STYLE="dashed"><TR><TD><B>Relación de insumos del S10</B></TD></TR><TR><TD><FONT POINT-SIZE="10">PDF que sube el usuario</FONT></TD></TR></TABLE>>];
+
+  web -> seg [label=" 1  HTTPS · JSON\n Bearer JWT "];
+  android -> seg [label=" 1  HTTPS · JSON\n Bearer JWT "];
+  mods -> integ [label=" 2  HTTP · validar RUC\n al crear proveedor ", color="#7A4B00", fontcolor="#7A4B00", lhead=cluster_integ];
+  web -> integ [label=" 3  hoy: directo\n (RUC y S10) ", style=dashed, color="#9C0006", fontcolor="#9C0006"];
+  integ -> factiliza [label=" Bearer ", color="#7A4B00"];
+  s10 -> integ [label=" sube el PDF ", style=dashed, color="#999999", fontcolor="#777777"];
+  db -> relevo [label=" 4  lee pendientes\n y anota el resultado ", dir=both, color="#8A3B12", fontcolor="#8A3B12"];
+  relevo -> notif [label=" 5  POST /eventos\n X-Servicio-Token ", color="#8A3B12", fontcolor="#8A3B12"];
+  mods -> notif [label=" 6  la campana: GET /notificaciones\n con el usuario del token, nunca el de la URL ", color="#8A3B12", fontcolor="#8A3B12", style=dashed];
+
+  subgraph cluster_leyenda { label=<<B>Qué pasa si una pieza cae</B>>; fontsize=16; style="rounded"; color="#666666";
+    leyenda [label=<<TABLE BORDER="0" CELLBORDER="0" CELLSPACING="0" CELLPADDING="3">
+      <TR><TD ALIGN="LEFT"><B>Integraciones cae</B> → el proveedor queda «sin validar» y el trabajador se escribe a mano.<BR ALIGN="LEFT"/>El archivo S10 no se pierde. Nada se bloquea.<BR ALIGN="LEFT"/></TD></TR>
+      <TR><TD ALIGN="LEFT"><B>Notificaciones cae</B> → la API sigue; los avisos esperan en <I>outbox</I> y llegan después.<BR ALIGN="LEFT"/>La campana responde 503 un rato.<BR ALIGN="LEFT"/></TD></TR>
+      <TR><TD ALIGN="LEFT"><B>El relevo cae</B> → los eventos se acumulan en la base; no se pierde ninguno.<BR ALIGN="LEFT"/></TD></TR>
+      <TR><TD ALIGN="LEFT"><B>Celular sin señal</B> → la app registra en su cola; al volver, el <I>uuid_cliente</I><BR ALIGN="LEFT"/>impide que un reenvío duplique.<BR ALIGN="LEFT"/></TD></TR>
+      <TR><TD ALIGN="LEFT" BGCOLOR="#E8E8E8"><B>Por qué no seis microservicios:</B> una compra y su detalle, un movimiento y su<BR ALIGN="LEFT"/>saldo deben ser atómicos; entre servicios sería una saga con compensaciones.<BR ALIGN="LEFT"/></TD></TR>
+      <TR><TD ALIGN="LEFT" BGCOLOR="#FDE0E0"><FONT COLOR="#9C0006"><B>Flecha 3 · por decidir (Fernando y el equipo):</B> que la web llame a Integraciones<BR ALIGN="LEFT"/>a través de la API, o que Integraciones exija un token de servicio.<BR ALIGN="LEFT"/>Hoy ninguna de las dos está resuelta.<BR ALIGN="LEFT"/></FONT></TD></TR>
+    </TABLE>>];
+  }
+  notif -> leyenda [style=invis]; integ -> leyenda [style=invis];
+}

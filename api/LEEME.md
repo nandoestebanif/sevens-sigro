@@ -32,6 +32,17 @@ no puede borrar nada ni editar ningún libro.
 | 0005 | **solicitud de materiales** (CR-04, Sprint 2): solicitud, líneas, correlativo, vistas de estado derivado |
 | 0006 | **outbox**: bandeja de salida de eventos hacia Notificaciones (inmutable, sin borrado) |
 
+## Diagramas (`api/docs/`)
+
+| Diagrama | Archivo | Cómo se mantiene |
+|---|---|---|
+| **Físico** (tablas, claves, índices únicos, disparadores) | `diagrama-fisico.png` / `.svg` | `SIGRO_DB=sigro_dev python docs/generar_diagrama.py` lo genera **desde la base migrada** |
+| **Entidad-relación** (modelo lógico: nombres de negocio, cardinalidades) | `diagrama-er.png` / `.svg` | `SIGRO_DB=sigro_dev python docs/generar_er.py`; **falla** si un atributo, una tabla, una relación o un valor de estado no coincide con la base |
+| **Microservicios** (frontera API ↔ Integraciones ↔ Notificaciones) | `diagrama-microservicios.png` / `.svg` | Dibujado a mano en `diagrama-microservicios.dot` (Graphviz: `dot -Tpng`) |
+
+Requieren Graphviz (`dot`) y una base migrada (`alembic upgrade head`). El de microservicios deja a la vista un riesgo:
+**Integraciones no autentica a quien le llama** y la web lo llama directo; está por decidir con Fernando.
+
 ## Reglas del CLAUDE.md y dónde las sostiene el motor
 
 | Regla | Mecanismo |
