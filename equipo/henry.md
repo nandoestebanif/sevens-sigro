@@ -6,7 +6,7 @@ datos simulados y hable con esa API real, y que las pantallas de administración
 
 Tu carpeta es `web/`. Fuera de ahí, solo con Pull Request y aviso.
 
-## Lo primero: T-140 · el ClienteHttp (desbloquea 8 tareas tuyas y varias de Fernando)
+## Lo primero: T-234 · el ClienteHttp (desbloquea 8 tareas tuyas y varias de Fernando)
 
 Hoy toda la web pasa por una sola interfaz, `ClienteSigro` (`web/src/api/cliente.ts`), implementada por
 `ClienteSimulado`. **No toques las pantallas para conectarlas:** escribe una segunda implementación,
@@ -27,39 +27,42 @@ esos métodos al simulado es válido mientras tanto.
 
 ## Tus tareas del Sprint 1
 
-### Programar (web)
+### Modelar y programar
 
-| ID | HU | Tarea | h | Límite | Depende de |
-|---|---|---|--:|---|---|
-| T-140 | — | Programar el ClienteHttp (snake_case ↔ camelCase, errores `{codigo, mensaje}`) | 4 | **cuanto antes** | — |
-| T-023 | HU-12 | Programar la pantalla web de login y el manejo de la sesión | 3 | 26/10 | T-140 |
-| T-028 | HU-13 | Programar la pantalla web para crear usuarios, asignar su rol y darlos de baja | 4 | 26/10 | T-140 |
-| T-032 | HU-14 | Programar la pantalla web para asignar usuarios a obras | 2 | 26/10 | T-140 |
-| T-037 | HU-15 | Programar la pantalla web para autorizar o cambiar el celular de la obra | 3 | 26/10 | T-140 |
-| T-080 | HU-29 | Conectar la pantalla de proveedores con la API real | 2 | 26/10 | T-078, T-140 |
-| T-085 | HU-30 | Conectar el alta de proveedor con la API real | 2 | 26/10 | T-083, T-140 |
-| T-090 | HU-32 | Conectar la pantalla de compras con la API real | 5 | 26/10 | T-088, T-140 |
-| T-095 | HU-35 | Conectar la recepción con la API real | 4 | 26/10 | T-093, T-140 |
-| T-112 | HU-43 | Conectar la pantalla de stock y kárdex con la API real | 2 | 26/10 | T-110, T-140 |
-| T-118 | HU-45 | Conectar el reverso con la API real | 3 | 26/10 | T-116, T-140 |
-| T-122 | HU-55 | Mostrar la salida valorizada en el kárdex y en el reporte web | 7 | 26/10 | — |
-| T-127 | HU-57 | Conectar la pantalla de desviación con la API real | 5 | 26/10 | T-125, T-140 |
-| T-152 | — | Modelar en UML la secuencia del login y del permiso verificado en el servidor (HU-12 a HU-15) | 1.5 | 24/10 | — |
+| ID | HU | Fase | Tarea | h | Límite | Depende de |
+|---|---|---|---|--:|---|---|
+| T-039 | HU-12 | Front-end web | Programar la pantalla web de login y el manejo de la sesión | 3 | 26/10 | T-035 |
+| T-044 | HU-13 | Modelado UML | Modelar la funcionalidad de HU-13 con el diagrama UML de secuencia de la verificación del permiso en el servidor | 1 | 24/10 | T-043 |
+| T-047 | HU-13 | Front-end web | Programar la pantalla web para crear usuarios, asignar su rol y darlos de baja | 4 | 26/10 | T-043 |
+| T-051 | HU-14 | Modelado UML | Modelar la funcionalidad de HU-14 con el diagrama UML de secuencia de la asignación de usuario a obra | 1 | 24/10 | T-050 |
+| T-054 | HU-14 | Front-end web | Programar la pantalla web para asignar usuarios a obras | 2 | 26/10 | T-050 |
+| T-062 | HU-15 | Front-end web | Programar la pantalla web para autorizar o cambiar el celular de la obra | 3 | 26/10 | T-057 |
+| T-129 | HU-29 | Modelado UML | Modelar la funcionalidad de HU-29 con el diagrama UML de secuencia de la búsqueda de proveedores | 1 | 24/10 | T-128 |
+| T-133 | HU-29 | Conexión API | Conectar la pantalla de proveedores con la API real | 2 | 26/10 | T-131, T-132, T-234 |
+| T-137 | HU-30 | Modelado UML | Modelar la funcionalidad de HU-30 con el diagrama UML de secuencia del alta rápida de proveedor | 1 | 24/10 | T-136 |
+| T-141 | HU-30 | Conexión API | Conectar el alta de proveedor con la API real | 2 | 26/10 | T-139, T-140, T-234 |
+| T-145 | HU-32 | Modelado UML | Modelar la funcionalidad de HU-32 con el diagrama UML de secuencia del registro de la compra | 1 | 24/10 | T-144 |
+| T-149 | HU-32 | Conexión API | Conectar la pantalla de compras con la API real | 5 | 26/10 | T-147, T-148, T-234 |
+| T-158 | HU-35 | Conexión API | Conectar la recepción con la API real | 4 | 26/10 | T-155, T-156, T-234 |
+| T-190 | HU-43 | Conexión API | Conectar la pantalla de stock y kárdex con la API real | 2 | 26/10 | T-186, T-188, T-234 |
+| T-194 | HU-45 | Modelado UML | Modelar la funcionalidad de HU-45 con el diagrama UML de estados del movimiento (vigente → revertido) | 1 | 24/10 | T-193 |
+| T-198 | HU-45 | Conexión API | Conectar el reverso con la API real | 3 | 26/10 | T-196, T-197, T-234 |
+| T-206 | HU-55 | Front-end web | Mostrar la salida valorizada en el kárdex y en el reporte web | 7 | 26/10 | T-201 |
+| T-210 | HU-57 | Modelado UML | Modelar la funcionalidad de HU-57 con el diagrama UML de actividades de la comparación contra lo planificado | 1 | 24/10 | T-209 |
+| T-214 | HU-57 | Conexión API | Conectar la pantalla de desviación con la API real | 5 | 26/10 | T-212, T-213, T-234 |
+| T-234 | — | Web | Programar el ClienteHttp para que la web hable con la API real (snake_case ↔ camelCase, errores {codigo, mensaje}) | 4 | 26/10 | — |
 
 Las pantallas de HU-12 a HU-15 ya están diseñadas: **pantallas 10 y 20 del lienzo** «SIGRO · Pantallas y
 diagramas del Sprint 1» (pídele el enlace a Fernando). Usa los componentes de `web/src/ui/base.tsx` y los
 tokens de `web/src/tokens.css` para que el modo oscuro y el panel de accesibilidad sigan funcionando.
 
-### Probar y aprobar PR (17 HU donde tú no programas nada)
+### Probar la funcionalidad y aprobar el PR (17 HU donde tú no programas nada)
 
-Pruebas en el **ambiente de pruebas**, contra cada **condición final** de la tarjeta 3 de la HU (Excel
-«Product Backlog y Sprint Backlog», hoja 2), y luego apruebas el PR: **límite 27/10**, 1 h cada una.
+Pruebas los endpoints con **Postman** y la interfaz en el **ambiente de pruebas**, contra cada **condición final** de la tarjeta 3 de la HU (Excel «Product Backlog y Sprint Backlog», hoja 2), y luego apruebas el PR: **límite 27/10**, 1 h cada una.
 
-T-004 HU-01 · T-009 HU-03 · T-015 HU-07 · T-020 HU-08 · T-043 HU-16 · T-047 HU-17 · T-052 HU-19 ·
-T-057 HU-23 · T-062 HU-24 · T-066 HU-25 · T-071 HU-26 · T-076 HU-27 · T-100 HU-37 · T-104 HU-38 ·
-T-108 HU-40 · T-133 HU-62 · T-137 HU-63
+T-008 HU-01 · T-016 HU-03 · T-025 HU-07 · T-033 HU-08 · T-071 HU-16 · T-078 HU-17 · T-086 HU-19 · T-094 HU-23 · T-102 HU-24 · T-109 HU-25 · T-118 HU-26 · T-126 HU-27 · T-165 HU-37 · T-173 HU-38 · T-181 HU-40 · T-223 HU-62 · T-231 HU-63
 
-Las HU donde tú programas (12 a 15, 29, 30, 32, 35, 43, 45, 55 y 57) las prueba Fernando: nadie prueba su propio código.
+Las HU donde tú programas (12, 13, 14, 15, 29, 30, 32, 35, 43, 45, 55, 57) las prueba Fernando: nadie prueba su propio código.
 
 ## Cómo trabajas
 
