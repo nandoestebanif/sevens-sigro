@@ -12,3 +12,6 @@ local.properties
 .idea/
 .vscode/
 .DS_Store
+*.pyc
+.pytest_cache/
+*.db
