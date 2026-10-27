@@ -1,5 +1,7 @@
 # Arranque · Nicolás Pachamora
 
+> **Archivo del 21/10, solo como historia.** Lo vigente para el Sprint 1 está en `equipo/LEEME.md` y en el archivo de cada uno.
+
 Diagrama de actividades del negocio, y después la app Android.
 
 ## Lo primero

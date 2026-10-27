@@ -1,5 +1,7 @@
 # Arranque · Víctor Adiel Luján
 
+> **Archivo del 21/10, solo como historia.** Lo vigente para el Sprint 1 está en `equipo/LEEME.md` y en el archivo de cada uno.
+
 Base de datos, microservicios y backend. Este archivo es lo que necesitas para empezar sin
 preguntarle nada a nadie.
 
