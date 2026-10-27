@@ -1,9 +1,7 @@
 # Sprint 1 · Tablero Scrum (tareas)
 
 Sprint 1: **15 al 28 de octubre de 2026** · 29 HU · 153 puntos · **261 tareas**.
-Fuente única: `docs/scrum/sigro-sprint1-tareas.csv` (se importa a GitHub Projects o Jira) y el Excel
-`docs/scrum/SIGRO - Sprint 1 · Tablero Scrum (tareas).xlsx` (hoja «Validar HU y tareas» para revisar,
-hoja «Resumen» que se actualiza sola). Registro de incidencias y bitácora de trabajo: `docs/scrum/SIGRO - Sprint 1 · Información del Sprint.xlsx`.
+Fuente única: `docs/scrum/SIGRO - Sprint 1 · Registro del Sprint.xlsx` (registro de incidencias, bitácora de trabajo, registro de tareas To Do / Doing / Done con sus criterios, vista del tablero, resumen y tabla Épica · HU · Tarea · Descripción) y `docs/scrum/sigro-sprint1-tareas.csv` (se importa a GitHub Projects o Jira).
 
 ## Reparto (acordado el 22/10)
 
