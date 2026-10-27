@@ -18,11 +18,9 @@ import type {
   ResumenTablero, Semana, StockInsumo, TipoComprobante,
 } from './tipos'
 
-export class ErrorApi extends Error {
-  constructor(public codigo: string, mensaje: string) {
-    super(mensaje)
-  }
-}
+import { ErrorApi } from './error'
+import { obrasHttp, proveedoresHttp, usaApiReal } from './http'
+export { ErrorApi }
 
 export interface ClienteSigro {
   obraActiva(): Promise<ObraActiva>
@@ -730,4 +728,24 @@ export class ClienteSimulado implements ClienteSigro {
 }
 
 /** instancia única que usan las pantallas; cambiarla por ClienteHttp es una línea */
-export const api: ClienteSigro = new ClienteSimulado()
+/* ───────────────────────────── API real ─────────────────────────────
+   HT-04: lo que la API de Adiel ya expone va al servidor; lo que todavía no
+   (catálogo, compras con insumos, almacén, costo, reposición) sigue simulado
+   hasta que exista su endpoint. Cada método que pasa al servidor se mueve aquí
+   sin tocar ninguna pantalla. */
+class ClienteHttp extends ClienteSimulado {
+  override obraActiva() { return obrasHttp.activa() }
+  override elegirObra(id: string) { return obrasHttp.elegir(id) }
+  override listarObras() { return obrasHttp.listar() }
+  override crearObra(datos: { nombre: string; presupuesto: string; inicio: string; fin: string }) {
+    return obrasHttp.crear(datos)
+  }
+  override listarProveedores(busqueda = '') { return proveedoresHttp.listar(busqueda) }
+  override proveedoresParaComprar() { return proveedoresHttp.paraComprar() }
+  override crearProveedor(datos: { ruc: string; razonSocial: string; validadoEnSunat?: boolean }) {
+    // el veredicto de SUNAT lo decide el servidor (HU-31), no la pantalla
+    return proveedoresHttp.crear(datos.ruc, datos.razonSocial)
+  }
+}
+
+export const api: ClienteSigro = usaApiReal ? new ClienteHttp() : new ClienteSimulado()

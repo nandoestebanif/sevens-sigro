@@ -2,6 +2,8 @@
 import { Component, useEffect, useState, type ReactNode } from 'react'
 import { HashRouter, NavLink, Navigate, Route, Routes } from 'react-router-dom'
 import { api } from './api/cliente'
+import { cerrarSesion, sesionActual, usaApiReal } from './api/http'
+import { Entrar } from './paginas/Entrar'
 import type { Obra, ObraActiva } from './api/tipos'
 
 /* Guardián de errores del frontend: si una pantalla revienta por un error no
@@ -207,7 +209,19 @@ function PanelAccesibilidad() {
   )
 }
 
+/** HT-04: con la API real primero se entra; con el cliente simulado no hace falta */
 export default function App() {
+  const [sesion, setSesion] = useState(() => sesionActual())
+  useEffect(() => {
+    const cambio = () => setSesion(sesionActual())
+    window.addEventListener('sigro-sesion', cambio)
+    return () => window.removeEventListener('sigro-sesion', cambio)
+  }, [])
+  if (usaApiReal && !sesion) return <Entrar />
+  return <Sistema />
+}
+
+function Sistema() {
   const [obra, setObra] = useState<ObraActiva | null>(null)
   const [obras, setObras] = useState<Obra[]>([])
   useEffect(() => {
@@ -310,6 +324,14 @@ export default function App() {
               {obra ? `${obra.semana === 0 ? 'aún no inicia' : `semana ${obra.semana} de ${obra.semanasTotales}`} · solo ves lo de esta obra` : ''}
             </div>
           </div>
+          {usaApiReal && (
+            <div style={{ padding: '0 13px', fontSize: 12, color: 'var(--tinta-3)', display: 'flex', justifyContent: 'space-between', gap: 8 }}>
+              <span>{sesionActual()?.usuario.nombre}</span>
+              <button type="button" onClick={cerrarSesion} style={{ background: 'none', border: 'none', color: 'var(--accion)', cursor: 'pointer', fontFamily: 'inherit', fontSize: 12, fontWeight: 600 }}>
+                Salir
+              </button>
+            </div>
+          )}
         </aside>
 
         <main style={{ flex: 1, minWidth: 0, padding: '24px 28px' }}>
