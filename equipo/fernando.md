@@ -8,18 +8,18 @@
 2. **T-233 · HT-01:** ambiente de pruebas (API, base y web). Sin él ninguna HU cumple T8.
 3. Como SM: Daily con el tablero, bitácora e incidencias al día, y el recorte de alcance con el PO antes de la Review.
 
-## Tus tareas del Sprint 1 · 98 tareas · 79.5 h pendientes
+## Tus tareas del Sprint 1 · 101 tareas · 75.5 h pendientes
 
 | ID | HU | Fase | Tarea | h | Estado | Límite | Depende de |
 |---|---|---|---|--:|---|---|---|
 | T-001 | HU-01 | Diseño UI | Diseñar la interfaz de usuario de HU-01: pantalla 9 · Crear la obra | 1 | Done | 23/10 | — |
 | T-002 | HU-01 | Modelado UML | Modelar la funcionalidad de HU-01 con el diagrama UML de estados de la obra (en ejecución → ampliada → cerrada) | 1 | To Do | 24/10 | T-001 |
 | T-006 | HU-01 | Front-end web | Programar la pantalla web para crear la obra | 2 | Done | 26/10 | — |
-| T-007 | HU-01 | Conexión API | Conectar la pantalla «Crear la obra» con el endpoint real de la API | 2 | To Do | 26/10 | T-004, T-006, T-240 |
+| T-007 | HU-01 | Conexión API | Conectar la pantalla «Crear la obra» con el endpoint real de la API | 2 | Done | 26/10 | — |
 | T-010 | HU-03 | Diseño UI | Diseñar la interfaz de usuario de HU-03: pantalla 9 · Crear la obra y 22 · Detalle de la obra | 1 | Done | 23/10 | — |
 | T-011 | HU-03 | Modelado UML | Modelar la funcionalidad de HU-03 con el diagrama UML de actividades de la generación de semanas | 1 | To Do | 24/10 | T-010 |
 | T-014 | HU-03 | Front-end web | Programar la tira de semanas en la web (cerrada, en curso, por venir) | 2 | Done | 26/10 | — |
-| T-015 | HU-03 | Conexión API | Conectar la tira de semanas con la API real | 2 | To Do | 26/10 | T-013, T-014, T-240 |
+| T-015 | HU-03 | Conexión API | Conectar la tira de semanas con la API real | 2 | Done | 26/10 | — |
 | T-018 | HU-07 | Diseño UI | Diseñar la interfaz de usuario de HU-07: pantalla 11 · Importar el catálogo del S10 | 1 | Done | 23/10 | — |
 | T-019 | HU-07 | Modelado UML | Modelar la funcionalidad de HU-07 con el diagrama UML de secuencia de la importación del S10 por el microservicio | 1 | Done | 24/10 | — |
 | T-023 | HU-07 | Integración | Programar el lector del PDF «Relación de insumos» del S10 en el microservicio — integración con S10 (relación de insumos) | 4 | Done | 25/10 | — |
@@ -67,11 +67,13 @@
 | T-124 | HU-27 | Front-end web | Programar la sugerencia editable dentro de la alerta | 3 | Done | 26/10 | — |
 | T-125 | HU-27 | Conexión API | Conectar la sugerencia con la API real | 3 | To Do | 26/10 | T-123, T-124, T-240 |
 | T-128 | HU-29 | Diseño UI | Diseñar la interfaz de usuario de HU-29: pantalla 18 · Proveedores | 1 | Done | 23/10 | — |
+| T-129 | HU-29 | Modelado UML | Modelar la funcionalidad de HU-29 con el diagrama UML de secuencia de la búsqueda de proveedores | 1 | To Do | 24/10 | T-128 |
 | T-132 | HU-29 | Front-end web | Programar la pantalla web de proveedores con los 626 reales | 2 | Done | 26/10 | — |
-| T-134 | HU-29 | Pruebas | Probar la funcionalidad de HU-29 (la API con Postman y la pantalla web) contra cada condición final y aprobar su PR | 1 | To Do | 27/10 | T-130, T-131, T-132, T-133, T-233 |
+| T-133 | HU-29 | Conexión API | Conectar la pantalla de proveedores con la API real | 2 | Done | 26/10 | — |
 | T-136 | HU-30 | Diseño UI | Diseñar la interfaz de usuario de HU-30: pantalla 12 · Registrar la compra | 1 | Done | 23/10 | — |
+| T-137 | HU-30 | Modelado UML | Modelar la funcionalidad de HU-30 con el diagrama UML de secuencia del alta rápida de proveedor | 1 | To Do | 24/10 | T-136 |
 | T-140 | HU-30 | Front-end web | Programar el alta rápida de proveedor desde la compra | 2 | Done | 26/10 | — |
-| T-142 | HU-30 | Pruebas | Probar la funcionalidad de HU-30 (la API con Postman y la pantalla web) contra cada condición final y aprobar su PR | 1 | To Do | 27/10 | T-138, T-139, T-140, T-141, T-233 |
+| T-141 | HU-30 | Conexión API | Conectar el alta de proveedor con la API real | 2 | Done | 26/10 | — |
 | T-144 | HU-32 | Diseño UI | Diseñar la interfaz de usuario de HU-32: pantalla 12 · Registrar la compra | 1 | Done | 23/10 | — |
 | T-148 | HU-32 | Front-end web | Programar la pantalla web de compras | 5 | Done | 26/10 | — |
 | T-150 | HU-32 | Pruebas | Probar la funcionalidad de HU-32 (la API con Postman y la pantalla web) contra cada condición final y aprobar su PR | 1 | To Do | 27/10 | T-146, T-147, T-148, T-149, T-233 |
@@ -103,6 +105,7 @@
 | T-233 | HT-01 | DevOps | Desplegar el ambiente de pruebas (API, base de datos y web) que exige el T8 de la DoD | 6 | To Do | 24/10 | — |
 | T-237 | HT-03 | DevOps | Poner el repositorio en privado e invitar al docente como lector | 0.5 | To Do | 24/10 | — |
 | T-238 | HT-03 | DevOps | Proteger la rama main: PR obligatorio con una aprobación de otro integrante | 0.5 | To Do | 24/10 | — |
+| T-240 | HT-04 | Web | Programar el ClienteHttp para que la web hable con la API real (snake_case ↔ camelCase, errores {codigo, mensaje}) | 4 | Done | 26/10 | — |
 | T-250 | HT-08 | Integración | Exigir el token de servicio en Integraciones | 1 | Done | 25/10 | — |
 | T-253 | — | Scrum | Armar el tablero en GitHub Projects con las plantillas de DoR y DoD | 2 | Doing | 23/10 | — |
 | T-254 | — | Scrum | Facilitar el Daily Scrum de 15 minutos cada día, registrarlo y actualizar el burndown | 2 | Doing | 27/10 | — |

@@ -37,10 +37,6 @@ esos métodos al simulado es válido mientras tanto.
 | T-051 | HU-14 | Modelado UML | Modelar la funcionalidad de HU-14 con el diagrama UML de secuencia de la asignación de usuario a obra | 1 | 24/10 | T-050 |
 | T-054 | HU-14 | Front-end web | Programar la pantalla web para asignar usuarios a obras | 2 | 26/10 | T-050 |
 | T-062 | HU-15 | Front-end web | Programar la pantalla web para autorizar o cambiar el celular de la obra | 3 | 26/10 | T-057 |
-| T-129 | HU-29 | Modelado UML | Modelar la funcionalidad de HU-29 con el diagrama UML de secuencia de la búsqueda de proveedores | 1 | 24/10 | T-128 |
-| T-133 | HU-29 | Conexión API | Conectar la pantalla de proveedores con la API real | 2 | 26/10 | T-131, T-132, T-240 |
-| T-137 | HU-30 | Modelado UML | Modelar la funcionalidad de HU-30 con el diagrama UML de secuencia del alta rápida de proveedor | 1 | 24/10 | T-136 |
-| T-141 | HU-30 | Conexión API | Conectar el alta de proveedor con la API real | 2 | 26/10 | T-139, T-140, T-240 |
 | T-145 | HU-32 | Modelado UML | Modelar la funcionalidad de HU-32 con el diagrama UML de secuencia del registro de la compra | 1 | 24/10 | T-144 |
 | T-149 | HU-32 | Conexión API | Conectar la pantalla de compras con la API real | 5 | 26/10 | T-147, T-148, T-240 |
 | T-158 | HU-35 | Conexión API | Conectar la recepción con la API real | 4 | 26/10 | T-155, T-156, T-240 |
@@ -50,20 +46,19 @@ esos métodos al simulado es válido mientras tanto.
 | T-206 | HU-55 | Front-end web | Mostrar la salida valorizada en el kárdex y en el reporte web | 7 | 26/10 | T-201 |
 | T-210 | HU-57 | Modelado UML | Modelar la funcionalidad de HU-57 con el diagrama UML de actividades de la comparación contra lo planificado | 1 | 24/10 | T-209 |
 | T-214 | HU-57 | Conexión API | Conectar la pantalla de desviación con la API real | 5 | 26/10 | T-212, T-213, T-240 |
-| T-240 | HT-04 | Web | Programar el ClienteHttp para que la web hable con la API real (snake_case ↔ camelCase, errores {codigo, mensaje}) | 4 | 26/10 | — |
 | T-245 | HT-06 | Pruebas | Armar y compartir la colección de Postman con entorno de pruebas, login y un ejemplo correcto y uno de error por endpoint | 3 | 24/10 | — |
 
 Las pantallas de HU-12 a HU-15 ya están diseñadas: **pantallas 10 y 20 del lienzo** «SIGRO · Pantallas y
 diagramas del Sprint 1» (pídele el enlace a Fernando). Usa los componentes de `web/src/ui/base.tsx` y los
 tokens de `web/src/tokens.css` para que el modo oscuro y el panel de accesibilidad sigan funcionando.
 
-### Probar la funcionalidad y aprobar el PR (17 HU donde tú no programas nada)
+### Probar la funcionalidad y aprobar el PR (19 HU donde tú no programas nada)
 
 Pruebas los endpoints con **Postman** y la interfaz en el **ambiente de pruebas**, contra cada **condición final** de la tarjeta 3 de la HU (Excel «Product Backlog y Sprint Backlog», hoja 2), y luego apruebas el PR: **límite 27/10**, 1 h cada una.
 
-T-008 HU-01 · T-016 HU-03 · T-025 HU-07 · T-033 HU-08 · T-071 HU-16 · T-078 HU-17 · T-086 HU-19 · T-094 HU-23 · T-102 HU-24 · T-109 HU-25 · T-118 HU-26 · T-126 HU-27 · T-165 HU-37 · T-173 HU-38 · T-181 HU-40 · T-223 HU-62 · T-231 HU-63
+T-008 HU-01 · T-016 HU-03 · T-025 HU-07 · T-033 HU-08 · T-071 HU-16 · T-078 HU-17 · T-086 HU-19 · T-094 HU-23 · T-102 HU-24 · T-109 HU-25 · T-118 HU-26 · T-126 HU-27 · T-134 HU-29 · T-142 HU-30 · T-165 HU-37 · T-173 HU-38 · T-181 HU-40 · T-223 HU-62 · T-231 HU-63
 
-Las HU donde tú programas (12, 13, 14, 15, 29, 30, 32, 35, 43, 45, 55, 57) las prueba Fernando: nadie prueba su propio código.
+Las HU donde tú programas (12, 13, 14, 15, 32, 35, 43, 45, 55, 57) las prueba Fernando: nadie prueba su propio código.
 
 ## Cómo trabajas
 

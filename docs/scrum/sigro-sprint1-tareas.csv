@@ -5,7 +5,7 @@ T-003,HU-01,Crear proyecto,Base de datos,"Implementar las tablas asociadas a HU-
 T-004,HU-01,Crear proyecto,Backend,"Programar el back-end de HU-01 (entidad, repositorio, servicio y controlador): el endpoint para crear la obra, validando nombre y plazo obligatorios, fin ≥ inicio y estado inicial «en ejecución»",Adiel,2,Done,25/10,"hecho en la API de Adiel (PR #1 fusionado a main), con pruebas",
 T-005,HU-01,Crear proyecto,Triggers y funciones,Implementar el CHECK de fecha de fin ≥ inicio en proyecto (HU-01),Adiel,1,To Do,25/10,,T-003
 T-006,HU-01,Crear proyecto,Front-end web,Programar la pantalla web para crear la obra,Fernando,2,Done,26/10,pantalla hecha con datos simulados; falta conectarla a la API real,
-T-007,HU-01,Crear proyecto,Conexión API,Conectar la pantalla «Crear la obra» con el endpoint real de la API,Fernando,2,To Do,26/10,,"T-004, T-006, T-240"
+T-007,HU-01,Crear proyecto,Conexión API,Conectar la pantalla «Crear la obra» con el endpoint real de la API,Fernando,2,Done,26/10,commit 27d66cc: crea la obra en el servidor,
 T-008,HU-01,Crear proyecto,Pruebas,Probar la funcionalidad de HU-01 (la API con Postman y la pantalla web) contra cada condición final y aprobar su PR,Henry,1,To Do,27/10,"alguien distinto del autor (T1, T5, T8)","T-003, T-004, T-005, T-006, T-007, T-233"
 T-009,HU-01,Crear proyecto,Aceptación,Aceptar HU-01 como Product Owner desde la interfaz y moverla a Done,Adiel,0.5,To Do,27/10,mueve la HU a Done,T-008
 T-010,HU-03,Reportar la obra en semanas,Diseño UI,Diseñar la interfaz de usuario de HU-03: pantalla 9 · Crear la obra y 22 · Detalle de la obra,Fernando,1,Done,23/10,"mockup en el lienzo «SIGRO · Pantallas y diagramas del Sprint 1», WCAG AA",
@@ -13,7 +13,7 @@ T-011,HU-03,Reportar la obra en semanas,Modelado UML,Modelar la funcionalidad de
 T-012,HU-03,Reportar la obra en semanas,Base de datos,Implementar las tablas asociadas a HU-03: periodo,Adiel,1,Done,24/10,migraciones 0001–0006 de la API,
 T-013,HU-03,Reportar la obra en semanas,Backend,"Programar el back-end de HU-03 (entidad, repositorio, servicio y controlador): la generación automática de semanas al crear la obra y al ampliar el plazo, con sus pruebas",Adiel,2,Done,25/10,en la API: GET /obras/{id}/periodos y POST /obras/{id}/ampliar-plazo,
 T-014,HU-03,Reportar la obra en semanas,Front-end web,"Programar la tira de semanas en la web (cerrada, en curso, por venir)",Fernando,2,Done,26/10,pantalla hecha con datos simulados; falta conectarla a la API real,
-T-015,HU-03,Reportar la obra en semanas,Conexión API,Conectar la tira de semanas con la API real,Fernando,2,To Do,26/10,,"T-013, T-014, T-240"
+T-015,HU-03,Reportar la obra en semanas,Conexión API,Conectar la tira de semanas con la API real,Fernando,2,Done,26/10,commit 27d66cc: semanas desde /obras/{id}/periodos,
 T-016,HU-03,Reportar la obra en semanas,Pruebas,Probar la funcionalidad de HU-03 (la API con Postman y la pantalla web) contra cada condición final y aprobar su PR,Henry,1,To Do,27/10,"alguien distinto del autor (T1, T5, T8)","T-012, T-013, T-014, T-015, T-233"
 T-017,HU-03,Reportar la obra en semanas,Aceptación,Aceptar HU-03 como Product Owner desde la interfaz y moverla a Done,Adiel,0.5,To Do,27/10,mueve la HU a Done,T-016
 T-018,HU-07,Importar catálogo de insumos del S10,Diseño UI,Diseñar la interfaz de usuario de HU-07: pantalla 11 · Importar el catálogo del S10,Fernando,1,Done,23/10,"mockup en el lienzo «SIGRO · Pantallas y diagramas del Sprint 1», WCAG AA",
@@ -37,7 +37,7 @@ T-035,HU-12,Loguear usuario,Diseño UI,Diseñar la interfaz de usuario de HU-12:
 T-036,HU-12,Loguear usuario,Modelado UML,Modelar la funcionalidad de HU-12 con el diagrama UML de secuencia del login y la renovación de la sesión,Nicolás,1,To Do,24/10,,T-035
 T-037,HU-12,Loguear usuario,Base de datos,"Implementar las tablas asociadas a HU-12: usuario (hash de la clave, intentos, estado)",Adiel,1,Done,24/10,migraciones 0001–0006 de la API,
 T-038,HU-12,Loguear usuario,Backend,"Programar el back-end de HU-12 (entidad, repositorio, servicio y controlador): el login con Argon2id, sesión que caduca y se renueva, y bloqueo por intentos fallidos",Adiel,3,Done,25/10,"hecho en la API de Adiel (PR #1 fusionado a main), con pruebas",
-T-039,HU-12,Loguear usuario,Front-end web,Programar la pantalla web de login y el manejo de la sesión,Henry,3,To Do,26/10,,T-035
+T-039,HU-12,Loguear usuario,Front-end web,Programar la pantalla web de login y el manejo de la sesión,Henry,3,Doing,26/10,versión mínima y sesión hechas (27d66cc); falta la pantalla 20 del lienzo,T-035
 T-040,HU-12,Loguear usuario,Front-end app,Programar el login en la app del almacenero,Nicolás,3,To Do,26/10,,"T-035, T-242"
 T-041,HU-12,Loguear usuario,Pruebas,"Probar la funcionalidad de HU-12 (la API con Postman, la pantalla web y la app) contra cada condición final y aprobar su PR",Fernando,1,To Do,27/10,"alguien distinto del autor (T1, T5, T8)","T-037, T-038, T-039, T-040, T-233"
 T-042,HU-12,Loguear usuario,Aceptación,Aceptar HU-12 como Product Owner desde la interfaz y moverla a Done,Adiel,0.5,To Do,27/10,mueve la HU a Done,T-041
@@ -127,20 +127,20 @@ T-125,HU-27,Sugerir cuánto comprar,Conexión API,Conectar la sugerencia con la 
 T-126,HU-27,Sugerir cuánto comprar,Pruebas,Probar la funcionalidad de HU-27 (la API con Postman y la pantalla web) contra cada condición final y aprobar su PR,Henry,1,To Do,27/10,"alguien distinto del autor (T1, T5, T8)","T-122, T-123, T-124, T-125, T-233"
 T-127,HU-27,Sugerir cuánto comprar,Aceptación,Aceptar HU-27 como Product Owner desde la interfaz y moverla a Done,Adiel,0.5,To Do,27/10,mueve la HU a Done,T-126
 T-128,HU-29,Consultar proveedores,Diseño UI,Diseñar la interfaz de usuario de HU-29: pantalla 18 · Proveedores,Fernando,1,Done,23/10,"mockup en el lienzo «SIGRO · Pantallas y diagramas del Sprint 1», WCAG AA",
-T-129,HU-29,Consultar proveedores,Modelado UML,Modelar la funcionalidad de HU-29 con el diagrama UML de secuencia de la búsqueda de proveedores,Henry,1,To Do,24/10,,T-128
+T-129,HU-29,Consultar proveedores,Modelado UML,Modelar la funcionalidad de HU-29 con el diagrama UML de secuencia de la búsqueda de proveedores,Fernando,1,To Do,24/10,,T-128
 T-130,HU-29,Consultar proveedores,Base de datos,Implementar las tablas asociadas a HU-29: proveedor (RUC o DNI único),Adiel,1,Done,24/10,migraciones 0001–0006 de la API,
 T-131,HU-29,Consultar proveedores,Backend,"Programar el back-end de HU-29 (entidad, repositorio, servicio y controlador): la búsqueda de proveedores por razón social o RUC",Adiel,2,Done,25/10,"hecho en la API de Adiel (PR #1 fusionado a main), con pruebas",
 T-132,HU-29,Consultar proveedores,Front-end web,Programar la pantalla web de proveedores con los 626 reales,Fernando,2,Done,26/10,pantalla hecha con datos simulados; falta conectarla a la API real,
-T-133,HU-29,Consultar proveedores,Conexión API,Conectar la pantalla de proveedores con la API real,Henry,2,To Do,26/10,,"T-131, T-132, T-240"
-T-134,HU-29,Consultar proveedores,Pruebas,Probar la funcionalidad de HU-29 (la API con Postman y la pantalla web) contra cada condición final y aprobar su PR,Fernando,1,To Do,27/10,"alguien distinto del autor (T1, T5, T8)","T-130, T-131, T-132, T-133, T-233"
+T-133,HU-29,Consultar proveedores,Conexión API,Conectar la pantalla de proveedores con la API real,Fernando,2,Done,26/10,commit 27d66cc: 626 proveedores desde la API,
+T-134,HU-29,Consultar proveedores,Pruebas,Probar la funcionalidad de HU-29 (la API con Postman y la pantalla web) contra cada condición final y aprobar su PR,Henry,1,To Do,27/10,"alguien distinto del autor (T1, T5, T8)","T-130, T-131, T-132, T-133, T-233"
 T-135,HU-29,Consultar proveedores,Aceptación,Aceptar HU-29 como Product Owner desde la interfaz y moverla a Done,Adiel,0.5,To Do,27/10,mueve la HU a Done,T-134
 T-136,HU-30,Registrar proveedores,Diseño UI,Diseñar la interfaz de usuario de HU-30: pantalla 12 · Registrar la compra,Fernando,1,Done,23/10,"mockup en el lienzo «SIGRO · Pantallas y diagramas del Sprint 1», WCAG AA",
-T-137,HU-30,Registrar proveedores,Modelado UML,Modelar la funcionalidad de HU-30 con el diagrama UML de secuencia del alta rápida de proveedor,Henry,1,To Do,24/10,,T-136
+T-137,HU-30,Registrar proveedores,Modelado UML,Modelar la funcionalidad de HU-30 con el diagrama UML de secuencia del alta rápida de proveedor,Fernando,1,To Do,24/10,,T-136
 T-138,HU-30,Registrar proveedores,Base de datos,Implementar las tablas asociadas a HU-30: proveedor,Adiel,1,Done,24/10,migraciones 0001–0006 de la API,
 T-139,HU-30,Registrar proveedores,Backend,"Programar el back-end de HU-30 (entidad, repositorio, servicio y controlador): el alta de proveedor rechazando RUC o DNI repetidos",Adiel,2,Done,25/10,"hecho en la API de Adiel (PR #1 fusionado a main), con pruebas",
 T-140,HU-30,Registrar proveedores,Front-end web,Programar el alta rápida de proveedor desde la compra,Fernando,2,Done,26/10,pantalla hecha con datos simulados; falta conectarla a la API real,
-T-141,HU-30,Registrar proveedores,Conexión API,Conectar el alta de proveedor con la API real,Henry,2,To Do,26/10,,"T-139, T-140, T-240"
-T-142,HU-30,Registrar proveedores,Pruebas,Probar la funcionalidad de HU-30 (la API con Postman y la pantalla web) contra cada condición final y aprobar su PR,Fernando,1,To Do,27/10,"alguien distinto del autor (T1, T5, T8)","T-138, T-139, T-140, T-141, T-233"
+T-141,HU-30,Registrar proveedores,Conexión API,Conectar el alta de proveedor con la API real,Fernando,2,Done,26/10,commit 27d66cc: RUC duplicado rechazado por el servidor,
+T-142,HU-30,Registrar proveedores,Pruebas,Probar la funcionalidad de HU-30 (la API con Postman y la pantalla web) contra cada condición final y aprobar su PR,Henry,1,To Do,27/10,"alguien distinto del autor (T1, T5, T8)","T-138, T-139, T-140, T-141, T-233"
 T-143,HU-30,Registrar proveedores,Aceptación,Aceptar HU-30 como Product Owner desde la interfaz y moverla a Done,Adiel,0.5,To Do,27/10,mueve la HU a Done,T-142
 T-144,HU-32,Registrar compras,Diseño UI,Diseñar la interfaz de usuario de HU-32: pantalla 12 · Registrar la compra,Fernando,1,Done,23/10,"mockup en el lienzo «SIGRO · Pantallas y diagramas del Sprint 1», WCAG AA",
 T-145,HU-32,Registrar compras,Modelado UML,Modelar la funcionalidad de HU-32 con el diagrama UML de secuencia del registro de la compra,Henry,1,To Do,24/10,,T-144
@@ -238,7 +238,7 @@ T-236,HT-02,Configurar la integración continua,Aceptación,Aceptar HT-02 como P
 T-237,HT-03,Proteger el repositorio y main,DevOps,Poner el repositorio en privado e invitar al docente como lector,Fernando,0.5,To Do,24/10,hoy está público,
 T-238,HT-03,Proteger el repositorio y main,DevOps,Proteger la rama main: PR obligatorio con una aprobación de otro integrante,Fernando,0.5,To Do,24/10,,
 T-239,HT-03,Proteger el repositorio y main,Aceptación,Aceptar HT-03 como Product Owner y moverla a Done,Adiel,0.5,To Do,27/10,mueve la historia técnica a Done,
-T-240,HT-04,Conectar la web con la API real,Web,"Programar el ClienteHttp para que la web hable con la API real (snake_case ↔ camelCase, errores {codigo, mensaje})",Henry,4,To Do,26/10,desbloquea todas las tareas «Conectar…»,
+T-240,HT-04,Conectar la web con la API real,Web,"Programar el ClienteHttp para que la web hable con la API real (snake_case ↔ camelCase, errores {codigo, mensaje})",Fernando,4,Done,26/10,commit 27d66cc (27/10); lo tomó Fernando para destrabar la conexión,
 T-241,HT-04,Conectar la web con la API real,Aceptación,Aceptar HT-04 como Product Owner y moverla a Done,Adiel,0.5,To Do,27/10,mueve la historia técnica a Done,
 T-242,HT-05,Crear la base de la app Android,Android,"Crear el proyecto base de la app: Compose, Room, WorkManager y cliente de la API",Nicolás,6,To Do,26/10,desbloquea todas las tareas Android,
 T-243,HT-05,Crear la base de la app Android,Aceptación,Aceptar HT-05 como Product Owner y moverla a Done,Adiel,0.5,To Do,27/10,mueve la historia técnica a Done,
