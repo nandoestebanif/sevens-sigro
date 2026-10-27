@@ -135,7 +135,7 @@ export function Medidor({ pct, marcaPct, color, ancho = 124 }: {
       aria-label={`${pct} por ciento${marcaPct != null ? `, referencia ${marcaPct} por ciento` : ''}`}
       style={{ position: 'relative', height: 6, background: 'var(--pista)', borderRadius: 3, width: ancho }}
     >
-      <div style={{ width: `${Math.min(pct, 100)}%`, height: '100%', background: color, borderRadius: 3 }} />
+      <div className="medidor-barra" style={{ width: `${Math.min(pct, 100)}%`, height: '100%', background: color, borderRadius: 3 }} />
       {marcaPct != null && (
         <div style={{
           position: 'absolute', left: `${marcaPct}%`, top: -3, width: 2, height: 12,
@@ -178,6 +178,7 @@ export function Modal({ titulo, children, enCerrar }: {
       role="dialog"
       aria-modal="true"
       aria-label={titulo}
+      className="velo"
       style={{
         position: 'fixed', inset: 0, background: 'var(--velo)',
         display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50,
@@ -186,6 +187,7 @@ export function Modal({ titulo, children, enCerrar }: {
     >
       <div
         onClick={(e) => e.stopPropagation()}
+        className="modal-caja"
         style={{
           width: 420, maxWidth: 'calc(100vw - 32px)', background: 'var(--tarjeta)',
           border: '1px solid var(--borde)',

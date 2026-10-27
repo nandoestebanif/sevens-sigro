@@ -1,0 +1,20 @@
+@startuml
+!include _estilo.iuml
+title E2 · Estados de una herramienta o equipo
+hide empty description
+[*] --> EnAlmacen : ingresa a la obra (HU-48)
+state "En almacén" as EnAlmacen
+state "Entregada a un trabajador" as Entregada
+state "En mantenimiento" as Mant
+state "De baja" as Baja
+EnAlmacen --> Entregada : entrega (HU-49)
+Entregada --> EnAlmacen : devolución con su estado (HU-50)
+EnAlmacen --> Mant : sale a mantenimiento
+Mant --> EnAlmacen : vuelve
+EnAlmacen --> Baja : baja con motivo y origen
+Entregada --> Baja : se rompe o se pierde
+Mant --> Baja : no tiene arreglo
+Baja : el registro se conserva
+Baja --> [*]
+note bottom of Baja : Baja y mantenimiento: HU-53 y HU-52\n(siguiente iteración)
+@enduml

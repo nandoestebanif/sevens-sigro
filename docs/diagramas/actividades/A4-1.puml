@@ -1,0 +1,30 @@
+@startuml
+!include _estilo.iuml
+title A4.1 · Cierre de obra: conteo y destino del sobrante
+|Residente de obra|
+start
+:Iniciar el cierre de la obra;
+|Almacenero|
+:Contar el material · HU-46;
+:Registrar el conteo físico;
+|Sistema|
+if (¿Coincide con el saldo del sistema?) then (no)
+  |Almacenero|
+  :Justificar cada diferencia\n(movimiento de ajuste con motivo y autor);
+else (sí)
+endif
+|Residente de obra|
+:Decidir el destino de cada insumo · HU-47;
+if (¿Se devuelve al proveedor?) then (sí)
+  :Registrar la devolución;
+elseif (¿Vuelve al almacén central?) then (sí)
+  |Sistema|
+  :Transferir conservando su costo unitario;
+else (no)
+  |Residente de obra|
+  :Registrar la pérdida (merma);
+endif
+|Sistema|
+:Continúa en A4.2;
+stop
+@enduml

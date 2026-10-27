@@ -1,0 +1,17 @@
+@startuml
+!include _estilo.iuml
+title E1 · Estados del movimiento de almacén
+hide empty description
+[*] --> Pendiente : se registra en el celular\n(con uuid_cliente)
+Pendiente : guardado en el celular, en cola
+Pendiente --> Sincronizado : el servidor lo acepta
+Pendiente --> Rechazado : no cumple una regla
+Rechazado : con su motivo, no se pierde
+Rechazado --> Pendiente : se corrige y se reenvía
+Rechazado --> Descartado : el almacenero lo descarta
+Sincronizado : en el servidor, no se edita
+Sincronizado --> Anulado : reverso autorizado (HU-45)
+Anulado : sigue en el libro, con el reverso que lo anuló
+Descartado --> [*]
+note right of Sincronizado : Un reenvío con el mismo\nuuid_cliente no cambia ningún estado
+@enduml

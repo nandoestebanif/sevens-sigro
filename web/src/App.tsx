@@ -1,12 +1,52 @@
 /* SIGRO · armazón de la web de oficina: barra lateral, obra activa y rutas. */
-import { useEffect, useState } from 'react'
+import { Component, useEffect, useState, type ReactNode } from 'react'
 import { HashRouter, NavLink, Navigate, Route, Routes } from 'react-router-dom'
 import { api } from './api/cliente'
-import type { ObraActiva } from './api/tipos'
+import type { Obra, ObraActiva } from './api/tipos'
+
+/* Guardián de errores del frontend: si una pantalla revienta por un error no
+   previsto, la persona ve esta tarjeta y el resto de la web sigue vivo — nunca
+   una página en blanco. Los errores PREVISTOS no llegan aquí: los maneja cada
+   pantalla con los mensajes de la capa de API (ErrorApi). */
+class GuardianErrores extends Component<{ children: ReactNode }, { error: Error | null }> {
+  state = { error: null as Error | null }
+
+  static getDerivedStateFromError(error: Error) {
+    return { error }
+  }
+
+  render() {
+    if (!this.state.error) return this.props.children
+    return (
+      <div style={{ background: 'var(--tarjeta)', border: '1px solid var(--borde)', borderRadius: 'var(--radio)', padding: 26, boxShadow: 'var(--sombra)' }}>
+        <div style={{ fontSize: 15, fontWeight: 700 }}>Esta pantalla tuvo un problema</div>
+        <p style={{ fontSize: 13, color: 'var(--tinta-2)', marginTop: 8, lineHeight: 1.5 }}>
+          No se perdió nada: los registros viven en el servidor. Vuelve a intentar;
+          si se repite, avisa al equipo con el texto de abajo.
+        </p>
+        <p className="n" style={{ fontSize: 11.5, color: 'var(--tinta-3)', marginTop: 8 }}>{String(this.state.error)}</p>
+        <div style={{ marginTop: 14 }}>
+          <button
+            type="button"
+            onClick={() => this.setState({ error: null })}
+            style={{
+              background: 'var(--accion)', color: 'var(--accion-tinta)', border: 0,
+              borderRadius: 'var(--radio-pildora)', padding: '9px 18px', fontSize: 13.5,
+              fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
+            }}
+          >
+            Reintentar
+          </button>
+        </div>
+      </div>
+    )
+  }
+}
 import { Catalogo } from './paginas/Catalogo'
 import { Compras } from './paginas/Compras'
 import { Importar } from './paginas/Importar'
 import { Movimientos } from './paginas/Movimientos'
+import { Obras } from './paginas/Obra'
 import { Proveedores } from './paginas/Proveedores'
 import { Reposicion } from './paginas/Reposicion'
 import { Tablero } from './paginas/Tablero'
@@ -25,6 +65,7 @@ const ICONOS = {
   movimientos: 'M8 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2h-3|M12 17V7|M8 10l4-4 4 4',
   catalogo: 'M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z|M3.3 7 12 12l8.7-5|M12 22V12',
   importar: 'M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4|M7 8l5-5 5 5|M12 3v12',
+  obra: 'M3 21h18|M5 21V7l7-4 7 4v14|M9 21v-4h6v4|M9 10h.01|M15 10h.01|M9 14h.01|M15 14h.01',
 }
 
 const GRUPOS: { rotulo: string; items: { ruta: string; nombre: string; icono: keyof typeof ICONOS }[] }[] = [
@@ -32,7 +73,10 @@ const GRUPOS: { rotulo: string; items: { ruta: string; nombre: string; icono: ke
     // la importación del S10 es parte de PREPARAR la obra (se hace al crearla);
     // aquí vivirán también «Crear la obra» (HU-01) y sus parámetros
     rotulo: 'Preparar la obra',
-    items: [{ ruta: '/importar', nombre: 'Importar del S10', icono: 'importar' }],
+    items: [
+      { ruta: '/obra', nombre: 'Crear la obra', icono: 'obra' },
+      { ruta: '/importar', nombre: 'Importar del S10', icono: 'importar' },
+    ],
   },
   {
     rotulo: 'Control de la obra',
@@ -165,9 +209,23 @@ function PanelAccesibilidad() {
 
 export default function App() {
   const [obra, setObra] = useState<ObraActiva | null>(null)
+  const [obras, setObras] = useState<Obra[]>([])
   useEffect(() => {
     api.obraActiva().then(setObra)
+    api.listarObras().then(setObras)
+    // la pantalla «Crear la obra» avisa cuando hay una nueva, para que el
+    // selector de obra activa la ofrezca sin recargar
+    const refrescar = () => api.listarObras().then(setObras)
+    window.addEventListener('sigro-obras', refrescar)
+    return () => window.removeEventListener('sigro-obras', refrescar)
   }, [])
+
+  // regla 9: al cambiar de obra, lo de empresa queda y lo de obra cambia.
+  // La clave en el contenedor remonta las pantallas para que vuelvan a consultar.
+  const cambiarObra = async (id: string) => {
+    setObra(await api.elegirObra(id))
+    setObras(await api.listarObras())
+  }
 
   return (
     <HashRouter>
@@ -228,18 +286,36 @@ export default function App() {
               borderRadius: 14, padding: 13,
             }}
           >
-            <div style={{ fontSize: 11.5, color: 'var(--tinta-3)' }}>Obra activa</div>
-            <div style={{ fontSize: 13.5, fontWeight: 600, marginTop: 3 }}>
-              {obra?.nombre ?? '…'}
-            </div>
-            <div className="n" style={{ fontSize: 11.5, color: 'var(--tinta-3)', marginTop: 3 }}>
-              {obra ? `semana ${obra.semana} de ${obra.semanasTotales}` : ''}
+            <label htmlFor="obra-activa" style={{ display: 'block', fontSize: 11.5, color: 'var(--tinta-3)' }}>
+              Obra activa
+            </label>
+            {obras.length > 1 ? (
+              <select
+                id="obra-activa"
+                value={obra?.id ?? ''}
+                onChange={(e) => cambiarObra(e.target.value)}
+                style={{
+                  width: '100%', marginTop: 5, height: 36, border: '1px solid var(--borde)',
+                  borderRadius: 'var(--radio-chico)', padding: '0 8px', fontSize: 12.5,
+                  fontWeight: 600, fontFamily: 'inherit', background: 'var(--tarjeta)',
+                  color: 'var(--tinta)',
+                }}
+              >
+                {obras.map((o) => <option key={o.id} value={o.id}>{o.nombre}</option>)}
+              </select>
+            ) : (
+              <div style={{ fontSize: 13.5, fontWeight: 600, marginTop: 3 }}>{obra?.nombre ?? '…'}</div>
+            )}
+            <div className="n" style={{ fontSize: 11.5, color: 'var(--tinta-3)', marginTop: 5 }}>
+              {obra ? `${obra.semana === 0 ? 'aún no inicia' : `semana ${obra.semana} de ${obra.semanasTotales}`} · solo ves lo de esta obra` : ''}
             </div>
           </div>
         </aside>
 
         <main style={{ flex: 1, minWidth: 0, padding: '24px 28px' }}>
-          <div style={{ maxWidth: 1180, margin: '0 auto' }}>
+          {/* la clave remonta las pantallas al cambiar de obra: vuelven a consultar */}
+          <div key={obra?.id ?? 'sin-obra'} style={{ maxWidth: 1180, margin: '0 auto' }}>
+          <GuardianErrores>
           <Routes>
             <Route path="/" element={<Navigate to="/proveedores" replace />} />
             <Route path="/proveedores" element={<Proveedores />} />
@@ -249,7 +325,9 @@ export default function App() {
             <Route path="/catalogo" element={<Catalogo />} />
             <Route path="/movimientos" element={<Movimientos />} />
             <Route path="/importar" element={<Importar />} />
+            <Route path="/obra" element={<Obras />} />
           </Routes>
+          </GuardianErrores>
           </div>
         </main>
         <PanelAccesibilidad />

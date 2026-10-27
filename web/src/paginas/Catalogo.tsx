@@ -242,7 +242,7 @@ export function Catalogo() {
   )
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 15 }}>
+    <div className="pagina" style={{ display: 'flex', flexDirection: 'column', gap: 15 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16 }}>
         <Titulo sub={`${(maestro?.length ?? 0).toLocaleString('es-PE')} insumos normalizados · el mismo nombre y código en todas las obras`}>
           Catálogo de insumos

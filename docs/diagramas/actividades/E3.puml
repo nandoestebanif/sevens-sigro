@@ -1,0 +1,23 @@
+@startuml
+!include _estilo.iuml
+title E3 · Estados de la solicitud de materiales (CR-04, Sprint 2)
+hide empty description
+state "Solicitada" as S
+state "Comprada en parte" as CP
+state "Comprada" as C
+state "Recibida en parte" as RP
+state "Recibida" as R
+state "Anulada" as A
+[*] --> S : el residente la emite (HU-66)
+S --> CP
+S --> C : puede saltar etapas
+CP --> C
+C --> RP
+C --> R
+RP --> R
+CP --> RP
+S --> A : anulada con motivo\n(se emite otra)
+R --> [*]
+A --> [*]
+note right of C : El estado se deriva de las compras\ny recepciones: nadie lo escribe (HU-67)
+@enduml

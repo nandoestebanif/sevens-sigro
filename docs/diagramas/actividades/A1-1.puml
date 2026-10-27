@@ -1,0 +1,28 @@
+@startuml
+!include _estilo.iuml
+title A1.1 · Cargar el catálogo y el requerimiento de la obra
+|Residente de obra|
+start
+:Exportar la Relación de insumos\ndesde el S10;
+:Importar el catálogo · HU-07;
+|Sistema|
+:Leer y validar cada fila\n(microservicio de integraciones);
+if (¿Hay filas ilegibles?) then (sí)
+  :Informar cada fila con su motivo\n(nada se descarta en silencio);
+  |Residente de obra|
+  :Corregir el archivo y volver a importar;
+  note right: Repetir la importación\nno duplica: el código es la clave
+else (no)
+endif
+|Sistema|
+:Crear o actualizar por código de insumo;
+|Almacenero|
+:Registrar el factor de conversión · HU-17\n(acero: kilos → varillas);
+|Residente de obra|
+:Importar el requerimiento total · HU-19;
+|Sistema|
+:Convertir a unidad de compra\ncon el factor registrado;
+|Residente de obra|
+:Definir los parámetros de reposición · HU-25;
+stop
+@enduml

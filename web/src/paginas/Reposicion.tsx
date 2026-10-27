@@ -11,18 +11,67 @@
    ───────────────────────────────────────────────────────────────────────── */
 import { useEffect, useMemo, useState } from 'react'
 import { api } from '../api/cliente'
-import type { AvanceInsumo } from '../api/tipos'
+import type { AlertaReposicion, AvanceInsumo } from '../api/tipos'
 import { Boton, Chip, Tarjeta, Titulo, Vacio } from '../ui/base'
 
 const n2 = (v: number) => v.toLocaleString('es-PE', { maximumFractionDigits: 0 })
 
+/* ── HU-26 · HU-27: el aviso salta solo y nunca va solo — trae saldo, punto,
+   falta por comprar y la sugerencia editable con su criterio ── */
+function Alerta({ a }: { a: AlertaReposicion }) {
+  // HU-27: referencia EDITABLE, nunca pedido automático
+  const [cantidad, setCantidad] = useState(String(a.sugerencia))
+  const activa = a.estado === 'activa'
+  return (
+    <Tarjeta estilo={{ borderLeft: `4px solid ${activa ? 'var(--grave)' : 'var(--aviso)'}`, padding: '14px 16px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'baseline', flexWrap: 'wrap' }}>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+          <strong style={{ fontSize: 13.5 }}>{a.descripcion}</strong>
+          {activa
+            ? <Chip tono="grave">bajo el punto de reposición</Chip>
+            : <Chip tono="aviso">atendida · compra {a.atendidaPor}</Chip>}
+        </span>
+        <span className="n" style={{ fontSize: 12.5, color: 'var(--tinta-2)' }}>
+          saldo <strong>{n2(a.saldo)} {a.unidad}</strong> · punto {n2(a.punto)} · falta por comprar {n2(a.faltaPorComprar)}
+        </span>
+      </div>
+      <div style={{ fontSize: 11.5, color: 'var(--tinta-3)', marginTop: 4 }}>
+        punto configurado como {a.criterioPunto}
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 10, flexWrap: 'wrap' }}>
+        <label htmlFor={`sug-${a.insumoId}`} style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--tinta-2)' }}>
+          Sugerencia de compra:
+        </label>
+        <input
+          id={`sug-${a.insumoId}`}
+          className="n"
+          value={cantidad}
+          onChange={(e) => setCantidad(e.target.value)}
+          style={{
+            width: 96, height: 36, border: '1px solid var(--borde)', borderRadius: 'var(--radio-chico)',
+            padding: '0 10px', fontSize: 13.5, fontWeight: 700, textAlign: 'right',
+            fontFamily: 'inherit', background: 'var(--tarjeta)', color: 'var(--tinta)',
+            outlineColor: 'var(--accion)',
+          }}
+        />
+        <span style={{ fontSize: 12.5, color: 'var(--tinta-2)' }}>{a.unidad}</span>
+        <span style={{ fontSize: 11.5, color: 'var(--tinta-3)', flex: '1 1 260px' }}>
+          referencia editable, nunca pedido automático · criterio: {a.criterioSugerencia}
+        </span>
+      </div>
+    </Tarjeta>
+  )
+}
+
 export function Reposicion() {
   const [filas, setFilas] = useState<AvanceInsumo[] | null>(null)
+  const [alertas, setAlertas] = useState<AlertaReposicion[]>([])
   const [soloCriticos, setSoloCriticos] = useState(false)
   const [fase, setFase] = useState('todas')
 
   useEffect(() => {
     api.avancePorInsumo().then(setFilas)
+    api.alertasReposicion().then(setAlertas)
   }, [])
 
   const fases = useMemo(
@@ -67,13 +116,15 @@ export function Reposicion() {
   )
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 15 }}>
+    <div className="pagina" style={{ display: 'flex', flexDirection: 'column', gap: 15 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16 }}>
         <Titulo sub="Falta por comprar = requerido − comprado. La base cierta para formular la siguiente solicitud de materiales.">
           Saldo por comprar
         </Titulo>
         <Boton enClic={exportar} deshabilitado={!visibles.length}>Exportar para el pedido</Boton>
       </div>
+
+      {alertas.map((a) => <Alerta key={a.insumoId} a={a} />)}
 
       <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
         {chipFiltro(!soloCriticos, 'Todos', () => setSoloCriticos(false))}
@@ -139,7 +190,7 @@ export function Reposicion() {
       <p style={{ fontSize: 12.5, color: 'var(--tinta-3)' }}>
         El faltante se muestra en la <strong>unidad de compra</strong>: el acero se pide en
         varillas aunque el S10 lo planifique en kilos (factor de conversión del catálogo).
-        La cantidad sugerida con stock de seguridad vive en la alerta de reposición (HU-27).
+        La sugerencia de compra (HU-27) aparece en la alerta de arriba: el menor entre lo que falta y lo que exige la fase en curso.
       </p>
     </div>
   )

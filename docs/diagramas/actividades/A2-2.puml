@@ -1,0 +1,19 @@
+@startuml
+!include _estilo.iuml
+title A2.2 · Registrar la salida de material desde el celular
+|Almacenero|
+start
+:Registrar la salida · HU-40\n(almacén, insumo, cantidad);
+:Indicar motivo y quién retira\n(frente o cuadrilla: opcional);
+|App del celular|
+:Generar el uuid_cliente · HU-37;
+:Guardar en el celular con la hora local;
+if (¿Hay señal?) then (sí)
+  :Enviar al servidor;
+else (no)
+  :Dejar en la cola de envío;
+  :Al volver la señal, enviar solo · HU-38;
+endif
+:Continúa en A2.3;
+stop
+@enduml

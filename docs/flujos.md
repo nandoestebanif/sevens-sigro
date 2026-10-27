@@ -28,7 +28,7 @@ Lo hace el residente con los reportes que exporta del S10.
 
 1. **Importa el catálogo** desde la relación de insumos: 237 materiales, 6 de mano de obra, equipos y subcontratos, cada uno con código, unidad y precio. · HU-07
 2. Revisa las **filas rechazadas** —unidad no reconocida, cantidad vacía—, las corrige en el archivo y vuelve a importar. Importar dos veces no duplica. · HU-07
-3. Define el **factor de conversión** de los insumos que se compran en una unidad distinta a la del S10. El acero es el caso obligatorio: llega en kilos, se compra en varillas. · HU-17, HU-18
+3. El almacenero (o el residente) define el **factor de conversión** de los insumos que se compran en una unidad distinta a la del S10. El acero es el caso obligatorio: llega en kilos, se compra en varillas; su reparto por diámetro es HU-18 (Sprint 2). · HU-17
 4. **Importa el requerimiento total**: cuánto de cada insumo necesita la obra completa. · HU-19
 5. Opcional: parte el requerimiento **por fases**, si la obra se controla por etapas. · HU-20
 6. Da de alta **insumos que el presupuesto no previó**, cuando aparezcan. · HU-22
@@ -52,23 +52,23 @@ Lo hace el almacenero, en obra, desde el celular, con o sin señal.
 
 1. Llega el camión: **registra la recepción** contra la compra. Si el proveedor entregó por partes, registra lo que llegó y la compra queda parcialmente recibida. · HU-35
 2. Si lo recibido **supera lo comprado**, el sistema avisa. No bloquea. · HU-36
-3. También puede entrar material **sin compra**: devolución de cuadrilla, saldo de otra obra, préstamo. Lleva su costo unitario, que es lo que permite valorizar después. · HU-40
-4. Cada ingreso **recalcula el costo promedio ponderado** del insumo en ese almacén.
-5. **Registra la salida**: almacén, insumo, cantidad, motivo y quién retira. El frente de destino es opcional. · HU-39
+3. También puede entrar material **sin compra**: devolución de cuadrilla, saldo de otra obra, préstamo. Lleva su costo unitario, que es lo que permite valorizar después. · HU-41
+4. Cada ingreso **recalcula el costo promedio ponderado** del insumo en ese almacén. El costo se toma **sin IGV** cuando el comprobante es factura (crédito fiscal, NIC 2.11); con boleta, el IGV sí es costo.
+5. **Registra la salida**: almacén, insumo, cantidad, motivo y quién retira. El frente de destino es opcional. · HU-40
 6. La salida se valoriza al promedio vigente y **ese valor queda congelado** en el movimiento.
 7. Si no hay señal, el movimiento **se guarda en el celular y se encola**. · HU-37
 8. Al volver la cobertura, **se envía solo**. Un reenvío con el mismo identificador no duplica. · HU-38
 9. Si el servidor lo **rechaza** —por ejemplo, ya no había saldo—, el movimiento no se pierde: queda con su motivo para corregirlo o descartarlo. · HU-38
-10. Cualquiera consulta el **stock** cuando quiera: por almacén y consolidado. · HU-42
-11. ¿Se equivocó? **Corrige con un movimiento inverso** que apunta al original. Nada se borra. · HU-44
+10. Cualquiera consulta el **stock** cuando quiera: por almacén y consolidado. · HU-43
+11. ¿Se equivocó? **Corrige con un movimiento inverso** que apunta al original y que el residente autoriza (matriz de permisos: R y A). Nada se borra. · HU-45
 
 ## 5 · Avisar cuándo reponer · E2
 
 Esto no lo hace nadie: lo hace el sistema. Es lo que ataca las paradas de obra.
 
 1. Cada salida baja el saldo. Cuando el saldo cruza el **punto de reposición**, salta el aviso. · HU-26
-2. El aviso **nunca va solo**: muestra el saldo, el punto de reposición y la demora del proveedor.
-3. El sistema **sugiere cuánto comprar**: lo que falta para el requerimiento más el stock de seguridad. · HU-27
+2. El aviso **nunca va solo**: indica el insumo, el saldo actual, el punto de reposición y cuánto falta por comprar. Un mismo insumo no repite aviso mientras siga bajo el punto, y se marca atendido al registrarse una compra. · HU-26
+3. El sistema **sugiere cuánto comprar**: el menor valor entre lo que falta por comprar y lo que exige la fase en curso, como referencia editable y nunca como pedido automático, mostrando el criterio. · HU-27
 4. El residente revisa el **avance de compra y consumo** por insumo, y el **saldo por comprar**. · HU-23, HU-24
 5. Los insumos marcados como **críticos** se vigilan aparte. · HU-28
 
@@ -76,12 +76,12 @@ Esto no lo hace nadie: lo hace el sistema. Es lo que ataca las paradas de obra.
 
 Lo lleva el almacenero o el ingeniero SSOMA.
 
-1. **Ingresan a la obra** con su estado inicial. · HU-47
-2. Se **entregan a un trabajador**, que queda como responsable. · HU-48
-3. Se **devuelven**, con su estado. · HU-49
-4. En cualquier momento se consulta **quién tiene cada herramienta**. · HU-50
-5. Si se rompe o se pierde, se **da de baja** con su motivo. · HU-52
-6. Al cerrar la obra se **declara el estado** de todas: cuáles vuelven, cuáles no. · HU-53
+1. **Ingresan a la obra** con su estado inicial. · HU-48
+2. Se **entregan a un trabajador**, que queda como responsable. · HU-49
+3. Se **devuelven**, con su estado. · HU-50
+4. En cualquier momento se consulta **quién tiene cada herramienta**. · HU-51
+5. Si se rompe o se pierde, se **da de baja** con su motivo y su origen (residente, SSOMA o criterio propio). · HU-53 (Sprint 2)
+6. Al cerrar la obra se **declara el estado** de todas: cuáles vuelven, cuáles no. · HU-54
 
 ## 7 · Mano de obra · E7
 
@@ -106,9 +106,9 @@ Lo mira el gerente y el residente. No se registra nada aquí: todo sale de lo an
 
 ## 9 · Cerrar la obra · E4 y E5
 
-1. Se hace el **conteo físico** y se confirma el saldo de cada insumo. · HU-45
-2. Lo que sobra **se transfiere al almacén central o a otra obra**, conservando su costo unitario. · HU-41, HU-46
-3. Se **declara el estado de las herramientas**. · HU-53
+1. Se hace el **conteo físico** y cada diferencia con el sistema se justifica. · HU-46
+2. Lo que sobra tiene **tres destinos** (confirmado por el cliente): se devuelve al proveedor, se registra como merma o vuelve al almacén central conservando su costo unitario; el traslado a otra obra es HU-42. · HU-47
+3. Se **declara el estado de las herramientas**. · HU-54
 4. La obra **no puede cerrarse con saldos sin confirmar**.
 5. El cierre produce un acta con lo comprado, lo consumido y lo transferido.
 

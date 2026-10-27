@@ -1,0 +1,17 @@
+@startuml
+!include _estilo.iuml
+title A3.2 · Corregir una jornada o dar de baja al trabajador
+|Almacenero o SSOMA|
+start
+if (¿Qué cambió?) then (la jornada)
+  :Registrar una jornada nueva\nque apunta a la anterior;
+  |Sistema|
+  :Conservar la anterior\ny contar solo la vigente;
+else (el trabajador se retira)
+  |Almacenero o SSOMA|
+  :Darlo de baja con su fecha de salida · HU-62;
+  |Sistema|
+  :Conservar sus jornadas\ny excluirlo desde el día siguiente;
+endif
+stop
+@enduml

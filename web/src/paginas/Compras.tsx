@@ -225,7 +225,7 @@ export function Compras() {
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 15 }}>
+    <div className="pagina" style={{ display: 'flex', flexDirection: 'column', gap: 15 }}>
       <Titulo sub="Registrar la compra deja constancia de lo adquirido. El stock se mueve recién con la recepción, desde la app del almacén.">
         Registrar la compra
       </Titulo>

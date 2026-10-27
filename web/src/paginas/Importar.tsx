@@ -60,7 +60,7 @@ export function Importar() {
   const r = resultado
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 15 }}>
+    <div className="pagina" style={{ display: 'flex', flexDirection: 'column', gap: 15 }}>
       <Titulo sub="Es el paso que sigue a crear la obra (HU-01): su Relación de insumos se sube una vez y la relación de la obra queda cargada. Se repite solo si el presupuesto del S10 cambia — y repetirla actualiza, no duplica.">
         Importar del S10
       </Titulo>

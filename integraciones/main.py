@@ -19,8 +19,10 @@ import os
 import re
 import time
 
+import hmac
+
 import httpx
-from fastapi import FastAPI, File, Form, HTTPException, UploadFile
+from fastapi import Depends, FastAPI, File, Form, Header, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
@@ -42,6 +44,20 @@ app.add_middleware(
     allow_methods=["GET", "POST"],  # POST: la importación del S10 sube el archivo
     allow_headers=["*"],
 )
+
+# ── autenticación entre servicios (decisión del 22 oct, opción B) ──────────────
+# Mismo contrato que Notificaciones: cabecera X-Servicio-Token. Si la variable
+# SERVICIO_TOKEN está definida (en docker compose recibe SIGRO_SERVICIO_TOKEN),
+# toda llamada sin el token correcto recibe 401: así nadie que alcance el puerto
+# gasta las consultas de Factiliza. Sin la variable (desarrollo local, la web
+# llamando directo) el servicio queda abierto y /salud lo declara.
+def servicio(x_servicio_token: str | None = Header(default=None)) -> None:
+    esperado = os.environ.get("SERVICIO_TOKEN")
+    if not esperado:
+        return
+    if x_servicio_token is None or not hmac.compare_digest(x_servicio_token.encode(), esperado.encode()):
+        raise HTTPException(401, "Token de servicio inválido.")
+
 
 FACTILIZA_URL = "https://api.factiliza.com/v1/ruc/info/{ruc}"
 FACTILIZA_DNI_URL = "https://api.factiliza.com/v1/dni/info/{dni}"
@@ -100,10 +116,12 @@ def salud() -> dict:
     return {
         "servicio": "integraciones",
         "factiliza_configurado": bool(os.environ.get("FACTILIZA_TOKEN")),
+        # False = modo desarrollo: cualquiera que alcance el puerto puede llamar
+        "exige_token_de_servicio": bool(os.environ.get("SERVICIO_TOKEN")),
     }
 
 
-@app.get("/ruc/{ruc}", response_model=RucNormalizado)
+@app.get("/ruc/{ruc}", response_model=RucNormalizado, dependencies=[Depends(servicio)])
 async def consultar_ruc(ruc: str) -> RucNormalizado:
     if not re.fullmatch(r"\d{11}", ruc):
         raise HTTPException(422, "El RUC debe tener 11 dígitos.")
@@ -128,7 +146,7 @@ async def consultar_ruc(ruc: str) -> RucNormalizado:
     return normalizado
 
 
-@app.get("/dni/{dni}", response_model=DniNormalizado)
+@app.get("/dni/{dni}", response_model=DniNormalizado, dependencies=[Depends(servicio)])
 async def consultar_dni(dni: str) -> DniNormalizado:
     """HU-62: con el DNI del trabajador se trae su nombre del padrón de RENIEC,
     para registrarlo tal como figura y no como suene en obra. Si el servicio no
@@ -192,7 +210,7 @@ class ResultadoImportacion(BaseModel):
     fallidos: list[dict]
 
 
-@app.post("/s10/relacion-insumos", response_model=ResultadoImportacion)
+@app.post("/s10/relacion-insumos", response_model=ResultadoImportacion, dependencies=[Depends(servicio)])
 async def importar_relacion_de_insumos(
     archivo: UploadFile = File(..., description="La «Relación de insumos» exportada del S10 (PDF)"),
     codigos_existentes: str = Form("", description="Códigos que la API ya tiene, separados por coma: esos se marcan «actualizar», no «crear»"),

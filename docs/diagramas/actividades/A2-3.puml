@@ -1,0 +1,30 @@
+@startuml
+!include _estilo.iuml
+title A2.3 · Sincronizar el movimiento y rechazarlo si no cumple
+|Servidor|
+start
+:Recibir el movimiento;
+if (¿El uuid_cliente ya existe?) then (sí)
+  :Devolver el original sin duplicar;
+  |App del celular|
+  :Marcar como sincronizado;
+  stop
+else (no)
+endif
+|Servidor|
+if (¿Cumple las reglas?\ndispositivo autorizado · persona asignada\nsaldo suficiente · fecha en plazo y periodo abierto) then (no)
+  :Rechazar con su motivo;
+  |App del celular|
+  :Mostrar el rechazo en «Envíos pendientes»;
+  |Almacenero|
+  :Corregir y reenviar, o descartar;
+  end
+else (sí)
+endif
+|Servidor|
+:Guardar con el costo promedio congelado · HU-55;
+:Recalcular el saldo (en el servidor, nunca en el celular);
+|App del celular|
+:Mostrar el saldo que devolvió el servidor · HU-38;
+stop
+@enduml

@@ -1,0 +1,33 @@
+@startuml
+!include _estilo.iuml
+title A3.1 · Registrar al trabajador y su jornada
+|Almacenero o SSOMA|
+start
+:Registrar al trabajador · HU-62\n(documento, categoría y cuadrilla);
+|Sistema|
+if (¿Ya está en esta obra?) then (sí)
+  :Rechazar el registro;
+  end
+else (no)
+  :Guardar con su fecha de ingreso;
+endif
+|Almacenero o SSOMA|
+repeat :Abrir la jornada del día · HU-63;
+  |Sistema|
+  :Listar a los trabajadores activos;
+  |Almacenero o SSOMA|
+  :Marcar la asistencia;
+  if (¿Presente?) then (sí)
+    :Anotar horas normales y extras aparte;
+  else (no)
+  endif
+  |Sistema|
+  if (¿En plazo y sin registro previo ese día?) then (no)
+    :Rechazar;
+  else (sí)
+    :Guardar la jornada única\npor trabajador y día;
+  endif
+repeat while (¿Otro día de obra?) is (sí)
+-> no;
+stop
+@enduml

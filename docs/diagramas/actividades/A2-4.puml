@@ -1,0 +1,24 @@
+@startuml
+!include _estilo.iuml
+title A2.4 · Corregir un movimiento con su reverso
+|Almacenero|
+start
+:Elegir el movimiento equivocado;
+:Indicar el motivo de la corrección;
+|Residente de obra|
+if (¿Autoriza la corrección?) then (no)
+  :El original queda igual;
+  end
+else (sí)
+endif
+|Servidor|
+:Guardar el reverso que apunta al original · HU-45;
+note right: El original nunca se edita ni se borra.\nMatriz de permisos: almacenero R, residente A
+:Recalcular el saldo con el original y el reverso;
+|Almacenero|
+if (¿Hace falta el movimiento correcto?) then (sí)
+  :Registrar el movimiento correcto;
+else (no)
+endif
+stop
+@enduml

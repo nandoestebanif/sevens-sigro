@@ -144,8 +144,7 @@ probada con datos inventados **no está terminada**.
 | Archivo | Qué contiene |
 |---|---|
 | `docs/historias-sprint-1.md` | Las 29 historias del Sprint 1 con sus criterios de aceptación |
-| `docs/historias-sprint-2.md` | Las 31 del Sprint 2 |
-| `docs/siguiente-iteracion.md` | Las 5 que quedaron fuera a propósito |
+| `docs/historias-sprint-2.md` | Las 38 del Sprint 2: 31 originales, HU-66 y HU-67 (CR-04) y las 5 que antes iban a una siguiente iteración |
 | `docs/permisos.md` | Matriz de roles y permisos |
 | `docs/decisiones-arquitectura.md` | Por qué el sistema es como es |
 | `docs/flujo-de-trabajo.md` | Git, ramas, PR y pruebas |
