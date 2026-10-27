@@ -11,6 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 import os
 
 from app import errores
+from app.modulos.catalogo.rutas import routers as r_catalogo
 from app.modulos.compras.rutas import routers as r_compras
 from app.modulos.notificaciones.rutas import routers as r_notif
 from app.modulos.obra.rutas import routers as r_obra
@@ -36,7 +37,7 @@ def crear_app() -> FastAPI:
     def salud():
         return {"estado": "ok"}
 
-    for r in (*r_obra, *r_tareo, *r_compras, *r_notif):
+    for r in (*r_obra, *r_tareo, *r_compras, *r_catalogo, *r_notif):
         app.include_router(r, prefix=PREFIJO)
     return app
 

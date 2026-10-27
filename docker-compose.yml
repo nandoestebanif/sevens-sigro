@@ -70,6 +70,7 @@ services:
         CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
     environment:
       FACTILIZA_TOKEN: ${FACTILIZA_TOKEN:-}
+      SERVICIO_TOKEN: ${SIGRO_SERVICIO_TOKEN}      # HT-08: exige X-Servicio-Token a quien le llama
     restart: unless-stopped
 
 volumes:

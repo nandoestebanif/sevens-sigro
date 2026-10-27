@@ -25,14 +25,17 @@ class RucSunat:
 
 def consultar_ruc(ruc: str, cliente: httpx.Client | None = None) -> RucSunat | None:
     """None cuando no se pudo consultar (sin servicio configurado, caído, sin token o RUC que SUNAT no conoce)."""
-    base = cargar().integraciones_url
+    cfg = cargar()
+    base = cfg.integraciones_url
     if not base:
         return None
+    # HT-08: Integraciones exige el token de servicio (cabecera X-Servicio-Token) cuando lo tiene configurado.
+    cabeceras = {"X-Servicio-Token": cfg.servicio_token} if cfg.servicio_token else {}
     try:
         propio = cliente is None
         c = cliente or httpx.Client(timeout=TIMEOUT)
         try:
-            r = c.get(f"{base.rstrip('/')}/ruc/{ruc}")
+            r = c.get(f"{base.rstrip('/')}/ruc/{ruc}", headers=cabeceras)
         finally:
             if propio:
                 c.close()
