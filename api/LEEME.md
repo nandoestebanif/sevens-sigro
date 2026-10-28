@@ -61,7 +61,10 @@ alembic upgrade head        # base limpia
 alembic downgrade base      # vuelta atrás completa
 alembic check               # los modelos no se desvían de la base
 python -m pytest            # necesita un PostgreSQL con usuario superusuario (ver conftest.py)
-SIGRO_DB=sigro_dev python docs/generar_drawio.py      # regenera los tres diagramas .drawio
+SIGRO_DB=sigro_dev python docs/generar_diagrama.py    # modelo físico: lámina general + una por servicio (PNG/SVG)
+SIGRO_DB=sigro_dev python docs/generar_diccionario.py # diccionario de datos (docs/diccionario-datos.md)
+SIGRO_DB=sigro_dev python docs/generar_drawio.py      # físico y ER editables (.drawio)
+python docs/generar_despliegue.py                     # despliegue, desde docker-compose.yml (PNG/SVG/.drawio)
 ```
 
 Las migraciones corren con el usuario DUEÑO. Cada servicio se conecta con SU usuario (`sigro_obras`,
@@ -80,16 +83,28 @@ Las migraciones corren con el usuario DUEÑO. Cada servicio se conecta con SU us
 | 0006 | **outbox**: bandeja de salida de eventos hacia Notificaciones (inmutable, sin borrado) |
 | 0007 | **histórico del factor de conversión** del insumo (HU-17): libro solo-agregar con quién, cuándo y por qué |
 | 0008 | **requerimiento de obra** (HU-19) con su libro de ajustes, **parámetros de reposición** (HU-25) y la vista `saldo_por_comprar` (HU-24) |
+| 0009 | **microservicios** (ADR-09): un rol por servicio (`sigro_svc_*`) con permisos solo sobre su esquema; 3 validaciones entre esquemas pasan a `SECURITY DEFINER` |
 
-## Diagramas (`api/docs/`)
+## Modelo físico y diagramas (`api/docs/`)
 
-| Diagrama | Archivo | Cómo se mantiene |
+Todo se **genera**, nada se dibuja a mano: si una migración cambia la base, se vuelve a correr el script y la documentación
+queda al día. Las fuentes son la base migrada (`introspeccion.py`), `docker-compose.yml` y `app/enrutado.py`.
+
+| Entregable | Archivo | Qué muestra |
 |---|---|---|
-| **Físico** (tablas, claves, índices únicos, disparadores) | `diagrama-fisico.drawio` | Se genera **desde la base migrada** con `SIGRO_DB=sigro_dev python docs/generar_drawio.py` |
-| **Entidad-relación** (modelo lógico: nombres de negocio, cardinalidades) | `diagrama-er.drawio` | El mismo script; **falla** si un atributo, una tabla, una relación o un valor de estado no coincide con la base |
-| **Microservicios** (frontera API ↔ Integraciones ↔ Notificaciones) | `diagrama-microservicios.drawio` | Dibujado en el mismo script (`microservicios()`); editable a mano en draw.io |
+| **Modelo físico por microservicio** | `diagrama-fisico.png/.svg` · `fisico/<servicio>.png` | Cada servicio con su esquema y su rol; tablas, tipos, PK/FK, únicos, reglas, **permisos de cada rol** y en rojo las **FK que cruzan de un servicio a otro** (deuda de la fase 1) |
+| **Diccionario de datos** | `diccionario-datos.md` | Por servicio y tabla: columna, tipo, nulo, defecto, clave, significado de negocio, CHECK, índices, disparadores, permisos; lista de FK entre servicios con su plan de fase 2 |
+| **Despliegue** | `diagrama-despliegue.png/.svg/.drawio` | Contenedores, imágenes, puertos, volúmenes, usuario de base de cada servicio, rutas públicas que atiende cada uno y llamadas internas con `X-Servicio-Token` |
+| **Físico editable** | `diagrama-fisico.drawio` | El mismo modelo en draw.io, agrupado por microservicio |
+| **Entidad-relación** (lógico) | `diagrama-er.drawio` | Nombres de negocio y cardinalidades; el script **falla** si no coincide con la base |
 
-Se abren con draw.io (app.diagrams.net, la extensión de VS Code o draw.io Desktop), donde cada tabla y cada flecha se puede mover y editar. Para regenerarlos hacen falta Graphviz (`dot`) y una base migrada (`alembic upgrade head`). El de microservicios deja a la vista un riesgo: la web llama a Integraciones directo. Decisión de Fernando (22/10): **B ahora** (Integraciones exige el token de servicio; la API ya lo envía en `X-Servicio-Token`) y **A después** (la web pasará por la API).
+Se abren con draw.io (app.diagrams.net, la extensión de VS Code o draw.io Desktop). Hacen falta Graphviz (`dot`) y una base migrada.
+
+**Hallazgo del diagrama de despliegue (28/10):** la web importa el S10 llamando directo a Integraciones, pero en
+`docker-compose.yml` Integraciones no publica puerto (bien: no debe ser público) y el navegador no puede llevar el
+`X-Servicio-Token` sin filtrarlo. En despliegue esa importación **no funciona**. Propuesta: cerrar la decisión «A» del 22/10
+y que la web suba el PDF por el gateway (`POST /api/v1/catalogo/importaciones-s10`), el servicio catálogo lo reenvía a
+Integraciones con su token y guarda el resultado. Queda en el diagrama como flecha roja hasta que se haga.
 
 ## Reglas del CLAUDE.md y dónde las sostiene el motor
 

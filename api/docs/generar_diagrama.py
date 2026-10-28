@@ -1,196 +1,168 @@
-"""Genera el diagrama físico DESDE la base migrada (no dibujado a mano: no puede divergir).
+"""Modelo FÍSICO de la base, por microservicio (ADR-09), generado DESDE la base migrada (no puede divergir).
 
 Uso:  SIGRO_DB=sigro_dev python docs/generar_diagrama.py
-Salida: docs/diagrama-fisico.dot, .svg y .png  (requiere Graphviz: `dot`)
+Salida (requiere Graphviz: `dot`):
+  docs/diagrama-fisico.(dot|svg|png)            todos los servicios en una lámina
+  docs/fisico/<servicio>.(svg|png)               una lámina por servicio, con las tablas ajenas que referencia
 """
 from __future__ import annotations
 
 import html
-import os
-import re
 import subprocess
+import sys
 from pathlib import Path
 
-import psycopg
-from psycopg.rows import dict_row
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from introspeccion import COLOR, ESQUEMAS, QUE_HACE, SERVICIO_DE, Modelo, Tabla, leer_modelo  # noqa: E402
 
-BASE = os.environ.get("SIGRO_DB", "sigro_dev")
-DSN = os.environ.get("SIGRO_DSN", f"postgresql://sigro_owner:sigro_owner_dev@localhost:5432/{BASE}")
 SALIDA = Path(__file__).resolve().parent
-
-ESQUEMAS = ["obra", "catalogo", "compras", "tareo", "outbox"]
-COLOR = {  # cabecera, fondo del grupo
-    "obra": ("#1F4E79", "#EAF1F8"),
-    "catalogo": ("#7A4B00", "#FBF3E4"),
-    "compras": ("#2E6B3A", "#EAF5EC"),
-    "tareo": ("#6B2E6B", "#F6ECF6"),
-    "outbox": ("#8A3B12", "#FBEDE6"),
-}
-LIBROS = {"obra.proyecto_plazo_historial", "tareo.jornada", "compras.compra_detalle", "compras.compra_adjunto",
-          "compras.solicitud_linea"}
-
-
-def consultar(c, sql, *a):
-    return c.execute(sql, a).fetchall()
+ROJO = "#C00000"           # FK que cruza de un servicio a otro (deuda de la fase 1)
+INSIGNIA = {"obra.proyecto_plazo_historial": "APPEND-ONLY", "tareo.jornada": "APPEND-ONLY", "compras.compra_detalle": "APPEND-ONLY",
+            "compras.compra_adjunto": "APPEND-ONLY", "compras.solicitud_linea": "APPEND-ONLY", "catalogo.insumo_factor_historial": "APPEND-ONLY",
+            "compras.requerimiento_ajuste": "APPEND-ONLY", "outbox.evento": "bandeja de salida",
+            "compras.solicitud_correlativo": "contador (solo lo toca su función)"}
 
 
 def esc(t) -> str:
     return html.escape(str(t), quote=True)
 
 
-def main() -> None:
-    with psycopg.connect(DSN, row_factory=dict_row) as c:
-        tablas = consultar(c, """
-            SELECT n.nspname AS esquema, cl.relname AS tabla, cl.oid AS oid
-              FROM pg_class cl JOIN pg_namespace n ON n.oid = cl.relnamespace
-             WHERE cl.relkind = 'r' AND n.nspname = ANY(%s) ORDER BY 1, 2""", ESQUEMAS)
+def etiqueta_servicio(esquema: str) -> str:
+    s = SERVICIO_DE[esquema]
+    return (f'<<B>microservicio {s}</B>  ·  esquema <B>{esquema}</B>  ·  rol <B>sigro_svc_{s}</B><BR/>'
+            f'<FONT POINT-SIZE="12">{esc(QUE_HACE[s])}</FONT>>')
 
-        columnas, pk, fk, uq, disparadores = {}, {}, {}, {}, {}
-        aristas = []
-        for t in tablas:
-            clave = f"{t['esquema']}.{t['tabla']}"
-            columnas[clave] = consultar(c, """
-                SELECT a.attname AS nombre, format_type(a.atttypid, a.atttypmod) AS tipo, a.attnotnull AS no_nulo,
-                       (a.attidentity <> '') AS identidad
-                  FROM pg_attribute a WHERE a.attrelid = %s AND a.attnum > 0 AND NOT a.attisdropped ORDER BY a.attnum""", t["oid"])
-            filas = consultar(c, """
-                SELECT i.indisprimary AS es_pk, pg_get_indexdef(i.indexrelid) AS def, ic.relname AS nombre,
-                       (SELECT array_agg(a.attname ORDER BY k.ord) FROM unnest(i.indkey) WITH ORDINALITY k(attnum, ord)
-                          JOIN pg_attribute a ON a.attrelid = i.indrelid AND a.attnum = k.attnum WHERE k.attnum > 0) AS cols
-                  FROM pg_index i JOIN pg_class ic ON ic.oid = i.indexrelid
-                 WHERE i.indrelid = %s AND i.indisunique""", t["oid"])
-            pk[clave] = next((f["cols"] for f in filas if f["es_pk"]), [])
-            uq[clave] = []
-            for f in filas:
-                if f["es_pk"]:
-                    continue
-                donde = re.search(r"WHERE \((.*)\)$", f["def"])
-                if donde:
-                    donde = re.sub(r"\)?::text", "", donde.group(1))
-                expr = re.search(r"\((.*?)\)(?: WHERE|$)", f["def"])
-                cols = f["cols"] or []
-                etiqueta = ", ".join(cols) if cols else (expr.group(1) if expr else f["nombre"])
-                if len(cols) and "lower(" in f["def"]:
-                    etiqueta = re.search(r"USING btree \((.*?)\)(?: WHERE|$)", f["def"]).group(1)
-                uq[clave].append((etiqueta, donde if donde else None))
-            for r in consultar(c, """
-                SELECT conname, confrelid::regclass::text AS destino, conkey, confkey, conrelid
-                  FROM pg_constraint WHERE conrelid = %s AND contype = 'f'""", t["oid"]):
-                origen = [a["attname"] for a in consultar(c, "SELECT attname FROM pg_attribute WHERE attrelid=%s AND attnum = ANY(%s) ORDER BY array_position(%s, attnum)", t["oid"], r["conkey"], r["conkey"])]
-                dest_oid = c.execute("SELECT %s::regclass::oid AS o", (r["destino"],)).fetchone()["o"]
-                dest = [a["attname"] for a in consultar(c, "SELECT attname FROM pg_attribute WHERE attrelid=%s AND attnum = ANY(%s) ORDER BY array_position(%s, attnum)", dest_oid, r["confkey"], r["confkey"])]
-                destino = r["destino"] if "." in r["destino"] else f"public.{r['destino']}"
-                aristas.append((clave, origen, destino, dest, len(origen) > 1))
-            fk[clave] = {col for a in aristas if a[0] == clave for col in a[1]}
-            disparadores[clave] = [x["tgname"] for x in consultar(
-                c, "SELECT tgname FROM pg_trigger WHERE tgrelid = %s AND NOT tgisinternal ORDER BY 1", t["oid"])]
 
-        vistas = [f"{r['schemaname']}.{r['viewname']}" for r in consultar(
-            c, "SELECT schemaname, viewname FROM pg_views WHERE schemaname = ANY(%s) ORDER BY 1, 2", ESQUEMAS)]
-        funciones = [f"{r['nspname']}.{r['proname']}()" for r in consultar(
-            c, "SELECT n.nspname, p.proname FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace "
-               "WHERE n.nspname = ANY(%s) AND p.prosecdef ORDER BY 1, 2", ESQUEMAS)]
+def nodo(m: Modelo, t: Tabla) -> str:
+    cab, _ = COLOR[t.esquema]
+    fk_cols = m.fk_cols(t.clave)
+    cruzan = {c for f in m.fks if f.origen == t.clave and f.entre_servicios for c in f.cols}
+    ins = INSIGNIA.get(t.clave) or ("APPEND-ONLY" if t.append_only else "")
+    filas = [f'<TR><TD COLSPAN="3" BGCOLOR="{cab}"><FONT COLOR="white"><B>{esc(t.clave)}</B></FONT>'
+             + (f'<FONT COLOR="#FFD966"> {esc(ins)}</FONT>' if ins else "") + "</TD></TR>"]
+    for col in t.columnas:
+        marcas = [x for x, ok in (("PK", col.nombre in t.pk), ("FK*" if col.nombre in cruzan else "FK", col.nombre in fk_cols)) if ok]
+        color = "#E46C0A" if col.nombre in cruzan else "#B00020"
+        filas.append(
+            f'<TR><TD ALIGN="LEFT" PORT="c_{col.nombre}"><FONT POINT-SIZE="10" COLOR="{color}"><B>{" ".join(marcas) or "  "}</B></FONT></TD>'
+            f'<TD ALIGN="LEFT">{esc(col.nombre)}</TD><TD ALIGN="LEFT"><FONT COLOR="#666666" POINT-SIZE="10">'
+            f'{esc(col.tipo)}{"" if col.no_nulo else "?"}</FONT></TD></TR>')
+    for etiqueta, donde in t.unicos:
+        txt = f"UNIQUE ({esc(etiqueta)})" + (f"<BR/>  WHERE {esc(donde)}" if donde else "")
+        filas.append(f'<TR><TD COLSPAN="3" ALIGN="LEFT" BGCOLOR="#FFF2CC"><FONT POINT-SIZE="10" COLOR="#7F6000"><B>{txt}</B></FONT></TD></TR>')
+    pie = []
+    if t.append_only:
+        pie.append("sin UPDATE · sin DELETE")
+    elif t.sin_borrar:
+        pie.append("sin DELETE (se da de baja)")
+    if t.reglas:
+        pie.append("reglas: " + ", ".join(t.reglas))
+    if t.checks:
+        pie.append(f"{len(t.checks)} CHECK · {len(t.indices)} índices")
+    pie.append("permisos: " + (" · ".join(f"{r.removeprefix('sigro_svc_')} {p}" for r, p in t.privilegios.items())
+                               or "ninguno directo (solo su función SECURITY DEFINER)"))
+    for tx in pie:
+        filas.append(f'<TR><TD COLSPAN="3" ALIGN="LEFT" BGCOLOR="#F2F2F2"><FONT POINT-SIZE="9" COLOR="#444444">{esc(tx)}</FONT></TD></TR>')
+    return (f'    "{t.clave}" [label=<<TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="3" COLOR="{cab}">'
+            f'{"".join(filas)}</TABLE>>];')
 
-    L = ['digraph SIGRO {', '  graph [rankdir=LR, fontname="Helvetica", fontsize=26, labelloc=t, pad=0.4, nodesep=0.35, ranksep=1.3, '
-         'splines=true, compound=true, newrank=true, '
-         'label=<<B>SIGRO · Diagrama físico de la base de datos (PostgreSQL)</B><BR/><FONT POINT-SIZE="15">'
-         'Módulos obra, catálogo, compras, tareo y outbox · generado desde la base migrada (migraciones 0001 a 0006)</FONT>>];',
+
+def fantasma(clave: str) -> str:
+    esquema = clave.split(".")[0]
+    return (f'    "{clave}" [label=<<TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="4" COLOR="#999999" STYLE="dashed">'
+            f'<TR><TD PORT="c_id" BGCOLOR="#EEEEEE"><FONT COLOR="#555555"><B>{esc(clave)}</B></FONT></TD></TR>'
+            f'<TR><TD><FONT POINT-SIZE="9" COLOR="#777777">de otro servicio: {esc(SERVICIO_DE.get(esquema, esquema))}<BR/>'
+            f'no la lee; solo la referencia (fase 1)</FONT></TD></TR></TABLE>>];')
+
+
+ALMACEN = ('  subgraph cluster_almacen { label=<<B>microservicio almacen · esquema almacen · rol sigro_svc_almacen</B><BR/>'
+           '<FONT POINT-SIZE="12">por construir: movimientos, saldo y kárdex (ver propuesta 0010)</FONT>>; fontsize=18; style="rounded,dashed"; color="#999999";\n'
+           '    "almacen.movimiento" [label=<<TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="3" COLOR="#999999" STYLE="dashed">'
+           '<TR><TD COLSPAN="2" BGCOLOR="#7F7F7F"><FONT COLOR="white"><B>almacen.movimiento</B></FONT><FONT COLOR="#FFD966"> APPEND-ONLY</FONT></TD></TR>'
+           '<TR><TD ALIGN="LEFT">uuid_cliente</TD><TD ALIGN="LEFT"><FONT COLOR="#B00020"><B>UNIQUE</B></FONT></TD></TR>'
+           '<TR><TD ALIGN="LEFT" PORT="c_almacen_id">almacen_id, proyecto_id</TD><TD><FONT COLOR="#C00000">FK</FONT></TD></TR>'
+           '<TR><TD ALIGN="LEFT" PORT="c_insumo_id">insumo_id</TD><TD><FONT COLOR="#C00000">FK</FONT></TD></TR>'
+           '<TR><TD ALIGN="LEFT">tipo · cantidad &gt; 0 · costo_unitario congelado</TD><TD></TD></TR>'
+           '<TR><TD COLSPAN="2" ALIGN="LEFT" BGCOLOR="#FFF2CC"><FONT POINT-SIZE="10" COLOR="#7F6000"><B>Sin columna de saldo · corregir = reverso</B></FONT></TD></TR>'
+           '</TABLE>>];\n  }\n'
+           '  "almacen.movimiento":c_almacen_id -> "obra.almacen":c_id [style=dashed, color="#999999"];\n'
+           '  "almacen.movimiento":c_insumo_id -> "catalogo.insumo":c_id [style=dashed, color="#999999"];')
+
+
+def leyenda(m: Modelo, global_: bool) -> str:
+    n_cruzan = len(m.fks_entre_servicios)
+    n_usuario = sum(1 for f in m.fks_entre_servicios if f.destino == "obra.usuario")
+    filas = [
+        '<FONT COLOR="#B00020"><B>PK / FK</B></FONT>  clave primaria / foránea (la flecha va del hijo al padre) · <FONT COLOR="#E46C0A"><B>FK*</B></FONT> apunta a otro servicio · <B>?</B> admite NULL',
+        '<FONT COLOR="#2F5597"><B>Flecha azul gruesa</B></FONT>  FK compuesta (id, proyecto_id): el motor garantiza que ambos son de la misma obra',
+        f'<FONT COLOR="{ROJO}"><B>FK roja discontinua</B></FONT>  cruza de un servicio a otro. En todo el sistema hay <B>{n_cruzan}</B>; {n_usuario} son de autoría hacia obra.usuario'
+        + (" (marcadas en rojo, no dibujadas)" if global_ else "") + '.',
+        '   Fase 1 (hoy): se conservan para no perder integridad; el servicio NO puede leer la tabla ajena (sin permiso), solo la referencia.',
+        '   Fase 2 (Sprint 2): se reemplazan por una réplica local alimentada por eventos y la FK se elimina (ADR-09).',
+        '<FONT COLOR="#7F6000"><B>UNIQUE</B></FONT>  índice único que sostiene una regla del dominio (parcial si trae WHERE)',
+        '<B>permisos</B>  lo que el rol de cada servicio puede hacer en la tabla: S select · I insert · U update · D delete. Ningún servicio tiene D.',
+        f'<B>Vistas:</B> {esc(", ".join(m.vistas))}',
+        f'<B>SECURITY DEFINER</B> (únicas que escriben periodos, plazo y correlativos, o validan contra otro esquema): {esc(", ".join(m.funciones_definer))}',
+        '<B>Despliegue:</B> una sola instancia PostgreSQL, un esquema y un usuario por servicio; ningún servicio puede leer el esquema de otro.',
+    ]
+    celdas = "".join(f'<TR><TD ALIGN="LEFT">{f}</TD></TR>' for f in filas)
+    return (f'  subgraph cluster_leyenda {{ label=<<B>Cómo leerlo</B>>; fontsize=16; style="rounded"; color="#666666";\n'
+            f'    leyenda [label=<<TABLE BORDER="0" CELLBORDER="0" CELLSPACING="0" CELLPADDING="3">{celdas}</TABLE>>];\n  }}')
+
+
+def dibujar(m: Modelo, esquemas: list[str], titulo: str, subtitulo: str, base: Path, con_almacen: bool) -> None:
+    global_ = len(esquemas) > 1
+    L = ['digraph SIGRO {',
+         f'  graph [rankdir=LR, fontname="Helvetica", fontsize=26, labelloc=t, pad=0.4, nodesep=0.35, ranksep={1.3 if global_ else 1.0}, '
+         f'splines=true, compound=true, newrank=true, label=<<B>{esc(titulo)}</B><BR/><FONT POINT-SIZE="15">{esc(subtitulo)}</FONT>>];',
          '  node [shape=plain, fontname="Helvetica", fontsize=11];',
          '  edge [color="#555555", arrowsize=0.7, fontname="Helvetica", fontsize=9];']
-
-    def nodo(clave: str) -> str:
-        esquema, nombre = clave.split(".")
-        cab, _ = COLOR[esquema]
-        insignias = []
-        if clave in LIBROS:
-            insignias.append('<FONT COLOR="#FFD966"> APPEND-ONLY</FONT>')
-        elif clave == "outbox.evento":
-            insignias.append('<FONT COLOR="#FFD966"> bandeja de salida</FONT>')
-        elif clave == "compras.solicitud_correlativo":
-            insignias.append('<FONT COLOR="#FFD966"> contador del servidor</FONT>')
-        filas = [f'<TR><TD COLSPAN="3" BGCOLOR="{cab}"><FONT COLOR="white"><B>{esc(esquema)}.</B><B>{esc(nombre)}</B></FONT>{"".join(insignias)}</TD></TR>']
-        for col in columnas[clave]:
-            marcas = []
-            if col["nombre"] in pk[clave]:
-                marcas.append("PK")
-            if col["nombre"] in fk[clave]:
-                marcas.append("FK")
-            tipo = col["tipo"].replace("timestamp with time zone", "timestamptz").replace("character varying", "varchar")
-            nulo = "" if col["no_nulo"] else "?"
-            filas.append(
-                f'<TR><TD ALIGN="LEFT" PORT="c_{col["nombre"]}"><FONT POINT-SIZE="10" COLOR="#B00020"><B>{" ".join(marcas) or "  "}</B></FONT></TD>'
-                f'<TD ALIGN="LEFT">{esc(col["nombre"])}</TD><TD ALIGN="LEFT"><FONT COLOR="#666666" POINT-SIZE="10">{esc(tipo)}{nulo}</FONT></TD></TR>')
-        for etiqueta, donde in uq[clave]:
-            txt = f"UNIQUE ({esc(etiqueta)})" + (f"<BR/>  WHERE {esc(donde)}" if donde else "")
-            filas.append(f'<TR><TD COLSPAN="3" ALIGN="LEFT" BGCOLOR="#FFF2CC"><FONT POINT-SIZE="10" COLOR="#7F6000"><B>{txt}</B></FONT></TD></TR>')
-        extra = [d for d in disparadores[clave] if not d.endswith(("_no_borrar", "_no_truncar", "_append_only"))]
-        tags = []
-        if any(d.endswith("_append_only") for d in disparadores[clave]):
-            tags.append("sin UPDATE · sin DELETE")
-        elif any(d.endswith("_no_borrar") for d in disparadores[clave]):
-            tags.append("sin DELETE (se da de baja)")
-        if extra:
-            tags.append("reglas: " + ", ".join(e.removeprefix("tg_") for e in extra))
-        for tx in tags:
-            filas.append(f'<TR><TD COLSPAN="3" ALIGN="LEFT" BGCOLOR="#F2F2F2"><FONT POINT-SIZE="9" COLOR="#444444">{esc(tx)}</FONT></TD></TR>')
-        return f'    "{clave}" [label=<<TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="3" COLOR="{cab}">{"".join(filas)}</TABLE>>];'
-
-    for esquema in ESQUEMAS:
-        _, fondo = COLOR[esquema]
-        L.append(f'  subgraph cluster_{esquema} {{ label=<<B>esquema {esquema}</B>>; fontsize=18; style="rounded,filled"; '
-                 f'fillcolor="{fondo}"; color="{COLOR[esquema][0]}"; penwidth=2;')
-        for t in tablas:
-            if t["esquema"] == esquema:
-                L.append(nodo(f"{esquema}.{t['tabla']}"))
+    for e in esquemas:
+        cab, fondo = COLOR[e]
+        L.append(f'  subgraph cluster_{e} {{ label={etiqueta_servicio(e)}; fontsize=18; style="rounded,filled"; '
+                 f'fillcolor="{fondo}"; color="{cab}"; penwidth=2;')
+        L += [nodo(m, t) for t in m.de(e)]
         L.append("  }")
-
-    # La parte de Henry: el contrato que ya fija este esquema
-    L.append('  subgraph cluster_henry { label=<<B>esquema almacen (Henry) · aún sin migración</B>>; fontsize=18; style="rounded,dashed"; color="#999999";')
-    L.append('    "almacen.movimiento" [label=<<TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="3" COLOR="#999999" STYLE="dashed">'
-             '<TR><TD COLSPAN="2" BGCOLOR="#7F7F7F"><FONT COLOR="white"><B>almacen.movimiento</B></FONT><FONT COLOR="#FFD966"> APPEND-ONLY</FONT></TD></TR>'
-             '<TR><TD ALIGN="LEFT" PORT="c_uuid_cliente">uuid_cliente</TD><TD ALIGN="LEFT"><FONT COLOR="#B00020"><B>UNIQUE</B></FONT></TD></TR>'
-             '<TR><TD ALIGN="LEFT" PORT="c_almacen_id">almacen_id, proyecto_id</TD><TD ALIGN="LEFT"><FONT COLOR="#B00020">FK</FONT></TD></TR>'
-             '<TR><TD ALIGN="LEFT" PORT="c_periodo_id">periodo_id, proyecto_id</TD><TD ALIGN="LEFT"><FONT COLOR="#B00020">FK</FONT></TD></TR>'
-             '<TR><TD ALIGN="LEFT" PORT="c_dispositivo_id">dispositivo_id, proyecto_id</TD><TD ALIGN="LEFT"><FONT COLOR="#B00020">FK</FONT></TD></TR>'
-             '<TR><TD ALIGN="LEFT" PORT="c_insumo_id">insumo_id</TD><TD ALIGN="LEFT"><FONT COLOR="#B00020">FK</FONT></TD></TR>'
-             '<TR><TD ALIGN="LEFT" PORT="c_compra_id">compra_id (solo recepción)</TD><TD ALIGN="LEFT"><FONT COLOR="#B00020">FK</FONT></TD></TR>'
-             '<TR><TD ALIGN="LEFT">tipo · cantidad &gt; 0 · costo_unitario</TD><TD></TD></TR>'
-             '<TR><TD COLSPAN="2" ALIGN="LEFT" BGCOLOR="#FFF2CC"><FONT POINT-SIZE="10" COLOR="#7F6000"><B>SIN columna de saldo.</B><BR ALIGN="LEFT"/>'
-             '<B>El saldo se suma desde los movimientos.</B><BR ALIGN="LEFT"/>'
-             '<B>Sin UPDATE ni DELETE: corregir = reverso.</B><BR ALIGN="LEFT"/></FONT></TD></TR></TABLE>>];')
-    L.append("  }")
-    for campo, destino in (("c_almacen_id", "obra.almacen:c_id"), ("c_periodo_id", "obra.periodo:c_id"),
-                           ("c_dispositivo_id", "obra.dispositivo:c_id"), ("c_insumo_id", "catalogo.insumo:c_id"),
-                           ("c_compra_id", "compras.compra:c_id")):
-        L.append(f'  "almacen.movimiento":{campo} -> "{destino.split(":")[0]}":{destino.split(":")[1]} [style=dashed, color="#999999"];')
-
-    for origen, ocols, destino, dcols, compuesta in aristas:
-        if destino.split(".")[0] not in ESQUEMAS or destino == "obra.usuario":
-            continue      # las FK de autoría hacia usuario saturan el dibujo; se declaran en la leyenda
-        L.append(f'  "{origen}":c_{ocols[0]} -> "{destino}":c_{dcols[0]}' + (' [color="#2F5597", penwidth=1.4]' if compuesta else "") + ";")
-
-    # Leyenda y frontera
-    L.append('  subgraph cluster_leyenda { label=<<B>Cómo leerlo</B>>; fontsize=16; style="rounded"; color="#666666";')
-    L.append('    leyenda [label=<<TABLE BORDER="0" CELLBORDER="0" CELLSPACING="0" CELLPADDING="3">'
-             '<TR><TD ALIGN="LEFT"><FONT COLOR="#B00020"><B>PK / FK</B></FONT>  clave primaria / foránea (flecha del hijo al padre)</TD></TR>'
-             '<TR><TD ALIGN="LEFT"><FONT COLOR="#2F5597"><B>Flecha azul gruesa</B></FONT>  FK compuesta (id, proyecto_id): el motor garantiza que ambos son de la misma obra</TD></TR>'
-             '<TR><TD ALIGN="LEFT" BGCOLOR="#FFF2CC"><FONT COLOR="#7F6000"><B>UNIQUE</B></FONT>  índice único que sostiene una regla del dominio (parcial si trae WHERE)</TD></TR>'
-             '<TR><TD ALIGN="LEFT"><B>?</B> junto al tipo: admite NULL</TD></TR>'
-             '<TR><TD ALIGN="LEFT">Las FK de autoría hacia <B>obra.usuario</B> (registrado_por, autorizado_por, creado_por, anulada_por...) están marcadas FK pero no dibujadas, para no saturar.</TD></TR>'
-             '<TR><TD ALIGN="LEFT"><B>APPEND-ONLY</B>  libro: solo se inserta (disparador + sin permiso de UPDATE/DELETE para la aplicación)</TD></TR>'
-             f'<TR><TD ALIGN="LEFT">Vistas derivadas: {esc(", ".join(v.split(".")[1] for v in vistas))}</TD></TR>'
-             f'<TR><TD ALIGN="LEFT">Funciones SECURITY DEFINER (únicas que escriben periodos, plazo y correlativos): {esc(", ".join(funciones))}</TD></TR>'
-             '<TR><TD ALIGN="LEFT" BGCOLOR="#E8E8E8"><B>Frontera:</B> los microservicios NO leen ni escriben en esta base. Integraciones (S10, SUNAT, RENIEC) devuelve datos y la API decide qué guardar;</TD></TR>'
-             '<TR><TD ALIGN="LEFT" BGCOLOR="#E8E8E8">Notificaciones recibe por HTTP lo que el relevo toma de <B>outbox.evento</B> (escrito en la misma transacción que el hecho) y guarda su propia copia.</TD></TR>'
-             '</TABLE>>];')
-    L.append("  }")
+    if con_almacen:
+        L.append(ALMACEN)
+    ajenas = sorted({f.destino for f in m.fks if f.origen.split(".")[0] in esquemas and f.destino.split(".")[0] not in esquemas})
+    if not global_ and ajenas:
+        L.append('  subgraph cluster_ajenas { label=<<B>tablas de otros servicios que este referencia</B>>; fontsize=14; style="rounded,dashed"; color="#999999";')
+        L += [fantasma(a) for a in ajenas]
+        L.append("  }")
+    for f in m.fks:
+        if f.origen.split(".")[0] not in esquemas or f.origen == f.destino:
+            continue
+        if global_ and f.destino == "obra.usuario":
+            continue
+        if f.entre_servicios:
+            estilo = f'[color="{ROJO}", style=dashed, penwidth=1.3]'
+        else:
+            estilo = '[color="#2F5597", penwidth=1.4]' if f.compuesta else ""
+        L.append(f'  "{f.origen}":c_{f.cols[0]} -> "{f.destino}":c_{f.dcols[0]} {estilo};')
+    L.append(leyenda(m, global_))
     L.append("}")
-
-    dot = SALIDA / "diagrama-fisico.dot"
+    dot = base.with_suffix(".dot")
     dot.write_text("\n".join(L), encoding="utf-8")
     for fmt, extra in (("svg", []), ("png", ["-Gdpi=110"])):
-        subprocess.run(["dot", f"-T{fmt}", *extra, str(dot), "-o", str(SALIDA / f"diagrama-fisico.{fmt}")], check=True)
-    print(f"{len(tablas)} tablas, {len(aristas)} claves foráneas, {len(vistas)} vistas -> {SALIDA}/diagrama-fisico.(dot|svg|png)")
+        subprocess.run(["dot", f"-T{fmt}", *extra, str(dot), "-o", str(base.with_suffix(f".{fmt}"))], check=True)
+    if not global_:
+        dot.unlink()
+
+
+def main() -> None:
+    m = leer_modelo()
+    sub = (f"PostgreSQL {m.version_pg} · migración {m.migracion} · {len(m.tablas)} tablas, {len(m.fks)} claves foráneas "
+           f"({len(m.fks_entre_servicios)} entre servicios) · generado desde la base migrada")
+    dibujar(m, ESQUEMAS, "SIGRO · Modelo físico de datos por microservicio", sub, SALIDA / "diagrama-fisico", con_almacen=True)
+    (SALIDA / "fisico").mkdir(exist_ok=True)
+    for e in ESQUEMAS:
+        s = SERVICIO_DE[e]
+        tablas = m.de(e)
+        sub_s = (f"esquema {e} · rol sigro_svc_{s} · {len(tablas)} tablas · "
+                 f"{sum(1 for f in m.fks_entre_servicios if f.origen.startswith(e + '.'))} FK hacia otros servicios · migración {m.migracion}")
+        dibujar(m, [e], f"SIGRO · microservicio {s} · modelo físico", sub_s, SALIDA / "fisico" / s, con_almacen=False)
+    print(f"{len(m.tablas)} tablas, {len(m.fks)} FK ({len(m.fks_entre_servicios)} entre servicios) -> diagrama-fisico.* y fisico/<servicio>.*")
 
 
 if __name__ == "__main__":
