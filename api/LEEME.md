@@ -32,6 +32,7 @@ no puede borrar nada ni editar ningún libro.
 | 0005 | **solicitud de materiales** (CR-04, Sprint 2): solicitud, líneas, correlativo, vistas de estado derivado |
 | 0006 | **outbox**: bandeja de salida de eventos hacia Notificaciones (inmutable, sin borrado) |
 | 0007 | **histórico del factor de conversión** del insumo (HU-17): libro solo-agregar con quién, cuándo y por qué |
+| 0008 | **requerimiento de obra** (HU-19) con su libro de ajustes, **parámetros de reposición** (HU-25) y la vista `saldo_por_comprar` (HU-24) |
 
 ## Diagramas (`api/docs/`)
 
@@ -122,6 +123,9 @@ Argon2id, bloqueo a los 5 intentos (15 min), misma respuesta para usuario inexis
 | `GET·POST /catalogo/insumos`, `POST …/{id}/verificar` | ver: todos · crear («por verificar»): almacenero, residente, administrador · verificar: residente, administrador |
 | `POST /catalogo/insumos/{id}/factor-conversion`, `GET …/historial` | cambiar: residente, administrador (con motivo; queda en el histórico) · ver: todos |
 | `POST /catalogo/insumos/importar-s10` | residente, administrador (aplica lo que leyó Integraciones; repetirlo no duplica) |
+| `POST /obras/{id}/requerimiento/importar`, `GET …/requerimiento`, `POST …/{id}/ajustar`, `GET …/{id}/ajustes` | importar y ajustar: residente, administrador (ajuste con motivo) · ver: + gerente |
+| `GET /obras/{id}/saldo-por-comprar?solo_pendientes=` | residente, administrador, gerente |
+| `POST·GET /obras/{id}/parametros-reposicion`, `GET …/{insumo_id}/historial` | registrar: residente, administrador · ver: + gerente (cada cambio es una vigencia nueva) |
 | `GET /notificaciones`, `POST /notificaciones/{id}/leida` | autenticado (siempre con SU usuario del token) |
 
 Errores: `{"codigo": "...", "mensaje": "..."}`, igual que `ErrorApi` en `web/src/api/cliente.ts`. Los campos van en
@@ -139,6 +143,9 @@ Errores: `{"codigo": "...", "mensaje": "..."}`, igual que `ErrorApi` en `web/src
 | D-K1 | El código de un insumo nuevo lo genera el servidor (`SIGRO-00001`…); un nombre repetido (sin tildes ni mayúsculas, misma unidad) se rechaza señalando el que ya existe; nace «por verificar» | El almacenero no espera pero tampoco se duplica el catálogo (HU-08). Código y verificación: pendiente de confirmar con Fernando, dueño del catálogo |
 | D-K2 | Importar el S10 crea los nuevos ya verificados y de los existentes solo actualiza la descripción; **no** toca código, unidad, factor ni saldos | El catálogo comparte solo nombre y código entre obras; cantidades y precios son de cada obra (HU-19) |
 | D-S2 | El estado de una solicitud nunca se edita: se calcula de las compras (`solicitada → comprada_en_parte → comprada`); solo «anulada» se marca a mano, y se permite en cualquier estado | Así no hay estados inconsistentes con lo comprado. Falta «recibida», que depende de almacén (D-S1). Anular con compras hechas no las revierte: por confirmar con el cliente |
+| D-R1 | `factor_conversion` = unidades del S10 por unidad de compra (ej. 7.12 kg por varilla); el requerimiento está en unidad del S10 | Sin esto no se puede restar lo comprado de lo planificado |
+| D-R2 | «Comprado» cuenta solo compras `registrada`; las anuladas no restan | Coherente con D-C2 |
+| D-R3 | Importar el requerimiento nunca pisa: si ya existe con otra cantidad/precio avisa; se corrige con ajuste (motivo + autor, libro) | Trazabilidad del presupuesto |
 | D-N1 | Los avisos los resuelve la API (destinatarios) y nunca incluyen a quien hizo la acción | Nadie necesita que le avisen de lo que acaba de hacer |
 
 ## Qué NO está hecho

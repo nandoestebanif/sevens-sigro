@@ -37,6 +37,12 @@ ACCIONES: dict[str, frozenset[str]] = {
     "compra.consultar": frozenset({RESIDENTE, ADMIN, GERENTE}),
     "solicitud.emitir": frozenset({RESIDENTE}),
     "solicitud.consultar": frozenset({RESIDENTE, ADMIN, GERENTE}),
+    # --- requerimiento, saldo por comprar y reposición (HU-19, HU-24, HU-25)
+    "requerimiento.importar": frozenset({RESIDENTE, ADMIN}),
+    "requerimiento.ajustar": frozenset({RESIDENTE, ADMIN}),
+    "requerimiento.consultar": frozenset({RESIDENTE, ADMIN, GERENTE}),
+    "reposicion.registrar": frozenset({RESIDENTE, ADMIN}),
+    "reposicion.consultar": frozenset({RESIDENTE, ADMIN, GERENTE}),
     # --- catálogo de insumos (HU-07, HU-08, HU-17)
     "insumo.consultar": TODOS,
     "insumo.registrar": frozenset({ALMACENERO, RESIDENTE, ADMIN}),      # el almacenero no espera: lo nombra y el residente lo verifica
