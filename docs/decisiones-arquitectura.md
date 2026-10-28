@@ -62,7 +62,7 @@ y deja al cliente sin forma de probar).
 **Consecuencia.** Los niveles gratuitos suspenden por inactividad y la primera petición
 tarda: se advierte antes de cada demostración.
 
-## ADR-07 · Kotlin Multiplatform para la app: Android e iOS con un solo código
+## ADR-08 · Kotlin Multiplatform para la app: Android e iOS con un solo código
 **Contexto.** El 28/10 el equipo decidió que la app funcione en Android y en iPhone, para no depender del celular que tenga cada almacenero o ingeniero SSOMA (a confirmar con el Product Owner). ADR-02 eligió Android nativo por
 las garantías de persistencia y de envío en segundo plano; esas garantías se tienen que conservar.
 **Decisión.** Kotlin Multiplatform con Compose Multiplatform, Koin, Ktor y Room KMP. La interfaz, el

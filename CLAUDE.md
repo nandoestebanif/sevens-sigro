@@ -57,15 +57,18 @@ lo declara.
 |---|---|
 | API | Python · FastAPI · SQLAlchemy 2 · Pydantic v2 · Alembic |
 | Base de datos | PostgreSQL |
-| App del almacenero | Kotlin Multiplatform (Android + iOS) · Compose Multiplatform · Koin · Ktor · Room KMP · WorkManager (ADR-07) |
+| App del almacenero | Kotlin Multiplatform (Android + iOS) · Compose Multiplatform · Koin · Ktor · Room KMP · WorkManager (ADR-08) |
 | Web de oficina | React 18 · TypeScript · Vite |
 | Integraciones | Microservicio FastAPI aparte (importación del S10, consulta de RUC en SUNAT) |
+| Notificaciones | Microservicio FastAPI aparte con patrón outbox (avisos a residente y administrador · ADR-07, propuesto) |
 | Despliegue | Nube gestionada, PostgreSQL administrado, APK por enlace |
 
-**Monolito modular** para la API: seis módulos por dominio (obra, catálogo, almacén,
+**Arquitectura híbrida: monolito modular + dos microservicios.** El núcleo (la API) es un **monolito modular**: seis módulos por dominio (obra, catálogo, almacén,
 compras, costo, tareo), cada uno con su esquema y **sin consultas cruzadas directas**
-entre módulos. Lo que depende de terceros vive en el microservicio, para que una
-importación pesada no deje lenta la app del almacenero.
+entre módulos. Lo que depende de terceros o puede fallar sin detener la operación vive en **microservicios**
+aparte: **Integraciones** (S10 y SUNAT/RENIEC), para que una importación pesada no deje lenta la
+app del almacenero, y **Notificaciones** (avisos por outbox). Microservicios por cada dominio se
+descartaron a propósito (ADR-01): cuatro personas a tiempo parcial no pueden operar seis servicios.
 
 El detalle y las alternativas descartadas están en `docs/decisiones-arquitectura.md`.
 
@@ -73,7 +76,8 @@ El detalle y las alternativas descartadas están en `docs/decisiones-arquitectur
 
 ```
 api/            Adiel Luján       · FastAPI, módulos de dominio, migraciones
-integraciones/  Fernando Istaña   · microservicio S10 y SUNAT
+integraciones/  Fernando Istaña   · microservicio S10, SUNAT y RENIEC
+notificaciones/ Adiel Luján       · microservicio de avisos (outbox)
 android/        Nicolás Pachamora · app del almacenero (Android + iOS)
 web/            Fernando y Henry  · React de oficina
 docs/                             · historias, reglas, permisos, decisiones
