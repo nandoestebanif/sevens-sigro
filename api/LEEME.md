@@ -1,4 +1,51 @@
-# SIGRO · api · obra, compras y tareo (Adiel)
+# SIGRO · api · microservicios obras, catálogo, compras, tareo y gateway (Adiel)
+
+> **28/10 · Arquitectura de microservicios (ADR-09).** Esta carpeta ya no es una API única: es el código de
+> **cinco servicios independientes** (cada uno con su app, su imagen Docker, su esquema y su usuario de base).
+> Ver «Microservicios» abajo. Lo que sigue de este archivo (reglas, decisiones, endpoints) no cambia: las rutas
+> públicas son las mismas y la web no se entera.
+
+## Microservicios
+
+| Servicio | Arranque | Base | Rutas públicas que atiende |
+|---|---|---|---|
+| **gateway** | `uvicorn app.servicios.gateway:app` | — | todas las de `/api/v1` (las reparte según `app/enrutado.py`) |
+| **obras** | `uvicorn app.servicios.obras:app` | `obra` · `sigro_svc_obras` | `/auth`, `/usuarios`, `/obras/...` (obra, periodos, almacenes, asignaciones, dispositivos), `/notificaciones` |
+| **catalogo** | `uvicorn app.servicios.catalogo:app` | `catalogo` · `sigro_svc_catalogo` | `/catalogo/...` |
+| **compras** | `uvicorn app.servicios.compras:app` | `compras` · `sigro_svc_compras` | `/proveedores`, `/obras/{id}/compras · solicitudes · requerimiento · saldo-por-comprar · parametros-reposicion` |
+| **tareo** | `uvicorn app.servicios.tareo:app` | `tareo` · `sigro_svc_tareo` | `/obras/{id}/trabajadores · jornadas · horas-acumuladas` |
+| **relevo** | `python -m app.relay` | `outbox` · `sigro_svc_relevo` | — (entrega eventos a notificaciones) |
+
+**Cómo se hablan.** API interna `/interno/...` (no sale por el gateway, exige `X-Servicio-Token`):
+
+| Quién pregunta | A quién | Para qué |
+|---|---|---|
+| catálogo, compras, tareo | obras `POST /interno/autorizar` | ¿quién es y qué rol tiene en esta obra? (regla 9, en cada petición) |
+| compras | obras `GET /interno/obras/{id}/destinatarios` | a quién avisar de un evento |
+| compras | catálogo `POST /interno/insumos/buscar` | código, descripción, unidades y factor de los insumos |
+| tareo | obras `GET /interno/obras/{id}/periodos` | número de cada periodo |
+
+Variables: `SIGRO_URL_OBRAS`, `SIGRO_URL_CATALOGO`, `SIGRO_URL_COMPRAS`, `SIGRO_URL_TAREO` (en el gateway y en
+los servicios que llaman a otros), `SIGRO_SERVICIO_TOKEN`, y `SIGRO_APP_DATABASE_URL` con **el usuario del servicio**.
+
+**Garantías probadas** (`pruebas/test_microservicios.py`): cada usuario de base solo lee su esquema; el código de
+un servicio no importa el de otro; la imagen de cada servicio arranca con solo su código (se poda lo ajeno); toda
+ruta pública está en el gateway y va a su dueño; `/interno` no sale por el gateway y exige token; una baja corta el
+acceso en todos los servicios al instante; si cae el catálogo solo falla lo que lo necesita. Toda la suite (707
+pruebas) corre con los servicios separados, cada uno con su usuario de base.
+
+**Correr sin Docker** (cinco terminales, una por servicio):
+
+```bash
+export SIGRO_URL_OBRAS=http://127.0.0.1:8101 SIGRO_URL_CATALOGO=http://127.0.0.1:8102 \
+       SIGRO_URL_COMPRAS=http://127.0.0.1:8103 SIGRO_URL_TAREO=http://127.0.0.1:8104
+SIGRO_APP_DATABASE_URL=postgresql+psycopg://sigro_obras:CLAVE@localhost:5432/sigro uvicorn app.servicios.obras:app --port 8101
+# … igual catalogo (8102), compras (8103), tareo (8104) con su usuario …
+uvicorn app.servicios.gateway:app --port 8000          # la web apunta aquí: VITE_API_URL=http://localhost:8000
+```
+
+Contratos: `docs/openapi-<servicio>.json` por servicio y `docs/openapi.json` con lo que expone el gateway
+(`python -m app.servicios.openapi`).
 
 Esquema de PostgreSQL con migraciones Alembic **y la API FastAPI** (autenticación, permisos por rol y obra, endpoints de
 obra/tareo/compras, bandeja de salida), más el microservicio de Notificaciones (`../notificaciones`).
@@ -17,9 +64,9 @@ python -m pytest            # necesita un PostgreSQL con usuario superusuario (v
 SIGRO_DB=sigro_dev python docs/generar_drawio.py      # regenera los tres diagramas .drawio
 ```
 
-Las migraciones corren con el usuario DUEÑO. La aplicación debe conectarse como un usuario
-miembro del rol `sigro_app` (se crea en 0001 sin LOGIN; operaciones le da contraseña): ese rol
-no puede borrar nada ni editar ningún libro.
+Las migraciones corren con el usuario DUEÑO. Cada servicio se conecta con SU usuario (`sigro_obras`,
+`sigro_catalogo`, `sigro_compras`, `sigro_tareo`, `sigro_relevo`), miembro del rol `sigro_svc_<servicio>`
+(migración 0009): solo ve su esquema, no puede borrar nada ni editar ningún libro. `infra/migrar.sh` los crea.
 
 ## Qué hay
 
@@ -83,15 +130,16 @@ Se abren con draw.io (app.diagrams.net, la extensión de VS Code o draw.io Deskt
 
 ```bash
 cp .env.example .env            # cambia TODOS los valores
-docker compose up --build       # db + migraciones + api + relevo + notificaciones + integraciones
-docker compose run --rm -e SIGRO_ADMIN_CLAVE='tu-clave-larga' api python -m app.cli primer-admin \
+docker compose up --build       # db + migraciones + gateway + obras + catalogo + compras + tareo + relevo + notificaciones + integraciones
+docker compose run --rm -e SIGRO_ADMIN_CLAVE='tu-clave-larga' obras python -m app.cli primer-admin \
     --usuario adiel --nombre "Víctor Adiel Luján" --obra "Multifamiliar Flores" --inicio 2026-10-19 --fin 2027-10-17
-# opcional: proveedores reales del cliente (idempotente; --dry-run para solo contar)
-python -m semillas.cargar_proveedores RUTA/proveedores-cliente.json --dry-run
+# opcional: proveedores reales del cliente (idempotente; --dry-run para solo contar). Las semillas solo están en la
+# imagen del migrador (las de los servicios no las llevan):
+docker compose run --rm migrar python -m semillas.cargar_proveedores RUTA/proveedores-cliente.json --dry-run
 ```
 
-Documentación interactiva en `http://localhost:8000/docs`. Sin Docker: las mismas variables (`SIGRO_APP_DATABASE_URL`,
-`SIGRO_JWT_SECRET`, `SIGRO_NOTIFICACIONES_URL`, `SIGRO_SERVICIO_TOKEN`) y `uvicorn app.main:app`, `python -m app.relay`.
+Cada servicio publica su documentación en su propio `/docs`; el contrato unido está en `docs/openapi.json`.
+Sin Docker: ver «Microservicios» arriba.
 El compose se validó con `docker compose config`; **las imágenes no se pudieron construir en el entorno de desarrollo**
 (no había demonio de Docker): la primera vez que lo corras, avisa si algo falla. La misma cadena sí se probó a mano con
 servidores reales: login → asignar → pedir dispositivo → relevo → campana del administrador.
@@ -161,7 +209,7 @@ ya están hechas, hay que ponerse de acuerdo en quién las cierra.
 cliente (idempotente por código, como `material` y ya verificados; sin precios ni marcas). Ojo: el código del cliente
 («68») no es el del S10 («0221000000»), así que cargar ambos duplica materiales hasta definir el emparejamiento
 S10 ↔ catálogo (decisión de Fernando). El contrato de la API está en `docs/openapi.json` (se regenera con
-`python -c "import json; from app.main import app; json.dump(app.openapi(), open('docs/openapi.json','w'), ensure_ascii=False, indent=1)"`).
+`python -m app.servicios.openapi`).
 
 ## Datos reales del cliente (proveedores)
 

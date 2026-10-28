@@ -1,5 +1,24 @@
 # Víctor Adiel Luján · Product Owner · Backend
 
+## 28/10 · La API pasó a microservicios (acordado contigo)
+
+Rama `arq-microservicios` (sale de `ht-05-app-base`). Lo que cambia para ti, sin perder nada de lo tuyo:
+
+- `api/app/main.py` ya no existe. Hay cinco apps: `app/servicios/{gateway,obras,catalogo,compras,tareo}.py`.
+  Tus módulos (`app/modulos/*`) siguen iguales salvo que **ya no hacen JOIN a otros esquemas**: compras pide los
+  insumos al catálogo (`catalogo_cliente.py`) y tareo pide los periodos a obras; el control de acceso de los
+  servicios que no son obras pregunta a `POST /interno/autorizar`.
+- **Migración 0009** (revísala tú, que eres el dueño de las migraciones): un rol por servicio con los mismos
+  privilegios que `sigro_app` tenía sobre su esquema, y tres disparadores que validan contra la obra en SECURITY DEFINER.
+- Tus **678 pruebas siguen en verde** corriendo con los servicios separados, cada uno con su usuario de base, más
+  29 nuevas en `pruebas/test_microservicios.py` (707 en total).
+- `docker-compose.yml` ahora levanta gateway, obras, catalogo, compras, tareo, relevo, notificaciones e
+  integraciones; `infra/migrar.sh` crea un usuario de base por servicio. Las claves nuevas están en `.env.example`.
+- Para almacén y costo: mismo patrón (carpeta en `app/modulos/`, entrada en `app/servicios/`, línea en
+  `app/enrutado.py`, rol en una migración). El detalle está en el ADR-09 de `docs/decisiones-arquitectura.md`.
+- Pendiente fase 2 (Sprint 2): réplicas locales por eventos para quitar las claves foráneas que cruzan esquemas.
+
+
 **Reparto del 22/10:** eres el Product Owner y llevas **todo el backend** (incluidos almacén y costo, que antes eran de Henry) y las migraciones: solo tú las creas. Tu carpeta es `api/`.
 
 ## Lo primero

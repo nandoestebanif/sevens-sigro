@@ -18,19 +18,11 @@ from app.dependencias import Actor, exigir, exigir_en_alguna_obra, usuario_auten
 from app.errores import ErrorSigro
 from app.modulos.obra import esquemas as e
 from app.seguridad import clave_aceptable, crear_token, hashear, verificar
+from app.sql import fila, filas
 
 auth = APIRouter(prefix="/auth", tags=["sesión"])
 usuarios = APIRouter(prefix="/usuarios", tags=["usuarios"])
 obras = APIRouter(prefix="/obras", tags=["obra"])
-
-
-def filas(s: Session, sql: str, /, **p) -> list[dict]:
-    return [dict(r) for r in s.execute(text(sql), p).mappings().all()]
-
-
-def fila(s: Session, sql: str, /, **p) -> dict | None:
-    r = s.execute(text(sql), p).mappings().first()
-    return dict(r) if r else None
 
 
 def _obras_de(s: Session, usuario_id: int) -> list[dict]:

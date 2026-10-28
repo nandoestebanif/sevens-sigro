@@ -1,0 +1,51 @@
+flowchart LR
+  subgraph Clientes
+    WEB["Web de oficina<br/>React + Vite"]
+    APP["App del almacenero<br/>Kotlin Multiplatform<br/>Android · iOS"]
+  end
+  GW["gateway<br/>/api/v1<br/>enruta por servicio"]
+  WEB -->|HTTPS + JWT| GW
+  APP -->|HTTPS + JWT<br/>cola sin señal| GW
+
+  subgraph Servicios["Microservicios de dominio"]
+    OB["obras<br/>identidad · obras · accesos<br/>dispositivos"]
+    CA["catalogo<br/>insumos · factor<br/>importación S10"]
+    CO["compras<br/>proveedores · compras<br/>requerimiento · reposición"]
+    TA["tareo<br/>trabajadores<br/>asistencia"]
+    AL["almacen · costo<br/>(por construir)"]
+  end
+  GW --> OB & CA & CO & TA & AL
+
+  CA -. "POST /interno/autorizar" .-> OB
+  CO -. "POST /interno/autorizar<br/>destinatarios" .-> OB
+  TA -. "autorizar · periodos" .-> OB
+  CO -. "POST /interno/insumos/buscar" .-> CA
+
+  INT["integraciones<br/>S10 · SUNAT · RENIEC"]
+  CO -. "RUC" .-> INT
+  INT --> FAC[("Factiliza")]
+
+  subgraph PG["PostgreSQL · un esquema y un usuario por servicio"]
+    DOB[("obra<br/>sigro_svc_obras")]
+    DCA[("catalogo<br/>sigro_svc_catalogo")]
+    DCO[("compras<br/>sigro_svc_compras")]
+    DTA[("tareo<br/>sigro_svc_tareo")]
+    DOX[("outbox<br/>sigro_svc_relevo")]
+  end
+  OB --- DOB
+  CA --- DCA
+  CO --- DCO
+  TA --- DTA
+  OB -- "evento" --> DOX
+  CO -- "evento" --> DOX
+  REL["relevo"] --- DOX
+  REL -->|al menos una vez| NOT["notificaciones<br/>avisos"]
+
+  classDef svc fill:#FFEDD5,stroke:#C2410C,color:#111827
+  classDef gw fill:#111827,stroke:#111827,color:#FFFFFF
+  classDef db fill:#EFF6FF,stroke:#1E3A8A,color:#111827
+  classDef futuro fill:#F3F4F6,stroke:#9CA3AF,color:#4B5563,stroke-dasharray: 4 4
+  class OB,CA,CO,TA,INT,NOT,REL svc
+  class GW gw
+  class DOB,DCA,DCO,DTA,DOX db
+  class AL futuro

@@ -1,11 +1,16 @@
+# Una imagen por microservicio, desde el mismo código: cada una conserva SOLO lo suyo.
+#   docker build --build-arg SERVICIO=compras -t sigro-compras ./api
+# SERVICIO: obras | catalogo | compras | tareo | gateway | relevo | migrador
 FROM python:3.13-slim
-ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
+ARG SERVICIO=obras
+ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 SIGRO_SERVICIO=${SERVICIO}
 WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
-# Sin root: la API no necesita permisos de sistema.
+RUN python -m app.servicios.podar "${SERVICIO}"
+# Sin root: ningún servicio necesita permisos de sistema.
 RUN useradd --system --no-create-home sigro && chown -R sigro /app
 USER sigro
 EXPOSE 8000
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["sh", "-c", "exec uvicorn app.servicios.${SIGRO_SERVICIO}:app --host 0.0.0.0 --port 8000"]

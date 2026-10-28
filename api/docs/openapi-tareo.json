@@ -1,0 +1,981 @@
+{
+ "openapi": "3.1.0",
+ "info": {
+  "title": "SIGRO · servicio tareo",
+  "description": "Trabajadores y asistencia de la obra.",
+  "version": "0.2.0"
+ },
+ "paths": {
+  "/salud": {
+   "get": {
+    "tags": [
+     "sistema"
+    ],
+    "summary": "Salud",
+    "operationId": "salud_salud_get",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/obras/{obra_id}/trabajadores": {
+   "post": {
+    "tags": [
+     "tareo"
+    ],
+    "summary": "Registrar Trabajador",
+    "operationId": "registrar_trabajador_api_v1_obras__obra_id__trabajadores_post",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "obra_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "minimum": 1,
+       "title": "Obra Id"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/TrabajadorIn"
+       }
+      }
+     }
+    },
+    "responses": {
+     "201": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/TrabajadorOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   },
+   "get": {
+    "tags": [
+     "tareo"
+    ],
+    "summary": "Listar Trabajadores",
+    "operationId": "listar_trabajadores_api_v1_obras__obra_id__trabajadores_get",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "obra_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "minimum": 1,
+       "title": "Obra Id"
+      }
+     },
+     {
+      "name": "solo_activos",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "boolean",
+       "default": false,
+       "title": "Solo Activos"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "type": "array",
+         "items": {
+          "$ref": "#/components/schemas/TrabajadorOut"
+         },
+         "title": "Response Listar Trabajadores Api V1 Obras  Obra Id  Trabajadores Get"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/obras/{obra_id}/trabajadores/{trabajador_id}/baja": {
+   "post": {
+    "tags": [
+     "tareo"
+    ],
+    "summary": "Dar De Baja",
+    "description": "R10: la baja es una fecha de salida; sus jornadas se conservan.",
+    "operationId": "dar_de_baja_api_v1_obras__obra_id__trabajadores__trabajador_id__baja_post",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "trabajador_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Trabajador Id"
+      }
+     },
+     {
+      "name": "obra_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "minimum": 1,
+       "title": "Obra Id"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/BajaIn"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/TrabajadorOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/obras/{obra_id}/jornadas": {
+   "post": {
+    "tags": [
+     "tareo"
+    ],
+    "summary": "Registrar Jornada",
+    "description": "Un reenvío con el mismo `uuid_cliente` no crea nada y devuelve el original (R3).",
+    "operationId": "registrar_jornada_api_v1_obras__obra_id__jornadas_post",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "obra_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "minimum": 1,
+       "title": "Obra Id"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/JornadaIn"
+       }
+      }
+     }
+    },
+    "responses": {
+     "201": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/JornadaOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   },
+   "get": {
+    "tags": [
+     "tareo"
+    ],
+    "summary": "Listar Jornadas",
+    "description": "Solo la jornada vigente de cada día (la última de su cadena de correcciones).",
+    "operationId": "listar_jornadas_api_v1_obras__obra_id__jornadas_get",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "obra_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "minimum": 1,
+       "title": "Obra Id"
+      }
+     },
+     {
+      "name": "fecha",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string",
+         "format": "date"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Fecha"
+      }
+     },
+     {
+      "name": "trabajador_id",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "integer",
+         "minimum": 1
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Trabajador Id"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "type": "array",
+         "items": {
+          "$ref": "#/components/schemas/JornadaOut"
+         },
+         "title": "Response Listar Jornadas Api V1 Obras  Obra Id  Jornadas Get"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/obras/{obra_id}/jornadas/{jornada_id}/correccion": {
+   "post": {
+    "tags": [
+     "tareo"
+    ],
+    "summary": "Corregir Jornada",
+    "description": "Corregir es insertar otra jornada que apunta a la vigente, con su motivo. La original no se toca.",
+    "operationId": "corregir_jornada_api_v1_obras__obra_id__jornadas__jornada_id__correccion_post",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "jornada_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Jornada Id"
+      }
+     },
+     {
+      "name": "obra_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "minimum": 1,
+       "title": "Obra Id"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/CorreccionIn"
+       }
+      }
+     }
+    },
+    "responses": {
+     "201": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/JornadaOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/obras/{obra_id}/horas-acumuladas": {
+   "get": {
+    "tags": [
+     "tareo"
+    ],
+    "summary": "Horas Acumuladas",
+    "operationId": "horas_acumuladas_api_v1_obras__obra_id__horas_acumuladas_get",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "obra_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "minimum": 1,
+       "title": "Obra Id"
+      }
+     },
+     {
+      "name": "periodo_id",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "integer",
+         "minimum": 1
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Periodo Id"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "type": "array",
+         "items": {
+          "$ref": "#/components/schemas/HorasOut"
+         },
+         "title": "Response Horas Acumuladas Api V1 Obras  Obra Id  Horas Acumuladas Get"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  }
+ },
+ "components": {
+  "schemas": {
+   "BajaIn": {
+    "properties": {
+     "fecha_salida": {
+      "type": "string",
+      "format": "date",
+      "title": "Fecha Salida"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "fecha_salida"
+    ],
+    "title": "BajaIn"
+   },
+   "CorreccionIn": {
+    "properties": {
+     "estado": {
+      "type": "string",
+      "enum": [
+       "presente",
+       "ausente",
+       "permiso"
+      ],
+      "title": "Estado"
+     },
+     "horas_normales": {
+      "anyOf": [
+       {
+        "type": "number",
+        "maximum": 24.0,
+        "minimum": 0.0
+       },
+       {
+        "type": "string",
+        "pattern": "^(?!^[-+.]*$)[+-]?0*(?:\\d{0,2}|(?=[\\d.]{1,5}0*$)\\d{0,2}\\.\\d{0,2}0*$)"
+       }
+      ],
+      "title": "Horas Normales",
+      "default": "0"
+     },
+     "horas_extra": {
+      "anyOf": [
+       {
+        "type": "number",
+        "maximum": 24.0,
+        "minimum": 0.0
+       },
+       {
+        "type": "string",
+        "pattern": "^(?!^[-+.]*$)[+-]?0*(?:\\d{0,2}|(?=[\\d.]{1,5}0*$)\\d{0,2}\\.\\d{0,2}0*$)"
+       }
+      ],
+      "title": "Horas Extra",
+      "default": "0"
+     },
+     "motivo": {
+      "type": "string",
+      "maxLength": 300,
+      "minLength": 3,
+      "title": "Motivo"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "estado",
+     "motivo"
+    ],
+    "title": "CorreccionIn"
+   },
+   "HTTPValidationError": {
+    "properties": {
+     "detail": {
+      "items": {
+       "$ref": "#/components/schemas/ValidationError"
+      },
+      "type": "array",
+      "title": "Detail"
+     }
+    },
+    "type": "object",
+    "title": "HTTPValidationError"
+   },
+   "HorasOut": {
+    "properties": {
+     "periodo_id": {
+      "type": "integer",
+      "title": "Periodo Id"
+     },
+     "periodo_numero": {
+      "type": "integer",
+      "title": "Periodo Numero"
+     },
+     "trabajador_id": {
+      "type": "integer",
+      "title": "Trabajador Id"
+     },
+     "trabajador": {
+      "type": "string",
+      "title": "Trabajador"
+     },
+     "cuadrilla": {
+      "type": "string",
+      "title": "Cuadrilla"
+     },
+     "categoria": {
+      "type": "string",
+      "title": "Categoria"
+     },
+     "dias_presente": {
+      "type": "integer",
+      "title": "Dias Presente"
+     },
+     "dias_ausente": {
+      "type": "integer",
+      "title": "Dias Ausente"
+     },
+     "dias_permiso": {
+      "type": "integer",
+      "title": "Dias Permiso"
+     },
+     "horas_normales": {
+      "type": "string",
+      "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+      "title": "Horas Normales"
+     },
+     "horas_extra": {
+      "type": "string",
+      "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+      "title": "Horas Extra"
+     }
+    },
+    "type": "object",
+    "required": [
+     "periodo_id",
+     "periodo_numero",
+     "trabajador_id",
+     "trabajador",
+     "cuadrilla",
+     "categoria",
+     "dias_presente",
+     "dias_ausente",
+     "dias_permiso",
+     "horas_normales",
+     "horas_extra"
+    ],
+    "title": "HorasOut"
+   },
+   "JornadaIn": {
+    "properties": {
+     "trabajador_id": {
+      "type": "integer",
+      "minimum": 1.0,
+      "title": "Trabajador Id"
+     },
+     "fecha": {
+      "type": "string",
+      "format": "date",
+      "title": "Fecha"
+     },
+     "estado": {
+      "type": "string",
+      "enum": [
+       "presente",
+       "ausente",
+       "permiso"
+      ],
+      "title": "Estado"
+     },
+     "horas_normales": {
+      "anyOf": [
+       {
+        "type": "number",
+        "maximum": 24.0,
+        "minimum": 0.0
+       },
+       {
+        "type": "string",
+        "pattern": "^(?!^[-+.]*$)[+-]?0*(?:\\d{0,2}|(?=[\\d.]{1,5}0*$)\\d{0,2}\\.\\d{0,2}0*$)"
+       }
+      ],
+      "title": "Horas Normales",
+      "default": "0"
+     },
+     "horas_extra": {
+      "anyOf": [
+       {
+        "type": "number",
+        "maximum": 24.0,
+        "minimum": 0.0
+       },
+       {
+        "type": "string",
+        "pattern": "^(?!^[-+.]*$)[+-]?0*(?:\\d{0,2}|(?=[\\d.]{1,5}0*$)\\d{0,2}\\.\\d{0,2}0*$)"
+       }
+      ],
+      "title": "Horas Extra",
+      "default": "0"
+     },
+     "uuid_cliente": {
+      "anyOf": [
+       {
+        "type": "string",
+        "format": "uuid"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Uuid Cliente",
+      "description": "Idempotencia: un reenvío con el mismo uuid no duplica (R3)."
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "trabajador_id",
+     "fecha",
+     "estado"
+    ],
+    "title": "JornadaIn"
+   },
+   "JornadaOut": {
+    "properties": {
+     "id": {
+      "type": "integer",
+      "title": "Id"
+     },
+     "uuid_cliente": {
+      "anyOf": [
+       {
+        "type": "string",
+        "format": "uuid"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Uuid Cliente"
+     },
+     "trabajador_id": {
+      "type": "integer",
+      "title": "Trabajador Id"
+     },
+     "fecha": {
+      "type": "string",
+      "format": "date",
+      "title": "Fecha"
+     },
+     "estado": {
+      "type": "string",
+      "title": "Estado"
+     },
+     "horas_normales": {
+      "type": "string",
+      "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+      "title": "Horas Normales"
+     },
+     "horas_extra": {
+      "type": "string",
+      "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+      "title": "Horas Extra"
+     },
+     "categoria": {
+      "type": "string",
+      "title": "Categoria"
+     },
+     "periodo_id": {
+      "type": "integer",
+      "title": "Periodo Id"
+     },
+     "registrado_por": {
+      "type": "integer",
+      "title": "Registrado Por"
+     },
+     "fecha_servidor": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Fecha Servidor"
+     },
+     "corrige_a_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Corrige A Id"
+     },
+     "motivo_correccion": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Motivo Correccion"
+     }
+    },
+    "type": "object",
+    "required": [
+     "id",
+     "uuid_cliente",
+     "trabajador_id",
+     "fecha",
+     "estado",
+     "horas_normales",
+     "horas_extra",
+     "categoria",
+     "periodo_id",
+     "registrado_por",
+     "fecha_servidor",
+     "corrige_a_id",
+     "motivo_correccion"
+    ],
+    "title": "JornadaOut"
+   },
+   "TrabajadorIn": {
+    "properties": {
+     "nombre": {
+      "type": "string",
+      "maxLength": 120,
+      "minLength": 3,
+      "title": "Nombre"
+     },
+     "tipo_documento": {
+      "type": "string",
+      "enum": [
+       "DNI",
+       "CE",
+       "PASAPORTE"
+      ],
+      "title": "Tipo Documento",
+      "default": "DNI"
+     },
+     "documento": {
+      "type": "string",
+      "maxLength": 20,
+      "minLength": 6,
+      "title": "Documento"
+     },
+     "categoria": {
+      "type": "string",
+      "enum": [
+       "operario",
+       "oficial",
+       "peon"
+      ],
+      "title": "Categoria"
+     },
+     "cuadrilla": {
+      "type": "string",
+      "maxLength": 60,
+      "minLength": 1,
+      "title": "Cuadrilla"
+     },
+     "fecha_ingreso": {
+      "type": "string",
+      "format": "date",
+      "title": "Fecha Ingreso"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "nombre",
+     "documento",
+     "categoria",
+     "cuadrilla",
+     "fecha_ingreso"
+    ],
+    "title": "TrabajadorIn"
+   },
+   "TrabajadorOut": {
+    "properties": {
+     "id": {
+      "type": "integer",
+      "title": "Id"
+     },
+     "nombre": {
+      "type": "string",
+      "title": "Nombre"
+     },
+     "tipo_documento": {
+      "type": "string",
+      "title": "Tipo Documento"
+     },
+     "documento": {
+      "type": "string",
+      "title": "Documento"
+     },
+     "categoria": {
+      "type": "string",
+      "title": "Categoria"
+     },
+     "cuadrilla": {
+      "type": "string",
+      "title": "Cuadrilla"
+     },
+     "fecha_ingreso": {
+      "type": "string",
+      "format": "date",
+      "title": "Fecha Ingreso"
+     },
+     "fecha_salida": {
+      "anyOf": [
+       {
+        "type": "string",
+        "format": "date"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Fecha Salida"
+     }
+    },
+    "type": "object",
+    "required": [
+     "id",
+     "nombre",
+     "tipo_documento",
+     "documento",
+     "categoria",
+     "cuadrilla",
+     "fecha_ingreso",
+     "fecha_salida"
+    ],
+    "title": "TrabajadorOut"
+   },
+   "ValidationError": {
+    "properties": {
+     "loc": {
+      "items": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "integer"
+        }
+       ]
+      },
+      "type": "array",
+      "title": "Location"
+     },
+     "msg": {
+      "type": "string",
+      "title": "Message"
+     },
+     "type": {
+      "type": "string",
+      "title": "Error Type"
+     },
+     "input": {
+      "title": "Input"
+     },
+     "ctx": {
+      "type": "object",
+      "title": "Context"
+     }
+    },
+    "type": "object",
+    "required": [
+     "loc",
+     "msg",
+     "type"
+    ],
+    "title": "ValidationError"
+   }
+  },
+  "securitySchemes": {
+   "HTTPBearer": {
+    "type": "http",
+    "scheme": "bearer"
+   }
+  }
+ }
+}

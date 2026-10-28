@@ -55,27 +55,37 @@ lo declara.
 
 | Pieza | Tecnología |
 |---|---|
-| API | Python · FastAPI · SQLAlchemy 2 · Pydantic v2 · Alembic |
-| Base de datos | PostgreSQL |
+| Microservicios | Python · FastAPI · SQLAlchemy 2 · Pydantic v2 · Alembic · gateway propio (ADR-09) |
+| Base de datos | PostgreSQL · **un esquema y un usuario por servicio** (ningún servicio lee la base de otro) |
 | App del almacenero | Kotlin Multiplatform (Android + iOS) · Compose Multiplatform · Koin · Ktor · Room KMP · WorkManager (ADR-08) |
 | Web de oficina | React 18 · TypeScript · Vite |
 | Integraciones | Microservicio FastAPI aparte (importación del S10, consulta de RUC en SUNAT) |
 | Notificaciones | Microservicio FastAPI aparte con patrón outbox (avisos a residente y administrador · ADR-07, propuesto) |
 | Despliegue | Nube gestionada, PostgreSQL administrado, APK por enlace |
 
-**Arquitectura híbrida: monolito modular + dos microservicios.** El núcleo (la API) es un **monolito modular**: seis módulos por dominio (obra, catálogo, almacén,
-compras, costo, tareo), cada uno con su esquema y **sin consultas cruzadas directas**
-entre módulos. Lo que depende de terceros o puede fallar sin detener la operación vive en **microservicios**
-aparte: **Integraciones** (S10 y SUNAT/RENIEC), para que una importación pesada no deje lenta la
-app del almacenero, y **Notificaciones** (avisos por outbox). Microservicios por cada dominio se
-descartaron a propósito (ADR-01): cuatro personas a tiempo parcial no pueden operar seis servicios.
+**Arquitectura de microservicios (ADR-09).** La web y la app entran solo por el **gateway** (`/api/v1`).
+Detrás hay un servicio por dominio, cada uno con su proceso, su imagen Docker, su esquema y su usuario de base:
+
+| Servicio | Qué atiende | Esquema |
+|---|---|---|
+| **obras** | identidad y sesión, usuarios, obras, periodos, almacenes, asignaciones, dispositivos; responde a los demás **quién puede qué** | `obra` |
+| **catalogo** | código único de insumo, factor de conversión, importación del S10 | `catalogo` |
+| **compras** | proveedores, compras, solicitudes, requerimiento, reposición | `compras` |
+| **tareo** | trabajadores y asistencia | `tareo` |
+| **almacen**, **costo** | movimientos, saldo, kárdex, costo promedio (por construir con el mismo patrón) | `almacen`, `costo` |
+| **integraciones** · **notificaciones** · **relevo** | S10/SUNAT/RENIEC · avisos · entrega del outbox | — · propia · `outbox` |
+
+Reglas: **nadie lee la base de otro servicio** (la base lo impide por permisos); lo ajeno se pide por la API
+interna `/interno/...` con `X-Servicio-Token`, o llega por eventos (outbox). El control de acceso lo decide obras
+en cada petición (`POST /interno/autorizar`). Un servicio nuevo = su carpeta en `api/app/modulos/`, su entrada en
+`api/app/servicios/`, su línea en `api/app/enrutado.py` y su rol en una migración.
 
 El detalle y las alternativas descartadas están en `docs/decisiones-arquitectura.md`.
 
 ## Estructura del repositorio
 
 ```
-api/            Adiel Luján       · FastAPI, módulos de dominio, migraciones
+api/            Adiel Luján       · microservicios obras, catálogo, compras, tareo y gateway (app/servicios), migraciones
 integraciones/  Fernando Istaña   · microservicio S10, SUNAT y RENIEC
 notificaciones/ Adiel Luján       · microservicio de avisos (outbox)
 android/        Nicolás Pachamora · app del almacenero (Android + iOS)

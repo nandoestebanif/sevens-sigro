@@ -3,6 +3,9 @@
 Se llama DENTRO de la misma transacción que el hecho que origina el evento: si el hecho se revierte, el evento no
 existe; si se confirma, no se pierde aunque Notificaciones esté caído. La API resuelve los destinatarios aquí
 porque solo ella sabe quién tiene qué rol en cada obra: el microservicio no lee esta base.
+
+Microservicios: quién tiene qué rol en cada obra es dato del servicio obras. Si el evento nace en otro servicio
+(p. ej. compras), los destinatarios y el nombre de la obra se piden a obras por su API interna.
 """
 from __future__ import annotations
 
@@ -12,8 +15,15 @@ from collections.abc import Iterable
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
+from app import contexto, internos
+
 
 def destinatarios_con_rol(s: Session, proyecto_id: int, roles: Iterable[str], excepto: int | None = None) -> list[int]:
+    if contexto.actual() not in (None, contexto.OBRAS):
+        return internos.json_de(
+            contexto.OBRAS, "GET", f"/interno/obras/{proyecto_id}/destinatarios",
+            params={"roles": ",".join(sorted(roles)), **({"excepto": excepto} if excepto else {})},
+        )
     filas = s.execute(
         text(
             "SELECT DISTINCT a.usuario_id FROM obra.asignacion a JOIN obra.usuario u ON u.id = a.usuario_id "
@@ -39,4 +49,6 @@ def publicar(
 
 
 def nombre_obra(s: Session, proyecto_id: int) -> str:
+    if contexto.actual() not in (None, contexto.OBRAS):
+        return internos.json_de(contexto.OBRAS, "GET", f"/interno/obras/{proyecto_id}")["nombre"]
     return s.execute(text("SELECT nombre FROM obra.proyecto WHERE id = :p"), {"p": proyecto_id}).scalar() or f"obra {proyecto_id}"

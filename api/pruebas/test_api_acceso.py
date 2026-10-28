@@ -12,7 +12,7 @@ import jwt
 import pytest
 
 from app.config import cargar
-from app.main import crear_app
+from app.servicios import fabricas
 from app.permisos import ACCIONES
 from app.seguridad import ALGORITMO, hashear
 
@@ -23,17 +23,20 @@ SOLO_AUTENTICADO = {("/api/v1/auth/yo", "GET"), ("/api/v1/auth/cambiar-clave", "
 
 def _rutas():
     """(metodo, ruta, accion) de cada endpoint. FastAPI reciente monta los routers de forma perezosa: se recorren."""
-    app = crear_app()
     salida = []
-    for incl in app.routes:
-        router = getattr(incl, "original_router", None)
-        if router is None:
-            continue
-        prefijo = incl.include_context.prefix if hasattr(incl, "include_context") else "/api/v1"
-        for r in router.routes:
-            accion = _accion_de(r.dependant)
-            for m in r.methods:
-                salida.append((m, f"{prefijo}{r.path}", accion))
+    for fabrica in fabricas().values():            # todas las rutas PÚBLICAS de todos los microservicios
+        app = fabrica()
+        for incl in app.routes:
+            router = getattr(incl, "original_router", None)
+            if router is None:
+                continue
+            prefijo = incl.include_context.prefix if hasattr(incl, "include_context") else "/api/v1"
+            if not prefijo.startswith("/api/v1"):
+                continue                           # /interno: solo entre servicios (se prueba en test_microservicios)
+            for r in router.routes:
+                accion = _accion_de(r.dependant)
+                for m in r.methods:
+                    salida.append((m, f"{prefijo}{r.path}", accion))
     return salida
 
 

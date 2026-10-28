@@ -99,7 +99,7 @@ def test_cada_migracion_declara_su_vuelta_atras():
     from pathlib import Path
     versiones = Path(__file__).resolve().parents[1] / "migraciones" / "versions"
     archivos = sorted(versiones.glob("0*.py"))
-    assert len(archivos) == 8
+    assert len(archivos) == 9
     for archivo in archivos:
         cuerpo = archivo.read_text().split("def downgrade()", 1)[1]
         assert "op.execute" in cuerpo, f"{archivo.name} no revierte nada"

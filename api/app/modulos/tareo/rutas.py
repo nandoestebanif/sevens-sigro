@@ -12,7 +12,8 @@ from sqlalchemy import text
 
 from app.dependencias import Actor, exigir
 from app.errores import ErrorSigro
-from app.modulos.obra.rutas import fila, filas
+from app import contexto, internos
+from app.sql import fila, filas
 from app.modulos.tareo import esquemas as e
 
 router = APIRouter(prefix="/obras/{obra_id}", tags=["tareo"])
@@ -122,15 +123,21 @@ def listar_jornadas(
 
 @router.get("/horas-acumuladas", response_model=list[e.HorasOut])
 def horas_acumuladas(periodo_id: int | None = Query(None, ge=1), a: Actor = Depends(exigir("horas.consultar"))):
-    return filas(
+    rows = filas(
         a.sesion,
-        "SELECT h.periodo_id, p.numero AS periodo_numero, h.trabajador_id, t.nombre AS trabajador, h.cuadrilla, h.categoria, "
+        "SELECT h.periodo_id, h.trabajador_id, t.nombre AS trabajador, h.cuadrilla, h.categoria, "
         "h.dias_presente, h.dias_ausente, h.dias_permiso, h.horas_normales, h.horas_extra "
-        "FROM tareo.horas_acumuladas h JOIN obra.periodo p ON p.id = h.periodo_id JOIN tareo.trabajador t ON t.id = h.trabajador_id "
-        "WHERE h.proyecto_id = :p AND (CAST(:pe AS bigint) IS NULL OR h.periodo_id = :pe) "
-        "ORDER BY p.numero, h.cuadrilla, t.nombre",
+        "FROM tareo.horas_acumuladas h JOIN tareo.trabajador t ON t.id = h.trabajador_id "
+        "WHERE h.proyecto_id = :p AND (CAST(:pe AS bigint) IS NULL OR h.periodo_id = :pe)",
         p=a.obra_id, pe=periodo_id,
     )
+    if not rows:
+        return []
+    # El número de cada periodo es dato del servicio obras: se pide una vez por consulta.
+    numero = {p["id"]: p["numero"] for p in internos.json_de(contexto.OBRAS, "GET", f"/interno/obras/{a.obra_id}/periodos")}
+    for r in rows:
+        r["periodo_numero"] = numero.get(r["periodo_id"])
+    return sorted(rows, key=lambda r: (r["periodo_numero"] or 0, r["cuadrilla"], r["trabajador"]))
 
 
 routers = [router]

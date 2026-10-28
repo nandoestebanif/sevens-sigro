@@ -126,37 +126,85 @@ class Mundo:
         return self.token(usuario_id)
 
 
+class GatewayEnProceso:
+    """El gateway de producción (app.servicios.gateway) reenvía por HTTP; aquí la MISMA tabla de enrutado
+    entrega la petición a la app del servicio en el mismo proceso. /interno/... no se expone, igual que allá."""
+
+    def __init__(self, apps: dict):
+        self.apps = apps
+
+    async def __call__(self, scope, receive, send):
+        from app.enrutado import servicio_para
+        if scope["type"] == "lifespan":
+            while True:
+                m = await receive()
+                if m["type"] == "lifespan.startup":
+                    await send({"type": "lifespan.startup.complete"})
+                elif m["type"] == "lifespan.shutdown":
+                    await send({"type": "lifespan.shutdown.complete"})
+                    return
+        servicio = "obras" if scope["path"] == "/salud" else servicio_para(scope["path"])
+        if servicio is None:
+            from starlette.responses import JSONResponse
+            r = JSONResponse({"codigo": "no_existe", "mensaje": "Esa ruta no existe."}, status_code=404)
+            await r(scope, receive, send)
+            return
+        await self.apps[servicio](scope, receive, send)
+
+
 @pytest.fixture
 def mundo(base_pruebas):
+    """Todos los microservicios en el mismo proceso, cada uno con SU usuario de base de datos.
+
+    - La prueba habla con el gateway (mismas rutas /api/v1 que la web y la app).
+    - Cada servicio actúa con su rol `sigro_svc_<servicio>`: si un servicio intentara leer el esquema de otro,
+      la base lo rechazaría y la prueba fallaría. Lo que necesita de otro, lo pide por su API interna.
+    - Las llamadas internas entre servicios usan el mismo contrato HTTP, con el transporte en proceso.
+    - Todo corre en UNA transacción que se revierte al final.
+    """
     from fastapi.testclient import TestClient
     from sqlalchemy import create_engine, text
     from sqlalchemy.orm import Session
 
+    from app import internos
     from app.db import obtener_sesion
-    from app.main import crear_app
+    from app.servicios import fabricas
     from pruebas.fabrica import Fabrica
 
     motor = create_engine(url_sqlalchemy(base_pruebas))
     conn = motor.connect()
     transaccion = conn.begin()
-    app = crear_app()
 
-    def sesion_de_prueba():
-        conn.execute(text("SET ROLE sigro_app"))          # la API actúa SIN poder de dueño: lo que vale en producción
-        with Session(bind=conn, join_transaction_mode="create_savepoint") as s:
+    def sesion_como(rol: str):
+        def sesion_de_prueba():
+            previo = conn.execute(text("SELECT current_user")).scalar()
+            conn.execute(text(f"SET ROLE {rol}"))          # el servicio actúa SIN poder de dueño y solo sobre su esquema
             try:
-                yield s
-                s.commit()
-            except BaseException:
-                s.rollback()
-                raise
+                with Session(bind=conn, join_transaction_mode="create_savepoint") as s:
+                    try:
+                        yield s
+                        s.commit()
+                    except BaseException:
+                        s.rollback()
+                        raise
             finally:
-                pass
-        conn.execute(text("RESET ROLE"))
+                conn.execute(text(f"SET ROLE {previo}"))
+        return sesion_de_prueba
 
-    app.dependency_overrides[obtener_sesion] = sesion_de_prueba
-    with TestClient(app, raise_server_exceptions=False) as cliente:
-        yield Mundo(cliente, Fabrica(_ConexionFabrica(conn)), conn)
-    transaccion.rollback()
-    conn.close()
-    motor.dispose()
+    apps = {}
+    for nombre, fabrica in fabricas().items():
+        app = fabrica()
+        app.dependency_overrides[obtener_sesion] = sesion_como(f"sigro_svc_{nombre}")
+        apps[nombre] = app
+    internos_clientes = {n: TestClient(a, raise_server_exceptions=False) for n, a in apps.items()}
+    for n, c in internos_clientes.items():
+        internos.registrar_cliente_de_prueba(n, c)
+    try:
+        with TestClient(GatewayEnProceso(apps), raise_server_exceptions=False) as cliente:
+            yield Mundo(cliente, Fabrica(_ConexionFabrica(conn)), conn)
+    finally:
+        for n in internos_clientes:
+            internos.registrar_cliente_de_prueba(n, None)
+        transaccion.rollback()
+        conn.close()
+        motor.dispose()
