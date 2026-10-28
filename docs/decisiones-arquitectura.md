@@ -61,3 +61,18 @@ de pruebas, y el presupuesto es cero.
 y deja al cliente sin forma de probar).
 **Consecuencia.** Los niveles gratuitos suspenden por inactividad y la primera petición
 tarda: se advierte antes de cada demostración.
+
+## ADR-07 · Kotlin Multiplatform para la app: Android e iOS con un solo código
+**Contexto.** El 28/10 el equipo decidió que la app funcione en Android y en iPhone, para no depender del celular que tenga cada almacenero o ingeniero SSOMA (a confirmar con el Product Owner). ADR-02 eligió Android nativo por
+las garantías de persistencia y de envío en segundo plano; esas garantías se tienen que conservar.
+**Decisión.** Kotlin Multiplatform con Compose Multiplatform, Koin, Ktor y Room KMP. La interfaz, el
+dominio, la base local y el cliente de la API se escriben una vez (`commonMain`); cada plataforma aporta
+solo el motor HTTP, la ruta de la base y el programador de envío. En Android se sigue usando WorkManager.
+**Descartado.** Dos apps nativas, Kotlin y Swift (el doble de trabajo con una persona en la app).
+Flutter o React Native (otro lenguaje y otra capa sobre la persistencia, que es lo que ADR-02 quiso evitar).
+Aplicación web instalable (mismas razones que en ADR-02).
+**Consecuencia.** ADR-02 se mantiene en Android (Room y WorkManager reales) y se amplía a iOS. Se aceptan
+tres costos: el iPhone solo se compila en una Mac con Xcode; iOS no garantiza el momento del envío en
+segundo plano como WorkManager, así que en iOS la app envía al registrar, al abrirse y con «Enviar ahora»
+hasta registrar la tarea de fondo; y Room KMP exige que las consultas sean `suspend` o `Flow`.
+

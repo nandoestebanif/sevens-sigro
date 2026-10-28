@@ -57,7 +57,7 @@ lo declara.
 |---|---|
 | API | Python · FastAPI · SQLAlchemy 2 · Pydantic v2 · Alembic |
 | Base de datos | PostgreSQL |
-| App del almacenero | Android nativo · Kotlin · Jetpack Compose · Room · WorkManager |
+| App del almacenero | Kotlin Multiplatform (Android + iOS) · Compose Multiplatform · Koin · Ktor · Room KMP · WorkManager (ADR-07) |
 | Web de oficina | React 18 · TypeScript · Vite |
 | Integraciones | Microservicio FastAPI aparte (importación del S10, consulta de RUC en SUNAT) |
 | Despliegue | Nube gestionada, PostgreSQL administrado, APK por enlace |
@@ -74,7 +74,7 @@ El detalle y las alternativas descartadas están en `docs/decisiones-arquitectur
 ```
 api/            Adiel Luján       · FastAPI, módulos de dominio, migraciones
 integraciones/  Fernando Istaña   · microservicio S10 y SUNAT
-android/        Nicolás Pachamora · app del almacenero
+android/        Nicolás Pachamora · app del almacenero (Android + iOS)
 web/            Fernando y Henry  · React de oficina
 docs/                             · historias, reglas, permisos, decisiones
 equipo/                           · qué hace cada uno esta semana

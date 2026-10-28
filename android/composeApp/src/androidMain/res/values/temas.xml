@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Tema de la ventana mientras arranca Compose; el resto lo pinta TemaSigro. -->
+    <style name="Tema.Sigro" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@color/fondo</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+    </style>
+    <color name="fondo">#F8FAFC</color>
+    <color name="naranja">#C2410C</color>
+</resources>
