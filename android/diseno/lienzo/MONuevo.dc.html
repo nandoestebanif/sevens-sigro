@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Registrar trabajador</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#C2410C}a:hover{color:#9A3412}
+.vidrio{background:rgba(255,255,255,0.58);-webkit-backdrop-filter:blur(18px) saturate(160%);backdrop-filter:blur(18px) saturate(160%);border:1px solid rgba(255,255,255,0.75);box-shadow:0 8px 28px rgba(15,23,42,0.10)}
+.vidrio-fuerte{background:rgba(255,255,255,0.78);-webkit-backdrop-filter:blur(22px) saturate(160%);backdrop-filter:blur(22px) saturate(160%);border:1px solid rgba(255,255,255,0.85)}
+.campo{box-sizing:border-box;height:52px;border-radius:16px;border:1px solid rgba(255,255,255,0.9);background:rgba(255,255,255,0.74);padding:0 16px;font:16px Inter,sans-serif;color:#111827;width:100%}
+.campo:focus{outline:2px solid #C2410C;outline-offset:1px}
+.campo::placeholder{color:#6B7280}
+</style>
+</helmet>
+<div style="width: 390px; height: 1000px; box-sizing: border-box; font-family: Inter, system-ui, sans-serif; color: #111827; position: relative; overflow: hidden; background: #EDF1F6">
+<svg aria-hidden="true" width="390" height="1000" viewBox="0 0 390 1000" style="position: absolute; left: 0; top: 0">
+<defs>
+<linearGradient id="mn-f" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#EEF1F7"></stop><stop offset="0.55" stop-color="#F3F1EE"></stop><stop offset="1" stop-color="#F6EBE0"></stop></linearGradient>
+<pattern id="mn-c" width="24" height="24" patternUnits="userSpaceOnUse"><path d="M24 0H0V24" fill="none" stroke="#94A3B8" stroke-width="0.5" opacity="0.4"></path></pattern>
+<pattern id="mn-C" width="120" height="120" patternUnits="userSpaceOnUse"><path d="M120 0H0V120" fill="none" stroke="#64748B" stroke-width="0.8" opacity="0.3"></path></pattern>
+<radialGradient id="mn-mn" cx="0.5" cy="0.5" r="0.5"><stop offset="0" stop-color="#FB923C" stop-opacity="0.5"></stop><stop offset="1" stop-color="#FB923C" stop-opacity="0"></stop></radialGradient>
+<radialGradient id="mn-ma" cx="0.5" cy="0.5" r="0.5"><stop offset="0" stop-color="#60A5FA" stop-opacity="0.4"></stop><stop offset="1" stop-color="#60A5FA" stop-opacity="0"></stop></radialGradient>
+<radialGradient id="mn-mt" cx="0.5" cy="0.5" r="0.5"><stop offset="0" stop-color="#2DD4BF" stop-opacity="0.32"></stop><stop offset="1" stop-color="#2DD4BF" stop-opacity="0"></stop></radialGradient>
+</defs>
+<rect width="390" height="1000" fill="url(#mn-f)"></rect>
+<rect width="390" height="1000" fill="url(#mn-c)"></rect>
+<rect width="390" height="1000" fill="url(#mn-C)"></rect>
+<circle cx="330" cy="160" r="200" fill="url(#mn-ma)"></circle><circle cx="40" cy="560" r="200" fill="url(#mn-mn)"></circle><circle cx="330" cy="900" r="170" fill="url(#mn-mt)"></circle>
+<g fill="none" stroke="#475569" stroke-width="1.4" opacity="0.5" stroke-linejoin="round">
+<rect x="226" y="120" width="150" height="96" rx="10"></rect><circle cx="262" cy="160" r="16"></circle><path d="M242 196c4-14 36-14 40 0"></path>
+<path d="M298 150h60M298 166h44M298 182h52"></path></g>
+<g fill="none" stroke="#475569" stroke-width="1.2" opacity="0.4" stroke-linecap="round"><path d="M70 800c0-30 50-30 50 0v30M80 800c0-18 30-18 30 0v40M90 800v44M60 805v20M130 805v20"></path></g>
+<text x="232" y="238" font-family="Inter, sans-serif" font-size="9" fill="#475569" opacity="0.7">DOCUMENTO DE IDENTIDAD</text>
+</svg>
+<header style="position: relative; padding: 44px 16px 8px 12px; display: flex; align-items: center; gap: 4px">
+<a href="MOTrabajadores.dc.html" aria-label="Volver" class="vidrio" style="width: 44px; height: 44px; border-radius: 22px; margin-right: 8px; display: flex; align-items: center; justify-content: center; flex: none">
+<svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#111827" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"></path></svg>
+</a>
+<div style="display: flex; flex-direction: column; gap: 2px; min-width: 0">
+<h1 style="margin: 0; font-size: 28px; font-weight: 800; letter-spacing: -0.03em">Nuevo trabajador</h1>
+<p style="margin: 0; font-size: 14px; color: #4B5563">Se incorpora a la obra con su fecha</p>
+</div>
+</header>
+<div style="position: relative; padding: 8px 16px 24px; display: flex; flex-direction: column; gap: 14px">
+<div class="vidrio" style="border-radius: 26px; padding: 18px; display: flex; flex-direction: column; gap: 14px">
+<label style="display: flex; flex-direction: column; gap: 6px; font-size: 14px; font-weight: 600; color: #374151">DNI *
+<div style="display: flex; gap: 8px">
+<input class="campo" value="{{dni}}" onChange="{{eDni}}" inputmode="numeric" maxlength="8" placeholder="8 dígitos" style="flex: 1; letter-spacing: 0.08em">
+<button onClick="{{consultar}}" disabled="{{noConsulta}}" style="flex: none; height: 52px; padding: 0 16px; border-radius: 16px; border: 0; background: {{consultaFondo}}; color: #FFFFFF; font: 700 14px Inter, sans-serif; cursor: pointer">Consultar RENIEC</button>
+</div></label>
+<sc-if value="{{repetido}}" hint-placeholder-val="{{ false }}">
+<div role="alert" style="background: #FEE2E2; color: #991B1B; border-radius: 14px; padding: 10px 12px; font-size: 13px; font-weight: 600">Ese DNI ya está en esta obra (Trabajador 03). Puede estar en otra obra, pero no dos veces en la misma.</div>
+</sc-if>
+<sc-if value="{{encontrado}}" hint-placeholder-val="{{ false }}">
+<div style="background: #DCFCE7; border-radius: 16px; padding: 12px 14px; display: flex; align-items: center; gap: 10px">
+<svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#166534" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="flex: none"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg>
+<span style="display: flex; flex-direction: column"><span style="font-size: 12px; color: #166534; font-weight: 700">SEGÚN RENIEC</span><span style="font-size: 15px; font-weight: 800; color: #14532D">[Nombres y apellidos]</span></span></div>
+</sc-if>
+<sc-if value="{{manual}}" hint-placeholder-val="{{ false }}">
+<label style="display: flex; flex-direction: column; gap: 6px; font-size: 14px; font-weight: 600; color: #374151">Nombre completo *<input class="campo" value="{{nombre}}" onChange="{{eNombre}}" placeholder="Como figura en su DNI"></label>
+</sc-if>
+<button onClick="{{aMano}}" style="align-self: flex-start; border: 0; background: transparent; padding: 0; font: 600 13px Inter, sans-serif; color: #C2410C; cursor: pointer; text-decoration: underline">{{textoManual}}</button>
+<div style="display: flex; flex-direction: column; gap: 6px; font-size: 14px; font-weight: 600; color: #374151">Categoría *<div style="display: flex; flex-wrap: wrap; gap: 8px">
+<sc-for list="{{categorias}}" as="o" hint-placeholder-count="3">
+<button onClick="{{o.elegir}}" aria-pressed="{{o.on}}" style="min-height: 44px; padding: 0 16px; border-radius: 22px; border: 0; background: {{o.bg}}; color: {{o.fg}}; font: 700 14px Inter, sans-serif; cursor: pointer">{{o.texto}}</button>
+</sc-for>
+</div><span style="font-size: 12px; font-weight: 500; color: #4B5563">Define el costo por hora que se aplica después.</span></div>
+<div style="display: flex; flex-direction: column; gap: 6px; font-size: 14px; font-weight: 600; color: #374151">Cuadrilla *<div style="display: flex; flex-wrap: wrap; gap: 8px">
+<sc-for list="{{cuadrillas}}" as="o" hint-placeholder-count="3">
+<button onClick="{{o.elegir}}" aria-pressed="{{o.on}}" style="min-height: 44px; padding: 0 16px; border-radius: 22px; border: 0; background: {{o.bg}}; color: {{o.fg}}; font: 700 14px Inter, sans-serif; cursor: pointer">{{o.texto}}</button>
+</sc-for>
+</div></div>
+<label style="display: flex; flex-direction: column; gap: 6px; font-size: 14px; font-weight: 600; color: #374151">Fecha de ingreso *<input class="campo" type="date" value="{{hoy}}"></label>
+</div>
+<button disabled="{{bloqueado}}" style="{{estiloBoton}}"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#FB923C" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg>Registrar trabajador</button>
+<span style="text-align: center; font-size: 13px; color: #4B5563; line-height: 1.4">Si se retira, se da de baja con su fecha de salida: no se borra y sus jornadas se conservan.</span>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":1000}}'>
+const opciones = (lista, sel, fijar, colorOn) => lista.map((t, i) => ({
+  texto: t, on: sel === i, elegir: () => fijar(i),
+  bg: sel === i ? (colorOn || '#111827') : 'rgba(255,255,255,0.82)', fg: sel === i ? '#FFFFFF' : '#111827' }));
+
+const BOTON = "height: 58px; border: 0; border-radius: 29px; background: #111827; color: #FFFFFF; display: flex; align-items: center; justify-content: center; gap: 10px; font: 600 17px Inter, sans-serif; text-decoration: none; cursor: pointer";
+const BOTON_OFF = "height: 58px; border: 0; border-radius: 29px; background: #9CA3AF; color: #FFFFFF; display: flex; align-items: center; justify-content: center; gap: 10px; font: 600 17px Inter, sans-serif; text-decoration: none; cursor: not-allowed";
+class Component extends DCLogic {
+  constructor(p) { super(p); this.state = { dni: '', encontrado: false, manual: false, nombre: '', cat: -1, cu: 0 }; }
+  renderVals() {
+    const st = this.state;
+    const ocho = /^\d{8}$/.test(st.dni);
+    const repetido = st.dni === '12345678';
+    const tieneNombre = st.encontrado || (st.manual && st.nombre.trim());
+    const bloqueado = !ocho || repetido || !tieneNombre || st.cat < 0;
+    return {
+      dni: st.dni, eDni: (e) => this.setState({ dni: e.target.value.replace(/\D/g, '').slice(0, 8), encontrado: false }),
+      noConsulta: !ocho || repetido, consultaFondo: (!ocho || repetido) ? '#9CA3AF' : '#C2410C',
+      consultar: () => this.setState({ encontrado: true, manual: false }),
+      repetido, encontrado: st.encontrado, manual: st.manual,
+      nombre: st.nombre, eNombre: (e) => this.setState({ nombre: e.target.value }),
+      aMano: () => this.setState({ manual: !st.manual, encontrado: false }),
+      textoManual: st.manual ? 'Volver a consultar en RENIEC' : '¿RENIEC no responde? Escríbelo a mano',
+      categorias: opciones(['Operario', 'Oficial', 'Peón'], st.cat, (i) => this.setState({ cat: i }), '#C2410C'),
+      cuadrillas: opciones(['Cuadrilla A', 'Cuadrilla B', '+ Nueva'], st.cu, (i) => this.setState({ cu: i })),
+      hoy: new Date().toISOString().slice(0, 10),
+      bloqueado, estiloBoton: bloqueado ? BOTON_OFF : BOTON
+    };
+  }
+}
+</script>
+</body>
+</html>

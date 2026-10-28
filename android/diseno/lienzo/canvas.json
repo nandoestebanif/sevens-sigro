@@ -171,6 +171,126 @@
       "title": "2.10 · Cierre de obra (HU-47)",
       "is_interactive": true,
       "radius": 40
+    },
+    "CatBuscar.dc.html": {
+      "x": 0,
+      "y": 0,
+      "w": 390,
+      "h": 844,
+      "title": "3.1 · Buscar insumo (HU-10, HU-09)",
+      "is_interactive": true,
+      "radius": 40,
+      "page": "catalogo"
+    },
+    "CatFicha.dc.html": {
+      "x": 470,
+      "y": 0,
+      "w": 390,
+      "h": 1080,
+      "title": "3.2 · Ficha: foto, factor y nombres comerciales (HU-11, HU-17, HU-09)",
+      "is_interactive": true,
+      "radius": 40,
+      "page": "catalogo"
+    },
+    "CatNuevo.dc.html": {
+      "x": 940,
+      "y": 0,
+      "w": 390,
+      "h": 1120,
+      "title": "3.3 · Registrar insumo nuevo (HU-08, HU-10)",
+      "is_interactive": true,
+      "radius": 40,
+      "page": "catalogo"
+    },
+    "HerLista.dc.html": {
+      "x": 0,
+      "y": 0,
+      "w": 390,
+      "h": 900,
+      "title": "4.1 · Herramientas de la obra (HU-51, HU-52)",
+      "is_interactive": true,
+      "radius": 40,
+      "page": "herramientas"
+    },
+    "HerFicha.dc.html": {
+      "x": 470,
+      "y": 0,
+      "w": 390,
+      "h": 1000,
+      "title": "4.2 · Ficha e historial (HU-51)",
+      "is_interactive": true,
+      "radius": 40,
+      "page": "herramientas"
+    },
+    "HerIngreso.dc.html": {
+      "x": 940,
+      "y": 0,
+      "w": 390,
+      "h": 1000,
+      "title": "4.3 · Ingreso de herramienta (HU-48)",
+      "is_interactive": true,
+      "radius": 40,
+      "page": "herramientas"
+    },
+    "HerEntregar.dc.html": {
+      "x": 1410,
+      "y": 0,
+      "w": 390,
+      "h": 900,
+      "title": "4.4 · Entregar a un trabajador (HU-49)",
+      "is_interactive": true,
+      "radius": 40,
+      "page": "herramientas"
+    },
+    "HerDevolver.dc.html": {
+      "x": 1880,
+      "y": 0,
+      "w": 390,
+      "h": 1000,
+      "title": "4.5 · Devolución con estado (HU-50)",
+      "is_interactive": true,
+      "radius": 40,
+      "page": "herramientas"
+    },
+    "HerMantBaja.dc.html": {
+      "x": 2350,
+      "y": 0,
+      "w": 390,
+      "h": 1000,
+      "title": "4.6 · Mantenimiento o baja (HU-52, HU-53)",
+      "is_interactive": true,
+      "radius": 40,
+      "page": "herramientas"
+    },
+    "MOTrabajadores.dc.html": {
+      "x": 0,
+      "y": 0,
+      "w": 390,
+      "h": 1000,
+      "title": "5.1 · Trabajadores de la obra (HU-62)",
+      "is_interactive": true,
+      "radius": 40,
+      "page": "manoobra"
+    },
+    "MONuevo.dc.html": {
+      "x": 470,
+      "y": 0,
+      "w": 390,
+      "h": 1000,
+      "title": "5.2 · Registrar trabajador (HU-62)",
+      "is_interactive": true,
+      "radius": 40,
+      "page": "manoobra"
+    },
+    "MOAsistencia.dc.html": {
+      "x": 940,
+      "y": 0,
+      "w": 390,
+      "h": 1200,
+      "title": "5.3 · Asistencia del día (HU-63)",
+      "is_interactive": true,
+      "radius": 40,
+      "page": "manoobra"
     }
   },
   "createdOnFiles": {
@@ -248,29 +368,29 @@
     },
     "planCat": {
       "x": 0,
-      "y": 0,
+      "y": 1240,
       "w": 640,
       "size": "m",
       "fill": "orange",
       "page": "catalogo",
-      "text": "Por diseñar:\n3.1 Buscar insumo por cualquier nombre (HU-10, HU-09)\n3.2 Ficha del insumo: foto (HU-11), nombres comerciales (HU-09), factor de conversión (HU-17)\n3.3 Registrar insumo nuevo cuando no está en el catálogo (HU-08)"
+      "text": "Catálogo: los insumos son REALES del catálogo del cliente (código, nombre, unidad, marca). Los nombres comerciales son ejemplos de cómo los llaman en obra. Prueba en 3.1: «cemento sol», «king kong», «1432». En 3.2 intenta agregar «cemento sol»: el sistema avisa que ya es de otro insumo."
     },
     "tituloHer": {
       "x": 0,
       "y": -300,
       "text": "4 · Herramientas y equipos",
       "kind": "title1",
-      "maxW": 1800,
+      "maxW": 2740,
       "page": "herramientas"
     },
     "planHer": {
       "x": 0,
-      "y": 0,
+      "y": 1120,
       "w": 640,
       "size": "m",
       "fill": "orange",
       "page": "herramientas",
-      "text": "Por diseñar:\n4.1 Lista de herramientas y quién las tiene (HU-51)\n4.2 Ingreso de herramientas con estado inicial y foto (HU-48)\n4.3 Entregar a un trabajador (HU-49)\n4.4 Devolución con estado (HU-50)\n4.5 Mantenimiento y próxima fecha (HU-52)\n4.6 Dar de baja con origen y autorización (HU-53)\n4.7 Estado al cierre de obra (HU-54)"
+      "text": "Herramientas: cada una se registra por separado (no por cantidad). Estados: disponible · en uso · en mantenimiento · dada de baja. La baja la registra el almacenero y la autoriza el residente. Herramientas, códigos y personas son datos de ejemplo. El estado al cierre (HU-54) va en «Cerrar obra»."
     },
     "tituloMO": {
       "x": 0,
@@ -282,12 +402,12 @@
     },
     "planMO": {
       "x": 0,
-      "y": 0,
+      "y": 1320,
       "w": 640,
       "size": "m",
       "fill": "orange",
       "page": "manoobra",
-      "text": "Por diseñar:\n5.1 Trabajadores de la obra, con categoría y cuadrilla (HU-62, DNI vía RENIEC)\n5.2 Registrar trabajador (HU-62)\n5.3 Asistencia y horas de la jornada (HU-63)"
+      "text": "Mano de obra: lo registran el almacenero o el ingeniero SSOMA. El DNI se consulta en RENIEC (Integraciones). La asistencia se guarda sin señal como las salidas y se envía después. Personas y DNI: ejemplos, nunca datos reales."
     }
   },
   "order": [
@@ -307,7 +427,19 @@
     "Stock.dc.html",
     "Conteo.dc.html",
     "Traslado.dc.html",
-    "Cierre.dc.html"
+    "Cierre.dc.html",
+    "CatBuscar.dc.html",
+    "CatFicha.dc.html",
+    "CatNuevo.dc.html",
+    "HerLista.dc.html",
+    "HerFicha.dc.html",
+    "HerIngreso.dc.html",
+    "HerEntregar.dc.html",
+    "HerDevolver.dc.html",
+    "HerMantBaja.dc.html",
+    "MOTrabajadores.dc.html",
+    "MONuevo.dc.html",
+    "MOAsistencia.dc.html"
   ],
   "pages": [
     {

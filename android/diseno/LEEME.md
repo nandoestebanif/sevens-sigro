@@ -21,7 +21,7 @@ Esta carpeta es la copia en el repositorio para programar sin depender del lienz
    y en cada obra el estado del celular: **la autorización es por celular y por obra** (regla 5).
 4. **Inicio = «Almacén»:** resumen del día, accesos Salida · Entrada · Stock · **Más** (hoja con ingreso sin compra,
    traslado, conteo, cerrar obra, mi celular), últimos registros, botón flotante «Registrar salida», barra inferior de vidrio.
-5. Las pantallas de Materiales, Catálogo, Herramientas y Mano de obra se revisan una por una; las de Materiales
+5. **Catálogo (3), Herramientas (6) y Mano de obra (3) diseñadas el 28/10** en estilo vidrio; se entra desde «Más › Otros recursos». Las de Materiales se revisan una por una; las de Materiales
    ya existen en estilo B **sin** vidrio todavía (pasarlas al vidrio con su propio fondo al revisarlas).
 
 ## Fichas técnicas (tokens)
@@ -46,7 +46,10 @@ Esta carpeta es la copia en el repositorio para programar sin depender del lienz
 | Elegir obra | Topografía: curvas de nivel suaves, lote punteado, norte (más azul / verde agua) |
 | Inicio | Obra en marcha: grúa torre, edificio isométrico, viga en I, cota |
 | Mi celular | Detalle estructural: columna con 8 fierros y estribos, zapata, ondas de señal |
-| (por hacer) | Materiales: estanterías de almacén · Herramientas: andamio / mezcladora · Mano de obra: cuadrilla / cronograma |
+| Catálogo | Estante isométrico (buscar) · sección de varillas Ø (ficha) · etiqueta con código y saco de 42.5 kg (nuevo) |
+| Herramientas | Andamio (lista) · mezcladora (ficha) · caja de herramientas (ingreso) · carretilla (entrega) · andamio y flecha de retorno (devolución) · engranaje y calendario (mantenimiento o baja) |
+| Mano de obra | Cascos y cuadrilla (trabajadores) · documento de identidad (nuevo) · cronograma semanal (asistencia) |
+| (por hacer) | Materiales: pasarlas al vidrio con estanterías de almacén |
 
 Son decorativos: **nunca** coordenadas, áreas ni datos que parezcan reales de la obra.
 
