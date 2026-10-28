@@ -9,7 +9,8 @@
    - Se muestran razón social, RUC y estado.
    - Un proveedor dado de baja sigue visible aquí (historial), pero el selector
      de la compra usa `proveedoresParaComprar()`, que lo excluye.
-   - El alta exige RUC (11 dígitos) y razón social; el RUC repetido se rechaza.
+   - El alta exige RUC (11 dígitos) o DNI (8, decisión D-C5) y razón social; el
+     documento repetido se rechaza. El DNI queda «sin validar»: no va a SUNAT.
    El tercer criterio de HU-30 («al guardarlo queda seleccionado en la compra en
    curso») se demuestra en la pantalla de compra, que reutiliza este mismo alta.
    ───────────────────────────────────────────────────────────────────────── */
@@ -76,10 +77,10 @@ export function AltaProveedor({ enCerrar, enCreado }: {
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
         <Campo
           id="alta-ruc"
-          etiqueta="RUC"
+          etiqueta="RUC o DNI"
           valor={ruc}
           enCambio={alCambiarRuc}
-          marcador="11 dígitos"
+          marcador="RUC de 11 dígitos o DNI de 8"
           autoFoco
           error={error?.campo === 'ruc' ? error.texto : undefined}
         />
@@ -140,7 +141,7 @@ export function Proveedores() {
   const recorte = visibles?.slice(0, tope) ?? null
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 15 }}>
+    <div className="pagina" style={{ display: 'flex', flexDirection: 'column', gap: 15 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16 }}>
         <Titulo sub="RUC único en todo el sistema · un proveedor de baja no aparece al registrar compras nuevas">
           Proveedores

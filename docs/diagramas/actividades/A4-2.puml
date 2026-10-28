@@ -1,0 +1,22 @@
+@startuml
+!include _estilo.iuml
+title A4.2 · Cierre de obra: herramientas, autorización y acta
+|Almacenero|
+start
+:Declarar el estado de cada herramienta · HU-54;
+|Residente de obra|
+:Autorizar las bajas de herramientas;
+|Sistema|
+if (¿Quedan saldos sin confirmar?) then (sí)
+  :Bloquear el cierre;
+  end
+else (no)
+endif
+:Pedir la autorización del cierre;
+|Administrador|
+:Autorizar el cierre · matriz: residente R, administrador A;
+|Sistema|
+:Cerrar la obra;
+:Generar el acta\n(comprado, consumido y transferido);
+stop
+@enduml

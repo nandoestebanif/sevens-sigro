@@ -1,0 +1,18 @@
+@startuml
+!include _estilo.iuml
+title A3.3 · Consultar las horas y su costo
+|Residente de obra|
+start
+:Consultar las horas acumuladas · HU-64 (Sprint 2);
+|Sistema|
+:Sumar solo las jornadas vigentes;
+|Gerente|
+:Consultar el costo de la mano de obra · HU-65 (Sprint 2);
+|Sistema|
+:Valorizar por categoría con el precio del S10;
+:Comparar contra las horas planificadas;
+|Gerente|
+:Revisar la desviación;
+note right: Se informa como gasto en recursos,\nno como planilla
+stop
+@enduml

@@ -1,0 +1,24 @@
+skinparam defaultFontName "DejaVu Sans"
+skinparam defaultFontSize 12
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam ArrowColor #4C5257
+skinparam ArrowFontSize 11
+skinparam ActivityBackgroundColor #FFF6EE
+skinparam ActivityBorderColor #C2410C
+skinparam ActivityBorderThickness 1.2
+skinparam ActivityDiamondBackgroundColor #FFFFFF
+skinparam ActivityDiamondBorderColor #C2410C
+skinparam ActivityStartColor #1C1D1F
+skinparam ActivityEndColor #1C1D1F
+skinparam ActivityBarColor #1C1D1F
+skinparam SwimlaneBorderColor #C9C9C2
+skinparam SwimlaneTitleFontStyle bold
+skinparam SwimlaneTitleFontColor #9A3E00
+skinparam NoteBackgroundColor #FDF2E3
+skinparam NoteBorderColor #B45309
+skinparam TitleFontSize 17
+skinparam TitleFontStyle bold
+skinparam StateBackgroundColor #FFF6EE
+skinparam StateBorderColor #C2410C
+skinparam StateFontStyle bold

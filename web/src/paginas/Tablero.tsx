@@ -57,7 +57,7 @@ export function Tablero() {
   )
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 15 }}>
+    <div className="pagina" style={{ display: 'flex', flexDirection: 'column', gap: 15 }}>
       <Titulo sub={`Presupuesto 2701006 · semana ${r.semana} de ${r.semanasTotales} · lo consumido contra lo planificado en el reporte de recursos del S10`}>
         Gasto en recursos de la obra
       </Titulo>

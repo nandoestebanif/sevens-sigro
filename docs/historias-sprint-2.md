@@ -1,6 +1,6 @@
 # Historias del Sprint 2
 
-31 historias · 107 puntos
+38 historias · 130 puntos (Planning Poker del equipo): las 31 originales (108), HU-66 y HU-67 de la ficha CR-04 (solicitud de materiales; 5 y 3 puntos, votadas el 22 oct) y las 5 que estaban como «siguiente iteración» (HU-11, HU-52, HU-53, HU-59, HU-61; 14), que entran aquí porque solo hay dos sprints (decisión del 22 oct).
 
 ## HU-02 · Ampliar plazo del proyecto
 
@@ -429,7 +429,7 @@
 > Como almacenero, quiero recibir una advertencia antes de confirmar una recepción que exceda lo requerido, para evitar registrar cantidades no justificadas.
 
 - **Épica**: E3. Registrar las compras y sus recepciones
-- **Módulo**: Compras / Recepciones · **Prioridad**: Media · **Puntos**: 2
+- **Módulo**: Compras / Recepciones · **Prioridad**: Media · **Puntos**: 3
 - **Responsable**: Backend · Henry Ticona
 - **Depende de**: HU-35, HU-19
 
@@ -485,3 +485,83 @@
 - [ ] Lista proveedor, tipo y número de comprobante, fecha, base, impuesto y total
 - [ ] Permite filtrar por proveedor, por rango de fechas y por obra
 - [ ] Puede exportarse
+
+## HU-11 · Adjuntar foto del insumo
+
+> Como almacenero, quiero adjuntar una foto del insumo, para reconocerlo cuando lo facturan con otro nombre.
+
+- **Épica**: E1. Preparar la obra y su control
+- **Módulo**: Catálogo de insumos · **Prioridad**: Baja · **Puntos**: 3
+- **Responsable**: Android · Nicolás Pachamora
+- **Depende de**: HU-08
+- **Origen**: estaba como «siguiente iteración»; entra al Sprint 2 por decisión del 22/10 (solo hay dos sprints)
+
+**Criterios de aceptación**
+
+- [ ] Se admite una foto por insumo, en JPG o PNG
+- [ ] La foto puede reemplazarse y queda registro de quién la subió
+
+## HU-52 · Registrar mantenimiento de herramienta
+
+> Como almacenero, quiero registrar el mantenimiento de una herramienta y cuándo corresponde el siguiente, para anticipar su reemplazo antes de que falle.
+
+- **Épica**: E5. Controlar las existencias de herramientas y equipos
+- **Módulo**: Herramientas / Equipos · **Prioridad**: Media · **Puntos**: 3
+- **Responsable**: Android · Nicolás Pachamora
+- **Depende de**: HU-48
+- **Origen**: estaba como «siguiente iteración»; entra al Sprint 2 por decisión del 22/10 (solo hay dos sprints)
+
+**Criterios de aceptación**
+
+- [ ] Exige fecha, tipo de mantenimiento y costo si lo hubo
+- [ ] Permite fijar la fecha del próximo mantenimiento
+- [ ] La herramienta queda en estado "en mantenimiento" y no puede entregarse mientras dure
+- [ ] Las herramientas con mantenimiento vencido se señalan en la consulta
+
+## HU-53 · Dar de baja herramienta
+
+> Como almacenero, quiero dar de baja una herramienta perdida o deteriorada, para explicar por qué no regresan todas las que salieron.
+
+- **Épica**: E5. Controlar las existencias de herramientas y equipos
+- **Módulo**: Herramientas / Equipos · **Prioridad**: Media · **Puntos**: 2
+- **Responsable**: Android · Nicolás Pachamora
+- **Depende de**: HU-49
+- **Origen**: estaba como «siguiente iteración»; entra al Sprint 2 por decisión del 22/10 (solo hay dos sprints)
+
+**Criterios de aceptación**
+
+- [ ] Exige motivo: pérdida, deterioro irreparable o robo
+- [ ] Registra el último responsable que la tuvo
+- [ ] Una herramienta dada de baja no puede entregarse ni devolverse
+- [ ] La baja no borra su historial
+
+## HU-59 · Separar impuesto del costo
+
+> Como gerente, quiero separar el impuesto del gasto en materiales, para leer el costo real sin el componente tributario.
+
+- **Épica**: E6. Valorizar el consumo e informar el costo de obra
+- **Módulo**: Reportes / Administración · **Prioridad**: Baja · **Puntos**: 3
+- **Responsable**: Web · Víctor Luján
+- **Depende de**: HU-32
+- **Origen**: estaba como «siguiente iteración»; entra al Sprint 2 por decisión del 22/10 (solo hay dos sprints)
+
+**Criterios de aceptación**
+
+- [ ] Cada compra registra base imponible, impuesto y total
+- [ ] Los reportes de costo pueden verse con o sin impuesto
+- [ ] El criterio aplicado se indica en el reporte
+
+## HU-61 · Descargar comprobante
+
+> Como administrador, quiero descargar la factura de cualquier compra, para entregarla cuando la administración la pide.
+
+- **Épica**: E6. Valorizar el consumo e informar el costo de obra
+- **Módulo**: Reportes / Administración · **Prioridad**: Media · **Puntos**: 3
+- **Responsable**: Web · Víctor Luján
+- **Depende de**: HU-34
+- **Origen**: estaba como «siguiente iteración»; entra al Sprint 2 por decisión del 22/10 (solo hay dos sprints)
+
+**Criterios de aceptación**
+
+- [ ] Se descarga el archivo original tal como se adjuntó
+- [ ] Si la compra no tiene comprobante adjunto, se señala en el listado

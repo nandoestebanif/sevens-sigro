@@ -3,3 +3,5 @@ uvicorn==0.30.6
 httpx==0.27.2
 pdfplumber==0.11.4
 python-multipart==0.0.9
+# eMudhra CA (oct 2026): certifi anterior confía en intermediarias con llaves comprometidas
+certifi>=2026.10.19

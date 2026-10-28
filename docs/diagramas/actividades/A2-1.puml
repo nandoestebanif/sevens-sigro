@@ -1,0 +1,27 @@
+@startuml
+!include _estilo.iuml
+title A2.1 · Recibir material en almacén
+|Almacenero|
+start
+:Llega el material a obra;
+if (¿El insumo está en el catálogo?) then (no)
+  :Crearlo con su criterio · HU-08\nqueda «por verificar»;
+  note right: El almacenero no espera:\nel residente lo verifica después\n(respuesta del cliente, 22 oct)
+else (sí)
+endif
+if (¿Viene de una compra?) then (sí)
+  :Registrar la recepción · HU-35\n(se propone la total; admite parcial);
+  |Sistema|
+  if (¿Supera lo comprado?) then (sí)
+    :Advertir sin bloquear · HU-36 (Sprint 2);
+  else (no)
+  endif
+else (no)
+  |Almacenero|
+  :Registrar ingreso sin compra · HU-41 (Sprint 2)\ncon su costo unitario;
+endif
+|Sistema|
+:Guardar el ingreso\n(movimiento que no se edita);
+:Recalcular el costo promedio ponderado\n(factura: sin IGV · NIC 2.11);
+stop
+@enduml

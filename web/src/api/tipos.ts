@@ -52,6 +52,7 @@ export interface TotalesCompra {
 
 export interface Compra {
   id: string
+  obraId: string // la compra pertenece a una obra (regla 9: el alcance es la obra)
   proveedorId: string
   proveedorRazonSocial: string // denormalizada para listar sin otra consulta
   tipoComprobante: TipoComprobante
@@ -157,6 +158,7 @@ export type TipoMovimiento = 'ingreso' | 'salida' | 'reverso'
 
 export interface Movimiento {
   id: string // correlativo del servidor, p. ej. M-0007
+  obraId: string // el movimiento pertenece a una obra (regla 9)
   uuidCliente: string // idempotencia: un reenvío con el mismo uuid no duplica
   fechaServidor: string // ISO con hora; la hora que vale para auditar
   almacen: string
@@ -189,6 +191,43 @@ export interface StockInsumo {
   puntoReposicion: number | null
   bajoPunto: boolean
   ultimoMovimiento: string // ISO del último movimiento considerado
+}
+
+/** HU-26 · HU-27: aviso de reposición con su sugerencia de compra.
+    Todo calculado por el servidor; la sugerencia es referencia editable,
+    nunca un pedido automático. */
+export interface AlertaReposicion {
+  insumoId: string
+  descripcion: string
+  unidad: string
+  saldo: number
+  punto: number
+  criterioPunto: string // mínimo absoluto o % del requerimiento, según se configuró
+  faltaPorComprar: number
+  sugerencia: number
+  criterioSugerencia: string // cómo se calculó (criterio de HU-27)
+  estado: 'activa' | 'atendida'
+  atendidaPor: string | null // comprobante de la compra que la atendió (HU-26)
+}
+
+/* ── obra y sus periodos semanales (HU-01 · HU-03) ── */
+export interface Semana {
+  numero: number
+  inicio: string // ISO (yyyy-mm-dd)
+  fin: string
+  dias: number // la última puede ser más corta que 7
+  /** derivado del calendario: una semana cerrada no admite movimientos nuevos */
+  estado: 'cerrada' | 'en_curso' | 'por_venir'
+}
+
+export interface Obra {
+  id: string
+  nombre: string
+  presupuesto: string // código del presupuesto del S10, p. ej. 2701006-002
+  inicio: string
+  fin: string
+  estado: 'en_ejecucion' | 'cerrada' // nace en ejecución (HU-01)
+  semanas: Semana[] // se generan solas al crear la obra (HU-03)
 }
 
 export interface ObraActiva {

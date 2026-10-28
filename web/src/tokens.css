@@ -133,3 +133,89 @@ p {
 button {
   font-family: inherit;
 }
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Movimiento · dirección G
+   Reglas: corto (≤350 ms), con propósito (entrada, confirmación, foco), solo
+   transform/opacity (nunca layout), y TODO se apaga si la persona pidió menos
+   movimiento en su sistema (prefers-reduced-motion).
+   ───────────────────────────────────────────────────────────────────────── */
+:root {
+  --paso: cubic-bezier(0.2, 0.8, 0.3, 1); /* arranca rápido, aterriza suave */
+}
+
+@keyframes aparecer {
+  from { opacity: 0; transform: translateY(7px); }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes velo-entra {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes modal-entra {
+  from { opacity: 0; transform: translateY(10px) scale(0.975); }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes barra-crece {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+
+/* cada pantalla entra en cascada: el título primero, las tarjetas detrás */
+.pagina { animation: aparecer 0.3s var(--paso) both; }
+.pagina > * { animation: aparecer 0.34s var(--paso) both; }
+.pagina > :nth-child(2) { animation-delay: 0.04s; }
+.pagina > :nth-child(3) { animation-delay: 0.08s; }
+.pagina > :nth-child(4) { animation-delay: 0.12s; }
+.pagina > :nth-child(5) { animation-delay: 0.16s; }
+.pagina > :nth-child(n + 6) { animation-delay: 0.2s; }
+
+/* modales: el velo funde y la caja aterriza */
+.velo { animation: velo-entra 0.18s ease-out both; }
+.modal-caja { animation: modal-entra 0.24s var(--paso) both; }
+
+/* medidores: la barra crece desde la izquierda al cargar */
+.medidor-barra {
+  transform-origin: left center;
+  animation: barra-crece 0.6s var(--paso) both;
+  animation-delay: 0.15s;
+}
+
+/* botones: responden al pasar y al presionar */
+button:not(:disabled) {
+  transition: transform 0.14s var(--paso), box-shadow 0.14s var(--paso),
+    filter 0.14s var(--paso), background-color 0.14s var(--paso),
+    border-color 0.14s var(--paso), color 0.14s var(--paso);
+}
+
+button:not(:disabled):hover { filter: brightness(1.04); }
+button:not(:disabled):active { transform: scale(0.97); filter: brightness(0.97); }
+
+/* filas de tabla: el hover dice «esto se puede mirar» */
+tbody tr { transition: background-color 0.12s ease-out; }
+tbody tr:hover { background-color: var(--tarjeta-suave); }
+
+/* menú lateral: el ítem responde antes de estar activo */
+nav a { transition: background-color 0.14s ease-out, color 0.14s ease-out; }
+nav a:not(.active):hover { background-color: var(--linea); }
+
+/* campos: el foco se enciende suave */
+input, select, textarea {
+  transition: border-color 0.14s ease-out, box-shadow 0.14s ease-out,
+    background-color 0.14s ease-out;
+}
+
+/* el cambio de tema funde en vez de parpadear */
+body { transition: background-color 0.25s ease-out, color 0.25s ease-out; }
+
+/* la persona pidió menos movimiento: se respeta, todo quieto */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-delay: 0ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

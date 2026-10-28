@@ -115,7 +115,7 @@ export function Movimientos() {
   const corte = kardex?.[0]?.fechaServidor
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 15 }}>
+    <div className="pagina" style={{ display: 'flex', flexDirection: 'column', gap: 15 }}>
       <Titulo sub={`El movimiento es un libro que no se borra: corregir es registrar un reverso. ${corte ? `Último movimiento considerado: ${hora(corte)} (hora del servidor).` : ''}`}>
         Ingresos y salidas
       </Titulo>

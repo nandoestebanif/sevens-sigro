@@ -1,6 +1,6 @@
 # Historias del Sprint 1
 
-29 historias · 152 puntos
+29 historias · 153 puntos (estimación del equipo con Planning Poker, 21 oct)
 
 ## HU-01 · Crear proyecto
 
@@ -422,7 +422,7 @@
 > Como almacenero, quiero consultar la lista de proveedores, para elegir uno sin volver a escribir sus datos.
 
 - **Épica**: E3. Registrar las compras y sus recepciones
-- **Módulo**: Proveedores · **Prioridad**: Alta · **Puntos**: 2
+- **Módulo**: Proveedores · **Prioridad**: Alta · **Puntos**: 3
 - **Responsable**: Web · Víctor Luján
 - **Depende de**: ninguna
 

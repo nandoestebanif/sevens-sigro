@@ -1,0 +1,30 @@
+@startuml
+!include _estilo.iuml
+title A1.2 · Avisar, comprar y registrar la compra
+|Sistema|
+start
+:Una salida baja el saldo · HU-40;
+if (¿El saldo cruzó el punto\nde reposición?) then (no)
+  stop
+else (sí)
+endif
+:Emitir el aviso de reposición · HU-26\n(insumo, saldo, punto y falta por comprar);
+:Sugerir cuánto comprar · HU-27\n(menor entre lo que falta y lo que exige la fase);
+|Residente de obra|
+:Revisar la sugerencia (editable);
+:Acordar con el proveedor\n(fuera del sistema);
+:Elegir o crear el proveedor · HU-29, HU-30;
+|Sistema|
+:Validar el RUC en SUNAT · HU-31 (Sprint 2)\nsi no responde: «sin validar», no bloquea;
+|Residente de obra|
+:Registrar la compra · HU-32\n(comprobante único por proveedor);
+|Sistema|
+:Comparar el precio con el planificado · HU-33 (Sprint 2);
+if (¿Está sobre lo planificado?) then (sí)
+  :Advertir sin bloquear;
+else (no)
+endif
+:Marcar el aviso como atendido · HU-26;
+note right: La compra NO mueve el stock:\nlo mueve la recepción (A2.1)
+stop
+@enduml

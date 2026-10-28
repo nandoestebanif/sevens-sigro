@@ -13,18 +13,26 @@
    ───────────────────────────────────────────────────────────────────────── */
 import { INSUMOS_S10 } from '../datos/insumos-s10'
 import type {
-  AvanceInsumo, Compra, InsumoCatalogo, InsumoMaestro, LineaCompra, LineaRecepcion,
-  Movimiento, ObraActiva, Proveedor, ResumenTablero, StockInsumo, TipoComprobante,
+  AlertaReposicion, AvanceInsumo, Compra, InsumoCatalogo, InsumoMaestro,
+  LineaCompra, LineaRecepcion, Movimiento, Obra, ObraActiva, Proveedor,
+  ResumenTablero, Semana, StockInsumo, TipoComprobante,
 } from './tipos'
 
-export class ErrorApi extends Error {
-  constructor(public codigo: string, mensaje: string) {
-    super(mensaje)
-  }
-}
+import { ErrorApi } from './error'
+import { obrasHttp, proveedoresHttp, usaApiReal } from './http'
+export { ErrorApi }
 
 export interface ClienteSigro {
   obraActiva(): Promise<ObraActiva>
+  listarObras(): Promise<Obra[]>
+  /** regla 9: el alcance es la obra — al cambiarla, lo de empresa (catálogo,
+      proveedores) permanece y lo de obra (stock, compras, gasto) cambia */
+  elegirObra(id: string): Promise<ObraActiva>
+  /** HU-26: el aviso salta solo al cruzar el punto; HU-27: con su sugerencia */
+  alertasReposicion(): Promise<AlertaReposicion[]>
+  /** HU-01: nombre y plazo obligatorios; nace «en ejecución».
+      HU-03: los periodos semanales se generan solos, del inicio al fin. */
+  crearObra(datos: { nombre: string; presupuesto: string; inicio: string; fin: string }): Promise<Obra>
   listarProveedores(busqueda?: string): Promise<Proveedor[]>
   /** solo los que admiten compras nuevas: excluye a los dados de baja (HU-29) */
   proveedoresParaComprar(): Promise<Proveedor[]>
@@ -98,9 +106,9 @@ const mov = (
   descripcion: string, unidad: string, tipo: Movimiento['tipo'], cantidad: number,
   costoUnitario: number, motivo: string, autor: string, reversaA: string | null = null,
 ): Movimiento => ({
-  id, uuidCliente: `d1-${id.toLowerCase()}`, fechaServidor, almacen, insumoId,
-  descripcion, unidad, tipo, cantidad, costoUnitario, motivo, autor, reversaA,
-  anuladoPor: null,
+  id, obraId: 'o1', uuidCliente: `d1-${id.toLowerCase()}`, fechaServidor, almacen,
+  insumoId, descripcion, unidad, tipo, cantidad, costoUnitario, motivo, autor,
+  reversaA, anuladoPor: null,
 })
 
 const CEM = ['0221000000', 'CEMENTO PORTLAND TIPO I (42.50 KG.)', 'bls'] as const
@@ -109,17 +117,17 @@ const ARE = ['0205010033', 'ARENA GRUESA', 'm3'] as const
 
 const MOVIMIENTOS: Movimiento[] = [
   mov('M-0001', '2026-10-18T08:40:11', 'Almacén central', ...ARE, 'ingreso', 15, 80.00, 'Ingreso sin compra · saldo traído de la obra San Isidro', 'L. Condori (almacenero)'),
-  mov('M-0002', '2026-10-19T08:12:34', 'Almacén central', ...CEM, 'ingreso', 320, 29.23, 'Recepción de la compra F001-4512 · Dinoselva', 'L. Condori (almacenero)'),
-  mov('M-0003', '2026-10-19T10:05:02', 'Almacén central', ...CEM, 'salida', 48, 29.21, 'Vaciado de losa · piso 3 · retira J. Quispe', 'L. Condori (almacenero)'),
-  mov('M-0004', '2026-10-20T07:40:50', 'Almacén central', ...CEM, 'salida', 36, 29.21, 'Asentado de muros · bloque B · retira R. Mamani', 'L. Condori (almacenero)'),
-  mov('M-0005', '2026-10-20T09:02:15', 'Almacén central', ...ACE, 'ingreso', 180, 41.27, 'Recepción de la compra F003-221 · Acero Comercial', 'L. Condori (almacenero)'),
+  mov('M-0002', '2026-10-19T08:12:34', 'Almacén central', ...CEM, 'ingreso', 320, 24.77, 'Recepción de la compra F001-4512 · Dinoselva', 'L. Condori (almacenero)'),
+  mov('M-0003', '2026-10-19T10:05:02', 'Almacén central', ...CEM, 'salida', 48, 24.77, 'Vaciado de losa · piso 3 · retira J. Quispe', 'L. Condori (almacenero)'),
+  mov('M-0004', '2026-10-20T07:40:50', 'Almacén central', ...CEM, 'salida', 36, 24.77, 'Asentado de muros · bloque B · retira R. Mamani', 'L. Condori (almacenero)'),
+  mov('M-0005', '2026-10-20T09:02:15', 'Almacén central', ...ACE, 'ingreso', 180, 34.97, 'Recepción de la compra F003-221 · Acero Comercial', 'L. Condori (almacenero)'),
   mov('M-0006', '2026-10-21T08:55:48', 'Almacén central', ...ARE, 'salida', 12, 80.00, 'Tarrajeo exterior · retira cuadrilla de albañiles', 'L. Condori (almacenero)'),
   mov('M-0007', '2026-10-21T09:10:21', 'Almacén central', ...ARE, 'reverso', 12, 80.00, 'Se digitó 12; el conteo real fue 2', 'L. Condori (almacenero)', 'M-0006'),
   mov('M-0008', '2026-10-21T09:11:03', 'Almacén central', ...ARE, 'salida', 2, 80.00, 'Tarrajeo exterior · retira cuadrilla de albañiles (corregido)', 'L. Condori (almacenero)'),
-  mov('M-0009', '2026-10-21T11:30:44', 'Almacén central', ...CEM, 'salida', 20, 29.21, 'Traslado al almacén del frente B', 'L. Condori (almacenero)'),
-  mov('M-0010', '2026-10-21T11:31:10', 'Almacén frente B', ...CEM, 'ingreso', 20, 29.21, 'Traslado desde el almacén central', 'L. Condori (almacenero)'),
-  mov('M-0011', '2026-10-21T14:20:37', 'Almacén central', ...ACE, 'salida', 120, 41.27, 'Habilitado de columnas · piso 4 · retira cuadrilla de fierreros', 'L. Condori (almacenero)'),
-  mov('M-0012', '2026-10-22T07:30:29', 'Almacén central', ...CEM, 'salida', 40, 29.21, 'Vaciado de losa · piso 4 · retira J. Quispe', 'L. Condori (almacenero)'),
+  mov('M-0009', '2026-10-21T11:30:44', 'Almacén central', ...CEM, 'salida', 20, 24.77, 'Traslado al almacén del frente B', 'L. Condori (almacenero)'),
+  mov('M-0010', '2026-10-21T11:31:10', 'Almacén frente B', ...CEM, 'ingreso', 20, 24.77, 'Traslado desde el almacén central', 'L. Condori (almacenero)'),
+  mov('M-0011', '2026-10-21T14:20:37', 'Almacén central', ...ACE, 'salida', 120, 34.97, 'Habilitado de columnas · piso 4 · retira cuadrilla de fierreros', 'L. Condori (almacenero)'),
+  mov('M-0012', '2026-10-22T07:30:29', 'Almacén central', ...CEM, 'salida', 40, 24.77, 'Vaciado de losa · piso 4 · retira J. Quispe', 'L. Condori (almacenero)'),
 ]
 
 /** efecto de un movimiento sobre el saldo: el reverso deshace el signo del original */
@@ -135,6 +143,36 @@ const PUNTO_REPOSICION: Record<string, number> = {
   '0203020004': 40, // varillas
 }
 
+/* HU-03: las semanas se generan solas, desde el inicio hasta el fin; la última
+   puede ser más corta. El estado de cada una se deriva del calendario: una
+   semana cerrada no admite movimientos nuevos (lo valida el servidor al
+   registrar; la pantalla solo lo muestra). */
+function generarSemanas(inicio: string, fin: string, hoy = new Date().toISOString().slice(0, 10)): Semana[] {
+  const dia = (iso: string, mas = 0) => {
+    const d = new Date(`${iso}T00:00:00`)
+    d.setDate(d.getDate() + mas)
+    return d.toISOString().slice(0, 10)
+  }
+  const semanas: Semana[] = []
+  let desde = inicio
+  let n = 1
+  while (desde <= fin) {
+    const hasta7 = dia(desde, 6)
+    const hasta = hasta7 < fin ? hasta7 : fin
+    const dias = Math.round((Date.parse(hasta) - Date.parse(desde)) / 86400000) + 1
+    semanas.push({
+      numero: n,
+      inicio: desde,
+      fin: hasta,
+      dias,
+      estado: hasta < hoy ? 'cerrada' : desde > hoy ? 'por_venir' : 'en_curso',
+    })
+    desde = dia(hasta, 1)
+    n += 1
+  }
+  return semanas
+}
+
 export class ClienteSimulado implements ClienteSigro {
   private proveedores: Proveedor[] | null = null
 
@@ -142,7 +180,7 @@ export class ClienteSimulado implements ClienteSigro {
      M-0002 (320 de 400 bls: recepción parcial) y F003-221 el M-0005 (completa). */
   private compras: Compra[] = [
     {
-      id: 'co-1', proveedorId: 'demo-dinoselva', proveedorRazonSocial: 'DINOSELVA IQUITOS S.A.C.',
+      id: 'co-1', obraId: 'o1', proveedorId: 'demo-dinoselva', proveedorRazonSocial: 'DINOSELVA IQUITOS S.A.C.',
       tipoComprobante: 'factura', numeroComprobante: 'F001-4512', fecha: '2026-10-18',
       estado: 'recibida_parcial',
       lineas: [{ insumoId: '0221000000', descripcion: 'CEMENTO PORTLAND TIPO I (42.50 KG.)', unidadCompra: 'bls', cantidad: 400, precioUnitario: 29.23 }],
@@ -150,7 +188,7 @@ export class ClienteSimulado implements ClienteSigro {
       adjunto: true,
     },
     {
-      id: 'co-2', proveedorId: 'demo-acero', proveedorRazonSocial: 'ACERO COMERCIAL S.R.L.',
+      id: 'co-2', obraId: 'o1', proveedorId: 'demo-acero', proveedorRazonSocial: 'ACERO COMERCIAL S.R.L.',
       tipoComprobante: 'factura', numeroComprobante: 'F003-221', fecha: '2026-10-19',
       estado: 'recibida',
       lineas: [{ insumoId: '0203020004', descripcion: 'ACERO CORRUGADO FY= 4200 Kg/cm2', unidadCompra: 'varilla 9 m', cantidad: 180, precioUnitario: 41.27 }],
@@ -182,9 +220,64 @@ export class ClienteSimulado implements ClienteSigro {
     return this.proveedores
   }
 
+  /* La obra real de la demo; sus 52 semanas salen del MISMO generador que
+     usará cualquier obra nueva (de ahí el «semana 14 de 52» de toda la web). */
+  private obras: Obra[] = [{
+    id: 'o1', nombre: 'Multifamiliar Flores', presupuesto: '2701006-002',
+    inicio: '2026-07-20', fin: '2027-07-18', estado: 'en_ejecucion',
+    semanas: generarSemanas('2026-07-20', '2027-07-18'),
+  }]
+
+  /** regla 9: el alcance es la obra; todo lo que es «de obra» se filtra por esta */
+  private obraActivaId = 'o1'
+
   async obraActiva(): Promise<ObraActiva> {
     await espera(60)
-    return { id: 'o1', nombre: 'Multifamiliar Flores', presupuesto: '2701006-002', semana: 14, semanasTotales: 52 }
+    const o = this.obras.find((x) => x.id === this.obraActivaId) ?? this.obras[0]
+    const enCurso = o.semanas.find((s) => s.estado === 'en_curso')
+    const hoy = new Date().toISOString().slice(0, 10)
+    return {
+      id: o.id, nombre: o.nombre, presupuesto: o.presupuesto,
+      // 0 = la obra aún no inicia; la barra lateral lo dice con palabras
+      semana: enCurso?.numero ?? (hoy < o.inicio ? 0 : o.semanas.length),
+      semanasTotales: o.semanas.length,
+    }
+  }
+
+  async elegirObra(id: string): Promise<ObraActiva> {
+    await espera(120)
+    if (!this.obras.some((o) => o.id === id)) throw new ErrorApi('no_existe', 'Esa obra no existe.')
+    this.obraActivaId = id
+    return this.obraActiva()
+  }
+
+  async listarObras(): Promise<Obra[]> {
+    await espera(100)
+    return this.obras.map((o) => ({ ...o, semanas: [...o.semanas] }))
+  }
+
+  async crearObra(datos: { nombre: string; presupuesto: string; inicio: string; fin: string }): Promise<Obra> {
+    await espera(300)
+    const nombre = datos.nombre.trim()
+    // HU-01: nombre, fecha de inicio y fecha de fin son obligatorios
+    if (nombre.length < 3) throw new ErrorApi('nombre', 'El nombre de la obra es obligatorio.')
+    if (!datos.inicio || !datos.fin) throw new ErrorApi('fechas', 'Las fechas de inicio y fin son obligatorias.')
+    // HU-01: la fecha de fin no puede ser anterior a la de inicio
+    if (datos.fin < datos.inicio) throw new ErrorApi('fin', 'La fecha de fin no puede ser anterior a la de inicio.')
+    if (this.obras.some((o) => o.nombre.toLowerCase() === nombre.toLowerCase())) {
+      throw new ErrorApi('nombre', 'Ya existe una obra con ese nombre.')
+    }
+    const obra: Obra = {
+      id: `o${this.obras.length + 1}-${Date.now()}`,
+      nombre,
+      presupuesto: datos.presupuesto.trim(),
+      inicio: datos.inicio,
+      fin: datos.fin,
+      estado: 'en_ejecucion', // HU-01: el proyecto nace en ejecución
+      semanas: generarSemanas(datos.inicio, datos.fin), // HU-03: solas
+    }
+    this.obras = [...this.obras, obra]
+    return obra
   }
 
   async listarProveedores(busqueda = ''): Promise<Proveedor[]> {
@@ -211,7 +304,12 @@ export class ClienteSimulado implements ClienteSigro {
     const ruc = datos.ruc.trim()
     const razonSocial = datos.razonSocial.trim()
     // HU-30: exige RUC y razón social como mínimo
-    if (!/^\d{11}$/.test(ruc)) throw new ErrorApi('ruc_invalido', 'El RUC debe tener 11 dígitos.')
+    // D-C5 (ratificada por el PO): RUC de 11 dígitos o DNI de 8. El DNI queda «sin
+    // validar» y nunca se consulta en SUNAT (persona natural sin RUC).
+    const esDni = /^\d{8}$/.test(ruc)
+    if (!esDni && !/^\d{11}$/.test(ruc)) {
+      throw new ErrorApi('ruc_invalido', 'Ingresa un RUC de 11 dígitos o un DNI de 8.')
+    }
     if (razonSocial.length < 3) throw new ErrorApi('razon_social', 'La razón social es obligatoria.')
     // HU-30: no se admiten dos proveedores con el mismo RUC
     if (proveedores.some((p) => p.ruc === ruc)) {
@@ -223,7 +321,7 @@ export class ClienteSimulado implements ClienteSigro {
       razonSocial,
       // el veredicto viene de la consulta al micro de integraciones (HU-31);
       // si el micro o SUNAT no respondieron, queda «sin validar» y no bloquea
-      estado: datos.validadoEnSunat ? 'validado' : 'sin_validar',
+      estado: datos.validadoEnSunat && !esDni ? 'validado' : 'sin_validar',
       diasEntrega: null,
       comprasRegistradas: 0,
       ultimaCompra: null,
@@ -356,6 +454,7 @@ export class ClienteSimulado implements ClienteSigro {
     const base = total / 1.18
     const compra: Compra = {
       id: `c${this.compras.length + 1}-${Date.now()}`,
+      obraId: this.obraActivaId,
       proveedorId: datos.proveedorId,
       proveedorRazonSocial: prov.razonSocial,
       tipoComprobante: datos.tipoComprobante,
@@ -373,12 +472,17 @@ export class ClienteSimulado implements ClienteSigro {
     this.compras = [compra, ...this.compras]
     prov.comprasRegistradas += 1
     prov.ultimaCompra = datos.fecha
+    // HU-26: el aviso se marca como atendido al registrarse una compra del insumo
+    for (const l of datos.lineas) {
+      this.alertasAtendidas.set(l.insumoId, numero)
+    }
     return compra
   }
 
   async listarCompras(): Promise<Compra[]> {
     await espera()
-    return [...this.compras]
+    // regla 9: solo las compras de la obra activa
+    return this.compras.filter((c) => c.obraId === this.obraActivaId)
   }
 
   /** HU-35: el estado de la compra nunca se setea a mano: se deriva de lo recibido */
@@ -429,6 +533,7 @@ export class ClienteSimulado implements ClienteSigro {
       const numero = this.movimientos.length + 1
       this.movimientos = [...this.movimientos, {
         id: `M-${String(numero).padStart(4, '0')}`,
+        obraId: c.obraId,
         uuidCliente: `web-rec-${compraId}-${Date.now()}-${l.insumoId}`,
         fechaServidor: new Date().toISOString().slice(0, 19),
         almacen: 'Almacén central',
@@ -437,9 +542,13 @@ export class ClienteSimulado implements ClienteSigro {
         unidad: linea.unidadCompra,
         tipo: 'ingreso',
         cantidad: l.cantidad,
-        costoUnitario: linea.precioUnitario,
+        // NIC 2.11: el IGV de una factura es crédito fiscal y no forma parte del
+        // costo del inventario; en boleta no se recupera, así que sí es costo
+        costoUnitario: c.tipoComprobante === 'factura'
+          ? Math.round((linea.precioUnitario / 1.18) * 100) / 100
+          : linea.precioUnitario,
         motivo: `Recepción de la compra ${c.numeroComprobante} · ${c.proveedorRazonSocial}`,
-        autor: 'tú (web de oficina)',
+        autor: 'almacenero (registrado desde la web)',
         reversaA: null,
         anuladoPor: null,
       }]
@@ -450,9 +559,14 @@ export class ClienteSimulado implements ClienteSigro {
   /* ── kárdex (HU-43 · HU-45): el saldo se deriva, el libro no se toca ── */
   private movimientos: Movimiento[] = [...MOVIMIENTOS]
 
+  /** los de la obra activa (regla 9) */
+  private movsDeObra(): Movimiento[] {
+    return this.movimientos.filter((m) => m.obraId === this.obraActivaId)
+  }
+
   /** anuladoPor se calcula al leer: el original nunca se modifica en el libro */
   private conAnulaciones(): Movimiento[] {
-    return this.movimientos.map((m) => ({
+    return this.movsDeObra().map((m) => ({
       ...m,
       anuladoPor: this.movimientos.find((r) => r.reversaA === m.id)?.id ?? null,
     }))
@@ -466,7 +580,7 @@ export class ClienteSimulado implements ClienteSigro {
   async consultarStock(): Promise<StockInsumo[]> {
     await espera(180)
     const porInsumo = new Map<string, Movimiento[]>()
-    for (const m of this.movimientos) {
+    for (const m of this.movsDeObra()) {
       porInsumo.set(m.insumoId, [...(porInsumo.get(m.insumoId) ?? []), m])
     }
     return Array.from(porInsumo.entries()).map(([insumoId, movs]) => {
@@ -507,6 +621,7 @@ export class ClienteSimulado implements ClienteSigro {
     const numero = this.movimientos.length + 1
     const reverso: Movimiento = {
       id: `M-${String(numero).padStart(4, '0')}`,
+      obraId: original.obraId,
       uuidCliente: `web-rev-${Date.now()}`,
       fechaServidor: new Date().toISOString().slice(0, 19),
       almacen: original.almacen,
@@ -527,11 +642,72 @@ export class ClienteSimulado implements ClienteSigro {
 
   async avancePorInsumo(): Promise<AvanceInsumo[]> {
     await espera()
-    return [...AVANCE]
+    // el avance es de la obra: una obra recién creada aún no tiene requerimiento
+    return this.obraActivaId === 'o1' ? [...AVANCE] : []
+  }
+
+  /* ── HU-26 · HU-27: el aviso lo dispara el sistema, no una persona ── */
+
+  /** cómo se configuró el punto de cada insumo (HU-26: mínimo absoluto o
+      porcentaje del requerimiento) y qué exige la fase en curso (HU-27) */
+  private static CONFIG_REPOSICION: Record<string, { criterioPunto: string; exigeFase: number; fase: string }> = {
+    '0221000000': { criterioPunto: 'mínimo absoluto configurado: 250 bls', exigeFase: 480, fase: 'vaciados de noviembre (Estructuras)' },
+    '0203020004': { criterioPunto: '1 % del requerimiento total (4 040 varillas)', exigeFase: 600, fase: 'habilitado de los pisos 5 y 6' },
+  }
+
+  /** aviso → compra que lo atendió (HU-26: se marca atendido al comprar) */
+  private alertasAtendidas = new Map<string, string>()
+
+  async alertasReposicion(): Promise<AlertaReposicion[]> {
+    const stock = await this.consultarStock()
+    // HU-26: un mismo insumo no genera avisos repetidos mientras siga bajo el
+    // punto: hay a lo sumo UNA alerta por insumo, activa o atendida
+    return stock
+      .filter((s) => s.puntoReposicion !== null && s.saldoTotal < s.puntoReposicion)
+      .map((s) => {
+        const conf = ClienteSimulado.CONFIG_REPOSICION[s.insumoId]
+        const avance = AVANCE.find((a) => a.insumoId === s.insumoId)
+        const falta = avance?.saldoPorComprar ?? 0
+        // HU-27: el menor entre lo que falta por comprar y lo que exige la fase
+        const sugerencia = conf ? Math.min(falta, conf.exigeFase) : falta
+        const atendidaPor = this.alertasAtendidas.get(s.insumoId) ?? null
+        return {
+          insumoId: s.insumoId,
+          descripcion: s.descripcion,
+          unidad: s.unidad,
+          saldo: s.saldoTotal,
+          punto: s.puntoReposicion!,
+          criterioPunto: conf?.criterioPunto ?? 'mínimo absoluto',
+          faltaPorComprar: falta,
+          sugerencia,
+          criterioSugerencia: conf
+            ? `el menor entre lo que falta por comprar (${falta.toLocaleString('es-PE')} ${s.unidad}) y lo que exige la fase en curso: ${conf.fase} (${conf.exigeFase.toLocaleString('es-PE')} ${s.unidad})`
+            : 'lo que falta por comprar',
+          estado: atendidaPor ? 'atendida' as const : 'activa' as const,
+          atendidaPor,
+        }
+      })
   }
 
   async resumenTablero(): Promise<ResumenTablero> {
     await espera(220)
+    const activa = await this.obraActiva()
+    if (this.obraActivaId !== 'o1') {
+      // una obra recién creada todavía no tiene requerimiento ni gasto
+      return {
+        gastoTotal: 0,
+        avancePlazoPct: 0,
+        semana: activa.semana,
+        semanasTotales: activa.semanasTotales,
+        familias: [
+          { familia: 'materiales', etiqueta: 'Materiales', gastado: 0, planificado: 0, pct: 0 },
+          { familia: 'herramientas', etiqueta: 'Herramientas y equipos', gastado: 0, planificado: 0, pct: 0 },
+          { familia: 'horas_hombre', etiqueta: 'Horas hombre', gastado: 0, planificado: 0, pct: 0 },
+        ],
+        insumos: [],
+        noPlanificados: [],
+      }
+    }
     return {
       gastoTotal: 373060,
       avancePlazoPct: 26.9,
@@ -552,4 +728,24 @@ export class ClienteSimulado implements ClienteSigro {
 }
 
 /** instancia única que usan las pantallas; cambiarla por ClienteHttp es una línea */
-export const api: ClienteSigro = new ClienteSimulado()
+/* ───────────────────────────── API real ─────────────────────────────
+   HT-04: lo que la API de Adiel ya expone va al servidor; lo que todavía no
+   (catálogo, compras con insumos, almacén, costo, reposición) sigue simulado
+   hasta que exista su endpoint. Cada método que pasa al servidor se mueve aquí
+   sin tocar ninguna pantalla. */
+class ClienteHttp extends ClienteSimulado {
+  override obraActiva() { return obrasHttp.activa() }
+  override elegirObra(id: string) { return obrasHttp.elegir(id) }
+  override listarObras() { return obrasHttp.listar() }
+  override crearObra(datos: { nombre: string; presupuesto: string; inicio: string; fin: string }) {
+    return obrasHttp.crear(datos)
+  }
+  override listarProveedores(busqueda = '') { return proveedoresHttp.listar(busqueda) }
+  override proveedoresParaComprar() { return proveedoresHttp.paraComprar() }
+  override crearProveedor(datos: { ruc: string; razonSocial: string; validadoEnSunat?: boolean }) {
+    // el veredicto de SUNAT lo decide el servidor (HU-31), no la pantalla
+    return proveedoresHttp.crear(datos.ruc, datos.razonSocial)
+  }
+}
+
+export const api: ClienteSigro = usaApiReal ? new ClienteHttp() : new ClienteSimulado()
