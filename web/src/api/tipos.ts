@@ -237,3 +237,22 @@ export interface ObraActiva {
   semana: number
   semanasTotales: number
 }
+
+/** HU-25: stock de seguridad y punto de reposición de un insumo en la obra.
+    Cambiarlos agrega una vigencia nueva: la anterior queda en el historial. */
+export interface ParametroReposicion {
+  insumoCodigo: string
+  descripcion: string
+  unidadCompra: string
+  stockSeguridad: number
+  puntoReposicion: number
+  vigenteDesde: string // ISO
+}
+
+/** HU-19: resultado de cargar el requerimiento total de la obra desde el S10 */
+export interface ResultadoRequerimiento {
+  creados: number
+  sinCambios: number
+  fallidos: { insumoCodigo: string; motivo: string }[]
+  advertencias: string[]
+}

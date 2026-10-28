@@ -12,7 +12,10 @@
    web sigue con el cliente simulado, para que nadie quede bloqueado.
    ───────────────────────────────────────────────────────────────────────── */
 import { ErrorApi } from './error'
-import type { InsumoCatalogo, InsumoMaestro, Obra, ObraActiva, Proveedor, Semana } from './tipos'
+import type {
+  AvanceInsumo, InsumoCatalogo, InsumoMaestro, Obra, ObraActiva, ParametroReposicion, Proveedor,
+  ResultadoRequerimiento, Semana,
+} from './tipos'
 
 export const API_URL: string = (import.meta.env.VITE_API_URL ?? '').replace(/\/$/, '')
 export const usaApiReal = API_URL !== ''
@@ -80,7 +83,9 @@ export async function pedir<T>(metodo: 'GET' | 'POST', ruta: string, cuerpo?: ob
   const datos = texto ? JSON.parse(texto) : null
   if (!r.ok) {
     const d = (datos && (datos.codigo ? datos : datos.detail)) || {}
-    throw new ErrorApi(d.codigo ?? `http_${r.status}`, d.mensaje ?? 'El servidor rechazó la operación.')
+    // Pydantic antepone «Value error, » a las validaciones propias: al usuario le basta el mensaje
+    const mensaje = typeof d.mensaje === 'string' ? d.mensaje.replace(/^([a-z_]+: )?Value error, /, '') : null
+    throw new ErrorApi(d.codigo ?? `http_${r.status}`, mensaje ?? 'El servidor rechazó la operación.')
   }
   return convertir(datos, aCamel) as T
 }
@@ -228,5 +233,62 @@ export const catalogoHttp = {
   async aplicarS10(filas: { codigo: string; descripcion: string; unidad: string; tipo: string }[]) {
     return pedir<{ creados: number; actualizados: number; sinCambios: number; advertencias: string[] }>(
       'POST', '/catalogo/insumos/importar-s10', { insumos: filas })
+  },
+}
+
+/* ── requerimiento (HU-19), saldo por comprar (HU-24) y parámetros de reposición (HU-25) ──
+   todo es de la obra activa (regla 9): la ruta lleva su id y el servidor verifica la asignación */
+const obraId = async () => (await obrasHttp.activa()).id
+const num = (x: unknown) => Number(x ?? 0) // la API manda los decimales como texto exacto
+
+interface SaldoApi {
+  insumoId: number; insumoCodigo: string; descripcion: string; unidadS10: string; unidadCompra: string
+  requerido: string; comprado: string; saldo: string; saldoEnUnidadCompra: string; exceso: string
+  estado: 'pendiente' | 'completo' | 'excedido'
+}
+interface ParametroApi {
+  insumoCodigo: string; descripcion: string; unidadCompra: string
+  stockSeguridad: string; puntoReposicion: string; vigenteDesde: string; insumoId: number
+}
+const insumoIdPorCodigo = new Map<string, number>()
+const aParametro = (p: ParametroApi): ParametroReposicion => {
+  insumoIdPorCodigo.set(p.insumoCodigo, p.insumoId)
+  return {
+    insumoCodigo: p.insumoCodigo, descripcion: p.descripcion, unidadCompra: p.unidadCompra,
+    stockSeguridad: num(p.stockSeguridad), puntoReposicion: num(p.puntoReposicion), vigenteDesde: p.vigenteDesde,
+  }
+}
+
+export const reposicionHttp = {
+  async saldo(): Promise<AvanceInsumo[]> {
+    const xs = await pedir<SaldoApi[]>('GET', `/obras/${await obraId()}/saldo-por-comprar`)
+    return xs.map((s) => {
+      const req = num(s.requerido), comp = num(s.comprado)
+      return {
+        insumoId: String(s.insumoId), codigo: s.insumoCodigo, descripcion: s.descripcion,
+        unidadS10: s.unidadS10, unidadCompra: s.unidadCompra,
+        fase: 'Toda la obra', // las fases llegan con el requerimiento por fase (HU-20, Sprint 2)
+        critico: false,       // marcar críticos es HU-28 (Sprint 2)
+        planificadoCantidad: req, planificadoImporte: 0,
+        compradoCantidad: comp, compradoPct: req ? Math.round((comp / req) * 1000) / 10 : 0,
+        recibidoPct: 0, consumidoPct: 0, gastado: 0, // llegan con almacén y costo
+        saldoPorComprar: num(s.saldoEnUnidadCompra), desviacionPuntos: 0,
+      }
+    })
+  },
+  async parametros(): Promise<ParametroReposicion[]> {
+    return (await pedir<ParametroApi[]>('GET', `/obras/${await obraId()}/parametros-reposicion`)).map(aParametro)
+  },
+  async registrar(d: { insumoCodigo: string; stockSeguridad: number; puntoReposicion: number }): Promise<ParametroReposicion> {
+    return aParametro(await pedir<ParametroApi>('POST', `/obras/${await obraId()}/parametros-reposicion`, d))
+  },
+  async historial(insumoCodigo: string): Promise<ParametroReposicion[]> {
+    let id = insumoIdPorCodigo.get(insumoCodigo)
+    if (id === undefined) { await reposicionHttp.parametros(); id = insumoIdPorCodigo.get(insumoCodigo) }
+    if (id === undefined) return []
+    return (await pedir<ParametroApi[]>('GET', `/obras/${await obraId()}/parametros-reposicion/${id}/historial`)).map(aParametro)
+  },
+  async cargarRequerimiento(filas: { insumoCodigo: string; cantidad: number; precio: number }[]): Promise<ResultadoRequerimiento> {
+    return pedir<ResultadoRequerimiento>('POST', `/obras/${await obraId()}/requerimiento/importar`, { filas })
   },
 }

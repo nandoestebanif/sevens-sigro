@@ -49,6 +49,7 @@ import { Compras } from './paginas/Compras'
 import { Importar } from './paginas/Importar'
 import { Movimientos } from './paginas/Movimientos'
 import { Obras } from './paginas/Obra'
+import { Parametros } from './paginas/Parametros'
 import { Proveedores } from './paginas/Proveedores'
 import { Reposicion } from './paginas/Reposicion'
 import { Tablero } from './paginas/Tablero'
@@ -67,6 +68,7 @@ const ICONOS = {
   movimientos: 'M8 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2h-3|M12 17V7|M8 10l4-4 4 4',
   catalogo: 'M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z|M3.3 7 12 12l8.7-5|M12 22V12',
   importar: 'M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4|M7 8l5-5 5 5|M12 3v12',
+  parametros: 'M4 21v-7|M4 10V3|M12 21v-9|M12 8V3|M20 21v-5|M20 12V3|M1 14h6|M9 8h6|M17 16h6',
   obra: 'M3 21h18|M5 21V7l7-4 7 4v14|M9 21v-4h6v4|M9 10h.01|M15 10h.01|M9 14h.01|M15 14h.01',
 }
 
@@ -87,6 +89,7 @@ const GRUPOS: { rotulo: string; items: { ruta: string; nombre: string; icono: ke
       // costo total (gastos generales, subcontratos y planilla quedan fuera)
       { ruta: '/tablero', nombre: 'Gasto en recursos', icono: 'tablero' },
       { ruta: '/reposicion', nombre: 'Reposición', icono: 'reposicion' },
+      { ruta: '/parametros', nombre: 'Parámetros de reposición', icono: 'parametros' },
     ],
   },
   {
@@ -348,6 +351,7 @@ function Sistema() {
             <Route path="/movimientos" element={<Movimientos />} />
             <Route path="/importar" element={<Importar />} />
             <Route path="/obra" element={<Obras />} />
+            <Route path="/parametros" element={<Parametros />} />
           </Routes>
           </GuardianErrores>
           </div>

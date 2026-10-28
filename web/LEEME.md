@@ -30,3 +30,12 @@ ninguna pantalla cambia.
   vez; la segunda, 0 creados y 284 sin cambios (no duplica).
 - **Pendiente de decisión:** los 284 códigos del S10 y los 2 243 del catálogo del cliente son códigos distintos para
   muchos de los mismos materiales. Falta emparejarlos (qué código manda) antes de usarlos en compras.
+
+### 28/10 · reposición conectada (HU-19, HU-24, HU-25)
+
+- **Importar del S10 → paso 2:** «Cargar requerimiento de la obra» manda cantidad y precio planificados a
+  `/obras/{id}/requerimiento/importar`. Probado con el PDF real: 284 insumos cargados en Multifamiliar Flores.
+- **Reposición (HU-24):** «Saldo por comprar» sale de `/obras/{id}/saldo-por-comprar` (requerido − comprado, en
+  unidad de compra). Fase y crítico llegan en el Sprint 2 (HU-20, HU-28); recibido y consumido, con almacén.
+- **Parámetros de reposición (HU-25):** pantalla nueva (menú «Control de la obra»): stock de seguridad y punto de
+  reposición por insumo, cambio con historial y el rechazo del servidor cuando el punto es menor que el colchón.

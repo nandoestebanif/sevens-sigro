@@ -70,7 +70,7 @@ export function Reposicion() {
   const [fase, setFase] = useState('todas')
 
   useEffect(() => {
-    api.avancePorInsumo().then(setFilas)
+    api.saldoPorComprar().then(setFilas)
     api.alertasReposicion().then(setAlertas)
   }, [])
 

@@ -18,6 +18,7 @@ import { api } from '../api/cliente'
 import { ErrorImportacion, importarRelacionS10, type ResultadoImportacion } from '../api/s10'
 import { usaApiReal } from '../api/http'
 import { ErrorApi } from '../api/error'
+import type { ResultadoRequerimiento } from '../api/tipos'
 import { Boton, Chip, Tarjeta, Titulo, Vacio } from '../ui/base'
 
 const n = (v: number, d = 0) => v.toLocaleString('es-PE', { minimumFractionDigits: d, maximumFractionDigits: d === 0 ? 4 : d })
@@ -42,6 +43,8 @@ export function Importar() {
   const [subiendo, setSubiendo] = useState(false)
   const [aplicando, setAplicando] = useState(false)
   const [aplicado, setAplicado] = useState<{ creados: number; actualizados: number; sinCambios: number; advertencias: string[] } | null>(null)
+  const [requerimiento, setRequerimiento] = useState<ResultadoRequerimiento | null>(null)
+  const [cargandoReq, setCargandoReq] = useState(false)
   const entrada = useRef<HTMLInputElement>(null)
 
   const importar = async () => {
@@ -50,6 +53,7 @@ export function Importar() {
     setError('')
     setResultado(null)
     setAplicado(null)
+    setRequerimiento(null)
     try {
       // «la obra ya tiene catálogo»: la API mandaría los códigos que ya tiene;
       // aquí se simula con la relación actual de la obra
@@ -76,6 +80,23 @@ export function Importar() {
       setError(e instanceof ErrorApi ? e.message : 'No se pudo aplicar la importación.')
     } finally {
       setAplicando(false)
+    }
+  }
+
+  /** HU-19: lo planificado (cantidad y precio del S10) queda como requerimiento de la obra activa.
+      Va después del catálogo porque el servidor solo acepta insumos que el catálogo conoce. */
+  const cargarReq = async () => {
+    if (!resultado) return
+    setCargandoReq(true)
+    setError('')
+    try {
+      setRequerimiento(await api.cargarRequerimiento(
+        resultado.insumos.map((i) => ({ insumoCodigo: i.codigo, cantidad: i.cantidad, precio: i.precio })),
+      ))
+    } catch (e) {
+      setError(e instanceof ErrorApi ? e.message : 'No se pudo cargar el requerimiento.')
+    } finally {
+      setCargandoReq(false)
     }
   }
 
@@ -159,6 +180,30 @@ export function Importar() {
               </div>
             )}
           </Tarjeta>
+
+          {aplicado && (
+            <Tarjeta estilo={{ padding: '12px 16px', borderLeft: `4px solid ${requerimiento ? 'var(--bien)' : 'var(--accion)'}` }}>
+              {requerimiento ? (
+                <div role="status" style={{ fontSize: 13 }}>
+                  <strong>Requerimiento de la obra cargado.</strong> {requerimiento.creados} insumos nuevos · {requerimiento.sinCambios} ya estaban
+                  {requerimiento.fallidos.length > 0 && ` · ${requerimiento.fallidos.length} no se cargaron`}.
+                  {(requerimiento.advertencias.length > 0 || requerimiento.fallidos.length > 0) && (
+                    <div style={{ marginTop: 6, fontSize: 12, color: 'var(--tinta-2)' }}>
+                      {requerimiento.fallidos.slice(0, 3).map((f, i) => <div key={`f${i}`}>• {f.insumoCodigo}: {f.motivo}</div>)}
+                      {requerimiento.advertencias.slice(0, 3).map((w, i) => <div key={`w${i}`}>• {w}</div>)}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                  <span style={{ fontSize: 13, flex: '1 1 260px' }}>
+                    Paso 2 · Cargar lo planificado (cantidad y precio del S10) como requerimiento de la obra activa. Es el cien por ciento contra el que se controla todo; lo ya cargado no se pisa.
+                  </span>
+                  <Boton enClic={cargarReq} deshabilitado={cargandoReq}>{cargandoReq ? 'Cargando…' : 'Cargar requerimiento de la obra'}</Boton>
+                </div>
+              )}
+            </Tarjeta>
+          )}
 
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             {Object.entries(r.resumen.por_tipo).map(([t, c]) => (
