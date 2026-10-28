@@ -1,0 +1,56 @@
+# HT-02 · Integración continua: cada Pull Request corre las pruebas de la API y de Notificaciones.
+# Las reglas de SIGRO viven en PostgreSQL (índices, CHECK, disparadores, permisos), así que las
+# pruebas corren contra un PostgreSQL 16 real, no contra un doble.
+name: pruebas
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  api:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: sigro_owner
+          POSTGRES_PASSWORD: sigro_owner_dev
+          POSTGRES_DB: postgres
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U sigro_owner"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      SIGRO_TEST_SERVIDOR: sigro_owner:sigro_owner_dev@localhost:5432
+    defaults:
+      run:
+        working-directory: api
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: api/requirements-dev.txt
+      - run: pip install -r requirements-dev.txt
+      - name: Pruebas de la API (629+ contra PostgreSQL real)
+        run: python -m pytest -q
+
+  notificaciones:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: notificaciones
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - run: pip install -r requirements.txt pytest
+      - name: Pruebas de Notificaciones
+        run: python -m pytest -q

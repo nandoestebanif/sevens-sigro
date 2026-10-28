@@ -112,3 +112,50 @@ def test_el_archivo_real_del_cliente_si_esta_disponible():
         pytest.skip("define SIGRO_PROVEEDORES_JSON para probar con el archivo real del cliente")
     lista, r = semilla.preparar(semilla.leer(__import__("pathlib").Path(ruta)))
     assert len(lista) == r["ruc_correcto"] + r["documento_sucio"] and len(lista) > 0
+
+
+# ───────────────────────── catálogo del cliente (HT-07)
+from semillas import cargar_catalogo as catalogo  # noqa: E402
+
+CATALOGO = [
+    {"codigo": "68", "nombre": "ABRAZADERA  DE 1 1/2¨ METAL-1 OREJA", "um": "UNIDADES", "precioPromedio": 4.5, "marcas": ""},
+    {"codigo": "68", "nombre": "REPETIDO", "um": "UNIDADES"},
+    {"codigo": "1632", "nombre": "CEMENTO PORTLAND TIPO I", "um": "BOLSAS", "marcas": "SOL"},
+    {"codigo": "", "nombre": "SIN CÓDIGO", "um": "UNIDADES"},
+    {"codigo": "9", "nombre": "", "um": "UNIDADES"},
+    {"codigo": "10", "nombre": "SIN UNIDAD", "um": ""},
+]
+
+
+def insumos(base):
+    with psycopg.connect(dsn(base), row_factory=dict_row) as c:
+        return {f["codigo"]: f for f in c.execute("SELECT * FROM catalogo.insumo ORDER BY codigo").fetchall()}
+
+
+def test_catalogo_preparar_cuenta_lo_que_entra_y_lo_que_no():
+    lista, r = catalogo.preparar(CATALOGO)
+    assert lista == [("68", "ABRAZADERA DE 1 1/2¨ METAL-1 OREJA", "UNIDADES"), ("1632", "CEMENTO PORTLAND TIPO I", "BOLSAS")]
+    assert r["valido"] == 2 and r["repetido_en_el_archivo"] == 1 and r["descartado_incompleto"] == 3
+
+
+def test_catalogo_es_idempotente_y_no_pisa_factor_ni_unidad(base):
+    lista, _ = catalogo.preparar(CATALOGO)
+    url = url_sqlalchemy(base)
+    assert dict(catalogo.cargar(url, lista)) == {"insertados": 2}
+    assert dict(catalogo.cargar(url, lista)) == {"sin_cambios": 2}
+    with psycopg.connect(dsn(base)) as c:
+        c.execute("UPDATE catalogo.insumo SET factor_conversion = 42.5, unidad_compra = 'bls' WHERE codigo = '1632'")
+        c.commit()
+    assert dict(catalogo.cargar(url, [("1632", "CEMENTO PORTLAND TIPO I (42.5 kg)", "BOLSAS")])) == {"actualizados": 1}
+    i = insumos(base)["1632"]
+    assert i["descripcion"].endswith("(42.5 kg)") and float(i["factor_conversion"]) == 42.5 and i["unidad_compra"] == "bls"
+    assert i["verificado"] is True and i["tipo"] == "material"
+
+
+def test_catalogo_en_seco_no_escribe(base, tmp_path):
+    f = tmp_path / "c.json"
+    f.write_text(json.dumps(CATALOGO), encoding="utf-8")
+    assert catalogo.main([str(f), "--dry-run", "--url", url_sqlalchemy(base)]) == 0
+    assert insumos(base) == {}
+    assert catalogo.main([str(f), "--url", url_sqlalchemy(base)]) == 0
+    assert len(insumos(base)) == 2
