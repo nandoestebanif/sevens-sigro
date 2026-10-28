@@ -146,3 +146,53 @@ class SolicitudLinea(Base):
     descripcion_libre: Mapped[str | None] = mapped_column(Text)
     cantidad: Mapped[Decimal] = mapped_column(Numeric(18, 4))      # en unidad de compra
     unidad_compra: Mapped[str] = mapped_column(Text)
+
+
+class Requerimiento(Base):
+    """Lo planificado en el S10 para una obra (HU-19, migración 0008). La cantidad solo cambia con un ajuste motivado."""
+    __tablename__ = "requerimiento"
+    __table_args__ = (
+        UniqueConstraint("proyecto_id", "insumo_id", name="uq_requerimiento_proyecto_id_insumo_id"),
+        Index("ix_requerimiento_insumo_id", "insumo_id"),
+        {"schema": "compras"},
+    )
+
+    id: Mapped[int] = mapped_column(BigInteger, Identity(always=True), primary_key=True)
+    proyecto_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("obra.proyecto.id", name="fk_requerimiento_proyecto_id_proyecto"))
+    insumo_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("catalogo.insumo.id", name="fk_requerimiento_insumo_id_insumo"))
+    cantidad_planificada: Mapped[Decimal] = mapped_column(Numeric(18, 4))
+    precio_planificado: Mapped[Decimal] = mapped_column(Numeric(18, 4))
+    creado_por: Mapped[int] = mapped_column(BigInteger, ForeignKey("obra.usuario.id", name="fk_requerimiento_creado_por_usuario"))
+    creado_en: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class RequerimientoAjuste(Base):
+    __tablename__ = "requerimiento_ajuste"
+    __table_args__ = (Index("ix_requerimiento_ajuste_requerimiento_id", "requerimiento_id", "id"), {"schema": "compras"})
+
+    id: Mapped[int] = mapped_column(BigInteger, Identity(always=True), primary_key=True)
+    requerimiento_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("compras.requerimiento.id", name="fk_requerimiento_ajuste_requerimiento_id_requerimiento")
+    )
+    cantidad_anterior: Mapped[Decimal] = mapped_column(Numeric(18, 4))
+    cantidad_nueva: Mapped[Decimal] = mapped_column(Numeric(18, 4))
+    motivo: Mapped[str] = mapped_column(Text)
+    ajustado_por: Mapped[int] = mapped_column(BigInteger, ForeignKey("obra.usuario.id", name="fk_requerimiento_ajuste_ajustado_por_usuario"))
+    ajustado_en: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class ParametroReposicion(Base):
+    """Stock de seguridad y punto de reposición con vigencias: cambiar = fila nueva (HU-25, migración 0008)."""
+    __tablename__ = "parametro_reposicion"
+    __table_args__ = (
+        Index("ix_parametro_reposicion_vigencia", "proyecto_id", "insumo_id", text("id DESC")),
+        {"schema": "compras"},
+    )
+
+    id: Mapped[int] = mapped_column(BigInteger, Identity(always=True), primary_key=True)
+    proyecto_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("obra.proyecto.id", name="fk_parametro_reposicion_proyecto_id_proyecto"))
+    insumo_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("catalogo.insumo.id", name="fk_parametro_reposicion_insumo_id_insumo"))
+    stock_seguridad: Mapped[Decimal] = mapped_column(Numeric(18, 4))
+    punto_reposicion: Mapped[Decimal] = mapped_column(Numeric(18, 4))
+    registrado_por: Mapped[int] = mapped_column(BigInteger, ForeignKey("obra.usuario.id", name="fk_parametro_reposicion_registrado_por_usuario"))
+    vigente_desde: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
