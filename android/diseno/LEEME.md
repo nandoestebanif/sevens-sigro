@@ -28,7 +28,7 @@ Esta carpeta es la copia en el repositorio para programar sin depender del lienz
 
 | Token | Valor |
 |---|---|
-| Tipografía | **Inter** 400/500/600/700/800 (títulos 28–36 sp, 800, tracking −0.03em; cuerpo 15–17 sp) · **Sora** solo para la marca «SIGRO» en la entrada (700, 58 sp, tracking +0.06em, degradado blanco → `#FED7AA` → `#FB923C`) y su bajada «ALMACÉN DE OBRA» (600, 13 sp, tracking +0.34em, entre dos filetes naranja) |
+| Tipografía | **Inter** 400/500/600/700/800 (títulos 28–36 sp, 800, tracking −0.03em; cuerpo 15–17 sp) · **Sora** solo en la entrada, para «ALMACÉN DE OBRA» bajo el logo (600, 20 sp, mayúsculas, tracking +0.24em, entre dos filetes naranja). La entrada no muestra la palabra «SIGRO»: solo el logo de SEVEN'S |
 | Texto | `#111827` principal · `#374151`/`#4B5563` secundario |
 | Acento | naranja `#C2410C` (botones de acción, íconos) · claro `#FFEDD5` · logo `#F26522` |
 | Botón principal | negro `#111827`, píldora 58 dp de alto, radio 29 |
