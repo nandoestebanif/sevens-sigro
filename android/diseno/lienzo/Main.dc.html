@@ -54,8 +54,8 @@ input:focus{outline:2px solid #C2410C;outline-offset:1px}
       <rect x="47" y="797" width="7" height="7"></rect><rect x="192" y="797" width="7" height="7"></rect><rect x="337" y="797" width="7" height="7"></rect></g>
     <g fill="#475569" opacity="0.55" font-family="Inter, sans-serif" font-size="10" letter-spacing="0.06em">
       <text x="72" y="585">ALMACÉN</text><text x="230" y="585">OFICINA</text><text x="232" y="735">VESTUARIO</text><text x="78" y="735">PATIO</text></g>
-    <g fill="none" stroke="#C2410C" stroke-width="1.1" opacity="0.6"><path d="M50 822h290M50 816v12M340 816v12"></path></g>
-    <text x="178" y="836" font-family="Inter, sans-serif" font-size="10" fill="#C2410C" opacity="0.75">12.40 m</text>
+    <g fill="none" stroke="#C2410C" stroke-width="1.1" opacity="0.55"><path d="M372 500v300M366 500h12M366 800h12"></path></g>
+    <text x="384" y="668" font-family="Inter, sans-serif" font-size="10" fill="#C2410C" opacity="0.7" transform="rotate(-90 384 668)">9.20 m</text>
   </svg>
 <sc-if value="{{verDestino}}" hint-placeholder-val="{{ false }}">
   <div style="position: absolute; left: 0; top: 0; width: 390px; height: 844px">
@@ -65,14 +65,14 @@ input:focus{outline:2px solid #C2410C;outline-offset:1px}
 <sc-if value="{{verLogin}}" hint-placeholder-val="{{ true }}">
 <div style="position: absolute; left: 0; top: 0; width: 390px; height: 844px">
 
-  <div style="position: absolute; left: 0; top: 0; width: 390px; height: 430px; background: #1E293B; overflow: hidden">
+  <div style="position: absolute; left: 0; top: 0; width: 390px; height: 470px; background: #1E293B; overflow: hidden; -webkit-mask-image: linear-gradient(180deg, #000 0%, #000 74%, rgba(0,0,0,0) 100%); mask-image: linear-gradient(180deg, #000 0%, #000 74%, rgba(0,0,0,0) 100%)">
     <sc-if value="{{conFoto}}" hint-placeholder-val="{{ false }}">
-      <img src="{{foto}}" alt="Almacenero de SEVENS en obra" style="position: absolute; left: 0; top: 0; width: 390px; height: 430px; object-fit: cover">
+      <img src="{{foto}}" alt="Almacenero de SEVENS en obra" style="position: absolute; left: 0; top: 0; width: 390px; height: 470px; object-fit: cover">
     </sc-if>
     <sc-if value="{{sinFoto}}" hint-placeholder-val="{{ true }}">
-      <svg role="img" aria-label="Ilustración: trabajador con casco frente a un edificio en construcción" width="390" height="430" viewBox="0 0 390 430" style="position: absolute; left: 0; top: 0">
-        <rect width="390" height="430" fill="#334155"></rect>
-        <rect x="0" y="250" width="390" height="180" fill="#1E293B"></rect>
+      <svg role="img" aria-label="Ilustración: trabajador con casco frente a un edificio en construcción" width="390" height="470" viewBox="0 0 390 470" style="position: absolute; left: 0; top: 0">
+        <rect width="390" height="470" fill="#334155"></rect>
+        <rect x="0" y="250" width="390" height="220" fill="#1E293B"></rect>
         <g stroke="#64748B" stroke-width="3" fill="none">
           <path d="M40 250V90h150v160M40 130h150M40 170h150M40 210h150M77 90v160M115 90v160M152 90v160"></path>
           <path d="M215 250V60h120v190M215 100h120M215 140h120M215 180h120M215 220h120M255 60v190M295 60v190"></path>
@@ -80,19 +80,20 @@ input:focus{outline:2px solid #C2410C;outline-offset:1px}
         </g>
         <g fill="#111827">
           <circle cx="250" cy="250" r="34"></circle>
-          <path d="M196 430c0-74 24-130 54-130s54 56 54 130z"></path>
+          <path d="M196 470c0-100 24-170 54-170s54 70 54 170z"></path>
         </g>
         <path d="M212 248a38 32 0 0 1 76 0z" fill="#F59E0B"></path>
         <rect x="206" y="244" width="88" height="9" rx="4" fill="#F59E0B"></rect>
-        <path d="M222 330l28 22 28-22v100h-56z" fill="#EA580C"></path>
+        <path d="M222 330l28 22 28-22v140h-56z" fill="#EA580C"></path>
         <path d="M222 370h56M222 395h56" stroke="#FDE68A" stroke-width="6"></path>
       </svg>
     </sc-if>
-    <div style="position: absolute; left: 0; top: 0; width: 390px; height: 430px; background: linear-gradient(180deg, rgba(15,23,42,0.15) 0%, rgba(15,23,42,0.35) 45%, rgba(124,45,18,0.85) 100%)"></div>
+    <div style="position: absolute; left: 0; top: 0; width: 390px; height: 470px; background: linear-gradient(180deg, rgba(15,23,42,0.30) 0%, rgba(15,23,42,0.20) 30%, rgba(15,23,42,0.62) 62%, rgba(15,23,42,0.80) 100%)"></div>
+    <div style="position: absolute; right: -80px; top: 120px; width: 300px; height: 300px; border-radius: 150px; background: radial-gradient(circle, rgba(251,146,60,0.35) 0%, rgba(251,146,60,0) 70%)"></div>
     <div style="position: absolute; left: 16px; top: 44px">
       <img src="/_blob/f4dd2c48ae6789d0207eb517691797f9" alt="SEVEN'S Ingenieros SAC" style="height: 84px; width: auto">
     </div>
-    <h1 style="position: absolute; left: 24px; bottom: 96px; margin: 0; color: #FFFFFF; font-size: 40px; font-weight: 300; line-height: 1.1">SIGRO.<br><span style="font-weight: 700">Almacén de obra</span></h1>
+    <h1 style="position: absolute; left: 24px; top: 236px; margin: 0; color: #FFFFFF; font-size: 40px; font-weight: 300; line-height: 1.1; letter-spacing: -0.02em"><span style="color: #FDBA74">SIGRO.</span><br><span style="font-weight: 800">Almacén de obra</span></h1>
   </div>
 
   <div class="vidrio-fuerte" style="position: absolute; left: 16px; right: 16px; top: 360px; border-radius: 28px; box-shadow: 0 16px 40px rgba(15,23,42,0.20); padding: 24px 20px 20px; display: flex; flex-direction: column; gap: 14px">
