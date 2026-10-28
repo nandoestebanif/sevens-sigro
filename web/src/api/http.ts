@@ -12,7 +12,7 @@
    web sigue con el cliente simulado, para que nadie quede bloqueado.
    ───────────────────────────────────────────────────────────────────────── */
 import { ErrorApi } from './error'
-import type { Obra, ObraActiva, Proveedor, Semana } from './tipos'
+import type { InsumoCatalogo, InsumoMaestro, Obra, ObraActiva, Proveedor, Semana } from './tipos'
 
 export const API_URL: string = (import.meta.env.VITE_API_URL ?? '').replace(/\/$/, '')
 export const usaApiReal = API_URL !== ''
@@ -170,5 +170,63 @@ export const proveedoresHttp = {
   },
   async crear(ruc: string, razonSocial: string): Promise<Proveedor> {
     return aProveedor(await pedir<ProveedorApi>('POST', '/proveedores', { ruc: ruc.trim(), razonSocial: razonSocial.trim() }))
+  },
+}
+
+/* ── catálogo de insumos (HU-07, HU-08, HU-17) ── el catálogo es de la empresa:
+   el mismo código en todas las obras (regla 8). El código lo genera el servidor. */
+interface InsumoApi {
+  id: number; codigo: string; descripcion: string; unidadS10: string; unidadCompra: string
+  factorConversion: string; tipo: string; activo: boolean; verificado: boolean
+}
+let idPorCodigo = new Map<string, number>()
+let descPorCodigo = new Map<string, string>()
+const aMaestro = (i: InsumoApi): InsumoMaestro => ({
+  codigo: i.codigo, nombre: i.descripcion, um: i.unidadCompra,
+  medida: '', marca: '', // la API guarda la descripción completa; marca y precio no son del catálogo
+  precioPromedio: 0,     // el precio sale de las compras de cada obra, no del maestro
+  estado: i.verificado ? 'activo' : 'por_verificar', creadoEl: '',
+})
+async function todos(): Promise<InsumoApi[]> {
+  const xs = await pedir<InsumoApi[]>('GET', '/catalogo/insumos')
+  idPorCodigo = new Map(xs.map((x) => [x.codigo, x.id]))
+  descPorCodigo = new Map(xs.map((x) => [x.codigo, x.descripcion]))
+  return xs
+}
+async function idDe(codigo: string): Promise<number> {
+  if (!idPorCodigo.has(codigo)) await todos()
+  const id = idPorCodigo.get(codigo)
+  if (id === undefined) throw new ErrorApi('no_existe', 'Ese código no existe en el catálogo.')
+  return id
+}
+export const catalogoHttp = {
+  async maestro(): Promise<InsumoMaestro[]> { return (await todos()).map(aMaestro) },
+  async insumos(): Promise<InsumoCatalogo[]> {
+    return (await todos()).filter((i) => i.activo).map((i) => ({
+      id: i.codigo, codigo: i.codigo, descripcion: i.descripcion, unidadCompra: i.unidadCompra,
+    }))
+  },
+  async crear(d: { nombre: string; um: string; medida?: string; marca?: string }): Promise<InsumoMaestro> {
+    // la descripción estandarizada junta material, medida y marca; el duplicado lo rechaza el servidor
+    const descripcion = [d.nombre, d.medida, d.marca].map((x) => (x ?? '').trim()).filter(Boolean).join(' ').toUpperCase()
+    const i = await pedir<InsumoApi>('POST', '/catalogo/insumos', { descripcion, unidad: d.um.trim(), tipo: 'material' })
+    idPorCodigo.set(i.codigo, i.id)
+    return aMaestro(i)
+  },
+  async editar(codigo: string, d: { nombre?: string; marca?: string; verificar?: boolean }): Promise<InsumoMaestro> {
+    const id = await idDe(codigo)
+    const cambiaNombre = d.nombre !== undefined && d.nombre.trim().toUpperCase() !== (descPorCodigo.get(codigo) ?? '').toUpperCase()
+    const cambiaMarca = (d.marca ?? '').trim() !== ''
+    if (cambiaNombre || cambiaMarca) {
+      // la API todavía no permite corregir la descripción (pedido a Adiel); verificar sí
+      throw new ErrorApi('no_disponible', 'Corregir el nombre o la marca todavía no está disponible en el servidor. Por ahora solo se puede verificar el insumo.')
+    }
+    if (!d.verificar) return aMaestro((await todos()).find((x) => x.id === id)!)
+    return aMaestro(await pedir<InsumoApi>('POST', `/catalogo/insumos/${id}/verificar`))
+  },
+  /** HU-07: aplica lo que leyó Integraciones; el código es la clave, repetir no duplica, no toca saldos */
+  async aplicarS10(filas: { codigo: string; descripcion: string; unidad: string; tipo: string }[]) {
+    return pedir<{ creados: number; actualizados: number; sinCambios: number; advertencias: string[] }>(
+      'POST', '/catalogo/insumos/importar-s10', { insumos: filas })
   },
 }

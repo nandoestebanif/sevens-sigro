@@ -16,6 +16,8 @@
 import { useRef, useState } from 'react'
 import { api } from '../api/cliente'
 import { ErrorImportacion, importarRelacionS10, type ResultadoImportacion } from '../api/s10'
+import { usaApiReal } from '../api/http'
+import { ErrorApi } from '../api/error'
 import { Boton, Chip, Tarjeta, Titulo, Vacio } from '../ui/base'
 
 const n = (v: number, d = 0) => v.toLocaleString('es-PE', { minimumFractionDigits: d, maximumFractionDigits: d === 0 ? 4 : d })
@@ -38,6 +40,8 @@ export function Importar() {
   const [resultado, setResultado] = useState<ResultadoImportacion | null>(null)
   const [error, setError] = useState('')
   const [subiendo, setSubiendo] = useState(false)
+  const [aplicando, setAplicando] = useState(false)
+  const [aplicado, setAplicado] = useState<{ creados: number; actualizados: number; sinCambios: number; advertencias: string[] } | null>(null)
   const entrada = useRef<HTMLInputElement>(null)
 
   const importar = async () => {
@@ -45,15 +49,33 @@ export function Importar() {
     setSubiendo(true)
     setError('')
     setResultado(null)
+    setAplicado(null)
     try {
       // «la obra ya tiene catálogo»: la API mandaría los códigos que ya tiene;
       // aquí se simula con la relación actual de la obra
-      const existentes = conCatalogo ? (await api.listarInsumos()).map((i) => i.codigo) : []
+      // con la API real, los códigos que ya existen los dice el catálogo del servidor
+      const existentes = conCatalogo || usaApiReal ? (await api.listarInsumos()).map((i) => i.codigo) : []
       setResultado(await importarRelacionS10(archivo, existentes))
     } catch (e) {
       setError(e instanceof ErrorImportacion ? e.message : 'No se pudo importar el archivo.')
     } finally {
       setSubiendo(false)
+    }
+  }
+
+  /** HU-07: el micro solo LEE el PDF (ADR-01); el catálogo lo escribe la API */
+  const aplicar = async () => {
+    if (!resultado) return
+    setAplicando(true)
+    setError('')
+    try {
+      setAplicado(await api.aplicarImportacionS10(
+        resultado.insumos.map((i) => ({ codigo: i.codigo, descripcion: i.descripcion, unidad: i.unidad, tipo: i.tipo })),
+      ))
+    } catch (e) {
+      setError(e instanceof ErrorApi ? e.message : 'No se pudo aplicar la importación.')
+    } finally {
+      setAplicando(false)
     }
   }
 
@@ -116,6 +138,27 @@ export function Importar() {
             <Cifra rot="Fallidos" valor={String(r.resumen.fallidos)} color={r.resumen.fallidos ? 'var(--grave)' : undefined} />
             <Cifra rot="Total planificado" valor={`S/ ${n(r.resumen.parcial_total, 2)}`} />
           </div>
+
+          <Tarjeta estilo={{ padding: '12px 16px', borderLeft: `4px solid ${aplicado ? 'var(--bien)' : 'var(--accion)'}` }}>
+            {aplicado ? (
+              <div role="status" style={{ fontSize: 13 }}>
+                <strong>Catálogo actualizado.</strong> {aplicado.creados} creados · {aplicado.actualizados} actualizados · {aplicado.sinCambios} sin cambios.
+                {aplicado.advertencias.length > 0 && (
+                  <div style={{ marginTop: 6, fontSize: 12, color: 'var(--tinta-2)' }}>
+                    {aplicado.advertencias.slice(0, 5).map((w, i) => <div key={i}>• {w}</div>)}
+                    {aplicado.advertencias.length > 5 && <div>… y {aplicado.advertencias.length - 5} avisos más</div>}
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                <span style={{ fontSize: 13, flex: '1 1 260px' }}>
+                  Revisa la vista previa. Al aplicar, los insumos entran al catálogo: los códigos nuevos se crean y los que ya existen se actualizan. No se toca ningún saldo.
+                </span>
+                <Boton enClic={aplicar} deshabilitado={aplicando}>{aplicando ? 'Aplicando…' : 'Aplicar al catálogo'}</Boton>
+              </div>
+            )}
+          </Tarjeta>
 
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             {Object.entries(r.resumen.por_tipo).map(([t, c]) => (

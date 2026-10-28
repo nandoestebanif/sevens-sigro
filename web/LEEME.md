@@ -19,3 +19,14 @@ Sin la variable sigue con el cliente simulado, así nadie queda bloqueado.
 
 Para pasar otro método al servidor: se sobreescribe en `ClienteHttp` (al final de `src/api/cliente.ts`) y
 ninguna pantalla cambia.
+
+### 28/10 · catálogo e importación del S10 conectados
+
+- **Catálogo (HU-08):** lista, alta y verificación van a `/catalogo/insumos`. El código lo genera el servidor
+  (`SIGRO-00001`…) y un nombre repetido con la misma unidad lo rechaza la API. Corregir el nombre o la marca
+  todavía no existe en la API: la pantalla lo dice en lugar de fallar en silencio.
+- **Importar del S10 (HU-07):** el microservicio lee el PDF y muestra la vista previa; el botón **«Aplicar al
+  catálogo»** manda las filas a `/catalogo/insumos/importar-s10`. Probado con el PDF real: 284 creados la primera
+  vez; la segunda, 0 creados y 284 sin cambios (no duplica).
+- **Pendiente de decisión:** los 284 códigos del S10 y los 2 243 del catálogo del cliente son códigos distintos para
+  muchos de los mismos materiales. Falta emparejarlos (qué código manda) antes de usarlos en compras.

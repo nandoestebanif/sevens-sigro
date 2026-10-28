@@ -19,7 +19,7 @@ import type {
 } from './tipos'
 
 import { ErrorApi } from './error'
-import { obrasHttp, proveedoresHttp, usaApiReal } from './http'
+import { catalogoHttp, obrasHttp, proveedoresHttp, usaApiReal } from './http'
 export { ErrorApi }
 
 export interface ClienteSigro {
@@ -28,6 +28,10 @@ export interface ClienteSigro {
   /** regla 9: el alcance es la obra — al cambiarla, lo de empresa (catálogo,
       proveedores) permanece y lo de obra (stock, compras, gasto) cambia */
   elegirObra(id: string): Promise<ObraActiva>
+  /** HU-07: aplica al catálogo lo que leyó el microservicio del S10. El código es la
+      clave: repetir la importación actualiza, no duplica, y no toca saldos. */
+  aplicarImportacionS10(filas: { codigo: string; descripcion: string; unidad: string; tipo: string }[]):
+    Promise<{ creados: number; actualizados: number; sinCambios: number; advertencias: string[] }>
   /** HU-26: el aviso salta solo al cruzar el punto; HU-27: con su sugerencia */
   alertasReposicion(): Promise<AlertaReposicion[]>
   /** HU-01: nombre y plazo obligatorios; nace «en ejecución».
@@ -328,6 +332,13 @@ export class ClienteSimulado implements ClienteSigro {
     }
     proveedores.unshift(nuevo)
     return nuevo
+  }
+
+  async aplicarImportacionS10(filas: { codigo: string; descripcion: string; unidad: string; tipo: string }[]) {
+    await espera(400)
+    const existentes = new Set(INSUMOS_S10.map((i) => i.codigo))
+    const creados = filas.filter((f) => !existentes.has(f.codigo)).length
+    return { creados, actualizados: 0, sinCambios: filas.length - creados, advertencias: [] as string[] }
   }
 
   async listarInsumos(): Promise<InsumoCatalogo[]> {
@@ -745,6 +756,17 @@ class ClienteHttp extends ClienteSimulado {
   override crearProveedor(datos: { ruc: string; razonSocial: string; validadoEnSunat?: boolean }) {
     // el veredicto de SUNAT lo decide el servidor (HU-31), no la pantalla
     return proveedoresHttp.crear(datos.ruc, datos.razonSocial)
+  }
+  override listarMaestro() { return catalogoHttp.maestro() }
+  override listarInsumos() { return catalogoHttp.insumos() }
+  override crearInsumoCatalogo(datos: { nombre: string; um: string; medida?: string; marca?: string }) {
+    return catalogoHttp.crear(datos)
+  }
+  override editarInsumo(codigo: string, datos: { nombre?: string; marca?: string; verificar?: boolean }) {
+    return catalogoHttp.editar(codigo, datos)
+  }
+  override aplicarImportacionS10(filas: { codigo: string; descripcion: string; unidad: string; tipo: string }[]) {
+    return catalogoHttp.aplicarS10(filas)
   }
 }
 
