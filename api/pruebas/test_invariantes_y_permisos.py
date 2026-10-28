@@ -53,10 +53,12 @@ class TestInvariantes:
             assert fila["u"], f"{t} es un libro y admite UPDATE"
 
     def test_ninguna_tabla_guarda_un_saldo(self, db):
-        """R2: el saldo se deriva de los movimientos; no existe como columna."""
+        """R2: el saldo se deriva de los movimientos; ninguna TABLA lo guarda (las vistas sí lo calculan)."""
         cols = db.execute(
-            "SELECT table_schema, table_name, column_name FROM information_schema.columns "
-            "WHERE table_schema = ANY(%s) AND column_name ILIKE '%%saldo%%'", (list(ESQUEMAS),)).fetchall()
+            "SELECT c.table_schema, c.table_name, c.column_name FROM information_schema.columns c "
+            "JOIN information_schema.tables t USING (table_schema, table_name) "
+            "WHERE t.table_type = 'BASE TABLE' AND c.table_schema = ANY(%s) AND c.column_name ILIKE '%%saldo%%'",
+            (list(ESQUEMAS),)).fetchall()
         assert cols == []
 
     def test_toda_tabla_tiene_clave_primaria(self, db):
