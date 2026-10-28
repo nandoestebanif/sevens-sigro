@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Registrar entrada</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#C2410C}a:hover{color:#9A3412}
+input:focus{outline:2px solid #C2410C;outline-offset:1px}
+</style>
+</helmet>
+<div style="width: 390px; min-height: 1000px; box-sizing: border-box; background: #F4F4F6; font-family: Inter, system-ui, sans-serif; color: #111827; position: relative">
+  <header style="padding: 48px 12px 8px 8px; display: flex; align-items: center; gap: 4px">
+    <a href="Inicio.dc.html" aria-label="Volver" style="width: 44px; height: 44px; border-radius: 22px; background: #FFFFFF; box-shadow: 0 1px 2px rgba(17,24,39,0.08); display: flex; align-items: center; justify-content: center; margin-left: 8px">
+      <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#111827" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"></path></svg>
+    </a>
+  </header>
+  <div style="padding: 4px 20px 120px; display: flex; flex-direction: column; gap: 16px">
+    <div style="display: flex; flex-direction: column; gap: 4px">
+      <h1 style="margin: 0; font-size: 30px; font-weight: 800; letter-spacing: -0.03em">Entrada</h1>
+      <p style="margin: 0; font-size: 15px; color: #4B5563">Recibe lo que llegó de una compra. Se guarda aunque no haya señal.</p>
+    </div>
+
+    <section style="background: #FFFFFF; border-radius: 24px; box-shadow: 0 1px 3px rgba(17,24,39,0.06); padding: 16px; display: flex; flex-direction: column; gap: 4px">
+      <span style="font-size: 13px; color: #4B5563; font-weight: 600">Compra</span>
+      <span style="font-size: 17px; font-weight: 700">[Proveedor] · compra del 27/10</span>
+      <span style="font-size: 14px; color: #4B5563">Pedida por el residente · 3 insumos</span>
+    </section>
+
+    <section style="background: #FFFFFF; border-radius: 24px; box-shadow: 0 1px 3px rgba(17,24,39,0.06); display: flex; flex-direction: column">
+      <div style="padding: 14px 16px 6px; display: flex; align-items: center; justify-content: space-between">
+        <h2 style="margin: 0; font-size: 16px; font-weight: 700">¿Qué llegó?</h2>
+        <button onClick="{{alternar}}" style="min-height: 36px; padding: 0 12px; border-radius: 18px; border: 0; background: #F3F4F6; font: 600 13px Inter, sans-serif; color: #111827; cursor: pointer">{{textoModo}}</button>
+      </div>
+      <sc-for list="{{lineas}}" as="l" hint-placeholder-count="3">
+        <div style="padding: 12px 16px; border-top: 1px solid #F3F4F6; display: flex; align-items: center; gap: 12px">
+          <span style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px">
+            <span style="font-size: 15px; font-weight: 600">{{l.nombre}}</span>
+            <span style="font-size: 13px; color: #4B5563">Pedido {{l.pedido}} · pendiente {{l.pendiente}}</span>
+          </span>
+          <label style="display: flex; flex-direction: column; align-items: flex-end; gap: 2px; font-size: 11px; color: #4B5563">Recibido
+            <input value="{{l.recibido}}" inputmode="decimal" aria-label="Cantidad recibida" style="width: 72px; height: 44px; box-sizing: border-box; border: 1px solid #D1D5DB; border-radius: 12px; text-align: right; padding: 0 10px; font: 700 16px Inter, sans-serif; color: #111827; background: #F9FAFB">
+          </label>
+        </div>
+      </sc-for>
+      <p style="margin: 0; padding: 10px 16px 14px; font-size: 13px; color: #4B5563; border-top: 1px solid #F3F4F6">No se puede recibir más de lo comprado. Lo que falte queda pendiente para otra entrega.</p>
+    </section>
+
+    <section style="background: #FFFFFF; border-radius: 24px; box-shadow: 0 1px 3px rgba(17,24,39,0.06); padding: 16px; display: flex; flex-direction: column; gap: 12px">
+      <div style="display: flex; align-items: baseline; justify-content: space-between">
+        <h2 style="margin: 0; font-size: 16px; font-weight: 700">Foto de la guía de remisión</h2>
+        <span style="font-size: 12px; color: #4B5563">Recomendada</span>
+      </div>
+      <sc-if value="{{sinFoto}}" hint-placeholder-val="{{ true }}">
+        <button onClick="{{tomarFoto}}" style="height: 132px; border: 2px dashed #D1D5DB; border-radius: 18px; background: #F9FAFB; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; font: 600 15px Inter, sans-serif; color: #111827; cursor: pointer">
+          <svg aria-hidden="true" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#C2410C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h3l2-3h6l2 3h3v11H4z"></path><circle cx="12" cy="13" r="3.5"></circle></svg>
+          Tomar foto
+        </button>
+      </sc-if>
+      <sc-if value="{{conFoto}}" hint-placeholder-val="{{ false }}">
+        <div style="display: flex; align-items: center; gap: 12px">
+          <div role="img" aria-label="Miniatura de la guía fotografiada" style="width: 84px; height: 108px; border-radius: 12px; background: #FFFFFF; border: 1px solid #E5E7EB; box-shadow: 0 2px 6px rgba(17,24,39,0.10); display: flex; flex-direction: column; gap: 6px; padding: 10px; box-sizing: border-box">
+            <span style="height: 8px; width: 70%; background: #D1D5DB; border-radius: 2px"></span>
+            <span style="height: 5px; width: 100%; background: #E5E7EB; border-radius: 2px"></span>
+            <span style="height: 5px; width: 90%; background: #E5E7EB; border-radius: 2px"></span>
+            <span style="height: 5px; width: 95%; background: #E5E7EB; border-radius: 2px"></span>
+            <span style="height: 5px; width: 60%; background: #E5E7EB; border-radius: 2px"></span>
+            <span style="margin-top: auto; height: 10px; width: 45%; background: #C7D2FE; border-radius: 2px"></span>
+          </div>
+          <div style="flex: 1; display: flex; flex-direction: column; gap: 6px">
+            <span style="font-size: 15px; font-weight: 600; display: flex; align-items: center; gap: 6px"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#166534" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg>Guía adjunta</span>
+            <span style="font-size: 13px; color: #4B5563">Se sube con la entrada cuando haya señal</span>
+            <button onClick="{{quitarFoto}}" style="align-self: flex-start; min-height: 36px; padding: 0; border: 0; background: transparent; font: 600 14px Inter, sans-serif; color: #C2410C; cursor: pointer">Repetir foto</button>
+          </div>
+        </div>
+      </sc-if>
+    </section>
+  </div>
+
+  <div style="position: absolute; left: 0; right: 0; bottom: 0; padding: 14px 20px 28px; background: rgba(244,244,246,0.96); border-top: 1px solid #E5E7EB">
+    <a href="Guardada.dc.html" style="height: 58px; border-radius: 29px; background: #111827; color: #FFFFFF; display: flex; align-items: center; justify-content: center; gap: 10px; font-size: 16px; font-weight: 700; text-decoration: none">
+      <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#FB923C" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg>
+      Guardar entrada
+    </a>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":1000}}'>
+class Component extends DCLogic {
+  constructor(p) {
+    super(p);
+    this.state = { total: true, foto: false };
+  }
+  renderVals() {
+    const base = [
+      { nombre: 'Cemento Portland tipo I', pedido: '100 bls', pendiente: '100 bls', total: '100', parcial: '60' },
+      { nombre: 'Arena gruesa', pedido: '6 m³', pendiente: '6 m³', total: '6', parcial: '6' },
+      { nombre: 'Clavo 1 1/2" estriado', pedido: '10 kg', pendiente: '10 kg', total: '10', parcial: '0' }
+    ];
+    const t = this.state.total;
+    return {
+      lineas: base.map((l) => ({ ...l, recibido: t ? l.total : l.parcial })),
+      textoModo: t ? 'Llegó todo · cambiar' : 'Llegó una parte · cambiar',
+      alternar: () => this.setState({ total: !t }),
+      sinFoto: !this.state.foto,
+      conFoto: this.state.foto,
+      tomarFoto: () => this.setState({ foto: true }),
+      quitarFoto: () => this.setState({ foto: false })
+    };
+  }
+}
+</script>
+</body>
+</html>

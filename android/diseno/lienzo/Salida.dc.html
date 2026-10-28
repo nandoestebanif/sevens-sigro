@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Registrar salida</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#C2410C}a:hover{color:#9A3412}
+input:focus{outline:2px solid #C2410C;outline-offset:1px}
+</style>
+</helmet>
+<div style="width: 390px; min-height: 1060px; box-sizing: border-box; background: #F4F4F6; font-family: Inter, system-ui, sans-serif; color: #111827; display: flex; flex-direction: column">
+  <header style="background: transparent; padding: 12px 16px 12px 4px; display: flex; align-items: center; gap: 4px">
+    <a href="Inicio.dc.html" aria-label="Volver" style="width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; flex: none">
+      <svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#111827" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"></path></svg>
+    </a>
+    <div style="display: flex; flex-direction: column; gap: 2px; min-width: 0">
+      <h1 style="margin: 0; font-size: 21px; font-weight: 600">Registrar salida</h1>
+      <p style="margin: 0; font-size: 14px; color: #4B5563">Se guarda en el celular aunque no haya señal</p>
+    </div>
+  </header>
+
+  <div style="padding: 16px; display: flex; flex-direction: column; gap: 12px">
+    <h2 style="margin: 4px 0 0; font-size: 18px; font-weight: 600; display: flex; gap: 10px"><span style="color: #C2410C">1</span>¿Qué sale?</h2>
+
+    <sc-if value="{{sinElegir}}" hint-placeholder-val="{{ true }}">
+      <label style="display: flex; flex-direction: column; gap: 6px; font-size: 14px; color: #4B5563">Buscar insumo por nombre o código
+        <span style="display: flex; align-items: center; height: 56px; border: 1px solid #D1D5DB; border-radius: 14px; background: #FFFFFF; padding: 0 14px 0 16px; gap: 8px">
+          <input value="{{q}}" onChange="{{onBuscar}}" placeholder="Ej.: cemento" style="flex: 1; min-width: 0; border: 0; font: 17px Inter, sans-serif; background: transparent">
+          <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#4B5563" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-4-4"></path></svg>
+        </span>
+      </label>
+      <div style="background: #FFFFFF; border-radius: 24px; box-shadow: 0 1px 3px rgba(15,23,42,0.08); display: flex; flex-direction: column; overflow: hidden">
+        <sc-for list="{{resultados}}" as="r" hint-placeholder-count="3">
+          <button onClick="{{r.elegir}}" style="min-height: 60px; border: 0; border-bottom: 1px solid #E2E8F0; background: #FFFFFF; text-align: left; padding: 10px 16px; display: flex; flex-direction: column; gap: 2px; cursor: pointer; font-family: Inter, sans-serif">
+            <span style="font-size: 16px; color: #111827">{{r.nombre}}</span>
+            <span style="font-size: 14px; color: #4B5563">{{r.codigo}} · {{r.unidad}}</span>
+          </button>
+        </sc-for>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{conElegido}}" hint-placeholder-val="{{ false }}">
+      <div style="background: #FFEDD5; color: #7C2D12; border-radius: 14px; padding: 12px 4px 12px 16px; display: flex; align-items: center; gap: 8px">
+        <div style="flex: 1; display: flex; flex-direction: column; gap: 2px">
+          <span style="font-size: 17px; font-weight: 600">{{elegido.nombre}}</span>
+          <span style="font-size: 14px">{{elegido.codigo}} · se mide en {{elegido.unidad}}</span>
+        </div>
+        <button onClick="{{quitar}}" aria-label="Cambiar insumo" style="width: 48px; height: 48px; border: 0; background: transparent; display: flex; align-items: center; justify-content: center; cursor: pointer">
+          <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#7C2D12" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"></path></svg>
+        </button>
+      </div>
+    </sc-if>
+
+    <h2 style="margin: 8px 0 0; font-size: 18px; font-weight: 600; display: flex; gap: 10px"><span style="color: #C2410C">2</span>¿Cuánto?</h2>
+    <label style="display: flex; flex-direction: column; gap: 6px; font-size: 14px; color: #4B5563">Cantidad
+      <span style="display: flex; align-items: center; height: 56px; border: 1px solid #D1D5DB; border-radius: 14px; background: #FFFFFF; padding: 0 16px; gap: 8px">
+        <input inputmode="decimal" value="25" style="flex: 1; min-width: 0; border: 0; font: 17px Inter, sans-serif; background: transparent">
+        <span style="font-weight: 600; color: #334155">{{unidad}}</span>
+      </span>
+      <span style="font-size: 13px">El servidor verifica que haya stock en el almacén</span>
+    </label>
+
+    <h2 style="margin: 8px 0 0; font-size: 18px; font-weight: 600; display: flex; gap: 10px"><span style="color: #C2410C">3</span>¿Para qué y quién lo lleva?</h2>
+    <label style="display: flex; flex-direction: column; gap: 6px; font-size: 14px; color: #4B5563">Motivo / uso
+      <input value="Vaciado de columnas 2.º piso" style="height: 56px; border: 1px solid #D1D5DB; border-radius: 14px; padding: 0 16px; font: 17px Inter, sans-serif; color: #111827; background: #FFFFFF">
+    </label>
+    <label style="display: flex; flex-direction: column; gap: 6px; font-size: 14px; color: #4B5563">Quién retira
+      <input value="Maestro de obra" style="height: 56px; border: 1px solid #D1D5DB; border-radius: 14px; padding: 0 16px; font: 17px Inter, sans-serif; color: #111827; background: #FFFFFF">
+    </label>
+    <label style="display: flex; flex-direction: column; gap: 6px; font-size: 14px; color: #4B5563">Frente o cuadrilla (opcional)
+      <input value="" placeholder="Ej.: cuadrilla de concreto" style="height: 56px; border: 1px solid #D1D5DB; border-radius: 14px; padding: 0 16px; font: 17px Inter, sans-serif; color: #111827; background: #FFFFFF">
+    </label>
+
+    <a href="Guardada.dc.html" style="margin-top: 8px; height: 58px; border-radius: 29px; background: #111827; color: #FFFFFF; display: flex; align-items: center; justify-content: center; gap: 10px; font-size: 17px; font-weight: 600; text-decoration: none">
+      <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linejoin="round"><path d="M5 3h11l3 3v15H5z"></path><path d="M8 3v5h7V3M8 21v-7h8v7"></path></svg>
+      Guardar salida
+    </a>
+    <div style="background: #FFEDD5; color: #7C2D12; border-radius: 14px; padding: 14px; font-size: 15px; line-height: 1.4">
+      La salida queda «por enviar» y se envía sola cuando hay señal. El costo lo calcula el servidor al recibirla.
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":1060}}'>
+class Component extends DCLogic {
+  constructor(p) {
+    super(p);
+    this.state = { q: 'cemento', elegido: null };
+    this.catalogo = [
+      { codigo: '1151', nombre: 'CEMENTO PORTLAND TIPO I - 42.5 KG', unidad: 'bolsas' },
+      { codigo: '1152', nombre: 'CEMENTO PORTLAND TIPO ICo - 42.5 KG', unidad: 'bolsas' },
+      { codigo: '1155', nombre: 'CEMENTO PORTLAND TIPO MS(MH) - 42.5 KG', unidad: 'bolsas' },
+      { codigo: '423', nombre: 'ARENA GRUESA', unidad: 'metro cúbico' },
+      { codigo: '846', nombre: 'PIEDRA CHANCADA DE 1/2"', unidad: 'unidades' },
+      { codigo: '1147', nombre: 'FIERRO CORRUGADO DE 1/2" x 9m - ASTM A615/A706 - GRADO 60', unidad: 'unidades' },
+      { codigo: '1288', nombre: 'CLAVO 1 1/2" ESTRIADO PARA CONCRETO', unidad: 'kilogramos' },
+      { codigo: '2544', nombre: 'LADRILLO KING KONG 18 H - UND - 9X13X24 - INKA', unidad: 'unidades' }
+    ];
+  }
+  renderVals() {
+    const q = (this.state.q || '').trim().toLowerCase();
+    const resultados = q.length < 2 ? [] : this.catalogo
+      .filter((x) => x.nombre.toLowerCase().includes(q) || x.codigo.includes(q))
+      .slice(0, 6)
+      .map((x) => ({ ...x, elegir: () => this.setState({ elegido: x }) }));
+    const elegido = this.state.elegido;
+    return {
+      q: this.state.q,
+      onBuscar: (e) => this.setState({ q: e.target.value }),
+      resultados,
+      sinElegir: !elegido,
+      conElegido: !!elegido,
+      elegido: elegido || { nombre: '', codigo: '', unidad: '' },
+      unidad: elegido ? elegido.unidad : '—',
+      quitar: () => this.setState({ elegido: null })
+    };
+  }
+}
+</script>
+</body>
+</html>

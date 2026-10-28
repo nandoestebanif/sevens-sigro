@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Salida guardada</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#C2410C}a:hover{color:#9A3412}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; background: #F4F4F6; font-family: Inter, system-ui, sans-serif; color: #111827; display: flex; flex-direction: column">
+  <header style="background: transparent; padding: 12px 16px 12px 4px; display: flex; align-items: center; gap: 4px">
+    <a href="Inicio.dc.html" aria-label="Volver" style="width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; flex: none">
+      <svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#111827" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"></path></svg>
+    </a>
+    <h1 style="margin: 0; font-size: 21px; font-weight: 600">Registrar salida</h1>
+  </header>
+  <div style="flex: 1; padding: 24px; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 16px; text-align: center">
+    <svg role="img" aria-label="Guardada" width="76" height="76" viewBox="0 0 24 24" fill="none" stroke="#C2410C" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M7.5 12.5l3 3 6-6.5"></path></svg>
+    <h2 style="margin: 0; font-size: 26px; font-weight: 700">Salida guardada</h2>
+    <p style="margin: 0; font-size: 17px; line-height: 1.45; color: #4B5563">25 bolsas de cemento Portland tipo I quedaron en el celular con su código único. Se envían solas cuando haya señal; un reenvío no las duplica.</p>
+    <div style="display: flex; align-items: center; gap: 6px; background: #FEF3C7; color: #92400E; border-radius: 999px; padding: 6px 12px; font-size: 14px; font-weight: 600">
+      <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#92400E" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3 2"></path></svg>
+      Por enviar
+    </div>
+    <div style="width: 100%; display: flex; flex-direction: column; gap: 12px; margin-top: 12px">
+      <a href="Salida.dc.html" style="height: 58px; border-radius: 29px; background: #111827; color: #FFFFFF; display: flex; align-items: center; justify-content: center; font-size: 17px; font-weight: 600; text-decoration: none">Registrar otra salida</a>
+      <a href="Inicio.dc.html" style="height: 58px; box-sizing: border-box; border-radius: 29px; border: 1.5px solid #111827; color: #111827; display: flex; align-items: center; justify-content: center; font-size: 17px; font-weight: 600; text-decoration: none">Volver al inicio</a>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

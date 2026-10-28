@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Mis registros</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#C2410C}a:hover{color:#9A3412}
+</style>
+</helmet>
+<div style="width: 390px; min-height: 1060px; box-sizing: border-box; background: #F4F4F6; font-family: Inter, system-ui, sans-serif; color: #111827; display: flex; flex-direction: column">
+  <header style="background: transparent; padding: 12px 16px 12px 4px; display: flex; align-items: center; gap: 4px">
+    <a href="Inicio.dc.html" aria-label="Volver" style="width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; flex: none">
+      <svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#111827" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"></path></svg>
+    </a>
+    <div style="display: flex; flex-direction: column; gap: 2px">
+      <h1 style="margin: 0; font-size: 21px; font-weight: 600">Mis registros</h1>
+      <p style="margin: 0; font-size: 14px; color: #4B5563">{{subtitulo}}</p>
+    </div>
+  </header>
+
+  <div style="padding: 16px; display: flex; flex-direction: column; gap: 10px">
+    <sc-if value="{{hayPendientes}}" hint-placeholder-val="{{ true }}">
+      <button onClick="{{enviar}}" style="height: 58px; border: 0; border-radius: 29px; background: #111827; color: #FFFFFF; display: flex; align-items: center; justify-content: center; gap: 10px; font: 600 17px Inter, sans-serif; cursor: pointer">
+        <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 18a5 5 0 1 1 1-9.9A6 6 0 0 1 19.5 10 4 4 0 0 1 18 18z"></path><path d="M12 16v-5M9.5 13.5 12 11l2.5 2.5"></path></svg>
+        Enviar ahora
+      </button>
+    </sc-if>
+
+    <sc-for list="{{filas}}" as="f" hint-placeholder-count="4">
+      <article style="background: #FFFFFF; border-radius: 24px; box-shadow: 0 1px 3px rgba(15,23,42,0.08); padding: 16px; display: flex; flex-direction: column; gap: 6px">
+        <div style="display: flex; align-items: flex-start; gap: 10px">
+          <h2 style="flex: 1; margin: 0; font-size: 16px; font-weight: 600; line-height: 1.3">{{f.nombre}}</h2>
+          <span style="display: flex; align-items: center; gap: 6px; background: {{f.chipFondo}}; color: {{f.chipTexto}}; border-radius: 999px; padding: 5px 10px; font-size: 13px; font-weight: 600; white-space: nowrap">
+            <sc-if value="{{f.esPendiente}}" hint-placeholder-val="{{ false }}"><svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3 2"></path></svg></sc-if>
+            <sc-if value="{{f.esEnviado}}" hint-placeholder-val="{{ false }}"><svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><path d="M8 12.5l2.5 2.5L16 9.5"></path></svg></sc-if>
+            <sc-if value="{{f.esRechazado}}" hint-placeholder-val="{{ false }}"><svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v6M12 16.5v.5"></path></svg></sc-if>
+            {{f.estado}}
+          </span>
+        </div>
+        <div style="display: flex; align-items: baseline; gap: 8px">
+          <span style="flex: 1; font-size: 18px; font-weight: 600">{{f.cantidad}}</span>
+          <span style="font-size: 14px; color: #4B5563">{{f.hora}}</span>
+        </div>
+        <p style="margin: 0; font-size: 15px; color: #4B5563; line-height: 1.4">{{f.detalle}}</p>
+        <sc-if value="{{f.esRechazado}}" hint-placeholder-val="{{ false }}">
+          <div style="background: #FEE2E2; color: #7F1D1D; border-radius: 10px; padding: 10px 12px; font-size: 14px; line-height: 1.4">Rechazada: {{f.motivo}}</div>
+        </sc-if>
+        <sc-if value="{{f.conNota}}" hint-placeholder-val="{{ false }}">
+          <p style="margin: 0; font-size: 13px; color: #4B5563">{{f.nota}}</p>
+        </sc-if>
+      </article>
+    </sc-for>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":1060}}'>
+class Component extends DCLogic {
+  constructor(p) {
+    super(p);
+    this.state = { enviado: false };
+  }
+  renderVals() {
+    const enviado = this.state.enviado;
+    const estilos = {
+      pendiente: { estado: 'Por enviar', chipFondo: '#FEF3C7', chipTexto: '#92400E' },
+      enviado: { estado: 'Enviado', chipFondo: '#DCFCE7', chipTexto: '#166534' },
+      rechazado: { estado: 'Rechazado', chipFondo: '#FEE2E2', chipTexto: '#991B1B' }
+    };
+    const base = [
+      { nombre: 'CEMENTO PORTLAND TIPO I - 42.5 KG', cantidad: '25 bolsas', hora: '28/10 18:05', detalle: 'Vaciado de columnas 2.º piso · retira Maestro de obra', tipo: 'pendiente', nota: 'Sin señal: se reintenta solo (intentos: 1)' },
+      { nombre: 'ARENA GRUESA', cantidad: '3.5 metro cúbico', hora: '28/10 17:35', detalle: 'Tarrajeo de muros eje B · retira Maestro de obra · Cuadrilla de acabados', tipo: 'pendiente', nota: '' },
+      { nombre: 'FIERRO CORRUGADO DE 1/2" x 9m - GRADO 60', cantidad: '40 unidades', hora: '28/10 17:05', detalle: 'Armado de losa 2.º piso · retira Maestro de obra', tipo: 'rechazado', motivo: 'No hay stock suficiente en el almacén para esta salida.', nota: '' },
+      { nombre: 'CLAVO 1 1/2" ESTRIADO PARA CONCRETO', cantidad: '5 kilogramos', hora: '28/10 16:35', detalle: 'Encofrado de vigas · retira Maestro de obra', tipo: 'enviado', nota: '' }
+    ];
+    const filas = base.map((f) => {
+      const tipo = enviado && f.tipo === 'pendiente' ? 'enviado' : f.tipo;
+      return {
+        ...f, ...estilos[tipo],
+        esPendiente: tipo === 'pendiente', esEnviado: tipo === 'enviado', esRechazado: tipo === 'rechazado',
+        motivo: f.motivo || '',
+        conNota: tipo === 'pendiente' && !!f.nota
+      };
+    });
+    const pendientes = filas.filter((f) => f.esPendiente).length;
+    return {
+      filas,
+      hayPendientes: pendientes > 0,
+      subtitulo: pendientes > 0 ? pendientes + ' por enviar' : 'Todo enviado',
+      enviar: () => this.setState({ enviado: true })
+    };
+  }
+}
+</script>
+</body>
+</html>

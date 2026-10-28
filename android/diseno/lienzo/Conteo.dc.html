@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Conteo físico</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#C2410C}a:hover{color:#9A3412}
+input:focus{outline:2px solid #C2410C;outline-offset:1px}
+</style>
+</helmet>
+<div style="width: 390px; min-height: 1000px; box-sizing: border-box; background: #F4F4F6; font-family: Inter, system-ui, sans-serif; color: #111827; position: relative">
+  <header style="padding: 48px 20px 8px">
+    <a href="Stock.dc.html" aria-label="Volver" style="width: 44px; height: 44px; border-radius: 22px; background: #FFFFFF; box-shadow: 0 1px 2px rgba(17,24,39,0.08); display: flex; align-items: center; justify-content: center">
+      <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#111827" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"></path></svg>
+    </a>
+  </header>
+  <div style="padding: 4px 20px 120px; display: flex; flex-direction: column; gap: 14px">
+    <div style="display: flex; flex-direction: column; gap: 4px">
+      <h1 style="margin: 0; font-size: 30px; font-weight: 800; letter-spacing: -0.03em">Conteo físico</h1>
+      <p style="margin: 0; font-size: 14px; color: #4B5563">Almacén principal · 28/10/2026</p>
+    </div>
+
+    <sc-for list="{{filas}}" as="f" hint-placeholder-count="3">
+      <section style="background: #FFFFFF; border-radius: 24px; box-shadow: 0 1px 3px rgba(17,24,39,0.06); padding: 16px; display: flex; flex-direction: column; gap: 12px">
+        <span style="font-size: 16px; font-weight: 700">{{f.nombre}}</span>
+        <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; align-items: end">
+          <span style="display: flex; flex-direction: column; gap: 4px"><span style="font-size: 12px; color: #4B5563; font-weight: 600">Sistema</span><span style="font-size: 18px; font-weight: 700">{{f.teorico}}</span></span>
+          <label style="display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: #4B5563; font-weight: 600">Contado
+            <input value="{{f.contado}}" onChange="{{f.cambiar}}" inputmode="decimal" style="width: 100%; box-sizing: border-box; height: 44px; border: 1px solid #D1D5DB; border-radius: 12px; padding: 0 10px; font: 700 17px Inter, sans-serif; color: #111827; background: #F9FAFB">
+          </label>
+          <span style="display: flex; flex-direction: column; gap: 4px; align-items: flex-end"><span style="font-size: 12px; color: #4B5563; font-weight: 600">Diferencia</span><span style="font-size: 18px; font-weight: 800; color: {{f.colorDif}}">{{f.dif}}</span></span>
+        </div>
+        <sc-if value="{{f.conDif}}" hint-placeholder-val="{{ false }}">
+          <div style="display: flex; flex-direction: column; gap: 8px">
+            <span style="font-size: 13px; font-weight: 600; color: {{f.colorMotivo}}">{{f.textoMotivo}}</span>
+            <div style="display: flex; flex-wrap: wrap; gap: 6px">
+              <sc-for list="{{f.motivos}}" as="m" hint-placeholder-count="4">
+                <button onClick="{{m.elegir}}" aria-pressed="{{m.activo}}" style="min-height: 36px; padding: 0 12px; border-radius: 18px; border: 1.5px solid {{m.borde}}; background: {{m.fondo}}; color: {{m.texto}}; font: 600 13px Inter, sans-serif; cursor: pointer">{{m.nombre}}</button>
+              </sc-for>
+            </div>
+          </div>
+        </sc-if>
+      </section>
+    </sc-for>
+    <p style="margin: 0; font-size: 13px; color: #4B5563; line-height: 1.45">Cada diferencia genera un ajuste valorizado al costo promedio vigente. Nada se edita a mano.</p>
+  </div>
+
+  <div style="position: absolute; left: 0; right: 0; bottom: 0; padding: 14px 20px 28px; background: rgba(244,244,246,0.96); border-top: 1px solid #E5E7EB; display: flex; flex-direction: column; gap: 8px">
+    <sc-if value="{{faltan}}" hint-placeholder-val="{{ true }}">
+      <span style="font-size: 13px; color: #B91C1C; font-weight: 600; text-align: center">Falta el motivo de {{numFaltan}} diferencia(s)</span>
+    </sc-if>
+    <button disabled="{{faltan}}" style="height: 58px; border: 0; border-radius: 29px; background: {{fondoBoton}}; color: #FFFFFF; font: 700 16px Inter, sans-serif; cursor: pointer">Confirmar conteo</button>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":1000}}'>
+class Component extends DCLogic {
+  constructor(p) {
+    super(p);
+    this.state = { contado: { a: '36', b: '4.5', c: '12' }, motivo: { a: '', b: '', c: '' } };
+  }
+  renderVals() {
+    const base = [['a', 'Cemento Portland tipo I', 38, 'bls'], ['b', 'Arena gruesa', 4.5, 'm³'], ['c', 'Fierro corrugado 1/2"', 12, 'und']];
+    const opciones = ['Merma', 'Error de registro', 'Pérdida', 'Otro'];
+    let faltan = 0;
+    const filas = base.map(([id, nombre, teo, u]) => {
+      const cont = this.state.contado[id];
+      const n = parseFloat(String(cont).replace(',', '.'));
+      const dif = isNaN(n) ? 0 : Math.round((n - teo) * 100) / 100;
+      const conDif = dif !== 0;
+      const mot = this.state.motivo[id];
+      if (conDif && !mot) faltan++;
+      return {
+        nombre, teorico: teo + ' ' + u, contado: cont, conDif,
+        dif: (dif > 0 ? '+' : '') + dif + ' ' + u,
+        colorDif: dif < 0 ? '#B91C1C' : dif > 0 ? '#166534' : '#4B5563',
+        textoMotivo: mot ? 'Motivo: ' + mot : 'Elige el motivo de la diferencia',
+        colorMotivo: mot ? '#4B5563' : '#B91C1C',
+        cambiar: (e) => this.setState({ contado: { ...this.state.contado, [id]: e.target.value } }),
+        motivos: opciones.map((o) => ({
+          nombre: o, activo: mot === o ? 'true' : 'false',
+          fondo: mot === o ? '#111827' : '#FFFFFF', texto: mot === o ? '#FFFFFF' : '#111827', borde: mot === o ? '#111827' : '#D1D5DB',
+          elegir: () => this.setState({ motivo: { ...this.state.motivo, [id]: o } })
+        }))
+      };
+    });
+    return { filas, faltan: faltan > 0, numFaltan: faltan, fondoBoton: faltan > 0 ? '#9CA3AF' : '#111827' };
+  }
+}
+</script>
+</body>
+</html>
