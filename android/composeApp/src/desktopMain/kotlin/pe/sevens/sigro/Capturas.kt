@@ -62,16 +62,18 @@ private fun insumo(nombre: String) = catalogo.firstOrNull { it.descripcion.start
 
 private val obra = ObraAsignada(1, "Multifamiliar Flores", "almacenero")
 private val sesionEjemplo = Sesion(
-    "http://10.0.2.2:8000", "x", 1, "Almacenero Ejemplo", "almacenero",
+    "https://sigro-gateway.onrender.com", "x", 1, "Almacenero Ejemplo", "almacenero",
     listOf(obra, ObraAsignada(2, "Obra de ejemplo 2", "ssoma")),
 )
 
-private class SesionFalsa(private val falla: Boolean = false) : RepositorioSesion {
+/** `colgada`: el servidor no responde nunca (para ver «el plano se dibuja» con el logo). */
+private class SesionFalsa(private val falla: Boolean = false, private val colgada: Boolean = false) : RepositorioSesion {
     override val sesion: Flow<Sesion?> = flowOf(sesionEjemplo)
     override val obraElegida: Flow<ObraAsignada?> = flowOf(obra)
-    override suspend fun servidorGuardado() = "http://10.0.2.2:8000"
+    override suspend fun servidorGuardado() = "https://sigro-gateway.onrender.com"
     override suspend fun iniciarSesion(servidor: String, usuario: String, clave: String): Sesion =
-        if (falla) throw ErrorSigro("credenciales", "Usuario o clave incorrectos.", 401) else sesionEjemplo
+        if (colgada) kotlinx.coroutines.awaitCancellation()
+        else if (falla) throw ErrorSigro("credenciales", "Usuario o clave incorrectos.", 401) else sesionEjemplo
     override suspend fun elegirObra(obra: ObraAsignada) {}
     override suspend fun cambiarDeObra() {}
     override suspend fun cerrarSesion() {}
@@ -111,14 +113,14 @@ private object DispositivoFalso : RepositorioDispositivo {
 
 private val sinProgramar = object : ProgramadorSincronizacion { override fun programar() {} }
 
-private fun capturar(dir: File, nombre: String, oscuro: Boolean = false, preparar: () -> Unit = {}, contenido: @Composable () -> Unit) {
+private fun capturar(dir: File, nombre: String, oscuro: Boolean = false, ms: Int = 1500, preparar: () -> Unit = {}, contenido: @Composable () -> Unit) {
     preparar()
     Thread.sleep(400) // los ViewModel actualizan su estado en el hilo principal de Swing
     ImageComposeScene(width = 412 * 2, height = 892 * 2, density = Density(2f)) {
         TemaSigro(oscuro = oscuro) { contenido() }
     }.use { escena ->
         var t = 0L
-        repeat(30) { escena.render(t); t += 50_000_000L; Thread.sleep(15) } // deja correr efectos y animaciones
+        repeat(ms / 50) { escena.render(t); t += 50_000_000L; Thread.sleep(15) } // deja correr efectos y animaciones
         val png = escena.render(t).encodeToData(EncodedImageFormat.PNG)!!.bytes
         File(dir, "$nombre.png").writeBytes(png)
         println("✓ $nombre.png")
@@ -133,6 +135,11 @@ fun main(args: Array<String>) {
     capturar(dir, "01-entrar", preparar = { entrar.usuario("almacenero"); entrar.clave("********") }) { PantallaEntrar(entrar) }
 
     val entrarMal = EntrarViewModel(SesionFalsa(falla = true))
+    val entrando = EntrarViewModel(SesionFalsa(colgada = true))
+    capturar(dir, "01b-entrar-plano-a-medias", ms = 1100, preparar = { entrando.usuario("almacenero"); entrando.clave("********"); entrando.entrar() }) { PantallaEntrar(entrando) }
+    val esperando = EntrarViewModel(SesionFalsa(colgada = true))
+    capturar(dir, "01c-entrar-preparando-obra", ms = 3200, preparar = { esperando.usuario("almacenero"); esperando.clave("********"); esperando.entrar() }) { PantallaEntrar(esperando) }
+
     capturar(dir, "02-entrar-error", preparar = { entrarMal.usuario("almacenero"); entrarMal.clave("x"); entrarMal.entrar() }) { PantallaEntrar(entrarMal) }
 
     capturar(dir, "03-elegir-obra") { PantallaObras(sesionEjemplo, {}, {}) }

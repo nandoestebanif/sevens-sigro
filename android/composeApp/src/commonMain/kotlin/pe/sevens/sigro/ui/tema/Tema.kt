@@ -12,9 +12,18 @@ import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import org.jetbrains.compose.resources.Font
+import pe.sevens.sigro.recursos.Res
+import pe.sevens.sigro.recursos.inter_400
+import pe.sevens.sigro.recursos.inter_500
+import pe.sevens.sigro.recursos.inter_600
+import pe.sevens.sigro.recursos.inter_700
+import pe.sevens.sigro.recursos.inter_800
+import pe.sevens.sigro.recursos.sora_600
 
 /*
  * Tema «obra»: el mismo naranja de seguridad que la web (C2410C) sobre grises pizarra.
@@ -84,15 +93,41 @@ private val EstadoOscuro = ColoresEstado(
 
 val LocalColoresEstado = staticCompositionLocalOf { EstadoClaro }
 
-private val base = Typography()
-private val Tipos = Typography(
-    headlineMedium = base.headlineMedium.copy(fontWeight = FontWeight.Bold, fontSize = 26.sp),
-    titleLarge = base.titleLarge.copy(fontWeight = FontWeight.SemiBold, fontSize = 21.sp),
-    titleMedium = base.titleMedium.copy(fontWeight = FontWeight.SemiBold, fontSize = 18.sp),
-    bodyLarge = base.bodyLarge.copy(fontSize = 17.sp, lineHeight = 24.sp),
-    bodyMedium = base.bodyMedium.copy(fontSize = 15.sp, lineHeight = 21.sp),
-    labelLarge = base.labelLarge.copy(fontWeight = FontWeight.SemiBold, fontSize = 17.sp),
+/** Inter en toda la app (diseno/LEEME.md). Las fuentes son recursos: se cargan dentro de la composición. */
+@Composable
+fun Inter(): FontFamily = FontFamily(
+    Font(Res.font.inter_400, FontWeight.Normal),
+    Font(Res.font.inter_500, FontWeight.Medium),
+    Font(Res.font.inter_600, FontWeight.SemiBold),
+    Font(Res.font.inter_700, FontWeight.Bold),
+    Font(Res.font.inter_800, FontWeight.ExtraBold),
 )
+
+/** Sora solo para «ALMACÉN DE OBRA» bajo el logo, en la entrada. */
+@Composable
+fun Sora(): FontFamily = FontFamily(Font(Res.font.sora_600, FontWeight.SemiBold))
+
+/** Interletrado normal, como el lienzo: el de Material (0,5 sp) abre demasiado a Inter. */
+private fun tipos(f: FontFamily): Typography {
+    val b = Typography()
+    return Typography(
+        displayLarge = b.displayLarge.copy(fontFamily = f, letterSpacing = 0.sp),
+        displayMedium = b.displayMedium.copy(fontFamily = f, letterSpacing = 0.sp),
+        displaySmall = b.displaySmall.copy(fontFamily = f, letterSpacing = 0.sp),
+        headlineLarge = b.headlineLarge.copy(fontFamily = f, letterSpacing = 0.sp),
+        headlineMedium = b.headlineMedium.copy(fontFamily = f, letterSpacing = 0.sp, fontWeight = FontWeight.Bold, fontSize = 26.sp),
+        headlineSmall = b.headlineSmall.copy(fontFamily = f, letterSpacing = 0.sp),
+        titleLarge = b.titleLarge.copy(fontFamily = f, letterSpacing = 0.sp, fontWeight = FontWeight.SemiBold, fontSize = 21.sp),
+        titleMedium = b.titleMedium.copy(fontFamily = f, letterSpacing = 0.sp, fontWeight = FontWeight.SemiBold, fontSize = 18.sp),
+        titleSmall = b.titleSmall.copy(fontFamily = f, letterSpacing = 0.sp),
+        bodyLarge = b.bodyLarge.copy(fontFamily = f, letterSpacing = 0.sp, fontSize = 17.sp, lineHeight = 24.sp),
+        bodyMedium = b.bodyMedium.copy(fontFamily = f, letterSpacing = 0.sp, fontSize = 15.sp, lineHeight = 21.sp),
+        bodySmall = b.bodySmall.copy(fontFamily = f, letterSpacing = 0.sp),
+        labelLarge = b.labelLarge.copy(fontFamily = f, letterSpacing = 0.sp, fontWeight = FontWeight.SemiBold, fontSize = 17.sp),
+        labelMedium = b.labelMedium.copy(fontFamily = f, letterSpacing = 0.sp),
+        labelSmall = b.labelSmall.copy(fontFamily = f, letterSpacing = 0.sp),
+    )
+}
 
 private val Formas = Shapes(
     small = RoundedCornerShape(10.dp),
@@ -105,12 +140,14 @@ val EstiloCifra = TextStyle(fontWeight = FontWeight.SemiBold, fontSize = 18.sp, 
 
 @Composable
 fun TemaSigro(oscuro: Boolean = isSystemInDarkTheme(), contenido: @Composable () -> Unit) {
+    val inter = Inter()
+    val tipos = androidx.compose.runtime.remember(inter) { tipos(inter) }
     androidx.compose.runtime.CompositionLocalProvider(
         LocalColoresEstado provides if (oscuro) EstadoOscuro else EstadoClaro,
     ) {
         MaterialTheme(
             colorScheme = if (oscuro) Oscuro else Claro,
-            typography = Tipos,
+            typography = tipos,
             shapes = Formas,
             content = contenido,
         )

@@ -17,3 +17,6 @@ actual object Plataforma {
 actual fun ManejarAtras(activo: Boolean, alVolver: () -> Unit) {
     // En la PC se vuelve con la flecha de la barra superior.
 }
+
+@Composable
+actual fun reducirMovimiento(): Boolean = false

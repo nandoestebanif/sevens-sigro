@@ -1,8 +1,10 @@
 package pe.sevens.sigro
 
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -37,14 +39,29 @@ fun App() {
         TemaSigro {
             val raiz: RaizViewModel = koinViewModel()
             val estado by raiz.estado.collectAsState()
-            when (val e = estado) {
-                EstadoRaiz.Cargando -> Box(
-                    Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background),
-                    contentAlignment = Alignment.Center,
-                ) { CircularProgressIndicator() }
-                EstadoRaiz.SinSesion -> PantallaEntrar()
-                is EstadoRaiz.ElegirObra -> PantallaObras(e.sesion, alElegir = raiz::elegir, alSalir = raiz::salir)
-                is EstadoRaiz.Dentro -> Navegacion(e)
+            // Al entrar, la capa «el plano se dibuja» de PantallaEntrar se desvanece y crece 6 % (0,6 s)
+            // dejando ver la pantalla siguiente, que va debajo.
+            AnimatedContent(
+                estado,
+                contentKey = { it::class },
+                transitionSpec = {
+                    if (initialState == EstadoRaiz.SinSesion) {
+                        (fadeIn(tween(0)) togetherWith (fadeOut(tween(600)) + scaleOut(tween(600), targetScale = 1.06f)))
+                            .apply { targetContentZIndex = -1f }
+                    } else {
+                        fadeIn() togetherWith fadeOut()
+                    }
+                },
+            ) { e ->
+                when (e) {
+                    EstadoRaiz.Cargando -> Box(
+                        Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background),
+                        contentAlignment = Alignment.Center,
+                    ) { CircularProgressIndicator() }
+                    EstadoRaiz.SinSesion -> PantallaEntrar()
+                    is EstadoRaiz.ElegirObra -> PantallaObras(e.sesion, alElegir = raiz::elegir, alSalir = raiz::salir)
+                    is EstadoRaiz.Dentro -> Navegacion(e)
+                }
             }
         }
     }
