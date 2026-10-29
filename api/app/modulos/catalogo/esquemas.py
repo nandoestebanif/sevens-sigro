@@ -65,3 +65,35 @@ class ResultadoImportacionOut(BaseModel):
     actualizados: int
     sin_cambios: int
     advertencias: list[str]
+
+
+# ---------------------------------------------------------------- lectura del PDF del S10 (lo devuelve Integraciones)
+class InsumoLeidoS10(BaseModel):
+    codigo: str
+    descripcion: str
+    unidad: str
+    tipo: str
+    cantidad: float
+    precio: float
+    parcial: float
+    accion: Literal["crear", "actualizar"] = Field(description="Según los códigos que ya tiene el catálogo")
+    advertencia: str | None
+
+
+class ResumenLecturaS10(BaseModel):
+    leidos: int
+    a_crear: int
+    a_actualizar: int
+    fallidos: int
+    por_tipo: dict[str, int]
+    parcial_total: float
+
+
+class LecturaS10Out(BaseModel):
+    """Lo que Integraciones leyó del PDF, tal cual. Todavía no toca el catálogo: eso es POST /catalogo/insumos/importar-s10."""
+    obra: str | None
+    subpresupuesto: str | None
+    fecha: str | None
+    resumen: ResumenLecturaS10
+    insumos: list[InsumoLeidoS10]
+    fallidos: list[dict]
