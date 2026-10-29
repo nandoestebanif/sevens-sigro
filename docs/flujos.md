@@ -120,7 +120,7 @@ Vale la pena decirlo en voz alta antes de que alguien lo dé por supuesto:
 
 | Falta | Por qué no está |
 |---|---|
-| **Rendimientos y ratios** | Exigen cruzar partidas y metrados. El cliente y el Ing. Cercado coincidieron en postergarlo (decisión D7) |
+| **Rendimientos y ratios** | Exigen cruzar partidas y metrados. El cliente pidió postergarlo (decisión D7) |
 | **Costo total de la obra** | El sistema informa el gasto en recursos. Gastos generales, subcontratos, servicios y planilla quedan fuera |
 | **Imputación a partidas** | El cliente pidió postergarla. El control de costo es por insumo |
 | **Órdenes de compra formales** | Hoy la orden se acuerda fuera de toda herramienta y el sistema registra la compra ya hecha |
