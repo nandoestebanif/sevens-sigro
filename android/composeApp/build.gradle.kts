@@ -39,6 +39,8 @@ kotlin {
             implementation(compose.material3)
             implementation(compose.materialIconsExtended)
             implementation(compose.ui)
+            implementation(compose.components.resources)
+            implementation(libs.haze)
             implementation(libs.lifecycle.viewmodel.compose)
             implementation(libs.coroutines.core)
             implementation(libs.serialization.json)
@@ -98,6 +100,12 @@ dependencies {
     add("kspIosX64", libs.room.compiler)
     add("kspIosArm64", libs.room.compiler)
     add("kspIosSimulatorArm64", libs.room.compiler)
+}
+
+// Fuentes (Inter, Sora) y logos de SEVEN'S: composeResources/ → pe.sevens.sigro.recursos.Res
+compose.resources {
+    packageOfResClass = "pe.sevens.sigro.recursos"
+    generateResClass = always
 }
 
 compose.desktop {
