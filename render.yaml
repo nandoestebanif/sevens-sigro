@@ -55,7 +55,7 @@ services:
         value: obras
       - key: SIGRO_SERVICIO
         value: obras
-      - key: SIGRO_APP_DATABASE_URL   # postgresql+psycopg://sigro_obras:<clave>@<host-neon>/sigro?sslmode=require
+      - key: SIGRO_APP_DATABASE_URL   # postgresql+psycopg://sigro_obras:<clave>@<host-neon-pooler>/neondb?sslmode=require
         sync: false
 
   - type: web
