@@ -135,3 +135,32 @@ internal fun DrawScope.fondoPlanoQueSeDibuja() = enLienzo {
     cuadricula(24f, Color(0xFF94A3B8).copy(alpha = 0.45f), 0.5f)
     drawCircle(Brush.radialGradient(listOf(NaranjaMancha.copy(alpha = 0.35f), NaranjaMancha.copy(alpha = 0f)), Offset(300f, 200f), 220f), 220f, Offset(300f, 200f))
 }
+
+// ── Inicio: obra en marcha (grúa torre, edificio isométrico, viga en I, cota) ────────────────────
+
+private val gruaTorre = svg("M300 40v250M300 40l-150 30h210M300 40l60 30M330 70v30M320 100h20v14h-20zM300 80l-20 20M300 120l-20 20M300 160l-20 20M300 200l-20 20M300 240l-20 20M280 80v200")
+private val cableGrua = svg("M220 70v40")
+private val cotaInicio = svg("M24 585h150M24 579v12M174 579v12M24 585l8-4M24 585l8 4M174 585l-8-4M174 585l-8 4") // bajo la lista de vidrio: no choca con títulos
+private val edificioIso = svg("M30 640l70-40 70 40v120l-70 40-70-40zM30 640l70 40 70-40M100 680v120")
+private val pisosIso = svg("M30 680l70 40 70-40M30 720l70 40 70-40")
+private val ejesIso = svg("M65 620v140M135 620v140")
+private val vigaI = svg("M300 560h56v8h-24v52h24v8h-56v-8h24v-52h-24z")
+
+fun DrawScope.planoInicio(m: TextMeasurer) = enLienzo {
+    fondoBase(
+        Color(0xFFE8EEF6), Color(0xFFF3F1EE), Color(0xFFF6E9DF),
+        listOf(Triple(Offset(330f, 150f), 190f, NaranjaMancha.copy(alpha = 0.55f)), Triple(Offset(40f, 560f), 210f, AzulMancha.copy(alpha = 0.4f)), Triple(Offset(300f, 760f), 160f, NaranjaMancha.copy(alpha = 0.55f))),
+    )
+    trazo(gruaTorre, 0.55f, 1.4f)
+    trazo(cableGrua, 0.55f, 1.4f, discontinuo = floatArrayOf(3f, 4f))
+    drawRect(Paleta.Pizarra.copy(alpha = 0.55f), Offset(212f, 110f), androidx.compose.ui.geometry.Size(16f, 10f), style = Stroke(1.4f))
+    trazo(cotaInicio, 0.55f, 1.2f, Paleta.Naranja)
+    rotulo(m, "6.50 m", 84f, 577f, 0.7f, Paleta.Naranja, tam = 11f)
+    trazo(edificioIso, 0.5f, 1.3f)
+    trazo(pisosIso, 0.35f, 1.3f)
+    trazo(ejesIso, 0.5f, 1.3f, discontinuo = floatArrayOf(2f, 5f))
+    trazo(vigaI, 0.5f, 1.4f)
+    drawRect(Paleta.Pizarra.copy(alpha = 0.5f), Offset(250f, 600f), androidx.compose.ui.geometry.Size(34f, 34f), style = Stroke(1.4f))
+    for (x in listOf(257f, 277f)) for (y in listOf(607f, 627f)) drawCircle(Paleta.Pizarra.copy(alpha = 0.5f), 2.5f, Offset(x, y), style = Stroke(1.4f))
+    rotulo(m, "VIGA W · C-1", 300f, 650f, 0.6f)
+}
