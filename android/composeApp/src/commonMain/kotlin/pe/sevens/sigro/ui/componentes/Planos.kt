@@ -164,3 +164,27 @@ fun DrawScope.planoInicio(m: TextMeasurer) = enLienzo {
     for (x in listOf(257f, 277f)) for (y in listOf(607f, 627f)) drawCircle(Paleta.Pizarra.copy(alpha = 0.5f), 2.5f, Offset(x, y), style = Stroke(1.4f))
     rotulo(m, "VIGA W · C-1", 300f, 650f, 0.6f)
 }
+
+// ── Salida (Materiales): estanterías de almacén, cajas y sacos ───────────────────────────────
+// No está en el lienzo: LEEME pide pasar Materiales al vidrio «con estanterías de almacén».
+
+private val estante = svg("M240 110v330M370 110v330M240 180h130M240 260h130M240 340h130M240 420h130M234 440h142")
+private val cajasEstante = svg("M252 140h34v40h-34zM294 150h28v30h-28zM330 132h30v48h-30zM252 220h44v40h-44zM304 230h24v30h-24zM336 224h26v36h-26zM256 300h30v40h-30zM294 300h34v40h-34zM262 380h48v40h-48zM318 390h40v30h-40z")
+private val rioEstante = svg("M240 110l-18 12v330M370 110l-18 12")
+private val sacos = svg("M30 760c0-14 6-22 20-22h44c14 0 20 8 20 22v30H30zM120 760c0-14 6-22 20-22h44c14 0 20 8 20 22v30h-84zM74 712c0-14 6-22 20-22h44c14 0 20 8 20 22v26H74z")
+private val pallet = svg("M22 790h190M22 802h190M30 790v12M117 790v12M204 790v12")
+private val cotaSalida = svg("M384 110v330M378 110h12M378 440h12")
+
+fun DrawScope.planoSalida(m: TextMeasurer) = enLienzo {
+    fondoBase(
+        Color(0xFFEAEFF5), Color(0xFFF3F1EE), Color(0xFFF6EADF),
+        listOf(Triple(Offset(320f, 260f), 200f, NaranjaMancha.copy(alpha = 0.45f)), Triple(Offset(50f, 720f), 210f, AzulMancha.copy(alpha = 0.38f)), Triple(Offset(330f, 820f), 140f, NaranjaMancha.copy(alpha = 0.45f))),
+    )
+    trazo(estante, 0.5f, 1.8f, cuadrado = true)
+    trazo(rioEstante, 0.3f, 1.2f)
+    trazo(cajasEstante, 0.45f, 1.2f)
+    trazo(sacos, 0.45f, 1.3f)
+    trazo(pallet, 0.45f, 1.3f)
+    trazo(cotaSalida, 0.55f, 1.1f, Paleta.Naranja)
+    rotate(-90f, Offset(380f, 290f)) { rotulo(m, "2.40 m", 380f, 290f, 0.7f, Paleta.Naranja) }
+}
