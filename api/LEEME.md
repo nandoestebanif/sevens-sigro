@@ -106,6 +106,13 @@ Se abren con draw.io (app.diagrams.net, la extensión de VS Code o draw.io Deskt
 y que la web suba el PDF por el gateway (`POST /api/v1/catalogo/importaciones-s10`), el servicio catálogo lo reenvía a
 Integraciones con su token y guarda el resultado. Queda en el diagrama como flecha roja hasta que se haga.
 
+**Resuelto (29/10, rama `web-s10-y-vidrio`):** `POST /api/v1/catalogo/importaciones-s10` recibe el PDF (multipart, campo
+`archivo`, hasta 15 MB) con el JWT, exige `insumo.importar`, agrega los códigos que ya tiene el catálogo y lo reenvía a
+Integraciones (`POST /s10/relacion-insumos`) con `X-Servicio-Token`. Devuelve lo leído sin escribir; aplicar sigue siendo
+`POST /catalogo/insumos/importar-s10`. Si Integraciones cae, rechaza el token o no entiende el archivo, responde
+`503 integraciones_no_disponible`, `503 integraciones_rechazo_el_servicio` o `422 archivo_s10_invalido`. Falta
+regenerar el diagrama de despliegue (la flecha roja) y activar `SERVICIO_TOKEN` en Integraciones del ambiente de pruebas.
+
 ## Reglas del CLAUDE.md y dónde las sostiene el motor
 
 | Regla | Mecanismo |
@@ -185,6 +192,7 @@ Argon2id, bloqueo a los 5 intentos (15 min), misma respuesta para usuario inexis
 | `GET·POST /obras/{id}/solicitudes`, `GET …/{id}`, `POST …/anular` | emitir: residente |
 | `GET·POST /catalogo/insumos`, `POST …/{id}/verificar` | ver: todos · crear («por verificar»): almacenero, residente, administrador · verificar: residente, administrador |
 | `POST /catalogo/insumos/{id}/factor-conversion`, `GET …/historial` | cambiar: residente, administrador (con motivo; queda en el histórico) · ver: todos |
+| `POST /catalogo/importaciones-s10` | residente, administrador (sube el PDF; el catálogo lo reenvía a Integraciones con el token de servicio y devuelve lo leído sin escribir) |
 | `POST /catalogo/insumos/importar-s10` | residente, administrador (aplica lo que leyó Integraciones; repetirlo no duplica) |
 | `POST /obras/{id}/requerimiento/importar`, `GET …/requerimiento`, `POST …/{id}/ajustar`, `GET …/{id}/ajustes` | importar y ajustar: residente, administrador (ajuste con motivo) · ver: + gerente |
 | `GET /obras/{id}/saldo-por-comprar?solo_pendientes=` | residente, administrador, gerente |

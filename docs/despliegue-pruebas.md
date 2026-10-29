@@ -43,4 +43,6 @@ la app la guarda en la cola sin señal y la envía cuando exista.
 
 - Los servicios se duermen a los 15 min sin uso.
 - Relevo y Notificaciones no se despliegan aún: los avisos quedan en `outbox.evento` sin perderse.
-- Integraciones queda sin token mientras la web llame directo para el S10; se cierra al pasar la importación por el gateway.
+- Integraciones todavía no exige token en pruebas. La web ya importa el S10 por el gateway
+  (`POST /api/v1/catalogo/importaciones-s10`); el paso que falta es darle `SERVICIO_TOKEN` (el mismo valor que
+  `SIGRO_SERVICIO_TOKEN` del grupo `sigro-comun`) en el panel de Render.

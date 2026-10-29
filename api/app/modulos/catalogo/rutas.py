@@ -10,18 +10,21 @@ from __future__ import annotations
 import re
 import unicodedata
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, File, Query, UploadFile
 from sqlalchemy import text
 
+from app import integraciones
 from app.dependencias import Actor, exigir_en_alguna_obra
 from app.errores import ErrorSigro
 from app.modulos.catalogo import esquemas as e
 from app.sql import fila, filas
 
 insumos = APIRouter(prefix="/catalogo/insumos", tags=["catálogo"])
+importaciones = APIRouter(prefix="/catalogo/importaciones-s10", tags=["catálogo"])
 
 _COLS = "id, codigo, descripcion, unidad_s10, unidad_compra, factor_conversion, tipo, activo, verificado"
 _PREFIJO = "SIGRO-"
+_MAX_PDF = 15 * 1024 * 1024     # la Relación de insumos real pesa unos cientos de KB
 
 
 def normalizar(t: str) -> str:
@@ -141,4 +144,22 @@ def importar_s10(d: e.ImportarS10In, a: Actor = Depends(exigir_en_alguna_obra("i
     return e.ResultadoImportacionOut(creados=creados, actualizados=actualizados, sin_cambios=sin_cambios, advertencias=avisos)
 
 
-routers = [insumos]
+
+@importaciones.post("", response_model=e.LecturaS10Out)
+def leer_pdf_s10(
+    archivo: UploadFile = File(..., description="La «Relación de insumos» exportada del S10 (PDF)"),
+    a: Actor = Depends(exigir_en_alguna_obra("insumo.importar")),
+):
+    """HU-07, paso 1: la web sube el PDF por el gateway con su JWT; el catálogo lo reenvía a Integraciones con el
+    token de servicio (el navegador nunca lo ve) y devuelve lo leído. Los códigos que ya existen los pone el servidor,
+    no el cliente, para marcar cada fila «crear» o «actualizar». No escribe nada: aplicar es POST /insumos/importar-s10."""
+    contenido = archivo.file.read(_MAX_PDF + 1)
+    if len(contenido) > _MAX_PDF:
+        raise ErrorSigro(413, "archivo_muy_grande", "El PDF supera los 15 MB; exporta solo la Relación de insumos del S10.")
+    if not contenido:
+        raise ErrorSigro(422, "archivo_vacio", "El archivo llegó vacío.")
+    existentes = [x["codigo"] for x in filas(a.sesion, "SELECT codigo FROM catalogo.insumo ORDER BY codigo")]
+    return integraciones.leer_relacion_s10(archivo.filename or "relacion-insumos.pdf", contenido, existentes)
+
+
+routers = [insumos, importaciones]

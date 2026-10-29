@@ -1515,6 +1515,54 @@
     "x-servicio": "catalogo"
    }
   },
+  "/api/v1/catalogo/importaciones-s10": {
+   "post": {
+    "tags": [
+     "catálogo"
+    ],
+    "summary": "Leer Pdf S10",
+    "description": "HU-07, paso 1: la web sube el PDF por el gateway con su JWT; el catálogo lo reenvía a Integraciones con el\ntoken de servicio (el navegador nunca lo ve) y devuelve lo leído. Los códigos que ya existen los pone el servidor,\nno el cliente, para marcar cada fila «crear» o «actualizar». No escribe nada: aplicar es POST /insumos/importar-s10.",
+    "operationId": "leer_pdf_s10_api_v1_catalogo_importaciones_s10_post",
+    "requestBody": {
+     "content": {
+      "multipart/form-data": {
+       "schema": {
+        "$ref": "#/components/schemas/Body_leer_pdf_s10_api_v1_catalogo_importaciones_s10_post"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/LecturaS10Out"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "x-servicio": "catalogo"
+   }
+  },
   "/api/v1/proveedores": {
    "get": {
     "tags": [
@@ -4014,6 +4062,21 @@
     ],
     "title": "YoOut"
    },
+   "Body_leer_pdf_s10_api_v1_catalogo_importaciones_s10_post": {
+    "properties": {
+     "archivo": {
+      "type": "string",
+      "contentMediaType": "application/octet-stream",
+      "title": "Archivo",
+      "description": "La «Relación de insumos» exportada del S10 (PDF)"
+     }
+    },
+    "type": "object",
+    "required": [
+     "archivo"
+    ],
+    "title": "Body_leer_pdf_s10_api_v1_catalogo_importaciones_s10_post"
+   },
    "BuscarIn": {
     "properties": {
      "ids": {
@@ -4209,6 +4272,71 @@
     "title": "InsumoIn",
     "description": "Alta de un insumo que no estaba en el catálogo. El código lo genera el servidor, nunca el cliente."
    },
+   "InsumoLeidoS10": {
+    "properties": {
+     "codigo": {
+      "type": "string",
+      "title": "Codigo"
+     },
+     "descripcion": {
+      "type": "string",
+      "title": "Descripcion"
+     },
+     "unidad": {
+      "type": "string",
+      "title": "Unidad"
+     },
+     "tipo": {
+      "type": "string",
+      "title": "Tipo"
+     },
+     "cantidad": {
+      "type": "number",
+      "title": "Cantidad"
+     },
+     "precio": {
+      "type": "number",
+      "title": "Precio"
+     },
+     "parcial": {
+      "type": "number",
+      "title": "Parcial"
+     },
+     "accion": {
+      "type": "string",
+      "enum": [
+       "crear",
+       "actualizar"
+      ],
+      "title": "Accion",
+      "description": "Según los códigos que ya tiene el catálogo"
+     },
+     "advertencia": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Advertencia"
+     }
+    },
+    "type": "object",
+    "required": [
+     "codigo",
+     "descripcion",
+     "unidad",
+     "tipo",
+     "cantidad",
+     "precio",
+     "parcial",
+     "accion",
+     "advertencia"
+    ],
+    "title": "InsumoLeidoS10"
+   },
    "InsumoOut": {
     "properties": {
      "id": {
@@ -4269,6 +4397,72 @@
     ],
     "title": "InsumoOut"
    },
+   "LecturaS10Out": {
+    "properties": {
+     "obra": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Obra"
+     },
+     "subpresupuesto": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Subpresupuesto"
+     },
+     "fecha": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Fecha"
+     },
+     "resumen": {
+      "$ref": "#/components/schemas/ResumenLecturaS10"
+     },
+     "insumos": {
+      "items": {
+       "$ref": "#/components/schemas/InsumoLeidoS10"
+      },
+      "type": "array",
+      "title": "Insumos"
+     },
+     "fallidos": {
+      "items": {
+       "additionalProperties": true,
+       "type": "object"
+      },
+      "type": "array",
+      "title": "Fallidos"
+     }
+    },
+    "type": "object",
+    "required": [
+     "obra",
+     "subpresupuesto",
+     "fecha",
+     "resumen",
+     "insumos",
+     "fallidos"
+    ],
+    "title": "LecturaS10Out",
+    "description": "Lo que Integraciones leyó del PDF, tal cual. Todavía no toca el catálogo: eso es POST /catalogo/insumos/importar-s10."
+   },
    "ResultadoImportacionOut": {
     "properties": {
      "creados": {
@@ -4299,6 +4493,47 @@
      "advertencias"
     ],
     "title": "ResultadoImportacionOut"
+   },
+   "ResumenLecturaS10": {
+    "properties": {
+     "leidos": {
+      "type": "integer",
+      "title": "Leidos"
+     },
+     "a_crear": {
+      "type": "integer",
+      "title": "A Crear"
+     },
+     "a_actualizar": {
+      "type": "integer",
+      "title": "A Actualizar"
+     },
+     "fallidos": {
+      "type": "integer",
+      "title": "Fallidos"
+     },
+     "por_tipo": {
+      "additionalProperties": {
+       "type": "integer"
+      },
+      "type": "object",
+      "title": "Por Tipo"
+     },
+     "parcial_total": {
+      "type": "number",
+      "title": "Parcial Total"
+     }
+    },
+    "type": "object",
+    "required": [
+     "leidos",
+     "a_crear",
+     "a_actualizar",
+     "fallidos",
+     "por_tipo",
+     "parcial_total"
+    ],
+    "title": "ResumenLecturaS10"
    },
    "AjusteIn": {
     "properties": {

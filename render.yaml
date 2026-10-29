@@ -116,8 +116,9 @@ services:
     envVars:
       - key: FACTILIZA_TOKEN      # se escribe en el panel de Render, nunca en el repositorio
         sync: false
-      # Sin SERVICIO_TOKEN en pruebas: la web todavía llama directo a Integraciones para el S10
-      # (incidencia del 28/10). Cuando la importación pase por el gateway, se agrega el token aquí.
+      # La web ya no llama a Integraciones: el S10 entra por el gateway (POST /api/v1/catalogo/importaciones-s10)
+      # y el catálogo lo reenvía con X-Servicio-Token. Falta activar aquí SERVICIO_TOKEN con el mismo valor que
+      # SIGRO_SERVICIO_TOKEN de «sigro-comun» (plan, tarea 2).
 
   - type: web
     name: sigro-web
@@ -127,8 +128,6 @@ services:
     envVars:
       - key: VITE_API_URL
         value: https://sigro-gateway.onrender.com
-      - key: VITE_INTEGRACIONES_URL
-        value: https://sigro-integraciones.onrender.com
     routes:
       - type: rewrite
         source: /*
