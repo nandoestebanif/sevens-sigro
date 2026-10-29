@@ -5,25 +5,25 @@
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
-        <mxCell id="c2" value="&lt;b style=&quot;font-size:22px&quot;&gt;SIGRO · Diagrama físico de la base de datos (PostgreSQL)&lt;/b&gt;&lt;br&gt;&lt;span style=&quot;font-size:13px;color:#555555&quot;&gt;Módulos obra, catálogo, compras, tareo y outbox · generado desde la base migrada (migraciones 0001 a 0006)&lt;/span&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;" vertex="1" parent="1">
+        <mxCell id="c2" value="&lt;b style=&quot;font-size:22px&quot;&gt;SIGRO · Modelo físico de datos por microservicio (PostgreSQL)&lt;/b&gt;&lt;br&gt;&lt;span style=&quot;font-size:13px;color:#555555&quot;&gt;Un esquema y un rol por microservicio · generado desde la base migrada (migraciones 0001 a 0009)&lt;/span&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;" vertex="1" parent="1">
           <mxGeometry x="0" y="0" width="1100" height="60" as="geometry" />
         </mxCell>
-        <mxCell id="c3" value="esquema obra" style="swimlane;startSize=30;html=1;rounded=1;arcSize=2;fontStyle=1;fontSize=14;fillColor=#EAF1F8;strokeColor=#1F4E79;strokeWidth=2;swimlaneFillColor=#EAF1F8;align=left;spacingLeft=10;collapsible=0;" vertex="1" parent="1">
+        <mxCell id="c3" value="microservicio obras · esquema obra · rol sigro_svc_obras" style="swimlane;startSize=30;html=1;rounded=1;arcSize=2;fontStyle=1;fontSize=14;fillColor=#EAF1F8;strokeColor=#1F4E79;strokeWidth=2;swimlaneFillColor=#EAF1F8;align=left;spacingLeft=10;collapsible=0;" vertex="1" parent="1">
           <mxGeometry x="8" y="693" width="1518" height="929" as="geometry" />
         </mxCell>
-        <mxCell id="c4" value="esquema catalogo" style="swimlane;startSize=30;html=1;rounded=1;arcSize=2;fontStyle=1;fontSize=14;fillColor=#FBF3E4;strokeColor=#7A4B00;strokeWidth=2;swimlaneFillColor=#FBF3E4;align=left;spacingLeft=10;collapsible=0;" vertex="1" parent="1">
+        <mxCell id="c4" value="microservicio catalogo · esquema catalogo · rol sigro_svc_catalogo" style="swimlane;startSize=30;html=1;rounded=1;arcSize=2;fontStyle=1;fontSize=14;fillColor=#FBF3E4;strokeColor=#7A4B00;strokeWidth=2;swimlaneFillColor=#FBF3E4;align=left;spacingLeft=10;collapsible=0;" vertex="1" parent="1">
           <mxGeometry x="578" y="2003" width="851" height="435" as="geometry" />
         </mxCell>
-        <mxCell id="c5" value="esquema compras" style="swimlane;startSize=30;html=1;rounded=1;arcSize=2;fontStyle=1;fontSize=14;fillColor=#EAF5EC;strokeColor=#2E6B3A;strokeWidth=2;swimlaneFillColor=#EAF5EC;align=left;spacingLeft=10;collapsible=0;" vertex="1" parent="1">
+        <mxCell id="c5" value="microservicio compras · esquema compras · rol sigro_svc_compras" style="swimlane;startSize=30;html=1;rounded=1;arcSize=2;fontStyle=1;fontSize=14;fillColor=#EAF5EC;strokeColor=#2E6B3A;strokeWidth=2;swimlaneFillColor=#EAF5EC;align=left;spacingLeft=10;collapsible=0;" vertex="1" parent="1">
           <mxGeometry x="540" y="2464" width="1412" height="1267" as="geometry" />
         </mxCell>
-        <mxCell id="c6" value="esquema tareo" style="swimlane;startSize=30;html=1;rounded=1;arcSize=2;fontStyle=1;fontSize=14;fillColor=#F6ECF6;strokeColor=#6B2E6B;strokeWidth=2;swimlaneFillColor=#F6ECF6;align=left;spacingLeft=10;collapsible=0;" vertex="1" parent="1">
+        <mxCell id="c6" value="microservicio tareo · esquema tareo · rol sigro_svc_tareo" style="swimlane;startSize=30;html=1;rounded=1;arcSize=2;fontStyle=1;fontSize=14;fillColor=#F6ECF6;strokeColor=#6B2E6B;strokeWidth=2;swimlaneFillColor=#F6ECF6;align=left;spacingLeft=10;collapsible=0;" vertex="1" parent="1">
           <mxGeometry x="578" y="158" width="938" height="509" as="geometry" />
         </mxCell>
-        <mxCell id="c7" value="esquema outbox" style="swimlane;startSize=30;html=1;rounded=1;arcSize=2;fontStyle=1;fontSize=14;fillColor=#FBEDE6;strokeColor=#8A3B12;strokeWidth=2;swimlaneFillColor=#FBEDE6;align=left;spacingLeft=10;collapsible=0;" vertex="1" parent="1">
+        <mxCell id="c7" value="microservicio relevo · esquema outbox · rol sigro_svc_relevo" style="swimlane;startSize=30;html=1;rounded=1;arcSize=2;fontStyle=1;fontSize=14;fillColor=#FBEDE6;strokeColor=#8A3B12;strokeWidth=2;swimlaneFillColor=#FBEDE6;align=left;spacingLeft=10;collapsible=0;" vertex="1" parent="1">
           <mxGeometry x="572" y="1648" width="303" height="329" as="geometry" />
         </mxCell>
-        <mxCell id="c8" value="esquema almacen (Henry) · aún sin migración" style="swimlane;startSize=30;html=1;rounded=1;arcSize=2;fontStyle=1;fontSize=14;fillColor=#FFFFFF;strokeColor=#999999;strokeWidth=2;swimlaneFillColor=#FFFFFF;align=left;spacingLeft=10;collapsible=0;dashed=1;" vertex="1" parent="1">
+        <mxCell id="c8" value="microservicio almacen · esquema almacen · por construir" style="swimlane;startSize=30;html=1;rounded=1;arcSize=2;fontStyle=1;fontSize=14;fillColor=#FFFFFF;strokeColor=#999999;strokeWidth=2;swimlaneFillColor=#FFFFFF;align=left;spacingLeft=10;collapsible=0;dashed=1;" vertex="1" parent="1">
           <mxGeometry x="1585" y="1265" width="412" height="289" as="geometry" />
         </mxCell>
         <mxCell id="c9" value="&lt;b&gt;catalogo.insumo&lt;/b&gt;" style="swimlane;fontStyle=1;childLayout=stackLayout;horizontal=1;startSize=30;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=0;marginBottom=0;html=1;fillColor=#7A4B00;fontColor=#FFFFFF;strokeColor=#7A4B00;swimlaneFillColor=#FFFFFF;fontSize=12;align=left;spacingLeft=8;" vertex="1" parent="c4">
@@ -893,7 +893,7 @@
         <mxCell id="c297" value="insumo_id" style="rounded=0;html=1;strokeColor=#555555;strokeWidth=1.3;fontSize=10;fontColor=#555555;labelBackgroundColor=#FFFFFF;startArrow=ERmandOne;endArrow=ERzeroToMany;startFill=0;endFill=0;startSize=12;endSize=12;" edge="1" source="c9" target="c33" parent="1">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="c298" value="proyecto_id" style="rounded=0;html=1;strokeColor=#555555;strokeWidth=1.3;fontSize=10;fontColor=#555555;labelBackgroundColor=#FFFFFF;startArrow=ERmandOne;endArrow=ERzeroToMany;startFill=0;endFill=0;startSize=12;endSize=12;" edge="1" source="c204" target="c39" parent="1">
+        <mxCell id="c298" value="proyecto_id · otro servicio (fase 1)" style="rounded=0;html=1;strokeColor=#C00000;strokeWidth=1.3;fontSize=10;fontColor=#C00000;labelBackgroundColor=#FFFFFF;startArrow=ERmandOne;endArrow=ERzeroToMany;startFill=0;endFill=0;startSize=12;endSize=12;dashed=1;" edge="1" source="c204" target="c39" parent="1">
           <mxGeometry relative="1" as="geometry">
             <Array as="points">
               <mxPoint x="386" y="1320" />
@@ -929,7 +929,7 @@
             </Array>
           </mxGeometry>
         </mxCell>
-        <mxCell id="c303" value="insumo_id" style="rounded=0;html=1;strokeColor=#555555;strokeWidth=1.3;fontSize=10;fontColor=#555555;labelBackgroundColor=#FFFFFF;startArrow=ERmandOne;endArrow=ERzeroToMany;startFill=0;endFill=0;startSize=12;endSize=12;" edge="1" source="c9" target="c73" parent="1">
+        <mxCell id="c303" value="insumo_id · otro servicio (fase 1)" style="rounded=0;html=1;strokeColor=#C00000;strokeWidth=1.3;fontSize=10;fontColor=#C00000;labelBackgroundColor=#FFFFFF;startArrow=ERmandOne;endArrow=ERzeroToMany;startFill=0;endFill=0;startSize=12;endSize=12;dashed=1;" edge="1" source="c9" target="c73" parent="1">
           <mxGeometry relative="1" as="geometry">
             <Array as="points">
               <mxPoint x="937" y="2113" />
@@ -939,17 +939,7 @@
             </Array>
           </mxGeometry>
         </mxCell>
-        <mxCell id="c304" value="insumo_id" style="rounded=0;html=1;strokeColor=#555555;strokeWidth=1.3;fontSize=10;fontColor=#555555;labelBackgroundColor=#FFFFFF;startArrow=ERmandOne;endArrow=ERzeroToMany;startFill=0;endFill=0;startSize=12;endSize=12;" edge="1" source="c9" target="c82" parent="1">
-          <mxGeometry relative="1" as="geometry">
-            <Array as="points">
-              <mxPoint x="895" y="2411" />
-              <mxPoint x="945" y="2456" />
-              <mxPoint x="1053" y="3009" />
-              <mxPoint x="1053" y="3009" />
-            </Array>
-          </mxGeometry>
-        </mxCell>
-        <mxCell id="c305" value="proyecto_id" style="rounded=0;html=1;strokeColor=#555555;strokeWidth=1.3;fontSize=10;fontColor=#555555;labelBackgroundColor=#FFFFFF;startArrow=ERmandOne;endArrow=ERzeroToMany;startFill=0;endFill=0;startSize=12;endSize=12;" edge="1" source="c204" target="c82" parent="1">
+        <mxCell id="c304" value="proyecto_id · otro servicio (fase 1)" style="rounded=0;html=1;strokeColor=#C00000;strokeWidth=1.3;fontSize=10;fontColor=#C00000;labelBackgroundColor=#FFFFFF;startArrow=ERmandOne;endArrow=ERzeroToMany;startFill=0;endFill=0;startSize=12;endSize=12;dashed=1;" edge="1" source="c204" target="c82" parent="1">
           <mxGeometry relative="1" as="geometry">
             <Array as="points">
               <mxPoint x="386" y="1320" />
@@ -961,10 +951,17 @@
             </Array>
           </mxGeometry>
         </mxCell>
-        <mxCell id="c306" value="insumo_id" style="rounded=0;html=1;strokeColor=#555555;strokeWidth=1.3;fontSize=10;fontColor=#555555;labelBackgroundColor=#FFFFFF;startArrow=ERmandOne;endArrow=ERzeroToMany;startFill=0;endFill=0;startSize=12;endSize=12;" edge="1" source="c9" target="c103" parent="1">
-          <mxGeometry relative="1" as="geometry" />
+        <mxCell id="c305" value="insumo_id · otro servicio (fase 1)" style="rounded=0;html=1;strokeColor=#C00000;strokeWidth=1.3;fontSize=10;fontColor=#C00000;labelBackgroundColor=#FFFFFF;startArrow=ERmandOne;endArrow=ERzeroToMany;startFill=0;endFill=0;startSize=12;endSize=12;dashed=1;" edge="1" source="c9" target="c82" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="895" y="2411" />
+              <mxPoint x="945" y="2456" />
+              <mxPoint x="1053" y="3009" />
+              <mxPoint x="1053" y="3009" />
+            </Array>
+          </mxGeometry>
         </mxCell>
-        <mxCell id="c307" value="proyecto_id" style="rounded=0;html=1;strokeColor=#555555;strokeWidth=1.3;fontSize=10;fontColor=#555555;labelBackgroundColor=#FFFFFF;startArrow=ERmandOne;endArrow=ERzeroToMany;startFill=0;endFill=0;startSize=12;endSize=12;" edge="1" source="c204" target="c103" parent="1">
+        <mxCell id="c306" value="proyecto_id · otro servicio (fase 1)" style="rounded=0;html=1;strokeColor=#C00000;strokeWidth=1.3;fontSize=10;fontColor=#C00000;labelBackgroundColor=#FFFFFF;startArrow=ERmandOne;endArrow=ERzeroToMany;startFill=0;endFill=0;startSize=12;endSize=12;dashed=1;" edge="1" source="c204" target="c103" parent="1">
           <mxGeometry relative="1" as="geometry">
             <Array as="points">
               <mxPoint x="386" y="1320" />
@@ -976,10 +973,13 @@
             </Array>
           </mxGeometry>
         </mxCell>
+        <mxCell id="c307" value="insumo_id · otro servicio (fase 1)" style="rounded=0;html=1;strokeColor=#C00000;strokeWidth=1.3;fontSize=10;fontColor=#C00000;labelBackgroundColor=#FFFFFF;startArrow=ERmandOne;endArrow=ERzeroToMany;startFill=0;endFill=0;startSize=12;endSize=12;dashed=1;" edge="1" source="c9" target="c103" parent="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
         <mxCell id="c308" value="requerimiento_id" style="rounded=0;html=1;strokeColor=#555555;strokeWidth=1.3;fontSize=10;fontColor=#555555;labelBackgroundColor=#FFFFFF;startArrow=ERmandOne;endArrow=ERzeroToMany;startFill=0;endFill=0;startSize=12;endSize=12;" edge="1" source="c103" target="c114" parent="1">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="c309" value="proyecto_id" style="rounded=0;html=1;strokeColor=#555555;strokeWidth=1.3;fontSize=10;fontColor=#555555;labelBackgroundColor=#FFFFFF;startArrow=ERmandOne;endArrow=ERzeroToMany;startFill=0;endFill=0;startSize=12;endSize=12;" edge="1" source="c204" target="c123" parent="1">
+        <mxCell id="c309" value="proyecto_id · otro servicio (fase 1)" style="rounded=0;html=1;strokeColor=#C00000;strokeWidth=1.3;fontSize=10;fontColor=#C00000;labelBackgroundColor=#FFFFFF;startArrow=ERmandOne;endArrow=ERzeroToMany;startFill=0;endFill=0;startSize=12;endSize=12;dashed=1;" edge="1" source="c204" target="c123" parent="1">
           <mxGeometry relative="1" as="geometry">
             <Array as="points">
               <mxPoint x="386" y="1320" />
@@ -989,7 +989,7 @@
             </Array>
           </mxGeometry>
         </mxCell>
-        <mxCell id="c310" value="proyecto_id" style="rounded=0;html=1;strokeColor=#555555;strokeWidth=1.3;fontSize=10;fontColor=#555555;labelBackgroundColor=#FFFFFF;startArrow=ERmandOne;endArrow=ERzeroToMany;startFill=0;endFill=0;startSize=12;endSize=12;" edge="1" source="c204" target="c138" parent="1">
+        <mxCell id="c310" value="proyecto_id · otro servicio (fase 1)" style="rounded=0;html=1;strokeColor=#C00000;strokeWidth=1.3;fontSize=10;fontColor=#C00000;labelBackgroundColor=#FFFFFF;startArrow=ERmandOne;endArrow=ERzeroToMany;startFill=0;endFill=0;startSize=12;endSize=12;dashed=1;" edge="1" source="c204" target="c138" parent="1">
           <mxGeometry relative="1" as="geometry">
             <Array as="points">
               <mxPoint x="386" y="1320" />
@@ -999,10 +999,7 @@
             </Array>
           </mxGeometry>
         </mxCell>
-        <mxCell id="c311" value="solicitud_id" style="rounded=0;html=1;strokeColor=#555555;strokeWidth=1.3;fontSize=10;fontColor=#555555;labelBackgroundColor=#FFFFFF;startArrow=ERmandOne;endArrow=ERzeroToMany;startFill=0;endFill=0;startSize=12;endSize=12;" edge="1" source="c123" target="c142" parent="1">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
-        <mxCell id="c312" value="insumo_id" style="rounded=0;html=1;strokeColor=#555555;strokeWidth=1.3;fontSize=10;fontColor=#555555;labelBackgroundColor=#FFFFFF;startArrow=ERzeroToOne;endArrow=ERzeroToMany;startFill=0;endFill=0;startSize=12;endSize=12;" edge="1" source="c9" target="c142" parent="1">
+        <mxCell id="c311" value="insumo_id · otro servicio (fase 1)" style="rounded=0;html=1;strokeColor=#C00000;strokeWidth=1.3;fontSize=10;fontColor=#C00000;labelBackgroundColor=#FFFFFF;startArrow=ERzeroToOne;endArrow=ERzeroToMany;startFill=0;endFill=0;startSize=12;endSize=12;dashed=1;" edge="1" source="c9" target="c142" parent="1">
           <mxGeometry relative="1" as="geometry">
             <Array as="points">
               <mxPoint x="895" y="2411" />
@@ -1011,6 +1008,9 @@
               <mxPoint x="1053" y="2763" />
             </Array>
           </mxGeometry>
+        </mxCell>
+        <mxCell id="c312" value="solicitud_id" style="rounded=0;html=1;strokeColor=#555555;strokeWidth=1.3;fontSize=10;fontColor=#555555;labelBackgroundColor=#FFFFFF;startArrow=ERmandOne;endArrow=ERzeroToMany;startFill=0;endFill=0;startSize=12;endSize=12;" edge="1" source="c123" target="c142" parent="1">
+          <mxGeometry relative="1" as="geometry" />
         </mxCell>
         <mxCell id="c313" value="proyecto_id" style="rounded=0;html=1;strokeColor=#555555;strokeWidth=1.3;fontSize=10;fontColor=#555555;labelBackgroundColor=#FFFFFF;startArrow=ERmandOne;endArrow=ERzeroToMany;startFill=0;endFill=0;startSize=12;endSize=12;" edge="1" source="c204" target="c152" parent="1">
           <mxGeometry relative="1" as="geometry">
@@ -1047,7 +1047,7 @@
             </Array>
           </mxGeometry>
         </mxCell>
-        <mxCell id="c318" value="proyecto_id" style="rounded=0;html=1;strokeColor=#555555;strokeWidth=1.3;fontSize=10;fontColor=#555555;labelBackgroundColor=#FFFFFF;startArrow=ERmandOne;endArrow=ERzeroToMany;startFill=0;endFill=0;startSize=12;endSize=12;" edge="1" source="c204" target="c237" parent="1">
+        <mxCell id="c318" value="proyecto_id · otro servicio (fase 1)" style="rounded=0;html=1;strokeColor=#C00000;strokeWidth=1.3;fontSize=10;fontColor=#C00000;labelBackgroundColor=#FFFFFF;startArrow=ERmandOne;endArrow=ERzeroToMany;startFill=0;endFill=0;startSize=12;endSize=12;dashed=1;" edge="1" source="c204" target="c237" parent="1">
           <mxGeometry relative="1" as="geometry">
             <Array as="points">
               <mxPoint x="386" y="1320" />
@@ -1057,13 +1057,13 @@
             </Array>
           </mxGeometry>
         </mxCell>
-        <mxCell id="c319" value="trabajador_id, proyecto_id" style="rounded=0;html=1;strokeColor=#2F5597;strokeWidth=2.5;fontSize=10;fontColor=#2F5597;labelBackgroundColor=#FFFFFF;startArrow=ERmandOne;endArrow=ERzeroToMany;startFill=0;endFill=0;startSize=12;endSize=12;" edge="1" source="c270" target="c249" parent="1">
+        <mxCell id="c319" value="periodo_id, proyecto_id · otro servicio (fase 1)" style="rounded=0;html=1;strokeColor=#C00000;strokeWidth=2.5;fontSize=10;fontColor=#C00000;labelBackgroundColor=#FFFFFF;startArrow=ERmandOne;endArrow=ERzeroToMany;startFill=0;endFill=0;startSize=12;endSize=12;dashed=1;" edge="1" source="c191" target="c249" parent="1">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="c320" value="periodo_id, proyecto_id" style="rounded=0;html=1;strokeColor=#2F5597;strokeWidth=2.5;fontSize=10;fontColor=#2F5597;labelBackgroundColor=#FFFFFF;startArrow=ERmandOne;endArrow=ERzeroToMany;startFill=0;endFill=0;startSize=12;endSize=12;" edge="1" source="c191" target="c249" parent="1">
+        <mxCell id="c320" value="trabajador_id, proyecto_id" style="rounded=0;html=1;strokeColor=#2F5597;strokeWidth=2.5;fontSize=10;fontColor=#2F5597;labelBackgroundColor=#FFFFFF;startArrow=ERmandOne;endArrow=ERzeroToMany;startFill=0;endFill=0;startSize=12;endSize=12;" edge="1" source="c270" target="c249" parent="1">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="c321" value="proyecto_id" style="rounded=0;html=1;strokeColor=#555555;strokeWidth=1.3;fontSize=10;fontColor=#555555;labelBackgroundColor=#FFFFFF;startArrow=ERmandOne;endArrow=ERzeroToMany;startFill=0;endFill=0;startSize=12;endSize=12;" edge="1" source="c204" target="c270" parent="1">
+        <mxCell id="c321" value="proyecto_id · otro servicio (fase 1)" style="rounded=0;html=1;strokeColor=#C00000;strokeWidth=1.3;fontSize=10;fontColor=#C00000;labelBackgroundColor=#FFFFFF;startArrow=ERmandOne;endArrow=ERzeroToMany;startFill=0;endFill=0;startSize=12;endSize=12;dashed=1;" edge="1" source="c204" target="c270" parent="1">
           <mxGeometry relative="1" as="geometry">
             <Array as="points">
               <mxPoint x="373" y="908" />
@@ -1106,7 +1106,7 @@
             </Array>
           </mxGeometry>
         </mxCell>
-        <mxCell id="c327" value="&lt;b&gt;Cómo leerlo&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#B00020&quot;&gt;&lt;b&gt;PK / FK&lt;/b&gt;&lt;/font&gt; clave primaria / foránea · &lt;b&gt;flecha de pata de gallo&lt;/b&gt;: el padre (| uno, o| opcional) apunta a sus hijos (o&amp;lt; varios) · &lt;font color=&quot;#2F5597&quot;&gt;&lt;b&gt;flecha azul gruesa&lt;/b&gt;&lt;/font&gt; = FK compuesta (id, proyecto_id): el motor garantiza que ambos son de la misma obra · &lt;font color=&quot;#7F6000&quot;&gt;&lt;b&gt;UNIQUE&lt;/b&gt;&lt;/font&gt; = índice único que sostiene una regla (parcial si trae «solo si») · &lt;b&gt;?&lt;/b&gt; = admite NULL · las FK de autoría hacia &lt;b&gt;obra.usuario&lt;/b&gt; están marcadas FK pero no dibujadas · &lt;b&gt;Frontera:&lt;/b&gt; ningún microservicio lee ni escribe esta base; Notificaciones recibe por HTTP lo que el relevo toma de outbox.evento." style="rounded=1;arcSize=3;html=1;whiteSpace=wrap;align=left;verticalAlign=top;fillColor=#FFFFFF;strokeColor=#666666;spacing=10;fontSize=11;" vertex="1" parent="1">
+        <mxCell id="c327" value="&lt;b&gt;Cómo leerlo&lt;/b&gt;&lt;br&gt;&lt;font color=&quot;#B00020&quot;&gt;&lt;b&gt;PK / FK&lt;/b&gt;&lt;/font&gt; clave primaria / foránea · &lt;b&gt;flecha de pata de gallo&lt;/b&gt;: el padre (| uno, o| opcional) apunta a sus hijos (o&amp;lt; varios) · &lt;font color=&quot;#2F5597&quot;&gt;&lt;b&gt;flecha azul gruesa&lt;/b&gt;&lt;/font&gt; = FK compuesta (id, proyecto_id): el motor garantiza que ambos son de la misma obra · &lt;font color=&quot;#7F6000&quot;&gt;&lt;b&gt;UNIQUE&lt;/b&gt;&lt;/font&gt; = índice único que sostiene una regla (parcial si trae «solo si») · &lt;b&gt;?&lt;/b&gt; = admite NULL · las FK de autoría hacia &lt;b&gt;obra.usuario&lt;/b&gt; están marcadas FK pero no dibujadas · &lt;font color=&quot;#C00000&quot;&gt;&lt;b&gt;flecha roja discontinua&lt;/b&gt;&lt;/font&gt; = FK que cruza a otro microservicio: fase 1 la conserva, el servicio no puede leer la tabla ajena; fase 2 la reemplaza por réplica local por eventos (ADR-09) · &lt;b&gt;Despliegue:&lt;/b&gt; una instancia PostgreSQL, un esquema y un usuario por servicio." style="rounded=1;arcSize=3;html=1;whiteSpace=wrap;align=left;verticalAlign=top;fillColor=#FFFFFF;strokeColor=#666666;spacing=10;fontSize=11;" vertex="1" parent="1">
           <mxGeometry x="34" y="70" width="1500" height="70" as="geometry" />
         </mxCell>
       </root>

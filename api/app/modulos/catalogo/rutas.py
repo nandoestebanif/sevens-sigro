@@ -16,7 +16,7 @@ from sqlalchemy import text
 from app.dependencias import Actor, exigir_en_alguna_obra
 from app.errores import ErrorSigro
 from app.modulos.catalogo import esquemas as e
-from app.modulos.obra.rutas import fila, filas
+from app.sql import fila, filas
 
 insumos = APIRouter(prefix="/catalogo/insumos", tags=["catálogo"])
 

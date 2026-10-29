@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Cierre de obra</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#C2410C}a:hover{color:#9A3412}
+</style>
+</helmet>
+<div style="width: 390px; min-height: 1000px; box-sizing: border-box; background: #F4F4F6; font-family: Inter, system-ui, sans-serif; color: #111827; position: relative">
+  <header style="padding: 48px 20px 8px">
+    <a href="Inicio.dc.html" aria-label="Volver" style="width: 44px; height: 44px; border-radius: 22px; background: #FFFFFF; box-shadow: 0 1px 2px rgba(17,24,39,0.08); display: flex; align-items: center; justify-content: center">
+      <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#111827" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"></path></svg>
+    </a>
+  </header>
+  <div style="padding: 4px 20px 130px; display: flex; flex-direction: column; gap: 14px">
+    <div style="display: flex; flex-direction: column; gap: 4px">
+      <h1 style="margin: 0; font-size: 30px; font-weight: 800; letter-spacing: -0.03em">Cerrar obra</h1>
+      <p style="margin: 0; font-size: 14px; color: #4B5563; line-height: 1.45">Cuenta lo que queda y confírmalo. El saldo pasa al almacén central con su costo.</p>
+    </div>
+
+    <div style="background: #FFFFFF; border-radius: 20px; box-shadow: 0 1px 3px rgba(17,24,39,0.06); padding: 14px 16px; display: flex; flex-direction: column; gap: 8px">
+      <span style="display: flex; justify-content: space-between; font-size: 14px; font-weight: 600"><span>Saldo confirmado</span><span>{{hechos}} de {{total}}</span></span>
+      <span style="height: 8px; border-radius: 4px; background: #F3F4F6; display: flex; overflow: hidden"><span style="width: {{avance}}; height: 8px; background: #111827; transition: width 200ms"></span></span>
+    </div>
+
+    <section style="background: #FFFFFF; border-radius: 24px; box-shadow: 0 1px 3px rgba(17,24,39,0.06); display: flex; flex-direction: column">
+      <sc-for list="{{filas}}" as="f" hint-placeholder-count="4">
+        <label style="padding: 14px 16px; border-bottom: 1px solid #F3F4F6; display: flex; align-items: center; gap: 12px; cursor: pointer">
+          <input type="checkbox" checked="{{f.ok}}" onChange="{{f.alternar}}" style="width: 24px; height: 24px; accent-color: #111827; flex: none">
+          <span style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px">
+            <span style="font-size: 15px; font-weight: 600">{{f.nombre}}</span>
+            <span style="font-size: 13px; color: #4B5563">Costo promedio: lo trae el servidor</span>
+          </span>
+          <span style="font-size: 16px; font-weight: 800; white-space: nowrap">{{f.saldo}}</span>
+        </label>
+      </sc-for>
+    </section>
+
+    <div style="background: #EFF6FF; color: #1E3A8A; border-radius: 16px; padding: 14px; font-size: 14px; line-height: 1.45">Al cerrar se genera el <b>acta de cierre</b>: lo comprado, lo consumido y lo transferido. Las herramientas se cierran en su propia pantalla.</div>
+  </div>
+
+  <div style="position: absolute; left: 0; right: 0; bottom: 0; padding: 14px 20px 28px; background: rgba(244,244,246,0.96); border-top: 1px solid #E5E7EB; display: flex; flex-direction: column; gap: 8px">
+    <sc-if value="{{faltan}}" hint-placeholder-val="{{ true }}"><span style="font-size: 13px; color: #4B5563; font-weight: 600; text-align: center">Confirma todos los saldos para poder cerrar</span></sc-if>
+    <button disabled="{{faltan}}" style="height: 58px; border: 0; border-radius: 29px; background: {{fondoBoton}}; color: #FFFFFF; font: 700 16px Inter, sans-serif; cursor: pointer">Cerrar obra y transferir saldo</button>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":1000}}'>
+class Component extends DCLogic {
+  constructor(p) { super(p); this.state = { ok: { a: true, b: true, c: false, d: false } }; }
+  renderVals() {
+    const base = [['a', 'Cemento Portland tipo I', '18 bls'], ['b', 'Arena gruesa', '1.5 m³'], ['c', 'Fierro corrugado 1/2"', '6 und'], ['d', 'Clavo 1 1/2" estriado', '4 kg']];
+    const ok = this.state.ok;
+    const hechos = base.filter(([id]) => ok[id]).length;
+    return {
+      filas: base.map(([id, nombre, saldo]) => ({ nombre, saldo, ok: !!ok[id], alternar: () => this.setState({ ok: { ...ok, [id]: !ok[id] } }) })),
+      hechos, total: base.length, avance: Math.round(hechos / base.length * 100) + '%',
+      faltan: hechos < base.length, fondoBoton: hechos < base.length ? '#9CA3AF' : '#111827'
+    };
+  }
+}
+</script>
+</body>
+</html>

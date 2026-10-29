@@ -1,30 +1,11 @@
 {
  "openapi": "3.1.0",
  "info": {
-  "title": "SIGRO API",
-  "description": "Sistema de Gestión de Recursos de Obra · SEVENS INGENIEROS SAC. Cada endpoint verifica rol y obra en el servidor (docs/permisos.md).",
-  "version": "0.1.0"
+  "title": "SIGRO · API pública (gateway)",
+  "version": "0.2.0",
+  "description": "Lo que la web y la app ven por el gateway. Cada ruta indica en `x-servicio` qué microservicio la atiende."
  },
  "paths": {
-  "/salud": {
-   "get": {
-    "tags": [
-     "sistema"
-    ],
-    "summary": "Salud",
-    "operationId": "salud_salud_get",
-    "responses": {
-     "200": {
-      "description": "Successful Response",
-      "content": {
-       "application/json": {
-        "schema": {}
-       }
-      }
-     }
-    }
-   }
-  },
   "/api/v1/auth/login": {
    "post": {
     "tags": [
@@ -63,7 +44,8 @@
        }
       }
      }
-    }
+    },
+    "x-servicio": "obras"
    }
   },
   "/api/v1/auth/yo": {
@@ -89,7 +71,8 @@
      {
       "HTTPBearer": []
      }
-    ]
+    ],
+    "x-servicio": "obras"
    }
   },
   "/api/v1/auth/cambiar-clave": {
@@ -128,7 +111,8 @@
      {
       "HTTPBearer": []
      }
-    ]
+    ],
+    "x-servicio": "obras"
    }
   },
   "/api/v1/usuarios": {
@@ -158,7 +142,8 @@
      {
       "HTTPBearer": []
      }
-    ]
+    ],
+    "x-servicio": "obras"
    },
    "post": {
     "tags": [
@@ -202,7 +187,8 @@
      {
       "HTTPBearer": []
      }
-    ]
+    ],
+    "x-servicio": "obras"
    }
   },
   "/api/v1/usuarios/{usuario_id}/baja": {
@@ -250,7 +236,8 @@
        }
       }
      }
-    }
+    },
+    "x-servicio": "obras"
    }
   },
   "/api/v1/obras": {
@@ -281,7 +268,8 @@
      {
       "HTTPBearer": []
      }
-    ]
+    ],
+    "x-servicio": "obras"
    },
    "post": {
     "tags": [
@@ -326,7 +314,8 @@
      {
       "HTTPBearer": []
      }
-    ]
+    ],
+    "x-servicio": "obras"
    }
   },
   "/api/v1/obras/{obra_id}": {
@@ -374,7 +363,8 @@
        }
       }
      }
-    }
+    },
+    "x-servicio": "obras"
    }
   },
   "/api/v1/obras/{obra_id}/ampliar-plazo": {
@@ -433,7 +423,8 @@
        }
       }
      }
-    }
+    },
+    "x-servicio": "obras"
    }
   },
   "/api/v1/obras/{obra_id}/plazo-historial": {
@@ -485,7 +476,8 @@
        }
       }
      }
-    }
+    },
+    "x-servicio": "obras"
    }
   },
   "/api/v1/obras/{obra_id}/periodos": {
@@ -537,7 +529,8 @@
        }
       }
      }
-    }
+    },
+    "x-servicio": "obras"
    }
   },
   "/api/v1/obras/{obra_id}/almacenes": {
@@ -589,7 +582,8 @@
        }
       }
      }
-    }
+    },
+    "x-servicio": "obras"
    },
    "post": {
     "tags": [
@@ -645,7 +639,8 @@
        }
       }
      }
-    }
+    },
+    "x-servicio": "obras"
    }
   },
   "/api/v1/obras/{obra_id}/asignaciones": {
@@ -707,7 +702,8 @@
        }
       }
      }
-    }
+    },
+    "x-servicio": "obras"
    },
    "post": {
     "tags": [
@@ -764,7 +760,8 @@
        }
       }
      }
-    }
+    },
+    "x-servicio": "obras"
    }
   },
   "/api/v1/obras/{obra_id}/asignaciones/{asignacion_id}/retiro": {
@@ -822,7 +819,8 @@
        }
       }
      }
-    }
+    },
+    "x-servicio": "obras"
    }
   },
   "/api/v1/obras/{obra_id}/dispositivos": {
@@ -874,7 +872,8 @@
        }
       }
      }
-    }
+    },
+    "x-servicio": "obras"
    },
    "post": {
     "tags": [
@@ -931,7 +930,8 @@
        }
       }
      }
-    }
+    },
+    "x-servicio": "obras"
    }
   },
   "/api/v1/obras/{obra_id}/dispositivos/{dispositivo_id}/autorizar": {
@@ -989,7 +989,8 @@
        }
       }
      }
-    }
+    },
+    "x-servicio": "obras"
    }
   },
   "/api/v1/obras/{obra_id}/dispositivos/{dispositivo_id}/revocar": {
@@ -1056,72 +1057,17 @@
        }
       }
      }
-    }
+    },
+    "x-servicio": "obras"
    }
   },
-  "/api/v1/obras/{obra_id}/trabajadores": {
-   "post": {
-    "tags": [
-     "tareo"
-    ],
-    "summary": "Registrar Trabajador",
-    "operationId": "registrar_trabajador_api_v1_obras__obra_id__trabajadores_post",
-    "security": [
-     {
-      "HTTPBearer": []
-     }
-    ],
-    "parameters": [
-     {
-      "name": "obra_id",
-      "in": "path",
-      "required": true,
-      "schema": {
-       "type": "integer",
-       "minimum": 1,
-       "title": "Obra Id"
-      }
-     }
-    ],
-    "requestBody": {
-     "required": true,
-     "content": {
-      "application/json": {
-       "schema": {
-        "$ref": "#/components/schemas/TrabajadorIn"
-       }
-      }
-     }
-    },
-    "responses": {
-     "201": {
-      "description": "Successful Response",
-      "content": {
-       "application/json": {
-        "schema": {
-         "$ref": "#/components/schemas/TrabajadorOut"
-        }
-       }
-      }
-     },
-     "422": {
-      "description": "Validation Error",
-      "content": {
-       "application/json": {
-        "schema": {
-         "$ref": "#/components/schemas/HTTPValidationError"
-        }
-       }
-      }
-     }
-    }
-   },
+  "/api/v1/notificaciones": {
    "get": {
     "tags": [
-     "tareo"
+     "notificaciones"
     ],
-    "summary": "Listar Trabajadores",
-    "operationId": "listar_trabajadores_api_v1_obras__obra_id__trabajadores_get",
+    "summary": "Mis Notificaciones",
+    "operationId": "mis_notificaciones_api_v1_notificaciones_get",
     "security": [
      {
       "HTTPBearer": []
@@ -1129,235 +1075,25 @@
     ],
     "parameters": [
      {
-      "name": "obra_id",
-      "in": "path",
-      "required": true,
-      "schema": {
-       "type": "integer",
-       "minimum": 1,
-       "title": "Obra Id"
-      }
-     },
-     {
-      "name": "solo_activos",
+      "name": "solo_no_leidas",
       "in": "query",
       "required": false,
       "schema": {
        "type": "boolean",
        "default": false,
-       "title": "Solo Activos"
-      }
-     }
-    ],
-    "responses": {
-     "200": {
-      "description": "Successful Response",
-      "content": {
-       "application/json": {
-        "schema": {
-         "type": "array",
-         "items": {
-          "$ref": "#/components/schemas/TrabajadorOut"
-         },
-         "title": "Response Listar Trabajadores Api V1 Obras  Obra Id  Trabajadores Get"
-        }
-       }
-      }
-     },
-     "422": {
-      "description": "Validation Error",
-      "content": {
-       "application/json": {
-        "schema": {
-         "$ref": "#/components/schemas/HTTPValidationError"
-        }
-       }
-      }
-     }
-    }
-   }
-  },
-  "/api/v1/obras/{obra_id}/trabajadores/{trabajador_id}/baja": {
-   "post": {
-    "tags": [
-     "tareo"
-    ],
-    "summary": "Dar De Baja",
-    "description": "R10: la baja es una fecha de salida; sus jornadas se conservan.",
-    "operationId": "dar_de_baja_api_v1_obras__obra_id__trabajadores__trabajador_id__baja_post",
-    "security": [
-     {
-      "HTTPBearer": []
-     }
-    ],
-    "parameters": [
-     {
-      "name": "trabajador_id",
-      "in": "path",
-      "required": true,
-      "schema": {
-       "type": "integer",
-       "title": "Trabajador Id"
+       "title": "Solo No Leidas"
       }
      },
      {
-      "name": "obra_id",
-      "in": "path",
-      "required": true,
-      "schema": {
-       "type": "integer",
-       "minimum": 1,
-       "title": "Obra Id"
-      }
-     }
-    ],
-    "requestBody": {
-     "required": true,
-     "content": {
-      "application/json": {
-       "schema": {
-        "$ref": "#/components/schemas/BajaIn"
-       }
-      }
-     }
-    },
-    "responses": {
-     "200": {
-      "description": "Successful Response",
-      "content": {
-       "application/json": {
-        "schema": {
-         "$ref": "#/components/schemas/TrabajadorOut"
-        }
-       }
-      }
-     },
-     "422": {
-      "description": "Validation Error",
-      "content": {
-       "application/json": {
-        "schema": {
-         "$ref": "#/components/schemas/HTTPValidationError"
-        }
-       }
-      }
-     }
-    }
-   }
-  },
-  "/api/v1/obras/{obra_id}/jornadas": {
-   "post": {
-    "tags": [
-     "tareo"
-    ],
-    "summary": "Registrar Jornada",
-    "description": "Un reenvío con el mismo `uuid_cliente` no crea nada y devuelve el original (R3).",
-    "operationId": "registrar_jornada_api_v1_obras__obra_id__jornadas_post",
-    "security": [
-     {
-      "HTTPBearer": []
-     }
-    ],
-    "parameters": [
-     {
-      "name": "obra_id",
-      "in": "path",
-      "required": true,
-      "schema": {
-       "type": "integer",
-       "minimum": 1,
-       "title": "Obra Id"
-      }
-     }
-    ],
-    "requestBody": {
-     "required": true,
-     "content": {
-      "application/json": {
-       "schema": {
-        "$ref": "#/components/schemas/JornadaIn"
-       }
-      }
-     }
-    },
-    "responses": {
-     "201": {
-      "description": "Successful Response",
-      "content": {
-       "application/json": {
-        "schema": {
-         "$ref": "#/components/schemas/JornadaOut"
-        }
-       }
-      }
-     },
-     "422": {
-      "description": "Validation Error",
-      "content": {
-       "application/json": {
-        "schema": {
-         "$ref": "#/components/schemas/HTTPValidationError"
-        }
-       }
-      }
-     }
-    }
-   },
-   "get": {
-    "tags": [
-     "tareo"
-    ],
-    "summary": "Listar Jornadas",
-    "description": "Solo la jornada vigente de cada día (la última de su cadena de correcciones).",
-    "operationId": "listar_jornadas_api_v1_obras__obra_id__jornadas_get",
-    "security": [
-     {
-      "HTTPBearer": []
-     }
-    ],
-    "parameters": [
-     {
-      "name": "obra_id",
-      "in": "path",
-      "required": true,
-      "schema": {
-       "type": "integer",
-       "minimum": 1,
-       "title": "Obra Id"
-      }
-     },
-     {
-      "name": "fecha",
+      "name": "limite",
       "in": "query",
       "required": false,
       "schema": {
-       "anyOf": [
-        {
-         "type": "string",
-         "format": "date"
-        },
-        {
-         "type": "null"
-        }
-       ],
-       "title": "Fecha"
-      }
-     },
-     {
-      "name": "trabajador_id",
-      "in": "query",
-      "required": false,
-      "schema": {
-       "anyOf": [
-        {
-         "type": "integer",
-         "minimum": 1
-        },
-        {
-         "type": "null"
-        }
-       ],
-       "title": "Trabajador Id"
+       "type": "integer",
+       "maximum": 200,
+       "minimum": 1,
+       "default": 50,
+       "title": "Limite"
       }
      }
     ],
@@ -1366,13 +1102,7 @@
       "description": "Successful Response",
       "content": {
        "application/json": {
-        "schema": {
-         "type": "array",
-         "items": {
-          "$ref": "#/components/schemas/JornadaOut"
-         },
-         "title": "Response Listar Jornadas Api V1 Obras  Obra Id  Jornadas Get"
-        }
+        "schema": {}
        }
       }
      },
@@ -1383,87 +1113,20 @@
         "schema": {
          "$ref": "#/components/schemas/HTTPValidationError"
         }
-       }
-      }
-     }
-    }
-   }
-  },
-  "/api/v1/obras/{obra_id}/jornadas/{jornada_id}/correccion": {
-   "post": {
-    "tags": [
-     "tareo"
-    ],
-    "summary": "Corregir Jornada",
-    "description": "Corregir es insertar otra jornada que apunta a la vigente, con su motivo. La original no se toca.",
-    "operationId": "corregir_jornada_api_v1_obras__obra_id__jornadas__jornada_id__correccion_post",
-    "security": [
-     {
-      "HTTPBearer": []
-     }
-    ],
-    "parameters": [
-     {
-      "name": "jornada_id",
-      "in": "path",
-      "required": true,
-      "schema": {
-       "type": "integer",
-       "title": "Jornada Id"
-      }
-     },
-     {
-      "name": "obra_id",
-      "in": "path",
-      "required": true,
-      "schema": {
-       "type": "integer",
-       "minimum": 1,
-       "title": "Obra Id"
-      }
-     }
-    ],
-    "requestBody": {
-     "required": true,
-     "content": {
-      "application/json": {
-       "schema": {
-        "$ref": "#/components/schemas/CorreccionIn"
        }
       }
      }
     },
-    "responses": {
-     "201": {
-      "description": "Successful Response",
-      "content": {
-       "application/json": {
-        "schema": {
-         "$ref": "#/components/schemas/JornadaOut"
-        }
-       }
-      }
-     },
-     "422": {
-      "description": "Validation Error",
-      "content": {
-       "application/json": {
-        "schema": {
-         "$ref": "#/components/schemas/HTTPValidationError"
-        }
-       }
-      }
-     }
-    }
+    "x-servicio": "obras"
    }
   },
-  "/api/v1/obras/{obra_id}/horas-acumuladas": {
-   "get": {
+  "/api/v1/notificaciones/{notificacion_id}/leida": {
+   "post": {
     "tags": [
-     "tareo"
+     "notificaciones"
     ],
-    "summary": "Horas Acumuladas",
-    "operationId": "horas_acumuladas_api_v1_obras__obra_id__horas_acumuladas_get",
+    "summary": "Marcar Leida",
+    "operationId": "marcar_leida_api_v1_notificaciones__notificacion_id__leida_post",
     "security": [
      {
       "HTTPBearer": []
@@ -1471,47 +1134,18 @@
     ],
     "parameters": [
      {
-      "name": "obra_id",
+      "name": "notificacion_id",
       "in": "path",
       "required": true,
       "schema": {
        "type": "integer",
-       "minimum": 1,
-       "title": "Obra Id"
-      }
-     },
-     {
-      "name": "periodo_id",
-      "in": "query",
-      "required": false,
-      "schema": {
-       "anyOf": [
-        {
-         "type": "integer",
-         "minimum": 1
-        },
-        {
-         "type": "null"
-        }
-       ],
-       "title": "Periodo Id"
+       "title": "Notificacion Id"
       }
      }
     ],
     "responses": {
-     "200": {
-      "description": "Successful Response",
-      "content": {
-       "application/json": {
-        "schema": {
-         "type": "array",
-         "items": {
-          "$ref": "#/components/schemas/HorasOut"
-         },
-         "title": "Response Horas Acumuladas Api V1 Obras  Obra Id  Horas Acumuladas Get"
-        }
-       }
-      }
+     "204": {
+      "description": "Successful Response"
      },
      "422": {
       "description": "Validation Error",
@@ -1520,1225 +1154,11 @@
         "schema": {
          "$ref": "#/components/schemas/HTTPValidationError"
         }
-       }
-      }
-     }
-    }
-   }
-  },
-  "/api/v1/proveedores": {
-   "get": {
-    "tags": [
-     "compras · proveedores"
-    ],
-    "summary": "Listar Proveedores",
-    "description": "HU-29: se busca por razón social o por RUC. Un proveedor de baja no aparece para compras nuevas.",
-    "operationId": "listar_proveedores_api_v1_proveedores_get",
-    "security": [
-     {
-      "HTTPBearer": []
-     }
-    ],
-    "parameters": [
-     {
-      "name": "q",
-      "in": "query",
-      "required": false,
-      "schema": {
-       "type": "string",
-       "maxLength": 80,
-       "default": "",
-       "title": "Q"
-      }
-     },
-     {
-      "name": "solo_para_comprar",
-      "in": "query",
-      "required": false,
-      "schema": {
-       "type": "boolean",
-       "default": false,
-       "title": "Solo Para Comprar"
-      }
-     }
-    ],
-    "responses": {
-     "200": {
-      "description": "Successful Response",
-      "content": {
-       "application/json": {
-        "schema": {
-         "type": "array",
-         "items": {
-          "$ref": "#/components/schemas/ProveedorOut"
-         },
-         "title": "Response Listar Proveedores Api V1 Proveedores Get"
-        }
-       }
-      }
-     },
-     "422": {
-      "description": "Validation Error",
-      "content": {
-       "application/json": {
-        "schema": {
-         "$ref": "#/components/schemas/HTTPValidationError"
-        }
-       }
-      }
-     }
-    }
-   },
-   "post": {
-    "tags": [
-     "compras · proveedores"
-    ],
-    "summary": "Crear Proveedor",
-    "operationId": "crear_proveedor_api_v1_proveedores_post",
-    "security": [
-     {
-      "HTTPBearer": []
-     }
-    ],
-    "requestBody": {
-     "required": true,
-     "content": {
-      "application/json": {
-       "schema": {
-        "$ref": "#/components/schemas/ProveedorIn"
        }
       }
      }
     },
-    "responses": {
-     "201": {
-      "description": "Successful Response",
-      "content": {
-       "application/json": {
-        "schema": {
-         "$ref": "#/components/schemas/ProveedorOut"
-        }
-       }
-      }
-     },
-     "422": {
-      "description": "Validation Error",
-      "content": {
-       "application/json": {
-        "schema": {
-         "$ref": "#/components/schemas/HTTPValidationError"
-        }
-       }
-      }
-     }
-    }
-   }
-  },
-  "/api/v1/proveedores/{proveedor_id}/validar": {
-   "post": {
-    "tags": [
-     "compras · proveedores"
-    ],
-    "summary": "Validar Proveedor",
-    "description": "HU-31: vuelve a consultar SUNAT; deja en evidencia a los que no pasan (los datos sucios del cliente).",
-    "operationId": "validar_proveedor_api_v1_proveedores__proveedor_id__validar_post",
-    "security": [
-     {
-      "HTTPBearer": []
-     }
-    ],
-    "parameters": [
-     {
-      "name": "proveedor_id",
-      "in": "path",
-      "required": true,
-      "schema": {
-       "type": "integer",
-       "title": "Proveedor Id"
-      }
-     }
-    ],
-    "responses": {
-     "200": {
-      "description": "Successful Response",
-      "content": {
-       "application/json": {
-        "schema": {
-         "$ref": "#/components/schemas/ProveedorOut"
-        }
-       }
-      }
-     },
-     "422": {
-      "description": "Validation Error",
-      "content": {
-       "application/json": {
-        "schema": {
-         "$ref": "#/components/schemas/HTTPValidationError"
-        }
-       }
-      }
-     }
-    }
-   }
-  },
-  "/api/v1/proveedores/{proveedor_id}/baja": {
-   "post": {
-    "tags": [
-     "compras · proveedores"
-    ],
-    "summary": "Dar De Baja Proveedor",
-    "description": "Nada se borra: la baja es un estado con fecha. Sus compras históricas se conservan.",
-    "operationId": "dar_de_baja_proveedor_api_v1_proveedores__proveedor_id__baja_post",
-    "security": [
-     {
-      "HTTPBearer": []
-     }
-    ],
-    "parameters": [
-     {
-      "name": "proveedor_id",
-      "in": "path",
-      "required": true,
-      "schema": {
-       "type": "integer",
-       "title": "Proveedor Id"
-      }
-     }
-    ],
-    "responses": {
-     "200": {
-      "description": "Successful Response",
-      "content": {
-       "application/json": {
-        "schema": {
-         "$ref": "#/components/schemas/ProveedorOut"
-        }
-       }
-      }
-     },
-     "422": {
-      "description": "Validation Error",
-      "content": {
-       "application/json": {
-        "schema": {
-         "$ref": "#/components/schemas/HTTPValidationError"
-        }
-       }
-      }
-     }
-    }
-   }
-  },
-  "/api/v1/obras/{obra_id}/compras": {
-   "post": {
-    "tags": [
-     "compras"
-    ],
-    "summary": "Registrar Compra",
-    "description": "Totales los calcula el servidor desde las líneas (el cliente no manda números derivados).\n\nEl motor sostiene: proveedor de baja, comprobante repetido del mismo proveedor, obra cerrada,\nsolicitud ajena o anulada, y que total = base + IGV.",
-    "operationId": "registrar_compra_api_v1_obras__obra_id__compras_post",
-    "security": [
-     {
-      "HTTPBearer": []
-     }
-    ],
-    "parameters": [
-     {
-      "name": "obra_id",
-      "in": "path",
-      "required": true,
-      "schema": {
-       "type": "integer",
-       "minimum": 1,
-       "title": "Obra Id"
-      }
-     }
-    ],
-    "requestBody": {
-     "required": true,
-     "content": {
-      "application/json": {
-       "schema": {
-        "$ref": "#/components/schemas/CompraIn"
-       }
-      }
-     }
-    },
-    "responses": {
-     "201": {
-      "description": "Successful Response",
-      "content": {
-       "application/json": {
-        "schema": {
-         "$ref": "#/components/schemas/CompraOut"
-        }
-       }
-      }
-     },
-     "422": {
-      "description": "Validation Error",
-      "content": {
-       "application/json": {
-        "schema": {
-         "$ref": "#/components/schemas/HTTPValidationError"
-        }
-       }
-      }
-     }
-    }
-   },
-   "get": {
-    "tags": [
-     "compras"
-    ],
-    "summary": "Listar Compras",
-    "operationId": "listar_compras_api_v1_obras__obra_id__compras_get",
-    "security": [
-     {
-      "HTTPBearer": []
-     }
-    ],
-    "parameters": [
-     {
-      "name": "obra_id",
-      "in": "path",
-      "required": true,
-      "schema": {
-       "type": "integer",
-       "minimum": 1,
-       "title": "Obra Id"
-      }
-     },
-     {
-      "name": "estado",
-      "in": "query",
-      "required": false,
-      "schema": {
-       "anyOf": [
-        {
-         "type": "string",
-         "pattern": "^(registrada|anulada)$"
-        },
-        {
-         "type": "null"
-        }
-       ],
-       "title": "Estado"
-      }
-     },
-     {
-      "name": "proveedor_id",
-      "in": "query",
-      "required": false,
-      "schema": {
-       "anyOf": [
-        {
-         "type": "integer",
-         "minimum": 1
-        },
-        {
-         "type": "null"
-        }
-       ],
-       "title": "Proveedor Id"
-      }
-     }
-    ],
-    "responses": {
-     "200": {
-      "description": "Successful Response",
-      "content": {
-       "application/json": {
-        "schema": {
-         "type": "array",
-         "items": {
-          "$ref": "#/components/schemas/CompraOut"
-         },
-         "title": "Response Listar Compras Api V1 Obras  Obra Id  Compras Get"
-        }
-       }
-      }
-     },
-     "422": {
-      "description": "Validation Error",
-      "content": {
-       "application/json": {
-        "schema": {
-         "$ref": "#/components/schemas/HTTPValidationError"
-        }
-       }
-      }
-     }
-    }
-   }
-  },
-  "/api/v1/obras/{obra_id}/compras/{compra_id}": {
-   "get": {
-    "tags": [
-     "compras"
-    ],
-    "summary": "Ver Compra",
-    "operationId": "ver_compra_api_v1_obras__obra_id__compras__compra_id__get",
-    "security": [
-     {
-      "HTTPBearer": []
-     }
-    ],
-    "parameters": [
-     {
-      "name": "compra_id",
-      "in": "path",
-      "required": true,
-      "schema": {
-       "type": "integer",
-       "title": "Compra Id"
-      }
-     },
-     {
-      "name": "obra_id",
-      "in": "path",
-      "required": true,
-      "schema": {
-       "type": "integer",
-       "minimum": 1,
-       "title": "Obra Id"
-      }
-     }
-    ],
-    "responses": {
-     "200": {
-      "description": "Successful Response",
-      "content": {
-       "application/json": {
-        "schema": {
-         "$ref": "#/components/schemas/CompraOut"
-        }
-       }
-      }
-     },
-     "422": {
-      "description": "Validation Error",
-      "content": {
-       "application/json": {
-        "schema": {
-         "$ref": "#/components/schemas/HTTPValidationError"
-        }
-       }
-      }
-     }
-    }
-   }
-  },
-  "/api/v1/obras/{obra_id}/compras/{compra_id}/anular": {
-   "post": {
-    "tags": [
-     "compras"
-    ],
-    "summary": "Anular Compra",
-    "description": "R10: una compra registrada no se edita ni se borra; se anula con su motivo y se registra la correcta.",
-    "operationId": "anular_compra_api_v1_obras__obra_id__compras__compra_id__anular_post",
-    "security": [
-     {
-      "HTTPBearer": []
-     }
-    ],
-    "parameters": [
-     {
-      "name": "compra_id",
-      "in": "path",
-      "required": true,
-      "schema": {
-       "type": "integer",
-       "title": "Compra Id"
-      }
-     },
-     {
-      "name": "obra_id",
-      "in": "path",
-      "required": true,
-      "schema": {
-       "type": "integer",
-       "minimum": 1,
-       "title": "Obra Id"
-      }
-     }
-    ],
-    "requestBody": {
-     "required": true,
-     "content": {
-      "application/json": {
-       "schema": {
-        "$ref": "#/components/schemas/AnularIn"
-       }
-      }
-     }
-    },
-    "responses": {
-     "200": {
-      "description": "Successful Response",
-      "content": {
-       "application/json": {
-        "schema": {
-         "$ref": "#/components/schemas/CompraOut"
-        }
-       }
-      }
-     },
-     "422": {
-      "description": "Validation Error",
-      "content": {
-       "application/json": {
-        "schema": {
-         "$ref": "#/components/schemas/HTTPValidationError"
-        }
-       }
-      }
-     }
-    }
-   }
-  },
-  "/api/v1/obras/{obra_id}/solicitudes": {
-   "post": {
-    "tags": [
-     "compras"
-    ],
-    "summary": "Emitir Solicitud",
-    "description": "El número correlativo por obra lo asigna el motor, sin huecos y sin repetirse aunque lleguen dos a la vez.",
-    "operationId": "emitir_solicitud_api_v1_obras__obra_id__solicitudes_post",
-    "security": [
-     {
-      "HTTPBearer": []
-     }
-    ],
-    "parameters": [
-     {
-      "name": "obra_id",
-      "in": "path",
-      "required": true,
-      "schema": {
-       "type": "integer",
-       "minimum": 1,
-       "title": "Obra Id"
-      }
-     }
-    ],
-    "requestBody": {
-     "required": true,
-     "content": {
-      "application/json": {
-       "schema": {
-        "$ref": "#/components/schemas/SolicitudIn"
-       }
-      }
-     }
-    },
-    "responses": {
-     "201": {
-      "description": "Successful Response",
-      "content": {
-       "application/json": {
-        "schema": {
-         "$ref": "#/components/schemas/SolicitudOut"
-        }
-       }
-      }
-     },
-     "422": {
-      "description": "Validation Error",
-      "content": {
-       "application/json": {
-        "schema": {
-         "$ref": "#/components/schemas/HTTPValidationError"
-        }
-       }
-      }
-     }
-    }
-   },
-   "get": {
-    "tags": [
-     "compras"
-    ],
-    "summary": "Listar Solicitudes",
-    "operationId": "listar_solicitudes_api_v1_obras__obra_id__solicitudes_get",
-    "security": [
-     {
-      "HTTPBearer": []
-     }
-    ],
-    "parameters": [
-     {
-      "name": "obra_id",
-      "in": "path",
-      "required": true,
-      "schema": {
-       "type": "integer",
-       "minimum": 1,
-       "title": "Obra Id"
-      }
-     }
-    ],
-    "responses": {
-     "200": {
-      "description": "Successful Response",
-      "content": {
-       "application/json": {
-        "schema": {
-         "type": "array",
-         "items": {
-          "$ref": "#/components/schemas/SolicitudOut"
-         },
-         "title": "Response Listar Solicitudes Api V1 Obras  Obra Id  Solicitudes Get"
-        }
-       }
-      }
-     },
-     "422": {
-      "description": "Validation Error",
-      "content": {
-       "application/json": {
-        "schema": {
-         "$ref": "#/components/schemas/HTTPValidationError"
-        }
-       }
-      }
-     }
-    }
-   }
-  },
-  "/api/v1/obras/{obra_id}/solicitudes/{solicitud_id}": {
-   "get": {
-    "tags": [
-     "compras"
-    ],
-    "summary": "Ver Solicitud",
-    "operationId": "ver_solicitud_api_v1_obras__obra_id__solicitudes__solicitud_id__get",
-    "security": [
-     {
-      "HTTPBearer": []
-     }
-    ],
-    "parameters": [
-     {
-      "name": "solicitud_id",
-      "in": "path",
-      "required": true,
-      "schema": {
-       "type": "integer",
-       "title": "Solicitud Id"
-      }
-     },
-     {
-      "name": "obra_id",
-      "in": "path",
-      "required": true,
-      "schema": {
-       "type": "integer",
-       "minimum": 1,
-       "title": "Obra Id"
-      }
-     }
-    ],
-    "responses": {
-     "200": {
-      "description": "Successful Response",
-      "content": {
-       "application/json": {
-        "schema": {
-         "$ref": "#/components/schemas/SolicitudOut"
-        }
-       }
-      }
-     },
-     "422": {
-      "description": "Validation Error",
-      "content": {
-       "application/json": {
-        "schema": {
-         "$ref": "#/components/schemas/HTTPValidationError"
-        }
-       }
-      }
-     }
-    }
-   }
-  },
-  "/api/v1/obras/{obra_id}/solicitudes/{solicitud_id}/anular": {
-   "post": {
-    "tags": [
-     "compras"
-    ],
-    "summary": "Anular Solicitud",
-    "operationId": "anular_solicitud_api_v1_obras__obra_id__solicitudes__solicitud_id__anular_post",
-    "security": [
-     {
-      "HTTPBearer": []
-     }
-    ],
-    "parameters": [
-     {
-      "name": "solicitud_id",
-      "in": "path",
-      "required": true,
-      "schema": {
-       "type": "integer",
-       "title": "Solicitud Id"
-      }
-     },
-     {
-      "name": "obra_id",
-      "in": "path",
-      "required": true,
-      "schema": {
-       "type": "integer",
-       "minimum": 1,
-       "title": "Obra Id"
-      }
-     }
-    ],
-    "requestBody": {
-     "required": true,
-     "content": {
-      "application/json": {
-       "schema": {
-        "$ref": "#/components/schemas/AnularIn"
-       }
-      }
-     }
-    },
-    "responses": {
-     "200": {
-      "description": "Successful Response",
-      "content": {
-       "application/json": {
-        "schema": {
-         "$ref": "#/components/schemas/SolicitudOut"
-        }
-       }
-      }
-     },
-     "422": {
-      "description": "Validation Error",
-      "content": {
-       "application/json": {
-        "schema": {
-         "$ref": "#/components/schemas/HTTPValidationError"
-        }
-       }
-      }
-     }
-    }
-   }
-  },
-  "/api/v1/obras/{obra_id}/requerimiento/importar": {
-   "post": {
-    "tags": [
-     "compras · requerimiento y reposición"
-    ],
-    "summary": "Importar Requerimiento",
-    "description": "Carga lo planificado. Insumo que el catálogo no conoce → fallido con motivo (importa primero el catálogo).\nInsumo ya cargado con otra cantidad → se avisa y NO se pisa: eso es un ajuste con motivo.",
-    "operationId": "importar_requerimiento_api_v1_obras__obra_id__requerimiento_importar_post",
-    "security": [
-     {
-      "HTTPBearer": []
-     }
-    ],
-    "parameters": [
-     {
-      "name": "obra_id",
-      "in": "path",
-      "required": true,
-      "schema": {
-       "type": "integer",
-       "minimum": 1,
-       "title": "Obra Id"
-      }
-     }
-    ],
-    "requestBody": {
-     "required": true,
-     "content": {
-      "application/json": {
-       "schema": {
-        "$ref": "#/components/schemas/ImportarRequerimientoIn"
-       }
-      }
-     }
-    },
-    "responses": {
-     "200": {
-      "description": "Successful Response",
-      "content": {
-       "application/json": {
-        "schema": {
-         "$ref": "#/components/schemas/ResultadoRequerimientoOut"
-        }
-       }
-      }
-     },
-     "422": {
-      "description": "Validation Error",
-      "content": {
-       "application/json": {
-        "schema": {
-         "$ref": "#/components/schemas/HTTPValidationError"
-        }
-       }
-      }
-     }
-    }
-   }
-  },
-  "/api/v1/obras/{obra_id}/requerimiento": {
-   "get": {
-    "tags": [
-     "compras · requerimiento y reposición"
-    ],
-    "summary": "Ver Requerimiento",
-    "operationId": "ver_requerimiento_api_v1_obras__obra_id__requerimiento_get",
-    "security": [
-     {
-      "HTTPBearer": []
-     }
-    ],
-    "parameters": [
-     {
-      "name": "obra_id",
-      "in": "path",
-      "required": true,
-      "schema": {
-       "type": "integer",
-       "minimum": 1,
-       "title": "Obra Id"
-      }
-     },
-     {
-      "name": "q",
-      "in": "query",
-      "required": false,
-      "schema": {
-       "anyOf": [
-        {
-         "type": "string",
-         "maxLength": 100
-        },
-        {
-         "type": "null"
-        }
-       ],
-       "title": "Q"
-      }
-     }
-    ],
-    "responses": {
-     "200": {
-      "description": "Successful Response",
-      "content": {
-       "application/json": {
-        "schema": {
-         "type": "array",
-         "items": {
-          "$ref": "#/components/schemas/RequerimientoOut"
-         },
-         "title": "Response Ver Requerimiento Api V1 Obras  Obra Id  Requerimiento Get"
-        }
-       }
-      }
-     },
-     "422": {
-      "description": "Validation Error",
-      "content": {
-       "application/json": {
-        "schema": {
-         "$ref": "#/components/schemas/HTTPValidationError"
-        }
-       }
-      }
-     }
-    }
-   }
-  },
-  "/api/v1/obras/{obra_id}/requerimiento/{req_id}/ajustar": {
-   "post": {
-    "tags": [
-     "compras · requerimiento y reposición"
-    ],
-    "summary": "Ajustar Requerimiento",
-    "description": "Cambia la cantidad planificada dejando el ajuste (antes, después, motivo, quién). Sin motivo no hay ajuste.",
-    "operationId": "ajustar_requerimiento_api_v1_obras__obra_id__requerimiento__req_id__ajustar_post",
-    "security": [
-     {
-      "HTTPBearer": []
-     }
-    ],
-    "parameters": [
-     {
-      "name": "req_id",
-      "in": "path",
-      "required": true,
-      "schema": {
-       "type": "integer",
-       "title": "Req Id"
-      }
-     },
-     {
-      "name": "obra_id",
-      "in": "path",
-      "required": true,
-      "schema": {
-       "type": "integer",
-       "minimum": 1,
-       "title": "Obra Id"
-      }
-     }
-    ],
-    "requestBody": {
-     "required": true,
-     "content": {
-      "application/json": {
-       "schema": {
-        "$ref": "#/components/schemas/AjusteIn"
-       }
-      }
-     }
-    },
-    "responses": {
-     "200": {
-      "description": "Successful Response",
-      "content": {
-       "application/json": {
-        "schema": {
-         "$ref": "#/components/schemas/RequerimientoOut"
-        }
-       }
-      }
-     },
-     "422": {
-      "description": "Validation Error",
-      "content": {
-       "application/json": {
-        "schema": {
-         "$ref": "#/components/schemas/HTTPValidationError"
-        }
-       }
-      }
-     }
-    }
-   }
-  },
-  "/api/v1/obras/{obra_id}/requerimiento/{req_id}/ajustes": {
-   "get": {
-    "tags": [
-     "compras · requerimiento y reposición"
-    ],
-    "summary": "Ver Ajustes",
-    "operationId": "ver_ajustes_api_v1_obras__obra_id__requerimiento__req_id__ajustes_get",
-    "security": [
-     {
-      "HTTPBearer": []
-     }
-    ],
-    "parameters": [
-     {
-      "name": "req_id",
-      "in": "path",
-      "required": true,
-      "schema": {
-       "type": "integer",
-       "title": "Req Id"
-      }
-     },
-     {
-      "name": "obra_id",
-      "in": "path",
-      "required": true,
-      "schema": {
-       "type": "integer",
-       "minimum": 1,
-       "title": "Obra Id"
-      }
-     }
-    ],
-    "responses": {
-     "200": {
-      "description": "Successful Response",
-      "content": {
-       "application/json": {
-        "schema": {
-         "type": "array",
-         "items": {
-          "$ref": "#/components/schemas/AjusteOut"
-         },
-         "title": "Response Ver Ajustes Api V1 Obras  Obra Id  Requerimiento  Req Id  Ajustes Get"
-        }
-       }
-      }
-     },
-     "422": {
-      "description": "Validation Error",
-      "content": {
-       "application/json": {
-        "schema": {
-         "$ref": "#/components/schemas/HTTPValidationError"
-        }
-       }
-      }
-     }
-    }
-   }
-  },
-  "/api/v1/obras/{obra_id}/saldo-por-comprar": {
-   "get": {
-    "tags": [
-     "compras · requerimiento y reposición"
-    ],
-    "summary": "Saldo Por Comprar",
-    "description": "Lo planificado menos lo comprado (solo compras registradas), por insumo, en la unidad del S10 y en unidad de compra.",
-    "operationId": "saldo_por_comprar_api_v1_obras__obra_id__saldo_por_comprar_get",
-    "security": [
-     {
-      "HTTPBearer": []
-     }
-    ],
-    "parameters": [
-     {
-      "name": "obra_id",
-      "in": "path",
-      "required": true,
-      "schema": {
-       "type": "integer",
-       "minimum": 1,
-       "title": "Obra Id"
-      }
-     },
-     {
-      "name": "solo_pendientes",
-      "in": "query",
-      "required": false,
-      "schema": {
-       "type": "boolean",
-       "description": "Solo los insumos que aún falta comprar",
-       "default": false,
-       "title": "Solo Pendientes"
-      },
-      "description": "Solo los insumos que aún falta comprar"
-     },
-     {
-      "name": "q",
-      "in": "query",
-      "required": false,
-      "schema": {
-       "anyOf": [
-        {
-         "type": "string",
-         "maxLength": 100
-        },
-        {
-         "type": "null"
-        }
-       ],
-       "title": "Q"
-      }
-     }
-    ],
-    "responses": {
-     "200": {
-      "description": "Successful Response",
-      "content": {
-       "application/json": {
-        "schema": {
-         "type": "array",
-         "items": {
-          "$ref": "#/components/schemas/SaldoOut"
-         },
-         "title": "Response Saldo Por Comprar Api V1 Obras  Obra Id  Saldo Por Comprar Get"
-        }
-       }
-      }
-     },
-     "422": {
-      "description": "Validation Error",
-      "content": {
-       "application/json": {
-        "schema": {
-         "$ref": "#/components/schemas/HTTPValidationError"
-        }
-       }
-      }
-     }
-    }
-   }
-  },
-  "/api/v1/obras/{obra_id}/parametros-reposicion": {
-   "post": {
-    "tags": [
-     "compras · requerimiento y reposición"
-    ],
-    "summary": "Registrar Parametro",
-    "description": "Fija el stock de seguridad y el punto de reposición. Cambiarlos agrega una fila con su vigencia; la anterior queda.",
-    "operationId": "registrar_parametro_api_v1_obras__obra_id__parametros_reposicion_post",
-    "security": [
-     {
-      "HTTPBearer": []
-     }
-    ],
-    "parameters": [
-     {
-      "name": "obra_id",
-      "in": "path",
-      "required": true,
-      "schema": {
-       "type": "integer",
-       "minimum": 1,
-       "title": "Obra Id"
-      }
-     }
-    ],
-    "requestBody": {
-     "required": true,
-     "content": {
-      "application/json": {
-       "schema": {
-        "$ref": "#/components/schemas/ParametroIn"
-       }
-      }
-     }
-    },
-    "responses": {
-     "201": {
-      "description": "Successful Response",
-      "content": {
-       "application/json": {
-        "schema": {
-         "$ref": "#/components/schemas/ParametroOut"
-        }
-       }
-      }
-     },
-     "422": {
-      "description": "Validation Error",
-      "content": {
-       "application/json": {
-        "schema": {
-         "$ref": "#/components/schemas/HTTPValidationError"
-        }
-       }
-      }
-     }
-    }
-   },
-   "get": {
-    "tags": [
-     "compras · requerimiento y reposición"
-    ],
-    "summary": "Ver Parametros",
-    "description": "Los vigentes: el último de cada insumo.",
-    "operationId": "ver_parametros_api_v1_obras__obra_id__parametros_reposicion_get",
-    "security": [
-     {
-      "HTTPBearer": []
-     }
-    ],
-    "parameters": [
-     {
-      "name": "obra_id",
-      "in": "path",
-      "required": true,
-      "schema": {
-       "type": "integer",
-       "minimum": 1,
-       "title": "Obra Id"
-      }
-     }
-    ],
-    "responses": {
-     "200": {
-      "description": "Successful Response",
-      "content": {
-       "application/json": {
-        "schema": {
-         "type": "array",
-         "items": {
-          "$ref": "#/components/schemas/ParametroOut"
-         },
-         "title": "Response Ver Parametros Api V1 Obras  Obra Id  Parametros Reposicion Get"
-        }
-       }
-      }
-     },
-     "422": {
-      "description": "Validation Error",
-      "content": {
-       "application/json": {
-        "schema": {
-         "$ref": "#/components/schemas/HTTPValidationError"
-        }
-       }
-      }
-     }
-    }
-   }
-  },
-  "/api/v1/obras/{obra_id}/parametros-reposicion/{insumo_id}/historial": {
-   "get": {
-    "tags": [
-     "compras · requerimiento y reposición"
-    ],
-    "summary": "Historial Parametros",
-    "operationId": "historial_parametros_api_v1_obras__obra_id__parametros_reposicion__insumo_id__historial_get",
-    "security": [
-     {
-      "HTTPBearer": []
-     }
-    ],
-    "parameters": [
-     {
-      "name": "insumo_id",
-      "in": "path",
-      "required": true,
-      "schema": {
-       "type": "integer",
-       "title": "Insumo Id"
-      }
-     },
-     {
-      "name": "obra_id",
-      "in": "path",
-      "required": true,
-      "schema": {
-       "type": "integer",
-       "minimum": 1,
-       "title": "Obra Id"
-      }
-     }
-    ],
-    "responses": {
-     "200": {
-      "description": "Successful Response",
-      "content": {
-       "application/json": {
-        "schema": {
-         "type": "array",
-         "items": {
-          "$ref": "#/components/schemas/ParametroOut"
-         },
-         "title": "Response Historial Parametros Api V1 Obras  Obra Id  Parametros Reposicion  Insumo Id  Historial Get"
-        }
-       }
-      }
-     },
-     "422": {
-      "description": "Validation Error",
-      "content": {
-       "application/json": {
-        "schema": {
-         "$ref": "#/components/schemas/HTTPValidationError"
-        }
-       }
-      }
-     }
-    }
+    "x-servicio": "obras"
    }
   },
   "/api/v1/catalogo/insumos": {
@@ -2837,7 +1257,8 @@
        }
       }
      }
-    }
+    },
+    "x-servicio": "catalogo"
    },
    "post": {
     "tags": [
@@ -2882,7 +1303,8 @@
        }
       }
      }
-    }
+    },
+    "x-servicio": "catalogo"
    }
   },
   "/api/v1/catalogo/insumos/{insumo_id}/verificar": {
@@ -2930,7 +1352,8 @@
        }
       }
      }
-    }
+    },
+    "x-servicio": "catalogo"
    }
   },
   "/api/v1/catalogo/insumos/{insumo_id}/factor-conversion": {
@@ -2988,7 +1411,8 @@
        }
       }
      }
-    }
+    },
+    "x-servicio": "catalogo"
    }
   },
   "/api/v1/catalogo/insumos/{insumo_id}/factor-conversion/historial": {
@@ -3039,7 +1463,8 @@
        }
       }
      }
-    }
+    },
+    "x-servicio": "catalogo"
    }
   },
   "/api/v1/catalogo/insumos/importar-s10": {
@@ -3086,16 +1511,18 @@
      {
       "HTTPBearer": []
      }
-    ]
+    ],
+    "x-servicio": "catalogo"
    }
   },
-  "/api/v1/notificaciones": {
+  "/api/v1/proveedores": {
    "get": {
     "tags": [
-     "notificaciones"
+     "compras · proveedores"
     ],
-    "summary": "Mis Notificaciones",
-    "operationId": "mis_notificaciones_api_v1_notificaciones_get",
+    "summary": "Listar Proveedores",
+    "description": "HU-29: se busca por razón social o por RUC. Un proveedor de baja no aparece para compras nuevas.",
+    "operationId": "listar_proveedores_api_v1_proveedores_get",
     "security": [
      {
       "HTTPBearer": []
@@ -3103,25 +1530,24 @@
     ],
     "parameters": [
      {
-      "name": "solo_no_leidas",
+      "name": "q",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "string",
+       "maxLength": 80,
+       "default": "",
+       "title": "Q"
+      }
+     },
+     {
+      "name": "solo_para_comprar",
       "in": "query",
       "required": false,
       "schema": {
        "type": "boolean",
        "default": false,
-       "title": "Solo No Leidas"
-      }
-     },
-     {
-      "name": "limite",
-      "in": "query",
-      "required": false,
-      "schema": {
-       "type": "integer",
-       "maximum": 200,
-       "minimum": 1,
-       "default": 50,
-       "title": "Limite"
+       "title": "Solo Para Comprar"
       }
      }
     ],
@@ -3130,7 +1556,13 @@
       "description": "Successful Response",
       "content": {
        "application/json": {
-        "schema": {}
+        "schema": {
+         "type": "array",
+         "items": {
+          "$ref": "#/components/schemas/ProveedorOut"
+         },
+         "title": "Response Listar Proveedores Api V1 Proveedores Get"
+        }
        }
       }
      },
@@ -3144,16 +1576,63 @@
        }
       }
      }
-    }
-   }
-  },
-  "/api/v1/notificaciones/{notificacion_id}/leida": {
+    },
+    "x-servicio": "compras"
+   },
    "post": {
     "tags": [
-     "notificaciones"
+     "compras · proveedores"
     ],
-    "summary": "Marcar Leida",
-    "operationId": "marcar_leida_api_v1_notificaciones__notificacion_id__leida_post",
+    "summary": "Crear Proveedor",
+    "operationId": "crear_proveedor_api_v1_proveedores_post",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/ProveedorIn"
+       }
+      }
+     }
+    },
+    "responses": {
+     "201": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ProveedorOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    },
+    "x-servicio": "compras"
+   }
+  },
+  "/api/v1/proveedores/{proveedor_id}/validar": {
+   "post": {
+    "tags": [
+     "compras · proveedores"
+    ],
+    "summary": "Validar Proveedor",
+    "description": "HU-31: vuelve a consultar SUNAT; deja en evidencia a los que no pasan (los datos sucios del cliente).",
+    "operationId": "validar_proveedor_api_v1_proveedores__proveedor_id__validar_post",
     "security": [
      {
       "HTTPBearer": []
@@ -3161,18 +1640,25 @@
     ],
     "parameters": [
      {
-      "name": "notificacion_id",
+      "name": "proveedor_id",
       "in": "path",
       "required": true,
       "schema": {
        "type": "integer",
-       "title": "Notificacion Id"
+       "title": "Proveedor Id"
       }
      }
     ],
     "responses": {
-     "204": {
-      "description": "Successful Response"
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ProveedorOut"
+        }
+       }
+      }
      },
      "422": {
       "description": "Validation Error",
@@ -3184,82 +1670,1563 @@
        }
       }
      }
-    }
+    },
+    "x-servicio": "compras"
+   }
+  },
+  "/api/v1/proveedores/{proveedor_id}/baja": {
+   "post": {
+    "tags": [
+     "compras · proveedores"
+    ],
+    "summary": "Dar De Baja Proveedor",
+    "description": "Nada se borra: la baja es un estado con fecha. Sus compras históricas se conservan.",
+    "operationId": "dar_de_baja_proveedor_api_v1_proveedores__proveedor_id__baja_post",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "proveedor_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Proveedor Id"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ProveedorOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    },
+    "x-servicio": "compras"
+   }
+  },
+  "/api/v1/obras/{obra_id}/compras": {
+   "post": {
+    "tags": [
+     "compras"
+    ],
+    "summary": "Registrar Compra",
+    "description": "Totales los calcula el servidor desde las líneas (el cliente no manda números derivados).\n\nEl motor sostiene: proveedor de baja, comprobante repetido del mismo proveedor, obra cerrada,\nsolicitud ajena o anulada, y que total = base + IGV.",
+    "operationId": "registrar_compra_api_v1_obras__obra_id__compras_post",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "obra_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "minimum": 1,
+       "title": "Obra Id"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/CompraIn"
+       }
+      }
+     }
+    },
+    "responses": {
+     "201": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/CompraOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    },
+    "x-servicio": "compras"
+   },
+   "get": {
+    "tags": [
+     "compras"
+    ],
+    "summary": "Listar Compras",
+    "operationId": "listar_compras_api_v1_obras__obra_id__compras_get",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "obra_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "minimum": 1,
+       "title": "Obra Id"
+      }
+     },
+     {
+      "name": "estado",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string",
+         "pattern": "^(registrada|anulada)$"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Estado"
+      }
+     },
+     {
+      "name": "proveedor_id",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "integer",
+         "minimum": 1
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Proveedor Id"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "type": "array",
+         "items": {
+          "$ref": "#/components/schemas/CompraOut"
+         },
+         "title": "Response Listar Compras Api V1 Obras  Obra Id  Compras Get"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    },
+    "x-servicio": "compras"
+   }
+  },
+  "/api/v1/obras/{obra_id}/compras/{compra_id}": {
+   "get": {
+    "tags": [
+     "compras"
+    ],
+    "summary": "Ver Compra",
+    "operationId": "ver_compra_api_v1_obras__obra_id__compras__compra_id__get",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "compra_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Compra Id"
+      }
+     },
+     {
+      "name": "obra_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "minimum": 1,
+       "title": "Obra Id"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/CompraOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    },
+    "x-servicio": "compras"
+   }
+  },
+  "/api/v1/obras/{obra_id}/compras/{compra_id}/anular": {
+   "post": {
+    "tags": [
+     "compras"
+    ],
+    "summary": "Anular Compra",
+    "description": "R10: una compra registrada no se edita ni se borra; se anula con su motivo y se registra la correcta.",
+    "operationId": "anular_compra_api_v1_obras__obra_id__compras__compra_id__anular_post",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "compra_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Compra Id"
+      }
+     },
+     {
+      "name": "obra_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "minimum": 1,
+       "title": "Obra Id"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/AnularIn"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/CompraOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    },
+    "x-servicio": "compras"
+   }
+  },
+  "/api/v1/obras/{obra_id}/solicitudes": {
+   "post": {
+    "tags": [
+     "compras"
+    ],
+    "summary": "Emitir Solicitud",
+    "description": "El número correlativo por obra lo asigna el motor, sin huecos y sin repetirse aunque lleguen dos a la vez.",
+    "operationId": "emitir_solicitud_api_v1_obras__obra_id__solicitudes_post",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "obra_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "minimum": 1,
+       "title": "Obra Id"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/SolicitudIn"
+       }
+      }
+     }
+    },
+    "responses": {
+     "201": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/SolicitudOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    },
+    "x-servicio": "compras"
+   },
+   "get": {
+    "tags": [
+     "compras"
+    ],
+    "summary": "Listar Solicitudes",
+    "operationId": "listar_solicitudes_api_v1_obras__obra_id__solicitudes_get",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "obra_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "minimum": 1,
+       "title": "Obra Id"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "type": "array",
+         "items": {
+          "$ref": "#/components/schemas/SolicitudOut"
+         },
+         "title": "Response Listar Solicitudes Api V1 Obras  Obra Id  Solicitudes Get"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    },
+    "x-servicio": "compras"
+   }
+  },
+  "/api/v1/obras/{obra_id}/solicitudes/{solicitud_id}": {
+   "get": {
+    "tags": [
+     "compras"
+    ],
+    "summary": "Ver Solicitud",
+    "operationId": "ver_solicitud_api_v1_obras__obra_id__solicitudes__solicitud_id__get",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "solicitud_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Solicitud Id"
+      }
+     },
+     {
+      "name": "obra_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "minimum": 1,
+       "title": "Obra Id"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/SolicitudOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    },
+    "x-servicio": "compras"
+   }
+  },
+  "/api/v1/obras/{obra_id}/solicitudes/{solicitud_id}/anular": {
+   "post": {
+    "tags": [
+     "compras"
+    ],
+    "summary": "Anular Solicitud",
+    "operationId": "anular_solicitud_api_v1_obras__obra_id__solicitudes__solicitud_id__anular_post",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "solicitud_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Solicitud Id"
+      }
+     },
+     {
+      "name": "obra_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "minimum": 1,
+       "title": "Obra Id"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/AnularIn"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/SolicitudOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    },
+    "x-servicio": "compras"
+   }
+  },
+  "/api/v1/obras/{obra_id}/requerimiento/importar": {
+   "post": {
+    "tags": [
+     "compras · requerimiento y reposición"
+    ],
+    "summary": "Importar Requerimiento",
+    "description": "Carga lo planificado. Insumo que el catálogo no conoce → fallido con motivo (importa primero el catálogo).\nInsumo ya cargado con otra cantidad → se avisa y NO se pisa: eso es un ajuste con motivo.",
+    "operationId": "importar_requerimiento_api_v1_obras__obra_id__requerimiento_importar_post",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "obra_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "minimum": 1,
+       "title": "Obra Id"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/ImportarRequerimientoIn"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ResultadoRequerimientoOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    },
+    "x-servicio": "compras"
+   }
+  },
+  "/api/v1/obras/{obra_id}/requerimiento": {
+   "get": {
+    "tags": [
+     "compras · requerimiento y reposición"
+    ],
+    "summary": "Ver Requerimiento",
+    "operationId": "ver_requerimiento_api_v1_obras__obra_id__requerimiento_get",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "obra_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "minimum": 1,
+       "title": "Obra Id"
+      }
+     },
+     {
+      "name": "q",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string",
+         "maxLength": 100
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Q"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "type": "array",
+         "items": {
+          "$ref": "#/components/schemas/RequerimientoOut"
+         },
+         "title": "Response Ver Requerimiento Api V1 Obras  Obra Id  Requerimiento Get"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    },
+    "x-servicio": "compras"
+   }
+  },
+  "/api/v1/obras/{obra_id}/requerimiento/{req_id}/ajustar": {
+   "post": {
+    "tags": [
+     "compras · requerimiento y reposición"
+    ],
+    "summary": "Ajustar Requerimiento",
+    "description": "Cambia la cantidad planificada dejando el ajuste (antes, después, motivo, quién). Sin motivo no hay ajuste.",
+    "operationId": "ajustar_requerimiento_api_v1_obras__obra_id__requerimiento__req_id__ajustar_post",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "req_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Req Id"
+      }
+     },
+     {
+      "name": "obra_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "minimum": 1,
+       "title": "Obra Id"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/AjusteIn"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/RequerimientoOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    },
+    "x-servicio": "compras"
+   }
+  },
+  "/api/v1/obras/{obra_id}/requerimiento/{req_id}/ajustes": {
+   "get": {
+    "tags": [
+     "compras · requerimiento y reposición"
+    ],
+    "summary": "Ver Ajustes",
+    "operationId": "ver_ajustes_api_v1_obras__obra_id__requerimiento__req_id__ajustes_get",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "req_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Req Id"
+      }
+     },
+     {
+      "name": "obra_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "minimum": 1,
+       "title": "Obra Id"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "type": "array",
+         "items": {
+          "$ref": "#/components/schemas/AjusteOut"
+         },
+         "title": "Response Ver Ajustes Api V1 Obras  Obra Id  Requerimiento  Req Id  Ajustes Get"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    },
+    "x-servicio": "compras"
+   }
+  },
+  "/api/v1/obras/{obra_id}/saldo-por-comprar": {
+   "get": {
+    "tags": [
+     "compras · requerimiento y reposición"
+    ],
+    "summary": "Saldo Por Comprar",
+    "description": "Lo planificado menos lo comprado (solo compras registradas), por insumo, en la unidad del S10 y en unidad de compra.",
+    "operationId": "saldo_por_comprar_api_v1_obras__obra_id__saldo_por_comprar_get",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "obra_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "minimum": 1,
+       "title": "Obra Id"
+      }
+     },
+     {
+      "name": "solo_pendientes",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "boolean",
+       "description": "Solo los insumos que aún falta comprar",
+       "default": false,
+       "title": "Solo Pendientes"
+      },
+      "description": "Solo los insumos que aún falta comprar"
+     },
+     {
+      "name": "q",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string",
+         "maxLength": 100
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Q"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "type": "array",
+         "items": {
+          "$ref": "#/components/schemas/SaldoOut"
+         },
+         "title": "Response Saldo Por Comprar Api V1 Obras  Obra Id  Saldo Por Comprar Get"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    },
+    "x-servicio": "compras"
+   }
+  },
+  "/api/v1/obras/{obra_id}/parametros-reposicion": {
+   "post": {
+    "tags": [
+     "compras · requerimiento y reposición"
+    ],
+    "summary": "Registrar Parametro",
+    "description": "Fija el stock de seguridad y el punto de reposición. Cambiarlos agrega una fila con su vigencia; la anterior queda.",
+    "operationId": "registrar_parametro_api_v1_obras__obra_id__parametros_reposicion_post",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "obra_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "minimum": 1,
+       "title": "Obra Id"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/ParametroIn"
+       }
+      }
+     }
+    },
+    "responses": {
+     "201": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ParametroOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    },
+    "x-servicio": "compras"
+   },
+   "get": {
+    "tags": [
+     "compras · requerimiento y reposición"
+    ],
+    "summary": "Ver Parametros",
+    "description": "Los vigentes: el último de cada insumo.",
+    "operationId": "ver_parametros_api_v1_obras__obra_id__parametros_reposicion_get",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "obra_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "minimum": 1,
+       "title": "Obra Id"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "type": "array",
+         "items": {
+          "$ref": "#/components/schemas/ParametroOut"
+         },
+         "title": "Response Ver Parametros Api V1 Obras  Obra Id  Parametros Reposicion Get"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    },
+    "x-servicio": "compras"
+   }
+  },
+  "/api/v1/obras/{obra_id}/parametros-reposicion/{insumo_id}/historial": {
+   "get": {
+    "tags": [
+     "compras · requerimiento y reposición"
+    ],
+    "summary": "Historial Parametros",
+    "operationId": "historial_parametros_api_v1_obras__obra_id__parametros_reposicion__insumo_id__historial_get",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "insumo_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Insumo Id"
+      }
+     },
+     {
+      "name": "obra_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "minimum": 1,
+       "title": "Obra Id"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "type": "array",
+         "items": {
+          "$ref": "#/components/schemas/ParametroOut"
+         },
+         "title": "Response Historial Parametros Api V1 Obras  Obra Id  Parametros Reposicion  Insumo Id  Historial Get"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    },
+    "x-servicio": "compras"
+   }
+  },
+  "/api/v1/obras/{obra_id}/trabajadores": {
+   "post": {
+    "tags": [
+     "tareo"
+    ],
+    "summary": "Registrar Trabajador",
+    "operationId": "registrar_trabajador_api_v1_obras__obra_id__trabajadores_post",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "obra_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "minimum": 1,
+       "title": "Obra Id"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/TrabajadorIn"
+       }
+      }
+     }
+    },
+    "responses": {
+     "201": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/TrabajadorOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    },
+    "x-servicio": "tareo"
+   },
+   "get": {
+    "tags": [
+     "tareo"
+    ],
+    "summary": "Listar Trabajadores",
+    "operationId": "listar_trabajadores_api_v1_obras__obra_id__trabajadores_get",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "obra_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "minimum": 1,
+       "title": "Obra Id"
+      }
+     },
+     {
+      "name": "solo_activos",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "boolean",
+       "default": false,
+       "title": "Solo Activos"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "type": "array",
+         "items": {
+          "$ref": "#/components/schemas/TrabajadorOut"
+         },
+         "title": "Response Listar Trabajadores Api V1 Obras  Obra Id  Trabajadores Get"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    },
+    "x-servicio": "tareo"
+   }
+  },
+  "/api/v1/obras/{obra_id}/trabajadores/{trabajador_id}/baja": {
+   "post": {
+    "tags": [
+     "tareo"
+    ],
+    "summary": "Dar De Baja",
+    "description": "R10: la baja es una fecha de salida; sus jornadas se conservan.",
+    "operationId": "dar_de_baja_api_v1_obras__obra_id__trabajadores__trabajador_id__baja_post",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "trabajador_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Trabajador Id"
+      }
+     },
+     {
+      "name": "obra_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "minimum": 1,
+       "title": "Obra Id"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/BajaIn"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/TrabajadorOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    },
+    "x-servicio": "tareo"
+   }
+  },
+  "/api/v1/obras/{obra_id}/jornadas": {
+   "post": {
+    "tags": [
+     "tareo"
+    ],
+    "summary": "Registrar Jornada",
+    "description": "Un reenvío con el mismo `uuid_cliente` no crea nada y devuelve el original (R3).",
+    "operationId": "registrar_jornada_api_v1_obras__obra_id__jornadas_post",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "obra_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "minimum": 1,
+       "title": "Obra Id"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/JornadaIn"
+       }
+      }
+     }
+    },
+    "responses": {
+     "201": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/JornadaOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    },
+    "x-servicio": "tareo"
+   },
+   "get": {
+    "tags": [
+     "tareo"
+    ],
+    "summary": "Listar Jornadas",
+    "description": "Solo la jornada vigente de cada día (la última de su cadena de correcciones).",
+    "operationId": "listar_jornadas_api_v1_obras__obra_id__jornadas_get",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "obra_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "minimum": 1,
+       "title": "Obra Id"
+      }
+     },
+     {
+      "name": "fecha",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string",
+         "format": "date"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Fecha"
+      }
+     },
+     {
+      "name": "trabajador_id",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "integer",
+         "minimum": 1
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Trabajador Id"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "type": "array",
+         "items": {
+          "$ref": "#/components/schemas/JornadaOut"
+         },
+         "title": "Response Listar Jornadas Api V1 Obras  Obra Id  Jornadas Get"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    },
+    "x-servicio": "tareo"
+   }
+  },
+  "/api/v1/obras/{obra_id}/jornadas/{jornada_id}/correccion": {
+   "post": {
+    "tags": [
+     "tareo"
+    ],
+    "summary": "Corregir Jornada",
+    "description": "Corregir es insertar otra jornada que apunta a la vigente, con su motivo. La original no se toca.",
+    "operationId": "corregir_jornada_api_v1_obras__obra_id__jornadas__jornada_id__correccion_post",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "jornada_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Jornada Id"
+      }
+     },
+     {
+      "name": "obra_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "minimum": 1,
+       "title": "Obra Id"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/CorreccionIn"
+       }
+      }
+     }
+    },
+    "responses": {
+     "201": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/JornadaOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    },
+    "x-servicio": "tareo"
+   }
+  },
+  "/api/v1/obras/{obra_id}/horas-acumuladas": {
+   "get": {
+    "tags": [
+     "tareo"
+    ],
+    "summary": "Horas Acumuladas",
+    "operationId": "horas_acumuladas_api_v1_obras__obra_id__horas_acumuladas_get",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "obra_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "minimum": 1,
+       "title": "Obra Id"
+      }
+     },
+     {
+      "name": "periodo_id",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "integer",
+         "minimum": 1
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Periodo Id"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "type": "array",
+         "items": {
+          "$ref": "#/components/schemas/HorasOut"
+         },
+         "title": "Response Horas Acumuladas Api V1 Obras  Obra Id  Horas Acumuladas Get"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    },
+    "x-servicio": "tareo"
    }
   }
  },
  "components": {
   "schemas": {
-   "AjusteIn": {
-    "properties": {
-     "cantidad": {
-      "anyOf": [
-       {
-        "type": "number",
-        "exclusiveMinimum": 0.0
-       },
-       {
-        "type": "string",
-        "pattern": "^(?!^[-+.]*$)[+-]?0*(?:\\d{0,14}|(?=[\\d.]{1,19}0*$)\\d{0,14}\\.\\d{0,4}0*$)"
-       }
-      ],
-      "title": "Cantidad"
-     },
-     "motivo": {
-      "type": "string",
-      "maxLength": 300,
-      "minLength": 3,
-      "title": "Motivo"
-     }
-    },
-    "additionalProperties": false,
-    "type": "object",
-    "required": [
-     "cantidad",
-     "motivo"
-    ],
-    "title": "AjusteIn"
-   },
-   "AjusteOut": {
-    "properties": {
-     "id": {
-      "type": "integer",
-      "title": "Id"
-     },
-     "cantidad_anterior": {
-      "type": "string",
-      "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
-      "title": "Cantidad Anterior"
-     },
-     "cantidad_nueva": {
-      "type": "string",
-      "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
-      "title": "Cantidad Nueva"
-     },
-     "motivo": {
-      "type": "string",
-      "title": "Motivo"
-     },
-     "ajustado_por": {
-      "type": "integer",
-      "title": "Ajustado Por"
-     },
-     "ajustado_en": {
-      "type": "string",
-      "title": "Ajustado En"
-     }
-    },
-    "type": "object",
-    "required": [
-     "id",
-     "cantidad_anterior",
-     "cantidad_nueva",
-     "motivo",
-     "ajustado_por",
-     "ajustado_en"
-    ],
-    "title": "AjusteOut"
-   },
    "AlmacenIn": {
     "properties": {
      "nombre": {
@@ -3334,22 +3301,6 @@
      "motivo"
     ],
     "title": "AmpliarPlazoIn"
-   },
-   "AnularIn": {
-    "properties": {
-     "motivo": {
-      "type": "string",
-      "maxLength": 300,
-      "minLength": 5,
-      "title": "Motivo"
-     }
-    },
-    "additionalProperties": false,
-    "type": "object",
-    "required": [
-     "motivo"
-    ],
-    "title": "AnularIn"
    },
    "AsignacionIn": {
     "properties": {
@@ -3437,20 +3388,83 @@
     ],
     "title": "AsignacionOut"
    },
-   "BajaIn": {
+   "AutorizarIn": {
     "properties": {
-     "fecha_salida": {
-      "type": "string",
-      "format": "date",
-      "title": "Fecha Salida"
+     "usuario_id": {
+      "type": "integer",
+      "title": "Usuario Id"
+     },
+     "obra_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Obra Id"
+     },
+     "roles": {
+      "anyOf": [
+       {
+        "items": {
+         "type": "string"
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Roles"
      }
     },
-    "additionalProperties": false,
     "type": "object",
     "required": [
-     "fecha_salida"
+     "usuario_id"
     ],
-    "title": "BajaIn"
+    "title": "AutorizarIn"
+   },
+   "AutorizarOut": {
+    "properties": {
+     "usuario_id": {
+      "type": "integer",
+      "title": "Usuario Id"
+     },
+     "nombre": {
+      "type": "string",
+      "title": "Nombre"
+     },
+     "obra_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Obra Id"
+     },
+     "rol": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Rol"
+     }
+    },
+    "type": "object",
+    "required": [
+     "usuario_id",
+     "nombre"
+    ],
+    "title": "AutorizarOut"
    },
    "CambiarClaveIn": {
     "properties": {
@@ -3472,6 +3486,905 @@
      "clave_nueva"
     ],
     "title": "CambiarClaveIn"
+   },
+   "DispositivoIn": {
+    "properties": {
+     "identificador": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._:-]{8,128}$",
+      "title": "Identificador"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "identificador"
+    ],
+    "title": "DispositivoIn"
+   },
+   "DispositivoOut": {
+    "properties": {
+     "id": {
+      "type": "integer",
+      "title": "Id"
+     },
+     "usuario_id": {
+      "type": "integer",
+      "title": "Usuario Id"
+     },
+     "usuario_nombre": {
+      "type": "string",
+      "title": "Usuario Nombre"
+     },
+     "identificador": {
+      "type": "string",
+      "title": "Identificador"
+     },
+     "estado": {
+      "type": "string",
+      "title": "Estado"
+     },
+     "solicitado_en": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Solicitado En"
+     },
+     "fecha_autorizacion": {
+      "anyOf": [
+       {
+        "type": "string",
+        "format": "date-time"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Fecha Autorizacion"
+     },
+     "fecha_revocacion": {
+      "anyOf": [
+       {
+        "type": "string",
+        "format": "date-time"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Fecha Revocacion"
+     },
+     "motivo_revocacion": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Motivo Revocacion"
+     }
+    },
+    "type": "object",
+    "required": [
+     "id",
+     "usuario_id",
+     "usuario_nombre",
+     "identificador",
+     "estado",
+     "solicitado_en",
+     "fecha_autorizacion",
+     "fecha_revocacion",
+     "motivo_revocacion"
+    ],
+    "title": "DispositivoOut"
+   },
+   "HTTPValidationError": {
+    "properties": {
+     "detail": {
+      "items": {
+       "$ref": "#/components/schemas/ValidationError"
+      },
+      "type": "array",
+      "title": "Detail"
+     }
+    },
+    "type": "object",
+    "title": "HTTPValidationError"
+   },
+   "LoginIn": {
+    "properties": {
+     "usuario": {
+      "type": "string",
+      "maxLength": 60,
+      "minLength": 1,
+      "title": "Usuario"
+     },
+     "clave": {
+      "type": "string",
+      "maxLength": 200,
+      "minLength": 1,
+      "title": "Clave"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "usuario",
+     "clave"
+    ],
+    "title": "LoginIn"
+   },
+   "ObraIn": {
+    "properties": {
+     "nombre": {
+      "type": "string",
+      "maxLength": 120,
+      "minLength": 1,
+      "title": "Nombre"
+     },
+     "fecha_inicio": {
+      "type": "string",
+      "format": "date",
+      "title": "Fecha Inicio"
+     },
+     "fecha_fin": {
+      "type": "string",
+      "format": "date",
+      "title": "Fecha Fin"
+     },
+     "dia_corte": {
+      "type": "integer",
+      "maximum": 7.0,
+      "minimum": 1.0,
+      "title": "Dia Corte",
+      "description": "ISO: 1 lunes … 7 domingo. No se edita después (D-P2).",
+      "default": 7
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "nombre",
+     "fecha_inicio",
+     "fecha_fin"
+    ],
+    "title": "ObraIn"
+   },
+   "ObraOut": {
+    "properties": {
+     "id": {
+      "type": "integer",
+      "title": "Id"
+     },
+     "nombre": {
+      "type": "string",
+      "title": "Nombre"
+     },
+     "fecha_inicio": {
+      "type": "string",
+      "format": "date",
+      "title": "Fecha Inicio"
+     },
+     "fecha_fin": {
+      "type": "string",
+      "format": "date",
+      "title": "Fecha Fin"
+     },
+     "dia_corte": {
+      "type": "integer",
+      "title": "Dia Corte"
+     },
+     "estado": {
+      "type": "string",
+      "title": "Estado"
+     },
+     "semana": {
+      "type": "integer",
+      "title": "Semana"
+     },
+     "semanas_totales": {
+      "type": "integer",
+      "title": "Semanas Totales"
+     },
+     "rol": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Rol"
+     }
+    },
+    "type": "object",
+    "required": [
+     "id",
+     "nombre",
+     "fecha_inicio",
+     "fecha_fin",
+     "dia_corte",
+     "estado",
+     "semana",
+     "semanas_totales"
+    ],
+    "title": "ObraOut"
+   },
+   "ObraRol": {
+    "properties": {
+     "id": {
+      "type": "integer",
+      "title": "Id"
+     },
+     "nombre": {
+      "type": "string",
+      "title": "Nombre"
+     },
+     "rol": {
+      "type": "string",
+      "enum": [
+       "almacenero",
+       "ssoma",
+       "residente",
+       "administrador",
+       "gerente"
+      ],
+      "title": "Rol"
+     }
+    },
+    "type": "object",
+    "required": [
+     "id",
+     "nombre",
+     "rol"
+    ],
+    "title": "ObraRol"
+   },
+   "PeriodoOut": {
+    "properties": {
+     "id": {
+      "type": "integer",
+      "title": "Id"
+     },
+     "numero": {
+      "type": "integer",
+      "title": "Numero"
+     },
+     "fecha_inicio": {
+      "type": "string",
+      "format": "date",
+      "title": "Fecha Inicio"
+     },
+     "fecha_fin": {
+      "type": "string",
+      "format": "date",
+      "title": "Fecha Fin"
+     },
+     "estado": {
+      "type": "string",
+      "title": "Estado"
+     }
+    },
+    "type": "object",
+    "required": [
+     "id",
+     "numero",
+     "fecha_inicio",
+     "fecha_fin",
+     "estado"
+    ],
+    "title": "PeriodoOut"
+   },
+   "PlazoHistorialOut": {
+    "properties": {
+     "id": {
+      "type": "integer",
+      "title": "Id"
+     },
+     "fecha_fin_anterior": {
+      "type": "string",
+      "format": "date",
+      "title": "Fecha Fin Anterior"
+     },
+     "fecha_fin_nueva": {
+      "type": "string",
+      "format": "date",
+      "title": "Fecha Fin Nueva"
+     },
+     "motivo": {
+      "type": "string",
+      "title": "Motivo"
+     },
+     "autor": {
+      "type": "string",
+      "title": "Autor"
+     },
+     "fecha": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Fecha"
+     }
+    },
+    "type": "object",
+    "required": [
+     "id",
+     "fecha_fin_anterior",
+     "fecha_fin_nueva",
+     "motivo",
+     "autor",
+     "fecha"
+    ],
+    "title": "PlazoHistorialOut"
+   },
+   "RevocarIn": {
+    "properties": {
+     "motivo": {
+      "type": "string",
+      "maxLength": 300,
+      "minLength": 3,
+      "title": "Motivo"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "motivo"
+    ],
+    "title": "RevocarIn"
+   },
+   "SesionOut": {
+    "properties": {
+     "token": {
+      "type": "string",
+      "title": "Token"
+     },
+     "tipo": {
+      "type": "string",
+      "title": "Tipo",
+      "default": "bearer"
+     },
+     "expira_en": {
+      "type": "integer",
+      "title": "Expira En"
+     },
+     "usuario": {
+      "$ref": "#/components/schemas/UsuarioMin"
+     },
+     "obras": {
+      "items": {
+       "$ref": "#/components/schemas/ObraRol"
+      },
+      "type": "array",
+      "title": "Obras"
+     }
+    },
+    "type": "object",
+    "required": [
+     "token",
+     "expira_en",
+     "usuario",
+     "obras"
+    ],
+    "title": "SesionOut"
+   },
+   "UsuarioIn": {
+    "properties": {
+     "nombre": {
+      "type": "string",
+      "maxLength": 120,
+      "minLength": 1,
+      "title": "Nombre"
+     },
+     "usuario": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._-]{3,40}$",
+      "title": "Usuario"
+     },
+     "clave": {
+      "type": "string",
+      "maxLength": 200,
+      "title": "Clave"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "nombre",
+     "usuario",
+     "clave"
+    ],
+    "title": "UsuarioIn"
+   },
+   "UsuarioMin": {
+    "properties": {
+     "id": {
+      "type": "integer",
+      "title": "Id"
+     },
+     "nombre": {
+      "type": "string",
+      "title": "Nombre"
+     },
+     "usuario": {
+      "type": "string",
+      "title": "Usuario"
+     }
+    },
+    "type": "object",
+    "required": [
+     "id",
+     "nombre",
+     "usuario"
+    ],
+    "title": "UsuarioMin"
+   },
+   "UsuarioOut": {
+    "properties": {
+     "id": {
+      "type": "integer",
+      "title": "Id"
+     },
+     "nombre": {
+      "type": "string",
+      "title": "Nombre"
+     },
+     "usuario": {
+      "type": "string",
+      "title": "Usuario"
+     },
+     "estado": {
+      "type": "string",
+      "title": "Estado"
+     },
+     "creado_en": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Creado En"
+     }
+    },
+    "type": "object",
+    "required": [
+     "id",
+     "nombre",
+     "usuario",
+     "estado",
+     "creado_en"
+    ],
+    "title": "UsuarioOut"
+   },
+   "ValidationError": {
+    "properties": {
+     "loc": {
+      "items": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "integer"
+        }
+       ]
+      },
+      "type": "array",
+      "title": "Location"
+     },
+     "msg": {
+      "type": "string",
+      "title": "Message"
+     },
+     "type": {
+      "type": "string",
+      "title": "Error Type"
+     },
+     "input": {
+      "title": "Input"
+     },
+     "ctx": {
+      "type": "object",
+      "title": "Context"
+     }
+    },
+    "type": "object",
+    "required": [
+     "loc",
+     "msg",
+     "type"
+    ],
+    "title": "ValidationError"
+   },
+   "YoOut": {
+    "properties": {
+     "usuario": {
+      "$ref": "#/components/schemas/UsuarioMin"
+     },
+     "obras": {
+      "items": {
+       "$ref": "#/components/schemas/ObraRol"
+      },
+      "type": "array",
+      "title": "Obras"
+     }
+    },
+    "type": "object",
+    "required": [
+     "usuario",
+     "obras"
+    ],
+    "title": "YoOut"
+   },
+   "BuscarIn": {
+    "properties": {
+     "ids": {
+      "items": {
+       "type": "integer"
+      },
+      "type": "array",
+      "maxItems": 5000,
+      "title": "Ids"
+     },
+     "codigos": {
+      "items": {
+       "type": "string"
+      },
+      "type": "array",
+      "maxItems": 5000,
+      "title": "Codigos"
+     },
+     "solo_activos": {
+      "type": "boolean",
+      "title": "Solo Activos",
+      "default": false
+     }
+    },
+    "type": "object",
+    "title": "BuscarIn"
+   },
+   "FactorHistorialOut": {
+    "properties": {
+     "id": {
+      "type": "integer",
+      "title": "Id"
+     },
+     "factor_anterior": {
+      "type": "string",
+      "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+      "title": "Factor Anterior"
+     },
+     "factor_nuevo": {
+      "type": "string",
+      "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+      "title": "Factor Nuevo"
+     },
+     "motivo": {
+      "type": "string",
+      "title": "Motivo"
+     },
+     "cambiado_por": {
+      "type": "integer",
+      "title": "Cambiado Por"
+     },
+     "cambiado_en": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Cambiado En"
+     }
+    },
+    "type": "object",
+    "required": [
+     "id",
+     "factor_anterior",
+     "factor_nuevo",
+     "motivo",
+     "cambiado_por",
+     "cambiado_en"
+    ],
+    "title": "FactorHistorialOut"
+   },
+   "FactorIn": {
+    "properties": {
+     "factor": {
+      "anyOf": [
+       {
+        "type": "number",
+        "exclusiveMinimum": 0.0
+       },
+       {
+        "type": "string",
+        "pattern": "^(?!^[-+.]*$)[+-]?0*(?:\\d{0,12}|(?=[\\d.]{1,19}0*$)\\d{0,12}\\.\\d{0,6}0*$)"
+       }
+      ],
+      "title": "Factor"
+     },
+     "motivo": {
+      "type": "string",
+      "maxLength": 300,
+      "minLength": 3,
+      "title": "Motivo"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "factor",
+     "motivo"
+    ],
+    "title": "FactorIn"
+   },
+   "FilaS10": {
+    "properties": {
+     "codigo": {
+      "type": "string",
+      "maxLength": 30,
+      "minLength": 1,
+      "title": "Codigo"
+     },
+     "descripcion": {
+      "type": "string",
+      "maxLength": 300,
+      "minLength": 1,
+      "title": "Descripcion"
+     },
+     "unidad": {
+      "type": "string",
+      "maxLength": 20,
+      "minLength": 1,
+      "title": "Unidad"
+     },
+     "tipo": {
+      "type": "string",
+      "enum": [
+       "material",
+       "mano_obra",
+       "equipo",
+       "subcontrato"
+      ],
+      "title": "Tipo"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "codigo",
+     "descripcion",
+     "unidad",
+     "tipo"
+    ],
+    "title": "FilaS10",
+    "description": "Una fila de lo que devolvió Integraciones (POST /s10/relacion-insumos). Cantidades y precios NO entran:\nson de la obra (HU-19), el catálogo solo comparte código, nombre y unidad entre obras."
+   },
+   "ImportarS10In": {
+    "properties": {
+     "insumos": {
+      "items": {
+       "$ref": "#/components/schemas/FilaS10"
+      },
+      "type": "array",
+      "maxItems": 5000,
+      "minItems": 1,
+      "title": "Insumos"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "insumos"
+    ],
+    "title": "ImportarS10In"
+   },
+   "InsumoIn": {
+    "properties": {
+     "descripcion": {
+      "type": "string",
+      "maxLength": 200,
+      "minLength": 3,
+      "title": "Descripcion"
+     },
+     "unidad": {
+      "type": "string",
+      "maxLength": 20,
+      "minLength": 1,
+      "title": "Unidad",
+      "description": "Unidad en que se compra (kg, bls, m3…)"
+     },
+     "tipo": {
+      "type": "string",
+      "enum": [
+       "material",
+       "mano_obra",
+       "equipo",
+       "subcontrato"
+      ],
+      "title": "Tipo",
+      "default": "material"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "descripcion",
+     "unidad"
+    ],
+    "title": "InsumoIn",
+    "description": "Alta de un insumo que no estaba en el catálogo. El código lo genera el servidor, nunca el cliente."
+   },
+   "InsumoOut": {
+    "properties": {
+     "id": {
+      "type": "integer",
+      "title": "Id"
+     },
+     "codigo": {
+      "type": "string",
+      "title": "Codigo"
+     },
+     "descripcion": {
+      "type": "string",
+      "title": "Descripcion"
+     },
+     "unidad_s10": {
+      "type": "string",
+      "title": "Unidad S10"
+     },
+     "unidad_compra": {
+      "type": "string",
+      "title": "Unidad Compra"
+     },
+     "factor_conversion": {
+      "type": "string",
+      "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+      "title": "Factor Conversion"
+     },
+     "tipo": {
+      "type": "string",
+      "enum": [
+       "material",
+       "mano_obra",
+       "equipo",
+       "subcontrato"
+      ],
+      "title": "Tipo"
+     },
+     "activo": {
+      "type": "boolean",
+      "title": "Activo"
+     },
+     "verificado": {
+      "type": "boolean",
+      "title": "Verificado"
+     }
+    },
+    "type": "object",
+    "required": [
+     "id",
+     "codigo",
+     "descripcion",
+     "unidad_s10",
+     "unidad_compra",
+     "factor_conversion",
+     "tipo",
+     "activo",
+     "verificado"
+    ],
+    "title": "InsumoOut"
+   },
+   "ResultadoImportacionOut": {
+    "properties": {
+     "creados": {
+      "type": "integer",
+      "title": "Creados"
+     },
+     "actualizados": {
+      "type": "integer",
+      "title": "Actualizados"
+     },
+     "sin_cambios": {
+      "type": "integer",
+      "title": "Sin Cambios"
+     },
+     "advertencias": {
+      "items": {
+       "type": "string"
+      },
+      "type": "array",
+      "title": "Advertencias"
+     }
+    },
+    "type": "object",
+    "required": [
+     "creados",
+     "actualizados",
+     "sin_cambios",
+     "advertencias"
+    ],
+    "title": "ResultadoImportacionOut"
+   },
+   "AjusteIn": {
+    "properties": {
+     "cantidad": {
+      "anyOf": [
+       {
+        "type": "number",
+        "exclusiveMinimum": 0.0
+       },
+       {
+        "type": "string",
+        "pattern": "^(?!^[-+.]*$)[+-]?0*(?:\\d{0,14}|(?=[\\d.]{1,19}0*$)\\d{0,14}\\.\\d{0,4}0*$)"
+       }
+      ],
+      "title": "Cantidad"
+     },
+     "motivo": {
+      "type": "string",
+      "maxLength": 300,
+      "minLength": 3,
+      "title": "Motivo"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "cantidad",
+     "motivo"
+    ],
+    "title": "AjusteIn"
+   },
+   "AjusteOut": {
+    "properties": {
+     "id": {
+      "type": "integer",
+      "title": "Id"
+     },
+     "cantidad_anterior": {
+      "type": "string",
+      "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+      "title": "Cantidad Anterior"
+     },
+     "cantidad_nueva": {
+      "type": "string",
+      "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+      "title": "Cantidad Nueva"
+     },
+     "motivo": {
+      "type": "string",
+      "title": "Motivo"
+     },
+     "ajustado_por": {
+      "type": "integer",
+      "title": "Ajustado Por"
+     },
+     "ajustado_en": {
+      "type": "string",
+      "title": "Ajustado En"
+     }
+    },
+    "type": "object",
+    "required": [
+     "id",
+     "cantidad_anterior",
+     "cantidad_nueva",
+     "motivo",
+     "ajustado_por",
+     "ajustado_en"
+    ],
+    "title": "AjusteOut"
+   },
+   "AnularIn": {
+    "properties": {
+     "motivo": {
+      "type": "string",
+      "maxLength": 300,
+      "minLength": 5,
+      "title": "Motivo"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "motivo"
+    ],
+    "title": "AnularIn"
    },
    "CompraIn": {
     "properties": {
@@ -3649,225 +4562,6 @@
     ],
     "title": "CompraOut"
    },
-   "CorreccionIn": {
-    "properties": {
-     "estado": {
-      "type": "string",
-      "enum": [
-       "presente",
-       "ausente",
-       "permiso"
-      ],
-      "title": "Estado"
-     },
-     "horas_normales": {
-      "anyOf": [
-       {
-        "type": "number",
-        "maximum": 24.0,
-        "minimum": 0.0
-       },
-       {
-        "type": "string",
-        "pattern": "^(?!^[-+.]*$)[+-]?0*(?:\\d{0,2}|(?=[\\d.]{1,5}0*$)\\d{0,2}\\.\\d{0,2}0*$)"
-       }
-      ],
-      "title": "Horas Normales",
-      "default": "0"
-     },
-     "horas_extra": {
-      "anyOf": [
-       {
-        "type": "number",
-        "maximum": 24.0,
-        "minimum": 0.0
-       },
-       {
-        "type": "string",
-        "pattern": "^(?!^[-+.]*$)[+-]?0*(?:\\d{0,2}|(?=[\\d.]{1,5}0*$)\\d{0,2}\\.\\d{0,2}0*$)"
-       }
-      ],
-      "title": "Horas Extra",
-      "default": "0"
-     },
-     "motivo": {
-      "type": "string",
-      "maxLength": 300,
-      "minLength": 3,
-      "title": "Motivo"
-     }
-    },
-    "additionalProperties": false,
-    "type": "object",
-    "required": [
-     "estado",
-     "motivo"
-    ],
-    "title": "CorreccionIn"
-   },
-   "DispositivoIn": {
-    "properties": {
-     "identificador": {
-      "type": "string",
-      "pattern": "^[A-Za-z0-9._:-]{8,128}$",
-      "title": "Identificador"
-     }
-    },
-    "additionalProperties": false,
-    "type": "object",
-    "required": [
-     "identificador"
-    ],
-    "title": "DispositivoIn"
-   },
-   "DispositivoOut": {
-    "properties": {
-     "id": {
-      "type": "integer",
-      "title": "Id"
-     },
-     "usuario_id": {
-      "type": "integer",
-      "title": "Usuario Id"
-     },
-     "usuario_nombre": {
-      "type": "string",
-      "title": "Usuario Nombre"
-     },
-     "identificador": {
-      "type": "string",
-      "title": "Identificador"
-     },
-     "estado": {
-      "type": "string",
-      "title": "Estado"
-     },
-     "solicitado_en": {
-      "type": "string",
-      "format": "date-time",
-      "title": "Solicitado En"
-     },
-     "fecha_autorizacion": {
-      "anyOf": [
-       {
-        "type": "string",
-        "format": "date-time"
-       },
-       {
-        "type": "null"
-       }
-      ],
-      "title": "Fecha Autorizacion"
-     },
-     "fecha_revocacion": {
-      "anyOf": [
-       {
-        "type": "string",
-        "format": "date-time"
-       },
-       {
-        "type": "null"
-       }
-      ],
-      "title": "Fecha Revocacion"
-     },
-     "motivo_revocacion": {
-      "anyOf": [
-       {
-        "type": "string"
-       },
-       {
-        "type": "null"
-       }
-      ],
-      "title": "Motivo Revocacion"
-     }
-    },
-    "type": "object",
-    "required": [
-     "id",
-     "usuario_id",
-     "usuario_nombre",
-     "identificador",
-     "estado",
-     "solicitado_en",
-     "fecha_autorizacion",
-     "fecha_revocacion",
-     "motivo_revocacion"
-    ],
-    "title": "DispositivoOut"
-   },
-   "FactorHistorialOut": {
-    "properties": {
-     "id": {
-      "type": "integer",
-      "title": "Id"
-     },
-     "factor_anterior": {
-      "type": "string",
-      "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
-      "title": "Factor Anterior"
-     },
-     "factor_nuevo": {
-      "type": "string",
-      "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
-      "title": "Factor Nuevo"
-     },
-     "motivo": {
-      "type": "string",
-      "title": "Motivo"
-     },
-     "cambiado_por": {
-      "type": "integer",
-      "title": "Cambiado Por"
-     },
-     "cambiado_en": {
-      "type": "string",
-      "format": "date-time",
-      "title": "Cambiado En"
-     }
-    },
-    "type": "object",
-    "required": [
-     "id",
-     "factor_anterior",
-     "factor_nuevo",
-     "motivo",
-     "cambiado_por",
-     "cambiado_en"
-    ],
-    "title": "FactorHistorialOut"
-   },
-   "FactorIn": {
-    "properties": {
-     "factor": {
-      "anyOf": [
-       {
-        "type": "number",
-        "exclusiveMinimum": 0.0
-       },
-       {
-        "type": "string",
-        "pattern": "^(?!^[-+.]*$)[+-]?0*(?:\\d{0,12}|(?=[\\d.]{1,19}0*$)\\d{0,12}\\.\\d{0,6}0*$)"
-       }
-      ],
-      "title": "Factor"
-     },
-     "motivo": {
-      "type": "string",
-      "maxLength": 300,
-      "minLength": 3,
-      "title": "Motivo"
-     }
-    },
-    "additionalProperties": false,
-    "type": "object",
-    "required": [
-     "factor",
-     "motivo"
-    ],
-    "title": "FactorIn"
-   },
    "FallidoOut": {
     "properties": {
      "insumo_codigo": {
@@ -3930,126 +4624,6 @@
     ],
     "title": "FilaRequerimiento"
    },
-   "FilaS10": {
-    "properties": {
-     "codigo": {
-      "type": "string",
-      "maxLength": 30,
-      "minLength": 1,
-      "title": "Codigo"
-     },
-     "descripcion": {
-      "type": "string",
-      "maxLength": 300,
-      "minLength": 1,
-      "title": "Descripcion"
-     },
-     "unidad": {
-      "type": "string",
-      "maxLength": 20,
-      "minLength": 1,
-      "title": "Unidad"
-     },
-     "tipo": {
-      "type": "string",
-      "enum": [
-       "material",
-       "mano_obra",
-       "equipo",
-       "subcontrato"
-      ],
-      "title": "Tipo"
-     }
-    },
-    "additionalProperties": false,
-    "type": "object",
-    "required": [
-     "codigo",
-     "descripcion",
-     "unidad",
-     "tipo"
-    ],
-    "title": "FilaS10",
-    "description": "Una fila de lo que devolvió Integraciones (POST /s10/relacion-insumos). Cantidades y precios NO entran:\nson de la obra (HU-19), el catálogo solo comparte código, nombre y unidad entre obras."
-   },
-   "HTTPValidationError": {
-    "properties": {
-     "detail": {
-      "items": {
-       "$ref": "#/components/schemas/ValidationError"
-      },
-      "type": "array",
-      "title": "Detail"
-     }
-    },
-    "type": "object",
-    "title": "HTTPValidationError"
-   },
-   "HorasOut": {
-    "properties": {
-     "periodo_id": {
-      "type": "integer",
-      "title": "Periodo Id"
-     },
-     "periodo_numero": {
-      "type": "integer",
-      "title": "Periodo Numero"
-     },
-     "trabajador_id": {
-      "type": "integer",
-      "title": "Trabajador Id"
-     },
-     "trabajador": {
-      "type": "string",
-      "title": "Trabajador"
-     },
-     "cuadrilla": {
-      "type": "string",
-      "title": "Cuadrilla"
-     },
-     "categoria": {
-      "type": "string",
-      "title": "Categoria"
-     },
-     "dias_presente": {
-      "type": "integer",
-      "title": "Dias Presente"
-     },
-     "dias_ausente": {
-      "type": "integer",
-      "title": "Dias Ausente"
-     },
-     "dias_permiso": {
-      "type": "integer",
-      "title": "Dias Permiso"
-     },
-     "horas_normales": {
-      "type": "string",
-      "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
-      "title": "Horas Normales"
-     },
-     "horas_extra": {
-      "type": "string",
-      "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
-      "title": "Horas Extra"
-     }
-    },
-    "type": "object",
-    "required": [
-     "periodo_id",
-     "periodo_numero",
-     "trabajador_id",
-     "trabajador",
-     "cuadrilla",
-     "categoria",
-     "dias_presente",
-     "dias_ausente",
-     "dias_permiso",
-     "horas_normales",
-     "horas_extra"
-    ],
-    "title": "HorasOut"
-   },
    "ImportarRequerimientoIn": {
     "properties": {
      "filas": {
@@ -4068,294 +4642,6 @@
      "filas"
     ],
     "title": "ImportarRequerimientoIn"
-   },
-   "ImportarS10In": {
-    "properties": {
-     "insumos": {
-      "items": {
-       "$ref": "#/components/schemas/FilaS10"
-      },
-      "type": "array",
-      "maxItems": 5000,
-      "minItems": 1,
-      "title": "Insumos"
-     }
-    },
-    "additionalProperties": false,
-    "type": "object",
-    "required": [
-     "insumos"
-    ],
-    "title": "ImportarS10In"
-   },
-   "InsumoIn": {
-    "properties": {
-     "descripcion": {
-      "type": "string",
-      "maxLength": 200,
-      "minLength": 3,
-      "title": "Descripcion"
-     },
-     "unidad": {
-      "type": "string",
-      "maxLength": 20,
-      "minLength": 1,
-      "title": "Unidad",
-      "description": "Unidad en que se compra (kg, bls, m3…)"
-     },
-     "tipo": {
-      "type": "string",
-      "enum": [
-       "material",
-       "mano_obra",
-       "equipo",
-       "subcontrato"
-      ],
-      "title": "Tipo",
-      "default": "material"
-     }
-    },
-    "additionalProperties": false,
-    "type": "object",
-    "required": [
-     "descripcion",
-     "unidad"
-    ],
-    "title": "InsumoIn",
-    "description": "Alta de un insumo que no estaba en el catálogo. El código lo genera el servidor, nunca el cliente."
-   },
-   "InsumoOut": {
-    "properties": {
-     "id": {
-      "type": "integer",
-      "title": "Id"
-     },
-     "codigo": {
-      "type": "string",
-      "title": "Codigo"
-     },
-     "descripcion": {
-      "type": "string",
-      "title": "Descripcion"
-     },
-     "unidad_s10": {
-      "type": "string",
-      "title": "Unidad S10"
-     },
-     "unidad_compra": {
-      "type": "string",
-      "title": "Unidad Compra"
-     },
-     "factor_conversion": {
-      "type": "string",
-      "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
-      "title": "Factor Conversion"
-     },
-     "tipo": {
-      "type": "string",
-      "enum": [
-       "material",
-       "mano_obra",
-       "equipo",
-       "subcontrato"
-      ],
-      "title": "Tipo"
-     },
-     "activo": {
-      "type": "boolean",
-      "title": "Activo"
-     },
-     "verificado": {
-      "type": "boolean",
-      "title": "Verificado"
-     }
-    },
-    "type": "object",
-    "required": [
-     "id",
-     "codigo",
-     "descripcion",
-     "unidad_s10",
-     "unidad_compra",
-     "factor_conversion",
-     "tipo",
-     "activo",
-     "verificado"
-    ],
-    "title": "InsumoOut"
-   },
-   "JornadaIn": {
-    "properties": {
-     "trabajador_id": {
-      "type": "integer",
-      "minimum": 1.0,
-      "title": "Trabajador Id"
-     },
-     "fecha": {
-      "type": "string",
-      "format": "date",
-      "title": "Fecha"
-     },
-     "estado": {
-      "type": "string",
-      "enum": [
-       "presente",
-       "ausente",
-       "permiso"
-      ],
-      "title": "Estado"
-     },
-     "horas_normales": {
-      "anyOf": [
-       {
-        "type": "number",
-        "maximum": 24.0,
-        "minimum": 0.0
-       },
-       {
-        "type": "string",
-        "pattern": "^(?!^[-+.]*$)[+-]?0*(?:\\d{0,2}|(?=[\\d.]{1,5}0*$)\\d{0,2}\\.\\d{0,2}0*$)"
-       }
-      ],
-      "title": "Horas Normales",
-      "default": "0"
-     },
-     "horas_extra": {
-      "anyOf": [
-       {
-        "type": "number",
-        "maximum": 24.0,
-        "minimum": 0.0
-       },
-       {
-        "type": "string",
-        "pattern": "^(?!^[-+.]*$)[+-]?0*(?:\\d{0,2}|(?=[\\d.]{1,5}0*$)\\d{0,2}\\.\\d{0,2}0*$)"
-       }
-      ],
-      "title": "Horas Extra",
-      "default": "0"
-     },
-     "uuid_cliente": {
-      "anyOf": [
-       {
-        "type": "string",
-        "format": "uuid"
-       },
-       {
-        "type": "null"
-       }
-      ],
-      "title": "Uuid Cliente",
-      "description": "Idempotencia: un reenvío con el mismo uuid no duplica (R3)."
-     }
-    },
-    "additionalProperties": false,
-    "type": "object",
-    "required": [
-     "trabajador_id",
-     "fecha",
-     "estado"
-    ],
-    "title": "JornadaIn"
-   },
-   "JornadaOut": {
-    "properties": {
-     "id": {
-      "type": "integer",
-      "title": "Id"
-     },
-     "uuid_cliente": {
-      "anyOf": [
-       {
-        "type": "string",
-        "format": "uuid"
-       },
-       {
-        "type": "null"
-       }
-      ],
-      "title": "Uuid Cliente"
-     },
-     "trabajador_id": {
-      "type": "integer",
-      "title": "Trabajador Id"
-     },
-     "fecha": {
-      "type": "string",
-      "format": "date",
-      "title": "Fecha"
-     },
-     "estado": {
-      "type": "string",
-      "title": "Estado"
-     },
-     "horas_normales": {
-      "type": "string",
-      "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
-      "title": "Horas Normales"
-     },
-     "horas_extra": {
-      "type": "string",
-      "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
-      "title": "Horas Extra"
-     },
-     "categoria": {
-      "type": "string",
-      "title": "Categoria"
-     },
-     "periodo_id": {
-      "type": "integer",
-      "title": "Periodo Id"
-     },
-     "registrado_por": {
-      "type": "integer",
-      "title": "Registrado Por"
-     },
-     "fecha_servidor": {
-      "type": "string",
-      "format": "date-time",
-      "title": "Fecha Servidor"
-     },
-     "corrige_a_id": {
-      "anyOf": [
-       {
-        "type": "integer"
-       },
-       {
-        "type": "null"
-       }
-      ],
-      "title": "Corrige A Id"
-     },
-     "motivo_correccion": {
-      "anyOf": [
-       {
-        "type": "string"
-       },
-       {
-        "type": "null"
-       }
-      ],
-      "title": "Motivo Correccion"
-     }
-    },
-    "type": "object",
-    "required": [
-     "id",
-     "uuid_cliente",
-     "trabajador_id",
-     "fecha",
-     "estado",
-     "horas_normales",
-     "horas_extra",
-     "categoria",
-     "periodo_id",
-     "registrado_por",
-     "fecha_servidor",
-     "corrige_a_id",
-     "motivo_correccion"
-    ],
-    "title": "JornadaOut"
    },
    "LineaCompraIn": {
     "properties": {
@@ -4545,156 +4831,6 @@
     ],
     "title": "LineaSolicitudOut"
    },
-   "LoginIn": {
-    "properties": {
-     "usuario": {
-      "type": "string",
-      "maxLength": 60,
-      "minLength": 1,
-      "title": "Usuario"
-     },
-     "clave": {
-      "type": "string",
-      "maxLength": 200,
-      "minLength": 1,
-      "title": "Clave"
-     }
-    },
-    "additionalProperties": false,
-    "type": "object",
-    "required": [
-     "usuario",
-     "clave"
-    ],
-    "title": "LoginIn"
-   },
-   "ObraIn": {
-    "properties": {
-     "nombre": {
-      "type": "string",
-      "maxLength": 120,
-      "minLength": 1,
-      "title": "Nombre"
-     },
-     "fecha_inicio": {
-      "type": "string",
-      "format": "date",
-      "title": "Fecha Inicio"
-     },
-     "fecha_fin": {
-      "type": "string",
-      "format": "date",
-      "title": "Fecha Fin"
-     },
-     "dia_corte": {
-      "type": "integer",
-      "maximum": 7.0,
-      "minimum": 1.0,
-      "title": "Dia Corte",
-      "description": "ISO: 1 lunes … 7 domingo. No se edita después (D-P2).",
-      "default": 7
-     }
-    },
-    "additionalProperties": false,
-    "type": "object",
-    "required": [
-     "nombre",
-     "fecha_inicio",
-     "fecha_fin"
-    ],
-    "title": "ObraIn"
-   },
-   "ObraOut": {
-    "properties": {
-     "id": {
-      "type": "integer",
-      "title": "Id"
-     },
-     "nombre": {
-      "type": "string",
-      "title": "Nombre"
-     },
-     "fecha_inicio": {
-      "type": "string",
-      "format": "date",
-      "title": "Fecha Inicio"
-     },
-     "fecha_fin": {
-      "type": "string",
-      "format": "date",
-      "title": "Fecha Fin"
-     },
-     "dia_corte": {
-      "type": "integer",
-      "title": "Dia Corte"
-     },
-     "estado": {
-      "type": "string",
-      "title": "Estado"
-     },
-     "semana": {
-      "type": "integer",
-      "title": "Semana"
-     },
-     "semanas_totales": {
-      "type": "integer",
-      "title": "Semanas Totales"
-     },
-     "rol": {
-      "anyOf": [
-       {
-        "type": "string"
-       },
-       {
-        "type": "null"
-       }
-      ],
-      "title": "Rol"
-     }
-    },
-    "type": "object",
-    "required": [
-     "id",
-     "nombre",
-     "fecha_inicio",
-     "fecha_fin",
-     "dia_corte",
-     "estado",
-     "semana",
-     "semanas_totales"
-    ],
-    "title": "ObraOut"
-   },
-   "ObraRol": {
-    "properties": {
-     "id": {
-      "type": "integer",
-      "title": "Id"
-     },
-     "nombre": {
-      "type": "string",
-      "title": "Nombre"
-     },
-     "rol": {
-      "type": "string",
-      "enum": [
-       "almacenero",
-       "ssoma",
-       "residente",
-       "administrador",
-       "gerente"
-      ],
-      "title": "Rol"
-     }
-    },
-    "type": "object",
-    "required": [
-     "id",
-     "nombre",
-     "rol"
-    ],
-    "title": "ObraRol"
-   },
    "ParametroIn": {
     "properties": {
      "insumo_codigo": {
@@ -4793,82 +4929,6 @@
      "vigente_desde"
     ],
     "title": "ParametroOut"
-   },
-   "PeriodoOut": {
-    "properties": {
-     "id": {
-      "type": "integer",
-      "title": "Id"
-     },
-     "numero": {
-      "type": "integer",
-      "title": "Numero"
-     },
-     "fecha_inicio": {
-      "type": "string",
-      "format": "date",
-      "title": "Fecha Inicio"
-     },
-     "fecha_fin": {
-      "type": "string",
-      "format": "date",
-      "title": "Fecha Fin"
-     },
-     "estado": {
-      "type": "string",
-      "title": "Estado"
-     }
-    },
-    "type": "object",
-    "required": [
-     "id",
-     "numero",
-     "fecha_inicio",
-     "fecha_fin",
-     "estado"
-    ],
-    "title": "PeriodoOut"
-   },
-   "PlazoHistorialOut": {
-    "properties": {
-     "id": {
-      "type": "integer",
-      "title": "Id"
-     },
-     "fecha_fin_anterior": {
-      "type": "string",
-      "format": "date",
-      "title": "Fecha Fin Anterior"
-     },
-     "fecha_fin_nueva": {
-      "type": "string",
-      "format": "date",
-      "title": "Fecha Fin Nueva"
-     },
-     "motivo": {
-      "type": "string",
-      "title": "Motivo"
-     },
-     "autor": {
-      "type": "string",
-      "title": "Autor"
-     },
-     "fecha": {
-      "type": "string",
-      "format": "date-time",
-      "title": "Fecha"
-     }
-    },
-    "type": "object",
-    "required": [
-     "id",
-     "fecha_fin_anterior",
-     "fecha_fin_nueva",
-     "motivo",
-     "autor",
-     "fecha"
-    ],
-    "title": "PlazoHistorialOut"
    },
    "ProveedorIn": {
     "properties": {
@@ -5006,37 +5066,6 @@
     ],
     "title": "RequerimientoOut"
    },
-   "ResultadoImportacionOut": {
-    "properties": {
-     "creados": {
-      "type": "integer",
-      "title": "Creados"
-     },
-     "actualizados": {
-      "type": "integer",
-      "title": "Actualizados"
-     },
-     "sin_cambios": {
-      "type": "integer",
-      "title": "Sin Cambios"
-     },
-     "advertencias": {
-      "items": {
-       "type": "string"
-      },
-      "type": "array",
-      "title": "Advertencias"
-     }
-    },
-    "type": "object",
-    "required": [
-     "creados",
-     "actualizados",
-     "sin_cambios",
-     "advertencias"
-    ],
-    "title": "ResultadoImportacionOut"
-   },
    "ResultadoRequerimientoOut": {
     "properties": {
      "creados": {
@@ -5070,22 +5099,6 @@
      "advertencias"
     ],
     "title": "ResultadoRequerimientoOut"
-   },
-   "RevocarIn": {
-    "properties": {
-     "motivo": {
-      "type": "string",
-      "maxLength": 300,
-      "minLength": 3,
-      "title": "Motivo"
-     }
-    },
-    "additionalProperties": false,
-    "type": "object",
-    "required": [
-     "motivo"
-    ],
-    "title": "RevocarIn"
    },
    "SaldoOut": {
     "properties": {
@@ -5159,41 +5172,6 @@
      "estado"
     ],
     "title": "SaldoOut"
-   },
-   "SesionOut": {
-    "properties": {
-     "token": {
-      "type": "string",
-      "title": "Token"
-     },
-     "tipo": {
-      "type": "string",
-      "title": "Tipo",
-      "default": "bearer"
-     },
-     "expira_en": {
-      "type": "integer",
-      "title": "Expira En"
-     },
-     "usuario": {
-      "$ref": "#/components/schemas/UsuarioMin"
-     },
-     "obras": {
-      "items": {
-       "$ref": "#/components/schemas/ObraRol"
-      },
-      "type": "array",
-      "title": "Obras"
-     }
-    },
-    "type": "object",
-    "required": [
-     "token",
-     "expira_en",
-     "usuario",
-     "obras"
-    ],
-    "title": "SesionOut"
    },
    "SolicitudIn": {
     "properties": {
@@ -5299,6 +5277,315 @@
      "total"
     ],
     "title": "TotalesOut"
+   },
+   "BajaIn": {
+    "properties": {
+     "fecha_salida": {
+      "type": "string",
+      "format": "date",
+      "title": "Fecha Salida"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "fecha_salida"
+    ],
+    "title": "BajaIn"
+   },
+   "CorreccionIn": {
+    "properties": {
+     "estado": {
+      "type": "string",
+      "enum": [
+       "presente",
+       "ausente",
+       "permiso"
+      ],
+      "title": "Estado"
+     },
+     "horas_normales": {
+      "anyOf": [
+       {
+        "type": "number",
+        "maximum": 24.0,
+        "minimum": 0.0
+       },
+       {
+        "type": "string",
+        "pattern": "^(?!^[-+.]*$)[+-]?0*(?:\\d{0,2}|(?=[\\d.]{1,5}0*$)\\d{0,2}\\.\\d{0,2}0*$)"
+       }
+      ],
+      "title": "Horas Normales",
+      "default": "0"
+     },
+     "horas_extra": {
+      "anyOf": [
+       {
+        "type": "number",
+        "maximum": 24.0,
+        "minimum": 0.0
+       },
+       {
+        "type": "string",
+        "pattern": "^(?!^[-+.]*$)[+-]?0*(?:\\d{0,2}|(?=[\\d.]{1,5}0*$)\\d{0,2}\\.\\d{0,2}0*$)"
+       }
+      ],
+      "title": "Horas Extra",
+      "default": "0"
+     },
+     "motivo": {
+      "type": "string",
+      "maxLength": 300,
+      "minLength": 3,
+      "title": "Motivo"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "estado",
+     "motivo"
+    ],
+    "title": "CorreccionIn"
+   },
+   "HorasOut": {
+    "properties": {
+     "periodo_id": {
+      "type": "integer",
+      "title": "Periodo Id"
+     },
+     "periodo_numero": {
+      "type": "integer",
+      "title": "Periodo Numero"
+     },
+     "trabajador_id": {
+      "type": "integer",
+      "title": "Trabajador Id"
+     },
+     "trabajador": {
+      "type": "string",
+      "title": "Trabajador"
+     },
+     "cuadrilla": {
+      "type": "string",
+      "title": "Cuadrilla"
+     },
+     "categoria": {
+      "type": "string",
+      "title": "Categoria"
+     },
+     "dias_presente": {
+      "type": "integer",
+      "title": "Dias Presente"
+     },
+     "dias_ausente": {
+      "type": "integer",
+      "title": "Dias Ausente"
+     },
+     "dias_permiso": {
+      "type": "integer",
+      "title": "Dias Permiso"
+     },
+     "horas_normales": {
+      "type": "string",
+      "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+      "title": "Horas Normales"
+     },
+     "horas_extra": {
+      "type": "string",
+      "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+      "title": "Horas Extra"
+     }
+    },
+    "type": "object",
+    "required": [
+     "periodo_id",
+     "periodo_numero",
+     "trabajador_id",
+     "trabajador",
+     "cuadrilla",
+     "categoria",
+     "dias_presente",
+     "dias_ausente",
+     "dias_permiso",
+     "horas_normales",
+     "horas_extra"
+    ],
+    "title": "HorasOut"
+   },
+   "JornadaIn": {
+    "properties": {
+     "trabajador_id": {
+      "type": "integer",
+      "minimum": 1.0,
+      "title": "Trabajador Id"
+     },
+     "fecha": {
+      "type": "string",
+      "format": "date",
+      "title": "Fecha"
+     },
+     "estado": {
+      "type": "string",
+      "enum": [
+       "presente",
+       "ausente",
+       "permiso"
+      ],
+      "title": "Estado"
+     },
+     "horas_normales": {
+      "anyOf": [
+       {
+        "type": "number",
+        "maximum": 24.0,
+        "minimum": 0.0
+       },
+       {
+        "type": "string",
+        "pattern": "^(?!^[-+.]*$)[+-]?0*(?:\\d{0,2}|(?=[\\d.]{1,5}0*$)\\d{0,2}\\.\\d{0,2}0*$)"
+       }
+      ],
+      "title": "Horas Normales",
+      "default": "0"
+     },
+     "horas_extra": {
+      "anyOf": [
+       {
+        "type": "number",
+        "maximum": 24.0,
+        "minimum": 0.0
+       },
+       {
+        "type": "string",
+        "pattern": "^(?!^[-+.]*$)[+-]?0*(?:\\d{0,2}|(?=[\\d.]{1,5}0*$)\\d{0,2}\\.\\d{0,2}0*$)"
+       }
+      ],
+      "title": "Horas Extra",
+      "default": "0"
+     },
+     "uuid_cliente": {
+      "anyOf": [
+       {
+        "type": "string",
+        "format": "uuid"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Uuid Cliente",
+      "description": "Idempotencia: un reenvío con el mismo uuid no duplica (R3)."
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "trabajador_id",
+     "fecha",
+     "estado"
+    ],
+    "title": "JornadaIn"
+   },
+   "JornadaOut": {
+    "properties": {
+     "id": {
+      "type": "integer",
+      "title": "Id"
+     },
+     "uuid_cliente": {
+      "anyOf": [
+       {
+        "type": "string",
+        "format": "uuid"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Uuid Cliente"
+     },
+     "trabajador_id": {
+      "type": "integer",
+      "title": "Trabajador Id"
+     },
+     "fecha": {
+      "type": "string",
+      "format": "date",
+      "title": "Fecha"
+     },
+     "estado": {
+      "type": "string",
+      "title": "Estado"
+     },
+     "horas_normales": {
+      "type": "string",
+      "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+      "title": "Horas Normales"
+     },
+     "horas_extra": {
+      "type": "string",
+      "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+      "title": "Horas Extra"
+     },
+     "categoria": {
+      "type": "string",
+      "title": "Categoria"
+     },
+     "periodo_id": {
+      "type": "integer",
+      "title": "Periodo Id"
+     },
+     "registrado_por": {
+      "type": "integer",
+      "title": "Registrado Por"
+     },
+     "fecha_servidor": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Fecha Servidor"
+     },
+     "corrige_a_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Corrige A Id"
+     },
+     "motivo_correccion": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Motivo Correccion"
+     }
+    },
+    "type": "object",
+    "required": [
+     "id",
+     "uuid_cliente",
+     "trabajador_id",
+     "fecha",
+     "estado",
+     "horas_normales",
+     "horas_extra",
+     "categoria",
+     "periodo_id",
+     "registrado_por",
+     "fecha_servidor",
+     "corrige_a_id",
+     "motivo_correccion"
+    ],
+    "title": "JornadaOut"
    },
    "TrabajadorIn": {
     "properties": {
@@ -5412,157 +5699,6 @@
      "fecha_salida"
     ],
     "title": "TrabajadorOut"
-   },
-   "UsuarioIn": {
-    "properties": {
-     "nombre": {
-      "type": "string",
-      "maxLength": 120,
-      "minLength": 1,
-      "title": "Nombre"
-     },
-     "usuario": {
-      "type": "string",
-      "pattern": "^[A-Za-z0-9._-]{3,40}$",
-      "title": "Usuario"
-     },
-     "clave": {
-      "type": "string",
-      "maxLength": 200,
-      "title": "Clave"
-     }
-    },
-    "additionalProperties": false,
-    "type": "object",
-    "required": [
-     "nombre",
-     "usuario",
-     "clave"
-    ],
-    "title": "UsuarioIn"
-   },
-   "UsuarioMin": {
-    "properties": {
-     "id": {
-      "type": "integer",
-      "title": "Id"
-     },
-     "nombre": {
-      "type": "string",
-      "title": "Nombre"
-     },
-     "usuario": {
-      "type": "string",
-      "title": "Usuario"
-     }
-    },
-    "type": "object",
-    "required": [
-     "id",
-     "nombre",
-     "usuario"
-    ],
-    "title": "UsuarioMin"
-   },
-   "UsuarioOut": {
-    "properties": {
-     "id": {
-      "type": "integer",
-      "title": "Id"
-     },
-     "nombre": {
-      "type": "string",
-      "title": "Nombre"
-     },
-     "usuario": {
-      "type": "string",
-      "title": "Usuario"
-     },
-     "estado": {
-      "type": "string",
-      "title": "Estado"
-     },
-     "creado_en": {
-      "type": "string",
-      "format": "date-time",
-      "title": "Creado En"
-     }
-    },
-    "type": "object",
-    "required": [
-     "id",
-     "nombre",
-     "usuario",
-     "estado",
-     "creado_en"
-    ],
-    "title": "UsuarioOut"
-   },
-   "ValidationError": {
-    "properties": {
-     "loc": {
-      "items": {
-       "anyOf": [
-        {
-         "type": "string"
-        },
-        {
-         "type": "integer"
-        }
-       ]
-      },
-      "type": "array",
-      "title": "Location"
-     },
-     "msg": {
-      "type": "string",
-      "title": "Message"
-     },
-     "type": {
-      "type": "string",
-      "title": "Error Type"
-     },
-     "input": {
-      "title": "Input"
-     },
-     "ctx": {
-      "type": "object",
-      "title": "Context"
-     }
-    },
-    "type": "object",
-    "required": [
-     "loc",
-     "msg",
-     "type"
-    ],
-    "title": "ValidationError"
-   },
-   "YoOut": {
-    "properties": {
-     "usuario": {
-      "$ref": "#/components/schemas/UsuarioMin"
-     },
-     "obras": {
-      "items": {
-       "$ref": "#/components/schemas/ObraRol"
-      },
-      "type": "array",
-      "title": "Obras"
-     }
-    },
-    "type": "object",
-    "required": [
-     "usuario",
-     "obras"
-    ],
-    "title": "YoOut"
-   }
-  },
-  "securitySchemes": {
-   "HTTPBearer": {
-    "type": "http",
-    "scheme": "bearer"
    }
   }
  }

@@ -1,0 +1,784 @@
+{
+ "openapi": "3.1.0",
+ "info": {
+  "title": "SIGRO · servicio catalogo",
+  "description": "Catálogo único de insumos para todas las obras.",
+  "version": "0.2.0"
+ },
+ "paths": {
+  "/salud": {
+   "get": {
+    "tags": [
+     "sistema"
+    ],
+    "summary": "Salud",
+    "operationId": "salud_salud_get",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/catalogo/insumos": {
+   "get": {
+    "tags": [
+     "catálogo"
+    ],
+    "summary": "Listar",
+    "operationId": "listar_api_v1_catalogo_insumos_get",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "q",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string",
+         "maxLength": 100
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "Busca en código y descripción",
+       "title": "Q"
+      },
+      "description": "Busca en código y descripción"
+     },
+     {
+      "name": "tipo",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "enum": [
+          "material",
+          "mano_obra",
+          "equipo",
+          "subcontrato"
+         ],
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Tipo"
+      }
+     },
+     {
+      "name": "verificado",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "boolean"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Verificado"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "type": "array",
+         "items": {
+          "$ref": "#/components/schemas/InsumoOut"
+         },
+         "title": "Response Listar Api V1 Catalogo Insumos Get"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   },
+   "post": {
+    "tags": [
+     "catálogo"
+    ],
+    "summary": "Registrar",
+    "description": "HU-08: el código lo asigna el servidor; un nombre repetido se rechaza señalando el insumo que ya existe;\nnace «por verificar» hasta que el residente lo revise.",
+    "operationId": "registrar_api_v1_catalogo_insumos_post",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/InsumoIn"
+       }
+      }
+     }
+    },
+    "responses": {
+     "201": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/InsumoOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/catalogo/insumos/{insumo_id}/verificar": {
+   "post": {
+    "tags": [
+     "catálogo"
+    ],
+    "summary": "Verificar",
+    "description": "El residente confirma la descripción de un insumo que el almacenero creó en obra.",
+    "operationId": "verificar_api_v1_catalogo_insumos__insumo_id__verificar_post",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "insumo_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Insumo Id"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/InsumoOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/catalogo/insumos/{insumo_id}/factor-conversion": {
+   "post": {
+    "tags": [
+     "catálogo"
+    ],
+    "summary": "Cambiar Factor",
+    "description": "HU-17: el factor cambia con fecha, usuario y motivo; el valor anterior queda en el histórico (nunca se pisa).",
+    "operationId": "cambiar_factor_api_v1_catalogo_insumos__insumo_id__factor_conversion_post",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "insumo_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Insumo Id"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/FactorIn"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/InsumoOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/catalogo/insumos/{insumo_id}/factor-conversion/historial": {
+   "get": {
+    "tags": [
+     "catálogo"
+    ],
+    "summary": "Historial Factor",
+    "operationId": "historial_factor_api_v1_catalogo_insumos__insumo_id__factor_conversion_historial_get",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "insumo_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Insumo Id"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "type": "array",
+         "items": {
+          "$ref": "#/components/schemas/FactorHistorialOut"
+         },
+         "title": "Response Historial Factor Api V1 Catalogo Insumos  Insumo Id  Factor Conversion Historial Get"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/catalogo/insumos/importar-s10": {
+   "post": {
+    "tags": [
+     "catálogo"
+    ],
+    "summary": "Importar S10",
+    "description": "HU-07: aplica lo que leyó Integraciones. El código es la clave: repetir la importación no duplica.\nExistente → actualiza solo la descripción si cambió (el código y la unidad del S10 no se editan); nuevo → se crea\nya verificado (viene del presupuesto). No toca saldos ni cantidades.",
+    "operationId": "importar_s10_api_v1_catalogo_insumos_importar_s10_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/ImportarS10In"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ResultadoImportacionOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ]
+   }
+  },
+  "/interno/insumos/buscar": {
+   "post": {
+    "tags": [
+     "interno"
+    ],
+    "summary": "Buscar",
+    "description": "Insumos por id o por código (sin distinguir mayúsculas). Lo que no existe simplemente no viene.",
+    "operationId": "buscar_interno_insumos_buscar_post",
+    "parameters": [
+     {
+      "name": "x-servicio-token",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "X-Servicio-Token"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/BuscarIn"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  }
+ },
+ "components": {
+  "schemas": {
+   "BuscarIn": {
+    "properties": {
+     "ids": {
+      "items": {
+       "type": "integer"
+      },
+      "type": "array",
+      "maxItems": 5000,
+      "title": "Ids"
+     },
+     "codigos": {
+      "items": {
+       "type": "string"
+      },
+      "type": "array",
+      "maxItems": 5000,
+      "title": "Codigos"
+     },
+     "solo_activos": {
+      "type": "boolean",
+      "title": "Solo Activos",
+      "default": false
+     }
+    },
+    "type": "object",
+    "title": "BuscarIn"
+   },
+   "FactorHistorialOut": {
+    "properties": {
+     "id": {
+      "type": "integer",
+      "title": "Id"
+     },
+     "factor_anterior": {
+      "type": "string",
+      "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+      "title": "Factor Anterior"
+     },
+     "factor_nuevo": {
+      "type": "string",
+      "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+      "title": "Factor Nuevo"
+     },
+     "motivo": {
+      "type": "string",
+      "title": "Motivo"
+     },
+     "cambiado_por": {
+      "type": "integer",
+      "title": "Cambiado Por"
+     },
+     "cambiado_en": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Cambiado En"
+     }
+    },
+    "type": "object",
+    "required": [
+     "id",
+     "factor_anterior",
+     "factor_nuevo",
+     "motivo",
+     "cambiado_por",
+     "cambiado_en"
+    ],
+    "title": "FactorHistorialOut"
+   },
+   "FactorIn": {
+    "properties": {
+     "factor": {
+      "anyOf": [
+       {
+        "type": "number",
+        "exclusiveMinimum": 0.0
+       },
+       {
+        "type": "string",
+        "pattern": "^(?!^[-+.]*$)[+-]?0*(?:\\d{0,12}|(?=[\\d.]{1,19}0*$)\\d{0,12}\\.\\d{0,6}0*$)"
+       }
+      ],
+      "title": "Factor"
+     },
+     "motivo": {
+      "type": "string",
+      "maxLength": 300,
+      "minLength": 3,
+      "title": "Motivo"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "factor",
+     "motivo"
+    ],
+    "title": "FactorIn"
+   },
+   "FilaS10": {
+    "properties": {
+     "codigo": {
+      "type": "string",
+      "maxLength": 30,
+      "minLength": 1,
+      "title": "Codigo"
+     },
+     "descripcion": {
+      "type": "string",
+      "maxLength": 300,
+      "minLength": 1,
+      "title": "Descripcion"
+     },
+     "unidad": {
+      "type": "string",
+      "maxLength": 20,
+      "minLength": 1,
+      "title": "Unidad"
+     },
+     "tipo": {
+      "type": "string",
+      "enum": [
+       "material",
+       "mano_obra",
+       "equipo",
+       "subcontrato"
+      ],
+      "title": "Tipo"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "codigo",
+     "descripcion",
+     "unidad",
+     "tipo"
+    ],
+    "title": "FilaS10",
+    "description": "Una fila de lo que devolvió Integraciones (POST /s10/relacion-insumos). Cantidades y precios NO entran:\nson de la obra (HU-19), el catálogo solo comparte código, nombre y unidad entre obras."
+   },
+   "HTTPValidationError": {
+    "properties": {
+     "detail": {
+      "items": {
+       "$ref": "#/components/schemas/ValidationError"
+      },
+      "type": "array",
+      "title": "Detail"
+     }
+    },
+    "type": "object",
+    "title": "HTTPValidationError"
+   },
+   "ImportarS10In": {
+    "properties": {
+     "insumos": {
+      "items": {
+       "$ref": "#/components/schemas/FilaS10"
+      },
+      "type": "array",
+      "maxItems": 5000,
+      "minItems": 1,
+      "title": "Insumos"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "insumos"
+    ],
+    "title": "ImportarS10In"
+   },
+   "InsumoIn": {
+    "properties": {
+     "descripcion": {
+      "type": "string",
+      "maxLength": 200,
+      "minLength": 3,
+      "title": "Descripcion"
+     },
+     "unidad": {
+      "type": "string",
+      "maxLength": 20,
+      "minLength": 1,
+      "title": "Unidad",
+      "description": "Unidad en que se compra (kg, bls, m3…)"
+     },
+     "tipo": {
+      "type": "string",
+      "enum": [
+       "material",
+       "mano_obra",
+       "equipo",
+       "subcontrato"
+      ],
+      "title": "Tipo",
+      "default": "material"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "descripcion",
+     "unidad"
+    ],
+    "title": "InsumoIn",
+    "description": "Alta de un insumo que no estaba en el catálogo. El código lo genera el servidor, nunca el cliente."
+   },
+   "InsumoOut": {
+    "properties": {
+     "id": {
+      "type": "integer",
+      "title": "Id"
+     },
+     "codigo": {
+      "type": "string",
+      "title": "Codigo"
+     },
+     "descripcion": {
+      "type": "string",
+      "title": "Descripcion"
+     },
+     "unidad_s10": {
+      "type": "string",
+      "title": "Unidad S10"
+     },
+     "unidad_compra": {
+      "type": "string",
+      "title": "Unidad Compra"
+     },
+     "factor_conversion": {
+      "type": "string",
+      "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+      "title": "Factor Conversion"
+     },
+     "tipo": {
+      "type": "string",
+      "enum": [
+       "material",
+       "mano_obra",
+       "equipo",
+       "subcontrato"
+      ],
+      "title": "Tipo"
+     },
+     "activo": {
+      "type": "boolean",
+      "title": "Activo"
+     },
+     "verificado": {
+      "type": "boolean",
+      "title": "Verificado"
+     }
+    },
+    "type": "object",
+    "required": [
+     "id",
+     "codigo",
+     "descripcion",
+     "unidad_s10",
+     "unidad_compra",
+     "factor_conversion",
+     "tipo",
+     "activo",
+     "verificado"
+    ],
+    "title": "InsumoOut"
+   },
+   "ResultadoImportacionOut": {
+    "properties": {
+     "creados": {
+      "type": "integer",
+      "title": "Creados"
+     },
+     "actualizados": {
+      "type": "integer",
+      "title": "Actualizados"
+     },
+     "sin_cambios": {
+      "type": "integer",
+      "title": "Sin Cambios"
+     },
+     "advertencias": {
+      "items": {
+       "type": "string"
+      },
+      "type": "array",
+      "title": "Advertencias"
+     }
+    },
+    "type": "object",
+    "required": [
+     "creados",
+     "actualizados",
+     "sin_cambios",
+     "advertencias"
+    ],
+    "title": "ResultadoImportacionOut"
+   },
+   "ValidationError": {
+    "properties": {
+     "loc": {
+      "items": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "integer"
+        }
+       ]
+      },
+      "type": "array",
+      "title": "Location"
+     },
+     "msg": {
+      "type": "string",
+      "title": "Message"
+     },
+     "type": {
+      "type": "string",
+      "title": "Error Type"
+     },
+     "input": {
+      "title": "Input"
+     },
+     "ctx": {
+      "type": "object",
+      "title": "Context"
+     }
+    },
+    "type": "object",
+    "required": [
+     "loc",
+     "msg",
+     "type"
+    ],
+    "title": "ValidationError"
+   }
+  },
+  "securitySchemes": {
+   "HTTPBearer": {
+    "type": "http",
+    "scheme": "bearer"
+   }
+  }
+ }
+}

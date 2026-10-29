@@ -1,0 +1,177 @@
+{
+  "formatVersion": 1,
+  "database": {
+    "version": 1,
+    "identityHash": "76e2f30d06fb355602dfd0a452e65443",
+    "entities": [
+      {
+        "tableName": "ajuste",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`clave` TEXT NOT NULL, `valor` TEXT NOT NULL, PRIMARY KEY(`clave`))",
+        "fields": [
+          {
+            "fieldPath": "clave",
+            "columnName": "clave",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "valor",
+            "columnName": "valor",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "clave"
+          ]
+        }
+      },
+      {
+        "tableName": "salida_local",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`uuidCliente` TEXT NOT NULL, `obraId` INTEGER NOT NULL, `insumoId` INTEGER NOT NULL, `insumoCodigo` TEXT NOT NULL, `insumoDescripcion` TEXT NOT NULL, `unidad` TEXT NOT NULL, `cantidad` TEXT NOT NULL, `motivo` TEXT NOT NULL, `quienRetira` TEXT NOT NULL, `frente` TEXT, `horaDispositivoMs` INTEGER NOT NULL, `estado` TEXT NOT NULL, `motivoRechazo` TEXT, `nota` TEXT, `intentos` INTEGER NOT NULL, `ultimoIntentoMs` INTEGER, PRIMARY KEY(`uuidCliente`))",
+        "fields": [
+          {
+            "fieldPath": "uuidCliente",
+            "columnName": "uuidCliente",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "obraId",
+            "columnName": "obraId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "insumoId",
+            "columnName": "insumoId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "insumoCodigo",
+            "columnName": "insumoCodigo",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "insumoDescripcion",
+            "columnName": "insumoDescripcion",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "unidad",
+            "columnName": "unidad",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "cantidad",
+            "columnName": "cantidad",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "motivo",
+            "columnName": "motivo",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "quienRetira",
+            "columnName": "quienRetira",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "frente",
+            "columnName": "frente",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "horaDispositivoMs",
+            "columnName": "horaDispositivoMs",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "estado",
+            "columnName": "estado",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "motivoRechazo",
+            "columnName": "motivoRechazo",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "nota",
+            "columnName": "nota",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "intentos",
+            "columnName": "intentos",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "ultimoIntentoMs",
+            "columnName": "ultimoIntentoMs",
+            "affinity": "INTEGER"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "uuidCliente"
+          ]
+        }
+      },
+      {
+        "tableName": "insumo_local",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER NOT NULL, `codigo` TEXT NOT NULL, `descripcion` TEXT NOT NULL, `unidad` TEXT NOT NULL, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "codigo",
+            "columnName": "codigo",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "descripcion",
+            "columnName": "descripcion",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "unidad",
+            "columnName": "unidad",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        }
+      }
+    ],
+    "setupQueries": [
+      "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '76e2f30d06fb355602dfd0a452e65443')"
+    ]
+  }
+}

@@ -1,14 +1,14 @@
-"""Genera los tres diagramas como archivos draw.io (.drawio) EDITABLES: físico, entidad-relación y microservicios.
+"""Genera los tres diagramas como archivos draw.io (.drawio) EDITABLES: físico y entidad-relación (el de despliegue: generar_despliegue.py).
 
 Mismas fuentes que los PNG, para que no se contradigan:
   - físico: se lee de la base migrada (tablas, columnas, claves, índices únicos, disparadores);
   - entidad-relación: el modelo lógico de generar_er.py, que se verifica contra la base antes de dibujar;
-  - microservicios: dibujado a mano (la frontera API <-> servicios).
+  - despliegue: lo genera generar_despliegue.py (desde docker-compose.yml).
 Las posiciones salen de Graphviz (`dot`), el dibujo es nativo de draw.io: cada entidad es un contenedor con una fila por
 atributo y cada relación una flecha con notación de pata de gallo; todo se puede mover, renombrar y volver a conectar.
 
 Uso:  SIGRO_DB=sigro_dev python docs/generar_drawio.py
-Salida: docs/diagrama-fisico.drawio, diagrama-er.drawio, diagrama-microservicios.drawio
+Salida: docs/diagrama-fisico.drawio, diagrama-er.drawio
 """
 from __future__ import annotations
 
@@ -247,8 +247,10 @@ def fisico() -> None:
            ('<b><font color="#7F6000">Sin UPDATE ni DELETE: corregir = reverso</font></b>', "#FFF2CC")]
     ent["almacen.movimiento"] = dict(grupo="henry", color="#7F7F7F", dashed=True, cab='<b>almacen.movimiento</b> <font color="#FFD966" style="font-size:10px">· APPEND-ONLY</font>',
                                      filas=mov, w=360, h=CAB + FILA * len(mov) + 4)
-    grupos_estilo = {e: (ER.COLOR[e][0], ER.COLOR[e][1], f"esquema {e}", False) for e in ER.ESQUEMAS}
-    grupos_estilo["henry"] = ("#999999", "#FFFFFF", "esquema almacen (Henry) · aún sin migración", True)
+    from introspeccion import SERVICIO_DE
+    grupos_estilo = {e: (ER.COLOR[e][0], ER.COLOR[e][1], f"microservicio {SERVICIO_DE[e]} · esquema {e} · rol sigro_svc_{SERVICIO_DE[e]}", False)
+                     for e in ER.ESQUEMAS}
+    grupos_estilo["henry"] = ("#999999", "#FFFFFF", "microservicio almacen · esquema almacen · por construir", True)
 
     aristas, dibujo = [], []
     for o, cs, d, compuesta, anulable in fks:
@@ -256,8 +258,10 @@ def fisico() -> None:
             continue
         aristas.append((d, o))
         ini = "ERzeroToOne" if anulable else "ERmandOne"
-        dibujo.append((d, o, ARISTA.format(c="#2F5597" if compuesta else "#555555", w=2.5 if compuesta else 1.3, ini=ini, fin="ERzeroToMany", extra=""),
-                       ", ".join(cs)))
+        cruza = o.split(".")[0] != d.split(".")[0]
+        color = "#C00000" if cruza else ("#2F5597" if compuesta else "#555555")
+        dibujo.append((d, o, ARISTA.format(c=color, w=2.5 if compuesta else 1.3, ini=ini, fin="ERzeroToMany", extra="dashed=1;" if cruza else ""),
+                       ", ".join(cs) + (" · otro servicio (fase 1)" if cruza else "")))
     for origen, cs in (("obra.almacen", "almacen_id"), ("obra.periodo", "periodo_id"), ("obra.dispositivo", "dispositivo_id"),
                        ("catalogo.insumo", "insumo_id"), ("compras.compra", "compra_id")):
         aristas.append((origen, "almacen.movimiento"))
@@ -272,9 +276,11 @@ def fisico() -> None:
                '<font color="#2F5597"><b>flecha azul gruesa</b></font> = FK compuesta (id, proyecto_id): el motor garantiza que ambos son de la misma obra · '
                '<font color="#7F6000"><b>UNIQUE</b></font> = índice único que sostiene una regla (parcial si trae «solo si») · <b>?</b> = admite NULL · '
                'las FK de autoría hacia <b>obra.usuario</b> están marcadas FK pero no dibujadas · '
-               '<b>Frontera:</b> ningún microservicio lee ni escribe esta base; Notificaciones recibe por HTTP lo que el relevo toma de outbox.evento.')
-    ensamblar(L, ent, grupos_estilo, pos, cajas, rutas, "SIGRO · Diagrama físico de la base de datos (PostgreSQL)",
-              "Módulos obra, catálogo, compras, tareo y outbox · generado desde la base migrada (migraciones 0001 a 0006)", dibujo, leyenda, leyenda_ancho=1500)
+               '<font color="#C00000"><b>flecha roja discontinua</b></font> = FK que cruza a otro microservicio: fase 1 la conserva, el servicio no puede leer la tabla ajena; '
+               'fase 2 la reemplaza por réplica local por eventos (ADR-09) · '
+               '<b>Despliegue:</b> una instancia PostgreSQL, un esquema y un usuario por servicio.')
+    ensamblar(L, ent, grupos_estilo, pos, cajas, rutas, "SIGRO · Modelo físico de datos por microservicio (PostgreSQL)",
+              "Un esquema y un rol por microservicio · generado desde la base migrada (migraciones 0001 a 0009)", dibujo, leyenda, leyenda_ancho=1500)
     L.guardar(SALIDA / "diagrama-fisico.drawio")
     print(f"físico: {len(ent)} tablas, {len(dibujo)} flechas")
 
@@ -330,80 +336,9 @@ def entidad_relacion() -> None:
 
 
 # ───────────────────────────────────────────── 3. MICROSERVICIOS (a mano)
-def microservicios() -> None:
-    L = Lienzo("Microservicios")
-    L.vertice('<b style="font-size:22px">SIGRO · Esquema de microservicios (frontera API ↔ servicios)</b><br><span style="font-size:13px;color:#555555">'
-              'Monolito modular + 2 microservicios · ADR-01 y ADR-07 · estado al 22 de octubre de 2026</span>',
-              "text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;", 0, 0, 1100, 60)
-
-    def caja(valor, x, y, w, h, color, fondo="#FFFFFF", padre="1", dashed=False, id=None):
-        return L.vertice(valor, f"rounded=1;arcSize=4;html=1;whiteSpace=wrap;align=left;verticalAlign=top;spacing=8;fillColor={fondo};strokeColor={color};"
-                                f"strokeWidth=1.5;fontSize=12;{'dashed=1;' if dashed else ''}", x, y, w, h, padre, id)
-
-    def grupo(titulo, x, y, w, h, borde, fondo, id=None):
-        return L.vertice(titulo, f"swimlane;startSize=30;html=1;rounded=1;arcSize=2;fontStyle=1;fontSize=14;fillColor={fondo};strokeColor={borde};"
-                                 f"strokeWidth=2;swimlaneFillColor={fondo};align=left;spacingLeft=10;collapsible=0;", x, y, w, h, "1", id)
-
-    def nota(t, color="#7F6000", fondo="#FFF2CC"):
-        return f'<div style="background:{fondo};color:{color};padding:3px;margin-top:4px"><i>{t}</i></div>'
-
-    # clientes
-    g_cli = grupo("Clientes", 330, 80, 640, 150, "#666666", "#F2F2F2", "g_cli")
-    caja("<b>App Android</b><br>almacenero · SSOMA<br>cola local: registra sin señal" + nota("cada registro lleva su uuid_cliente"), 20, 42, 290, 96, "#555555", padre=g_cli, id="android")
-    caja("<b>Web de oficina</b><br>React + Vite · <i>web/</i><br>residente · administrador · gerente", 330, 42, 290, 96, "#555555", padre=g_cli, id="web")
-    # API
-    g_api = grupo("API SIGRO · monolito modular (FastAPI) · /api/v1", 40, 330, 700, 700, "#1F4E79", "#EAF1F8", "g_api")
-    caja("<b>Seguridad (transversal)</b><br>JWT: solo dice <b>quién</b> eres<br>rol y obra se leen de <i>asignación</i> en cada petición<br>login Argon2id · bloqueo a los 5 intentos"
-         + nota("esconder un botón no es control de acceso"), 40, 50, 620, 130, "#1F4E79", padre=g_api, id="seg")
-    caja("<b>Módulos (un esquema cada uno)</b><br><b>obra</b> accesos, plazos, periodos · <b>tareo</b> trabajadores y jornadas<br>"
-         "<b>compras</b> proveedores, compras, solicitudes · <b>catálogo</b> insumos (provisional)<br>"
-         '<font color="#777777"><b>almacén</b> y <b>costo</b> · Henry · pendientes</font><br>'
-         "Dependencias solo hacia <b>obra</b> y <b>catálogo</b> (una prueba lo vigila)", 40, 235, 620, 140, "#1F4E79", "#D9E7F5", padre=g_api, id="mods")
-    caja("<b>PostgreSQL 16</b><br>esquemas: obra · catálogo · compras · tareo · <b>outbox</b><br>la API entra como <b>sigro_app</b>: sin DELETE, sin UPDATE en libros<br>"
-         "migraciones con el usuario dueño (Alembic)" + nota("<b>Ningún microservicio lee ni escribe esta base</b>"), 40, 480, 620, 160, "#333333", padre=g_api, id="db")
-    # relevo
-    g_rel = caja("<b>Relevo (worker)</b><br><i>python -m app.relay</i><br>toma lo pendiente de outbox.evento<br>FOR UPDATE SKIP LOCKED: varios relevos no repiten<br>"
-                 "reintentos: 5 s → 10 → 20 … hasta 1 h" + nota("al menos una vez; el receptor deduplica", "#7F6000"), 60, 1130, 380, 170, "#8A3B12", id="relevo")
-    # notificaciones
-    g_not = grupo("Microservicio · Notificaciones", 520, 1130, 640, 210, "#8A3B12", "#FBEDE6", "g_not")
-    caja("<b>FastAPI · SQLite propia</b><br><b>POST</b> /eventos (token de servicio)<br><b>GET</b> /notificaciones · <b>POST</b> …/{id}/leida<br>"
-         "deduplica por <i>evento_id</i> · una fila por destinatario" + nota("los destinatarios los decide la API (solo ella sabe quién es qué en cada obra)"),
-         20, 45, 600, 150, "#8A3B12", padre=g_not, id="notif")
-    # integraciones
-    g_int = grupo("Microservicio · Integraciones (Fernando)", 800, 600, 460, 260, "#7A4B00", "#FBF3E4", "g_int")
-    caja("<b>FastAPI · sin base de datos</b><br><b>GET</b> /ruc/{ruc} · HU-31<br><b>GET</b> /dni/{dni} · HU-62<br><b>POST</b> /s10/relacion-insumos · HU-07<br>"
-         "caché de 24 h · el token de Factiliza solo vive aquí" + nota("<b>Riesgo: no autentica a quien le llama.</b> Quien lo alcance gasta las 100 consultas del mes.", "#9C0006", "#FDE0E0"),
-         20, 45, 420, 200, "#7A4B00", padre=g_int, id="integ")
-    caja("<b>Factiliza</b><br>SUNAT (RUC) · RENIEC (DNI)<br>100 consultas gratis al mes", 880, 960, 300, 80, "#999999", dashed=True, id="fact")
-    caja("<b>Relación de insumos del S10</b><br>PDF que sube el usuario", 880, 450, 300, 60, "#999999", dashed=True, id="s10")
-    # leyenda
-    caja("<b>Qué pasa si una pieza cae</b><br><b>Integraciones cae</b> → el proveedor queda «sin validar» y el trabajador se escribe a mano. El archivo S10 no se pierde. Nada se bloquea.<br>"
-         "<b>Notificaciones cae</b> → la API sigue; los avisos esperan en <i>outbox</i> y llegan después. La campana responde 503 un rato.<br>"
-         "<b>El relevo cae</b> → los eventos se acumulan en la base; no se pierde ninguno.<br>"
-         "<b>Celular sin señal</b> → la app registra en su cola; al volver, el <i>uuid_cliente</i> impide que un reenvío duplique.<br>"
-         "<b>Por qué no seis microservicios:</b> una compra y su detalle, un movimiento y su saldo deben ser atómicos; entre servicios sería una saga con compensaciones."
-         + nota("<b>Flecha 3 · por decidir (Fernando y el equipo):</b> que la web llame a Integraciones a través de la API, o que Integraciones exija un token de servicio. Hoy ninguna de las dos está resuelta.", "#9C0006", "#FDE0E0"),
-         1220, 1100, 520, 250, "#666666", id="ley")
-
-    def flecha(a, b, texto, color="#444444", dashed=False, bidir=False, puntos=None, extra=""):
-        L.arista(a, b, f"edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor={color};fontColor={color};fontSize=11;strokeWidth=1.6;labelBackgroundColor=#FFFFFF;"
-                       f"endArrow=block;endFill=1;{'startArrow=block;startFill=1;' if bidir else ''}{'dashed=1;' if dashed else ''}{extra}", texto, "1", puntos)
-    flecha("web", "seg", "1 · HTTPS · JSON · Bearer JWT")
-    flecha("android", "seg", "1 · HTTPS · JSON · Bearer JWT")
-    flecha("seg", "mods", "")
-    flecha("mods", "db", "misma transacción: hecho + evento")
-    flecha("mods", "integ", "2 · HTTP · validar RUC al crear proveedor", "#7A4B00")
-    flecha("web", "integ", "3 · hoy: directo (RUC y S10)", "#9C0006", dashed=True)
-    flecha("s10", "integ", "sube el PDF", "#999999", dashed=True)
-    flecha("integ", "fact", "Bearer", "#7A4B00")
-    flecha("db", "relevo", "4 · lee pendientes y anota el resultado", "#8A3B12", bidir=True)
-    flecha("relevo", "notif", "5 · POST /eventos · X-Servicio-Token", "#8A3B12")
-    flecha("mods", "notif", "6 · campana: GET /notificaciones", "#8A3B12", dashed=True, puntos=[(770, 640), (770, 1050)], extra="exitX=1;exitY=0.8;entryX=0.4;entryY=0;")
-    L.guardar(SALIDA / "diagrama-microservicios.drawio")
-    print("microservicios: 9 piezas, 11 flechas")
+# El antiguo diagrama «microservicios» (de cuando era monolito modular) lo reemplaza docs/generar_despliegue.py.
 
 
 if __name__ == "__main__":
     fisico()
     entidad_relacion()
-    microservicios()

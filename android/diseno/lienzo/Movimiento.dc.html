@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Detalle del movimiento</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#C2410C}a:hover{color:#9A3412}
+input:focus{outline:2px solid #C2410C;outline-offset:1px}
+</style>
+</helmet>
+<div style="width: 390px; min-height: 900px; box-sizing: border-box; background: #F4F4F6; font-family: Inter, system-ui, sans-serif; color: #111827; position: relative">
+  <header style="padding: 48px 20px 8px">
+    <a href="Registros.dc.html" aria-label="Volver" style="width: 44px; height: 44px; border-radius: 22px; background: #FFFFFF; box-shadow: 0 1px 2px rgba(17,24,39,0.08); display: flex; align-items: center; justify-content: center">
+      <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#111827" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"></path></svg>
+    </a>
+  </header>
+  <div style="padding: 4px 20px 40px; display: flex; flex-direction: column; gap: 14px">
+    <div style="display: flex; flex-direction: column; gap: 6px">
+      <span style="align-self: flex-start; font-size: 12px; font-weight: 700; letter-spacing: 0.04em; color: #4B5563">SALIDA · 28/10 16:35</span>
+      <h1 style="margin: 0; font-size: 28px; font-weight: 800; letter-spacing: -0.03em; line-height: 1.15">Clavo 1 1/2" estriado</h1>
+      <span style="font-size: 22px; font-weight: 700">5 kilogramos</span>
+    </div>
+
+    <section style="background: #FFFFFF; border-radius: 24px; box-shadow: 0 1px 3px rgba(17,24,39,0.06); display: flex; flex-direction: column">
+      <div style="padding: 14px 16px; display: flex; justify-content: space-between; border-bottom: 1px solid #F3F4F6"><span style="color: #4B5563; font-size: 14px">Motivo</span><span style="font-size: 14px; font-weight: 600">Encofrado de vigas</span></div>
+      <div style="padding: 14px 16px; display: flex; justify-content: space-between; border-bottom: 1px solid #F3F4F6"><span style="color: #4B5563; font-size: 14px">Retira</span><span style="font-size: 14px; font-weight: 600">Maestro de obra</span></div>
+      <div style="padding: 14px 16px; display: flex; justify-content: space-between; border-bottom: 1px solid #F3F4F6"><span style="color: #4B5563; font-size: 14px">Costo congelado</span><span style="font-size: 14px; font-weight: 600">lo pone el servidor</span></div>
+      <div style="padding: 14px 16px; display: flex; justify-content: space-between"><span style="color: #4B5563; font-size: 14px">Estado</span>
+        <sc-if value="{{vigente}}" hint-placeholder-val="{{ true }}"><span style="font-size: 13px; font-weight: 700; color: #166534; background: #DCFCE7; border-radius: 999px; padding: 4px 10px">Vigente</span></sc-if>
+        <sc-if value="{{anulado}}" hint-placeholder-val="{{ false }}"><span style="font-size: 13px; font-weight: 700; color: #4B5563; background: #E5E7EB; border-radius: 999px; padding: 4px 10px">Anulado por reverso</span></sc-if>
+      </div>
+    </section>
+
+    <sc-if value="{{vigente}}" hint-placeholder-val="{{ true }}">
+      <section style="background: #FFFFFF; border-radius: 24px; box-shadow: 0 1px 3px rgba(17,24,39,0.06); padding: 16px; display: flex; flex-direction: column; gap: 12px">
+        <h2 style="margin: 0; font-size: 16px; font-weight: 700">¿Te equivocaste?</h2>
+        <p style="margin: 0; font-size: 14px; color: #4B5563; line-height: 1.45">El registro no se borra: se crea un <b>reverso</b> que lo anula y queda el rastro de los dos. Luego registras el correcto.</p>
+        <label style="display: flex; flex-direction: column; gap: 6px; font-size: 13px; font-weight: 600; color: #4B5563">Motivo de la corrección
+          <input value="Eran 3 kg, no 5" style="height: 52px; border: 1px solid #D1D5DB; border-radius: 14px; padding: 0 14px; background: #F9FAFB; font: 16px Inter, sans-serif; color: #111827">
+        </label>
+        <button onClick="{{corregir}}" style="height: 54px; border-radius: 27px; border: 1.5px solid #B91C1C; background: #FFFFFF; color: #B91C1C; font: 700 16px Inter, sans-serif; cursor: pointer">Anular con reverso</button>
+      </section>
+    </sc-if>
+
+    <sc-if value="{{anulado}}" hint-placeholder-val="{{ false }}">
+      <section style="background: #FFFFFF; border-radius: 24px; box-shadow: 0 1px 3px rgba(17,24,39,0.06); padding: 16px; display: flex; flex-direction: column; gap: 10px">
+        <h2 style="margin: 0; font-size: 16px; font-weight: 700">Rastro</h2>
+        <div style="display: flex; gap: 12px; align-items: flex-start">
+          <span style="width: 10px; height: 10px; border-radius: 5px; background: #9CA3AF; margin-top: 6px"></span>
+          <span style="display: flex; flex-direction: column; gap: 2px"><span style="font-size: 14px; font-weight: 600; text-decoration: line-through; color: #4B5563">Salida · 5 kg · 16:35</span><span style="font-size: 13px; color: #4B5563">Original, se conserva</span></span>
+        </div>
+        <div style="display: flex; gap: 12px; align-items: flex-start">
+          <span style="width: 10px; height: 10px; border-radius: 5px; background: #C2410C; margin-top: 6px"></span>
+          <span style="display: flex; flex-direction: column; gap: 2px"><span style="font-size: 14px; font-weight: 600">Reverso · +5 kg · ahora</span><span style="font-size: 13px; color: #4B5563">«Eran 3 kg, no 5» · por enviar</span></span>
+        </div>
+        <a href="Salida.dc.html" style="margin-top: 6px; height: 54px; border-radius: 27px; background: #111827; color: #FFFFFF; display: flex; align-items: center; justify-content: center; font-size: 16px; font-weight: 700; text-decoration: none">Registrar la salida correcta</a>
+      </section>
+    </sc-if>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":900}}'>
+class Component extends DCLogic {
+  constructor(p) { super(p); this.state = { anulado: false }; }
+  renderVals() {
+    return {
+      vigente: !this.state.anulado,
+      anulado: this.state.anulado,
+      corregir: () => this.setState({ anulado: true })
+    };
+  }
+}
+</script>
+</body>
+</html>

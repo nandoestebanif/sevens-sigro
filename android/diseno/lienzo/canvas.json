@@ -1,0 +1,471 @@
+{
+  "v": 3,
+  "attachments": {},
+  "boards": {
+    "Celular.dc.html": {
+      "h": 844,
+      "is_interactive": true,
+      "radius": 40,
+      "title": "1.4 · Mi celular (HU-15)",
+      "w": 390,
+      "x": 1410,
+      "y": 0,
+      "page": "flujo"
+    },
+    "Guardada.dc.html": {
+      "h": 844,
+      "is_interactive": true,
+      "radius": 40,
+      "title": "2.2 · Salida guardada",
+      "w": 390,
+      "x": 470,
+      "y": 0,
+      "page": "materiales"
+    },
+    "Inicio.dc.html": {
+      "h": 844,
+      "is_interactive": true,
+      "radius": 40,
+      "title": "1.3 · Inicio",
+      "w": 390,
+      "x": 940,
+      "y": 0,
+      "page": "flujo"
+    },
+    "Main.dc.html": {
+      "h": 844,
+      "is_interactive": true,
+      "radius": 40,
+      "title": "1.1 · Entrar (HU-12) · el plano se dibuja",
+      "w": 390,
+      "x": 0,
+      "y": 0,
+      "page": "flujo"
+    },
+    "Obras.dc.html": {
+      "h": 844,
+      "is_interactive": true,
+      "radius": 40,
+      "title": "1.2 · Elegir obra",
+      "w": 390,
+      "x": 470,
+      "y": 0,
+      "page": "flujo"
+    },
+    "Registros.dc.html": {
+      "h": 1060,
+      "is_interactive": true,
+      "radius": 40,
+      "title": "2.5 · Mis registros (HU-38, HU-39)",
+      "w": 390,
+      "x": 1880,
+      "y": 0,
+      "page": "materiales"
+    },
+    "Salida.dc.html": {
+      "h": 1060,
+      "is_interactive": true,
+      "radius": 40,
+      "title": "2.1 · Registrar salida (HU-40, HU-37)",
+      "w": 390,
+      "x": 0,
+      "y": 0,
+      "page": "materiales"
+    },
+    "PropuestaA.dc.html": {
+      "x": 0,
+      "y": 0,
+      "w": 390,
+      "h": 844,
+      "title": "A · Grafito (oscuro, tarjetas en mosaico)",
+      "page": "propuestas",
+      "is_interactive": true,
+      "radius": 40
+    },
+    "PropuestaB.dc.html": {
+      "x": 470,
+      "y": 0,
+      "w": 390,
+      "h": 844,
+      "title": "B · Claro moderno (estilo iOS, botón flotante)",
+      "page": "propuestas",
+      "is_interactive": true,
+      "radius": 40
+    },
+    "PropuestaC.dc.html": {
+      "x": 940,
+      "y": 0,
+      "w": 390,
+      "h": 844,
+      "title": "C · Obra en marcha (cabecera naranja + actividad)",
+      "page": "propuestas",
+      "is_interactive": true,
+      "radius": 40
+    },
+    "Entrada.dc.html": {
+      "x": 940,
+      "y": 0,
+      "w": 390,
+      "h": 1000,
+      "title": "2.3 · Entrada de compra (HU-35, HU-36)",
+      "is_interactive": true,
+      "radius": 40,
+      "page": "materiales"
+    },
+    "IngresoSinCompra.dc.html": {
+      "page": "materiales",
+      "x": 1410,
+      "y": 0,
+      "w": 390,
+      "h": 1000,
+      "title": "2.4 · Ingreso sin compra (HU-41)",
+      "is_interactive": true,
+      "radius": 40
+    },
+    "Movimiento.dc.html": {
+      "page": "materiales",
+      "x": 2350,
+      "y": 0,
+      "w": 390,
+      "h": 900,
+      "title": "2.6 · Detalle y corrección con reverso (HU-45)",
+      "is_interactive": true,
+      "radius": 40
+    },
+    "Stock.dc.html": {
+      "page": "materiales",
+      "x": 0,
+      "y": 1400,
+      "w": 390,
+      "h": 1000,
+      "title": "2.7 · Stock del almacén (HU-43)",
+      "is_interactive": true,
+      "radius": 40
+    },
+    "Conteo.dc.html": {
+      "page": "materiales",
+      "x": 470,
+      "y": 1400,
+      "w": 390,
+      "h": 1000,
+      "title": "2.8 · Conteo físico (HU-46)",
+      "is_interactive": true,
+      "radius": 40
+    },
+    "Traslado.dc.html": {
+      "page": "materiales",
+      "x": 940,
+      "y": 1400,
+      "w": 390,
+      "h": 1000,
+      "title": "2.9 · Traslado entre obras (HU-42)",
+      "is_interactive": true,
+      "radius": 40
+    },
+    "Cierre.dc.html": {
+      "page": "materiales",
+      "x": 1410,
+      "y": 1400,
+      "w": 390,
+      "h": 1000,
+      "title": "2.10 · Cierre de obra (HU-47)",
+      "is_interactive": true,
+      "radius": 40
+    },
+    "CatBuscar.dc.html": {
+      "x": 0,
+      "y": 0,
+      "w": 390,
+      "h": 844,
+      "title": "3.1 · Buscar insumo (HU-10, HU-09)",
+      "is_interactive": true,
+      "radius": 40,
+      "page": "catalogo"
+    },
+    "CatFicha.dc.html": {
+      "x": 470,
+      "y": 0,
+      "w": 390,
+      "h": 1080,
+      "title": "3.2 · Ficha: foto, factor y nombres comerciales (HU-11, HU-17, HU-09)",
+      "is_interactive": true,
+      "radius": 40,
+      "page": "catalogo"
+    },
+    "CatNuevo.dc.html": {
+      "x": 940,
+      "y": 0,
+      "w": 390,
+      "h": 1120,
+      "title": "3.3 · Registrar insumo nuevo (HU-08, HU-10)",
+      "is_interactive": true,
+      "radius": 40,
+      "page": "catalogo"
+    },
+    "HerLista.dc.html": {
+      "x": 0,
+      "y": 0,
+      "w": 390,
+      "h": 900,
+      "title": "4.1 · Herramientas de la obra (HU-51, HU-52)",
+      "is_interactive": true,
+      "radius": 40,
+      "page": "herramientas"
+    },
+    "HerFicha.dc.html": {
+      "x": 470,
+      "y": 0,
+      "w": 390,
+      "h": 1000,
+      "title": "4.2 · Ficha e historial (HU-51)",
+      "is_interactive": true,
+      "radius": 40,
+      "page": "herramientas"
+    },
+    "HerIngreso.dc.html": {
+      "x": 940,
+      "y": 0,
+      "w": 390,
+      "h": 1000,
+      "title": "4.3 · Ingreso de herramienta (HU-48)",
+      "is_interactive": true,
+      "radius": 40,
+      "page": "herramientas"
+    },
+    "HerEntregar.dc.html": {
+      "x": 1410,
+      "y": 0,
+      "w": 390,
+      "h": 900,
+      "title": "4.4 · Entregar a un trabajador (HU-49)",
+      "is_interactive": true,
+      "radius": 40,
+      "page": "herramientas"
+    },
+    "HerDevolver.dc.html": {
+      "x": 1880,
+      "y": 0,
+      "w": 390,
+      "h": 1000,
+      "title": "4.5 · Devolución con estado (HU-50)",
+      "is_interactive": true,
+      "radius": 40,
+      "page": "herramientas"
+    },
+    "HerMantBaja.dc.html": {
+      "x": 2350,
+      "y": 0,
+      "w": 390,
+      "h": 1000,
+      "title": "4.6 · Mantenimiento o baja (HU-52, HU-53)",
+      "is_interactive": true,
+      "radius": 40,
+      "page": "herramientas"
+    },
+    "MOTrabajadores.dc.html": {
+      "x": 0,
+      "y": 0,
+      "w": 390,
+      "h": 1000,
+      "title": "5.1 · Trabajadores de la obra (HU-62)",
+      "is_interactive": true,
+      "radius": 40,
+      "page": "manoobra"
+    },
+    "MONuevo.dc.html": {
+      "x": 470,
+      "y": 0,
+      "w": 390,
+      "h": 1000,
+      "title": "5.2 · Registrar trabajador (HU-62)",
+      "is_interactive": true,
+      "radius": 40,
+      "page": "manoobra"
+    },
+    "MOAsistencia.dc.html": {
+      "x": 940,
+      "y": 0,
+      "w": 390,
+      "h": 1200,
+      "title": "5.3 · Asistencia del día (HU-63)",
+      "is_interactive": true,
+      "radius": 40,
+      "page": "manoobra"
+    }
+  },
+  "createdOnFiles": {
+    "at": "2026-10-28T19:05:00Z",
+    "v": 1
+  },
+  "designSystems": [],
+  "launch": {
+    "view": "canvas",
+    "page": "flujo"
+  },
+  "noteOrder": [
+    "titulo",
+    "leyenda",
+    "pendiente",
+    "tituloProp",
+    "tituloMat",
+    "tituloCat",
+    "planCat",
+    "tituloHer",
+    "planHer",
+    "tituloMO",
+    "planMO"
+  ],
+  "notes": {
+    "leyenda": {
+      "fill": "orange",
+      "size": 24,
+      "text": "Estilo B «claro moderno»: Inter, fondo gris claro, tarjetas blancas, acento naranja C2410C y botón principal negro. Misma interfaz en Android e iOS. Pulsa Play para navegar el flujo.",
+      "w": 520,
+      "x": 0,
+      "y": 1000,
+      "page": "flujo"
+    },
+    "pendiente": {
+      "fill": "gray",
+      "size": 24,
+      "text": "Pendiente de la API: recibir salidas (POST /obras/{id}/almacen/salidas) y el saldo para «Stock del almacén» (HU-43).",
+      "w": 520,
+      "x": 600,
+      "y": 1000,
+      "page": "flujo"
+    },
+    "titulo": {
+      "kind": "title1",
+      "maxW": 1800,
+      "text": "1 · Acceso e inicio",
+      "x": 0,
+      "y": -300,
+      "page": "flujo"
+    },
+    "tituloProp": {
+      "x": 0,
+      "y": -300,
+      "text": "Tres direcciones nuevas para la app",
+      "kind": "title1",
+      "maxW": 1330,
+      "page": "propuestas"
+    },
+    "tituloMat": {
+      "x": 0,
+      "y": -300,
+      "text": "2 · Materiales: entradas, salidas y control",
+      "kind": "title1",
+      "maxW": 2740,
+      "page": "materiales"
+    },
+    "tituloCat": {
+      "x": 0,
+      "y": -300,
+      "text": "3 · Catálogo de insumos",
+      "kind": "title1",
+      "maxW": 1800,
+      "page": "catalogo"
+    },
+    "planCat": {
+      "x": 0,
+      "y": 1240,
+      "w": 640,
+      "size": "m",
+      "fill": "orange",
+      "page": "catalogo",
+      "text": "Catálogo: los insumos son REALES del catálogo del cliente (código, nombre, unidad, marca). Los nombres comerciales son ejemplos de cómo los llaman en obra. Prueba en 3.1: «cemento sol», «king kong», «1432». En 3.2 intenta agregar «cemento sol»: el sistema avisa que ya es de otro insumo."
+    },
+    "tituloHer": {
+      "x": 0,
+      "y": -300,
+      "text": "4 · Herramientas y equipos",
+      "kind": "title1",
+      "maxW": 2740,
+      "page": "herramientas"
+    },
+    "planHer": {
+      "x": 0,
+      "y": 1120,
+      "w": 640,
+      "size": "m",
+      "fill": "orange",
+      "page": "herramientas",
+      "text": "Herramientas: cada una se registra por separado (no por cantidad). Estados: disponible · en uso · en mantenimiento · dada de baja. La baja la registra el almacenero y la autoriza el residente. Herramientas, códigos y personas son datos de ejemplo. El estado al cierre (HU-54) va en «Cerrar obra»."
+    },
+    "tituloMO": {
+      "x": 0,
+      "y": -300,
+      "text": "5 · Mano de obra (tareo)",
+      "kind": "title1",
+      "maxW": 1800,
+      "page": "manoobra"
+    },
+    "planMO": {
+      "x": 0,
+      "y": 1320,
+      "w": 640,
+      "size": "m",
+      "fill": "orange",
+      "page": "manoobra",
+      "text": "Mano de obra: lo registran el almacenero o el ingeniero SSOMA. El DNI se consulta en RENIEC (Integraciones). La asistencia se guarda sin señal como las salidas y se envía después. Personas y DNI: ejemplos, nunca datos reales."
+    }
+  },
+  "order": [
+    "Main.dc.html",
+    "Obras.dc.html",
+    "Inicio.dc.html",
+    "Salida.dc.html",
+    "Guardada.dc.html",
+    "Registros.dc.html",
+    "Celular.dc.html",
+    "PropuestaA.dc.html",
+    "PropuestaB.dc.html",
+    "PropuestaC.dc.html",
+    "Entrada.dc.html",
+    "IngresoSinCompra.dc.html",
+    "Movimiento.dc.html",
+    "Stock.dc.html",
+    "Conteo.dc.html",
+    "Traslado.dc.html",
+    "Cierre.dc.html",
+    "CatBuscar.dc.html",
+    "CatFicha.dc.html",
+    "CatNuevo.dc.html",
+    "HerLista.dc.html",
+    "HerFicha.dc.html",
+    "HerIngreso.dc.html",
+    "HerEntregar.dc.html",
+    "HerDevolver.dc.html",
+    "HerMantBaja.dc.html",
+    "MOTrabajadores.dc.html",
+    "MONuevo.dc.html",
+    "MOAsistencia.dc.html"
+  ],
+  "pages": [
+    {
+      "id": "flujo",
+      "name": "1 · Acceso e inicio"
+    },
+    {
+      "id": "materiales",
+      "name": "2 · Materiales"
+    },
+    {
+      "id": "catalogo",
+      "name": "3 · Catálogo"
+    },
+    {
+      "id": "herramientas",
+      "name": "4 · Herramientas y equipos"
+    },
+    {
+      "id": "manoobra",
+      "name": "5 · Mano de obra"
+    },
+    {
+      "id": "propuestas",
+      "name": "Propuestas de estilo"
+    }
+  ],
+  "title": "SIGRO Almacén · App (Android + iOS)"
+}

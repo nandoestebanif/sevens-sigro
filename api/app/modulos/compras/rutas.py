@@ -18,8 +18,9 @@ from app import eventos, integraciones
 from app.dependencias import Actor, exigir, exigir_en_alguna_obra
 from app.errores import ErrorSigro
 from app.modulos.compras import esquemas as e
+from app.modulos.compras import catalogo_cliente
 from app.modulos.compras.dominio import ruc_valido
-from app.modulos.obra.rutas import fila, filas
+from app.sql import fila, filas
 
 proveedores = APIRouter(prefix="/proveedores", tags=["compras · proveedores"])
 compras = APIRouter(prefix="/obras/{obra_id}", tags=["compras"])
@@ -127,13 +128,15 @@ def _compra_out(s: Session, filas_compra: list[dict]) -> list[dict]:
     ids = [c["id"] for c in filas_compra]
     lineas = filas(
         s,
-        "SELECT d.compra_id, i.codigo AS insumo_codigo, i.descripcion, d.cantidad, d.unidad AS unidad_compra, d.precio_unitario "
-        "FROM compras.compra_detalle d JOIN catalogo.insumo i ON i.id = d.insumo_id "
-        "WHERE d.compra_id = ANY(:ids) ORDER BY d.id",
+        "SELECT d.compra_id, d.insumo_id, d.cantidad, d.unidad AS unidad_compra, d.precio_unitario "
+        "FROM compras.compra_detalle d WHERE d.compra_id = ANY(:ids) ORDER BY d.id",
         ids=ids,
     )
+    insumos = catalogo_cliente.por_id(l["insumo_id"] for l in lineas)    # código y descripción son del catálogo
     por_compra: dict[int, list[dict]] = {}
     for l in lineas:
+        ins = insumos.get(l.pop("insumo_id"), {})
+        l["insumo_codigo"], l["descripcion"] = ins.get("codigo", "?"), ins.get("descripcion", "(insumo no disponible)")
         por_compra.setdefault(l.pop("compra_id"), []).append(l)
     out = []
     for c in filas_compra:
@@ -153,14 +156,10 @@ def registrar_compra(datos: e.CompraIn, a: Actor = Depends(exigir("compra.regist
     """
     s = a.sesion
     codigos = [l.insumo_codigo.upper() for l in datos.lineas]
-    insumos = {
-        r["codigo"]: r["id"]
-        for r in filas(s, "SELECT id, codigo FROM catalogo.insumo WHERE upper(codigo) = ANY(:c) AND activo", c=codigos)
-    }
-    faltan = [c for c in codigos if c not in {k.upper() for k in insumos}]
+    por_codigo = {k: v["id"] for k, v in catalogo_cliente.por_codigo(codigos, solo_activos=True).items()}
+    faltan = [c for c in codigos if c not in por_codigo]
     if faltan:
         raise ErrorSigro(422, "insumo_no_existe", f"No existen en el catálogo (o están inactivos): {', '.join(faltan)}.")
-    por_codigo = {k.upper(): v for k, v in insumos.items()}
 
     bruto = sum((l.cantidad * l.precio_unitario for l in datos.lineas), Decimal(0))
     if datos.precios_incluyen_igv:
@@ -251,14 +250,20 @@ def _solicitud_out(s: Session, ids: list[int]) -> list[dict]:
     )
     lin = filas(
         s,
-        "SELECT l.solicitud_id, i.codigo AS insumo_codigo, coalesce(i.descripcion, l.descripcion_libre) AS descripcion, "
+        "SELECT l.solicitud_id, l.insumo_id, l.descripcion_libre, "
         "l.unidad_compra, l.cantidad AS cantidad_solicitada, a.cantidad_comprada, a.cantidad_pendiente "
         "FROM compras.solicitud_linea l JOIN compras.solicitud_linea_avance a ON a.linea_id = l.id "
-        "LEFT JOIN catalogo.insumo i ON i.id = l.insumo_id WHERE l.solicitud_id = ANY(:ids) ORDER BY l.id",
+        "WHERE l.solicitud_id = ANY(:ids) ORDER BY l.id",
         ids=ids,
     )
+    insumos = catalogo_cliente.por_id(l["insumo_id"] for l in lin)
     agrupadas: dict[int, list[dict]] = {}
     for l in lin:
+        iid = l.pop("insumo_id")
+        ins = insumos.get(iid) if iid is not None else None
+        libre = l.pop("descripcion_libre")
+        l["insumo_codigo"] = ins["codigo"] if ins else None
+        l["descripcion"] = ins["descripcion"] if ins else libre
         agrupadas.setdefault(l.pop("solicitud_id"), []).append(l)
     for c in cab:
         c["lineas"] = agrupadas.get(c["id"], [])
@@ -270,10 +275,7 @@ def emitir_solicitud(datos: e.SolicitudIn, a: Actor = Depends(exigir("solicitud.
     """El número correlativo por obra lo asigna el motor, sin huecos y sin repetirse aunque lleguen dos a la vez."""
     s = a.sesion
     codigos = [l.insumo_codigo.upper() for l in datos.lineas if l.insumo_codigo]
-    por_codigo = {
-        r["codigo"].upper(): r["id"]
-        for r in filas(s, "SELECT id, codigo FROM catalogo.insumo WHERE upper(codigo) = ANY(:c) AND activo", c=codigos)
-    }
+    por_codigo = {k: v["id"] for k, v in catalogo_cliente.por_codigo(codigos, solo_activos=True).items()}
     faltan = [c for c in codigos if c not in por_codigo]
     if faltan:
         raise ErrorSigro(422, "insumo_no_existe", f"No existen en el catálogo (o están inactivos): {', '.join(faltan)}.")

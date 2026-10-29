@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Ingreso de herramienta</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#C2410C}a:hover{color:#9A3412}
+.vidrio{background:rgba(255,255,255,0.58);-webkit-backdrop-filter:blur(18px) saturate(160%);backdrop-filter:blur(18px) saturate(160%);border:1px solid rgba(255,255,255,0.75);box-shadow:0 8px 28px rgba(15,23,42,0.10)}
+.vidrio-fuerte{background:rgba(255,255,255,0.78);-webkit-backdrop-filter:blur(22px) saturate(160%);backdrop-filter:blur(22px) saturate(160%);border:1px solid rgba(255,255,255,0.85)}
+.campo{box-sizing:border-box;height:52px;border-radius:16px;border:1px solid rgba(255,255,255,0.9);background:rgba(255,255,255,0.74);padding:0 16px;font:16px Inter,sans-serif;color:#111827;width:100%}
+.campo:focus{outline:2px solid #C2410C;outline-offset:1px}
+.campo::placeholder{color:#6B7280}
+</style>
+</helmet>
+<div style="width: 390px; height: 1000px; box-sizing: border-box; font-family: Inter, system-ui, sans-serif; color: #111827; position: relative; overflow: hidden; background: #EDF1F6">
+<svg aria-hidden="true" width="390" height="1000" viewBox="0 0 390 1000" style="position: absolute; left: 0; top: 0">
+<defs>
+<linearGradient id="hi-f" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#EEF1F6"></stop><stop offset="0.55" stop-color="#F3F1EE"></stop><stop offset="1" stop-color="#F6EBE0"></stop></linearGradient>
+<pattern id="hi-c" width="24" height="24" patternUnits="userSpaceOnUse"><path d="M24 0H0V24" fill="none" stroke="#94A3B8" stroke-width="0.5" opacity="0.4"></path></pattern>
+<pattern id="hi-C" width="120" height="120" patternUnits="userSpaceOnUse"><path d="M120 0H0V120" fill="none" stroke="#64748B" stroke-width="0.8" opacity="0.3"></path></pattern>
+<radialGradient id="hi-mn" cx="0.5" cy="0.5" r="0.5"><stop offset="0" stop-color="#FB923C" stop-opacity="0.5"></stop><stop offset="1" stop-color="#FB923C" stop-opacity="0"></stop></radialGradient>
+<radialGradient id="hi-ma" cx="0.5" cy="0.5" r="0.5"><stop offset="0" stop-color="#60A5FA" stop-opacity="0.4"></stop><stop offset="1" stop-color="#60A5FA" stop-opacity="0"></stop></radialGradient>
+<radialGradient id="hi-mt" cx="0.5" cy="0.5" r="0.5"><stop offset="0" stop-color="#2DD4BF" stop-opacity="0.32"></stop><stop offset="1" stop-color="#2DD4BF" stop-opacity="0"></stop></radialGradient>
+</defs>
+<rect width="390" height="1000" fill="url(#hi-f)"></rect>
+<rect width="390" height="1000" fill="url(#hi-c)"></rect>
+<rect width="390" height="1000" fill="url(#hi-C)"></rect>
+<circle cx="320" cy="180" r="200" fill="url(#hi-mn)"></circle><circle cx="40" cy="560" r="210" fill="url(#hi-mt)"></circle><circle cx="330" cy="900" r="170" fill="url(#hi-ma)"></circle>
+<g fill="none" stroke="#475569" stroke-width="1.4" opacity="0.5" stroke-linejoin="round">
+<path d="M220 160h150v90H220z"></path><path d="M220 190h150"></path><path d="M270 160v-18h50v18"></path><path d="M285 190v14h20v-14"></path>
+<path d="M40 860l60-60M92 792l16 16-20 6zM40 860l12 12"></path><path d="M150 880h80l10-20h-100z"></path></g>
+<text x="232" y="276" font-family="Inter, sans-serif" font-size="10" fill="#475569" opacity="0.7">CAJA · INVENTARIO</text>
+<g fill="none" stroke="#C2410C" stroke-width="1.1" opacity="0.55"><path d="M220 296h150M220 290v12M370 290v12"></path></g>
+</svg>
+<header style="position: relative; padding: 44px 16px 8px 12px; display: flex; align-items: center; gap: 4px">
+<a href="HerLista.dc.html" aria-label="Volver" class="vidrio" style="width: 44px; height: 44px; border-radius: 22px; margin-right: 8px; display: flex; align-items: center; justify-content: center; flex: none">
+<svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#111827" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"></path></svg>
+</a>
+<div style="display: flex; flex-direction: column; gap: 2px; min-width: 0">
+<h1 style="margin: 0; font-size: 28px; font-weight: 800; letter-spacing: -0.03em">Ingresar herramienta</h1>
+<p style="margin: 0; font-size: 14px; color: #4B5563">Una por una, con su código y estado</p>
+</div>
+</header>
+<div style="position: relative; padding: 8px 16px 24px; display: flex; flex-direction: column; gap: 14px">
+<div class="vidrio" style="border-radius: 26px; padding: 18px; display: flex; flex-direction: column; gap: 14px">
+<label style="display: flex; flex-direction: column; gap: 6px; font-size: 14px; font-weight: 600; color: #374151">Descripción *<input class="campo" value="{{desc}}" onChange="{{eDesc}}" placeholder="p. ej. Amoladora angular 4 1/2&quot;"></label>
+<label style="display: flex; flex-direction: column; gap: 6px; font-size: 14px; font-weight: 600; color: #374151">Código *<input class="campo" value="{{codigo}}" onChange="{{eCodigo}}" placeholder="El que lleva pintado o grabado"></label>
+<div style="display: flex; flex-direction: column; gap: 6px; font-size: 14px; font-weight: 600; color: #374151">Estado al ingresar *<div style="display: flex; flex-wrap: wrap; gap: 8px">
+<sc-for list="{{estados}}" as="o" hint-placeholder-count="3">
+<button onClick="{{o.elegir}}" aria-pressed="{{o.on}}" style="min-height: 44px; padding: 0 16px; border-radius: 22px; border: 0; background: {{o.bg}}; color: {{o.fg}}; font: 700 14px Inter, sans-serif; cursor: pointer">{{o.texto}}</button>
+</sc-for>
+</div></div>
+<div style="display: flex; flex-direction: column; gap: 6px; font-size: 14px; font-weight: 600; color: #374151">Fotos del estado (respaldo)
+<div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px">
+<button onClick="{{foto}}" style="aspect-ratio: 1; border-radius: 18px; border: 2px dashed #C2410C; background: rgba(255,237,213,0.6); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; font: 700 12px Inter, sans-serif; color: #9A3412; cursor: pointer">
+<svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#C2410C" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h3l2-3h6l2 3h3v11H4z"></path><circle cx="12" cy="13" r="3.5"></circle></svg>Tomar foto</button>
+<sc-for list="{{fotos}}" as="f" hint-placeholder-count="1">
+<span role="img" aria-label="Foto {{f}}" style="aspect-ratio: 1; border-radius: 18px; background: linear-gradient(135deg, #CBD5E1, #E2E8F0); display: flex; align-items: flex-end; padding: 8px; box-sizing: border-box; font-size: 11px; font-weight: 700; color: #334155">Foto {{f}}</span>
+</sc-for>
+</div></div>
+</div>
+<div class="vidrio" style="border-radius: 20px; padding: 12px 14px; font-size: 13px; color: #374151; line-height: 1.45">Cada herramienta se registra por separado: si llegan tres amoladoras, son tres ingresos, cada uno con su código. Así se sabe quién tiene cuál.</div>
+<button disabled="{{bloqueado}}" style="{{estiloBoton}}"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#FB923C" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg>Registrar ingreso</button>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":1000}}'>
+const opciones = (lista, sel, fijar, colorOn) => lista.map((t, i) => ({
+  texto: t, on: sel === i, elegir: () => fijar(i),
+  bg: sel === i ? (colorOn || '#111827') : 'rgba(255,255,255,0.82)', fg: sel === i ? '#FFFFFF' : '#111827' }));
+
+const BOTON = "height: 58px; border: 0; border-radius: 29px; background: #111827; color: #FFFFFF; display: flex; align-items: center; justify-content: center; gap: 10px; font: 600 17px Inter, sans-serif; text-decoration: none; cursor: pointer";
+const BOTON_OFF = "height: 58px; border: 0; border-radius: 29px; background: #9CA3AF; color: #FFFFFF; display: flex; align-items: center; justify-content: center; gap: 10px; font: 600 17px Inter, sans-serif; text-decoration: none; cursor: not-allowed";
+class Component extends DCLogic {
+  constructor(p) { super(p); this.state = { desc: 'Rotomartillo SDS Plus', codigo: '', estado: 1, fotos: [1] }; }
+  renderVals() {
+    const st = this.state;
+    const bloqueado = !st.desc.trim() || !st.codigo.trim() || st.estado < 0;
+    return {
+      desc: st.desc, codigo: st.codigo,
+      eDesc: (e) => this.setState({ desc: e.target.value }),
+      eCodigo: (e) => this.setState({ codigo: e.target.value }),
+      estados: opciones(['Nueva', 'Buena', 'Regular', 'Deteriorada'], st.estado, (i) => this.setState({ estado: i }), '#C2410C'),
+      fotos: st.fotos,
+      foto: () => { if (st.fotos.length < 5) this.setState({ fotos: [...st.fotos, st.fotos.length + 1] }); },
+      bloqueado, estiloBoton: bloqueado ? BOTON_OFF : BOTON
+    };
+  }
+}
+</script>
+</body>
+</html>

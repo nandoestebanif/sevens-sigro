@@ -1,0 +1,122 @@
+{
+  "v": 3,
+  "createdOnFiles": {
+    "v": 1,
+    "at": "2026-10-29T07:51:19Z"
+  },
+  "title": "SIGRO Oficina · Web (estilo vidrio)",
+  "launch": {
+    "view": "canvas"
+  },
+  "pages": [],
+  "boards": {
+    "Main.dc.html": {
+      "x": 0,
+      "y": 0,
+      "w": 1440,
+      "h": 900,
+      "title": "W1 · Entrar",
+      "expand": "fill",
+      "is_interactive": true,
+      "radius": 24
+    },
+    "Panel.dc.html": {
+      "x": 1520,
+      "y": 0,
+      "w": 1440,
+      "h": 1180,
+      "title": "W2 · Gasto en recursos (HU-23, HU-57, HU-58)",
+      "expand": "fill",
+      "is_interactive": true,
+      "radius": 24
+    },
+    "Importar.dc.html": {
+      "x": 0,
+      "y": 1400,
+      "w": 1440,
+      "h": 1120,
+      "title": "W3 · Importar del S10 (HU-07, HU-19)",
+      "expand": "fill",
+      "is_interactive": true,
+      "radius": 24
+    },
+    "Catalogo.dc.html": {
+      "x": 1520,
+      "y": 1400,
+      "w": 1440,
+      "h": 1000,
+      "title": "W4 · Catálogo de insumos (HU-08, HU-10, HU-17)",
+      "expand": "fill",
+      "is_interactive": true,
+      "radius": 24
+    },
+    "Reposicion.dc.html": {
+      "x": 0,
+      "y": 2800,
+      "w": 1440,
+      "h": 1000,
+      "title": "W5 · Reposición: saldo por comprar y parámetros (HU-24, HU-25)",
+      "expand": "fill",
+      "is_interactive": true,
+      "radius": 24
+    },
+    "Compras.dc.html": {
+      "x": 1520,
+      "y": 2800,
+      "w": 1440,
+      "h": 1120,
+      "title": "W6 · Compras (HU-29 a HU-34)",
+      "expand": "fill",
+      "is_interactive": true,
+      "radius": 24
+    },
+    "Movimientos.dc.html": {
+      "x": 0,
+      "y": 4200,
+      "w": 1440,
+      "h": 1160,
+      "title": "W7 · Ingresos y salidas: stock y kárdex (HU-43, HU-45, HU-55)",
+      "expand": "fill",
+      "is_interactive": true,
+      "radius": 24
+    },
+    "Accesos.dc.html": {
+      "x": 1520,
+      "y": 4200,
+      "w": 1440,
+      "h": 1000,
+      "title": "W8 · Usuarios y celulares (HU-13, HU-14, HU-15)",
+      "expand": "fill",
+      "is_interactive": true,
+      "radius": 24
+    }
+  },
+  "order": [
+    "Main.dc.html",
+    "Panel.dc.html",
+    "Importar.dc.html",
+    "Catalogo.dc.html",
+    "Reposicion.dc.html",
+    "Compras.dc.html",
+    "Movimientos.dc.html",
+    "Accesos.dc.html"
+  ],
+  "notes": {
+    "titulo": {
+      "x": 0,
+      "y": -300,
+      "text": "Web de oficina · mismo vidrio que la app",
+      "kind": "title1",
+      "maxW": 2960
+    },
+    "leyenda": {
+      "x": 3080,
+      "y": 0,
+      "w": 560,
+      "size": "m",
+      "fill": "orange",
+      "text": "Estilo de la app llevado a escritorio: Inter, vidrio sobre un fondo de plano distinto en cada página, acento naranja C2410C, botón negro en píldora y menú lateral con la sección activa en naranja.\n\nDatos: lo planificado, los insumos, el catálogo y los proveedores son REALES del cliente. Consumos, compras y stock son de ejemplo y cada página lo dice. Los nombres de personas van como [marcador]."
+    }
+  },
+  "designSystems": []
+}

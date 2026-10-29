@@ -1,8 +1,32 @@
-# SIGRO · toda la plataforma con un comando:   cp .env.example .env && docker compose up --build
+# SIGRO · plataforma de microservicios con un comando:   cp .env.example .env && docker compose up --build
+# La web y la app entran SOLO por el gateway: http://localhost:8000/api/v1
 # Primer administrador (una sola vez):
-#   docker compose run --rm -e SIGRO_ADMIN_CLAVE='tu-clave' api python -m app.cli primer-admin \
+#   docker compose run --rm -e SIGRO_ADMIN_CLAVE='tu-clave' obras python -m app.cli primer-admin \
 #       --usuario adiel --nombre "Víctor Adiel Luján" --obra "Multifamiliar Flores" --inicio 2026-10-19 --fin 2027-10-17
+#
+#   gateway ─┬─ obras ──────────── esquema obra       (identidad, obras, accesos, dispositivos)
+#            ├─ catalogo ───────── esquema catalogo   (insumos)
+#            ├─ compras ─────────── esquema compras    (proveedores, compras, requerimiento) ── integraciones (SUNAT/RENIEC/S10)
+#            └─ tareo ───────────── esquema tareo      (trabajadores, asistencia)
+#   obras, compras ─ outbox ─ relevo ─ notificaciones (avisos)
 name: sigro
+
+x-servicio: &servicio
+  restart: unless-stopped
+  depends_on: {migrar: {condition: service_completed_successfully}}
+
+x-comun: &comun
+  SIGRO_ENTORNO: produccion
+  SIGRO_JWT_SECRET: ${SIGRO_JWT_SECRET:?define SIGRO_JWT_SECRET en .env}
+  SIGRO_SERVICIO_TOKEN: ${SIGRO_SERVICIO_TOKEN:?define SIGRO_SERVICIO_TOKEN en .env}
+  SIGRO_CORS: ${SIGRO_CORS:-http://localhost:5173}
+  SIGRO_URL_OBRAS: http://obras:8000
+  SIGRO_URL_CATALOGO: http://catalogo:8000
+  SIGRO_URL_COMPRAS: http://compras:8000
+  SIGRO_URL_TAREO: http://tareo:8000
+  SIGRO_INTEGRACIONES_URL: http://integraciones:8000
+  SIGRO_NOTIFICACIONES_URL: http://notificaciones:8000
+
 services:
   db:
     image: postgres:16
@@ -16,37 +40,64 @@ services:
       interval: 3s
       retries: 20
 
-  migrar:                       # corre, termina y se va: migra y configura el usuario de la aplicación
-    build: ./api
+  migrar:                       # corre, termina y se va: migra y crea un usuario de base por servicio
+    build: {context: ./api, args: {SERVICIO: migrador}}
     entrypoint: ["sh", "/infra/migrar.sh"]
     environment:
       SIGRO_DATABASE_URL: postgresql+psycopg://sigro_owner:${POSTGRES_OWNER_CLAVE}@db:5432/sigro
       SIGRO_OWNER_DSN: postgresql://sigro_owner:${POSTGRES_OWNER_CLAVE}@db:5432/sigro
-      SIGRO_API_CLAVE: ${SIGRO_API_CLAVE:?define SIGRO_API_CLAVE en .env}
+      SIGRO_CLAVE_OBRAS: ${SIGRO_CLAVE_OBRAS:?define SIGRO_CLAVE_OBRAS en .env}
+      SIGRO_CLAVE_CATALOGO: ${SIGRO_CLAVE_CATALOGO:?define SIGRO_CLAVE_CATALOGO en .env}
+      SIGRO_CLAVE_COMPRAS: ${SIGRO_CLAVE_COMPRAS:?define SIGRO_CLAVE_COMPRAS en .env}
+      SIGRO_CLAVE_TAREO: ${SIGRO_CLAVE_TAREO:?define SIGRO_CLAVE_TAREO en .env}
+      SIGRO_CLAVE_RELEVO: ${SIGRO_CLAVE_RELEVO:?define SIGRO_CLAVE_RELEVO en .env}
     volumes: ["./infra:/infra:ro"]
     user: root
     depends_on: {db: {condition: service_healthy}}
     restart: "no"
 
-  api:
-    build: ./api
-    environment: &api_env
-      SIGRO_ENTORNO: produccion
-      SIGRO_APP_DATABASE_URL: postgresql+psycopg://sigro_api:${SIGRO_API_CLAVE}@db:5432/sigro
-      SIGRO_JWT_SECRET: ${SIGRO_JWT_SECRET:?define SIGRO_JWT_SECRET en .env}
-      SIGRO_INTEGRACIONES_URL: http://integraciones:8000
-      SIGRO_NOTIFICACIONES_URL: http://notificaciones:8000
-      SIGRO_SERVICIO_TOKEN: ${SIGRO_SERVICIO_TOKEN:?define SIGRO_SERVICIO_TOKEN en .env}
-      SIGRO_CORS: ${SIGRO_CORS:-http://localhost:5173}
+  gateway:                      # única puerta de entrada pública
+    build: {context: ./api, args: {SERVICIO: gateway}}
+    environment: *comun
     ports: ["8000:8000"]
-    depends_on: {migrar: {condition: service_completed_successfully}}
+    depends_on: [obras, catalogo, compras, tareo]
+    restart: unless-stopped
+
+  obras:
+    <<: *servicio
+    build: {context: ./api, args: {SERVICIO: obras}}
+    environment:
+      <<: *comun
+      SIGRO_APP_DATABASE_URL: postgresql+psycopg://sigro_obras:${SIGRO_CLAVE_OBRAS}@db:5432/sigro
+
+  catalogo:
+    <<: *servicio
+    build: {context: ./api, args: {SERVICIO: catalogo}}
+    environment:
+      <<: *comun
+      SIGRO_APP_DATABASE_URL: postgresql+psycopg://sigro_catalogo:${SIGRO_CLAVE_CATALOGO}@db:5432/sigro
+
+  compras:
+    <<: *servicio
+    build: {context: ./api, args: {SERVICIO: compras}}
+    environment:
+      <<: *comun
+      SIGRO_APP_DATABASE_URL: postgresql+psycopg://sigro_compras:${SIGRO_CLAVE_COMPRAS}@db:5432/sigro
+
+  tareo:
+    <<: *servicio
+    build: {context: ./api, args: {SERVICIO: tareo}}
+    environment:
+      <<: *comun
+      SIGRO_APP_DATABASE_URL: postgresql+psycopg://sigro_tareo:${SIGRO_CLAVE_TAREO}@db:5432/sigro
 
   relevo:                       # entrega la bandeja de salida (outbox) al microservicio de Notificaciones
-    build: ./api
+    <<: *servicio
+    build: {context: ./api, args: {SERVICIO: relevo}}
     command: ["python", "-m", "app.relay"]
-    environment: *api_env
-    depends_on: {migrar: {condition: service_completed_successfully}}
-    restart: unless-stopped
+    environment:
+      <<: *comun
+      SIGRO_APP_DATABASE_URL: postgresql+psycopg://sigro_relevo:${SIGRO_CLAVE_RELEVO}@db:5432/sigro
 
   notificaciones:
     build: ./notificaciones
@@ -55,19 +106,8 @@ services:
     volumes: [datos_notif:/datos]
     restart: unless-stopped
 
-  integraciones:                # servicio de Fernando, empaquetado sin tocar su carpeta
-    build:
-      context: ${INTEGRACIONES_DIR:-./integraciones}
-      dockerfile_inline: |
-        FROM python:3.13-slim
-        ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
-        WORKDIR /app
-        COPY requirements.txt .
-        RUN pip install --no-cache-dir -r requirements.txt
-        COPY . .
-        RUN useradd --system --no-create-home sigro && chown -R sigro /app
-        USER sigro
-        CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+  integraciones:
+    build: ./integraciones
     environment:
       FACTILIZA_TOKEN: ${FACTILIZA_TOKEN:-}
       SERVICIO_TOKEN: ${SIGRO_SERVICIO_TOKEN}      # HT-08: exige X-Servicio-Token a quien le llama

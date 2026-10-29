@@ -1,0 +1,52 @@
+digraph D {
+  graph [rankdir=LR, fontname="Helvetica", fontsize=24, labelloc=t, pad=0.4, nodesep=0.4, ranksep=1.1, compound=true, newrank=true,
+         label=<<B>SIGRO · Diagrama de despliegue (microservicios, ADR-09)</B><BR/><FONT POINT-SIZE="14">generado desde docker-compose.yml y app/enrutado.py</FONT>>];
+  node [shape=plain, fontname="Helvetica", fontsize=11]; edge [fontname="Helvetica", fontsize=10, color="#444444"];
+  subgraph cluster_clientes { label=<<B>Dispositivos de los usuarios</B>>; style="rounded,dashed"; color="#888888";
+    web [label=<<TABLE BORDER="1" CELLBORDER="0" CELLPADDING="4" COLOR="#2563EB"><TR><TD BGCOLOR="#2563EB"><FONT COLOR="white"><B>Web de oficina</B></FONT></TD></TR><TR><TD ALIGN="LEFT"><FONT POINT-SIZE="10">React 18 · navegador</FONT></TD></TR><TR><TD ALIGN="LEFT"><FONT POINT-SIZE="10">residente, administrador, gerente</FONT></TD></TR></TABLE>>];
+    app [label=<<TABLE BORDER="1" CELLBORDER="0" CELLPADDING="4" COLOR="#C2410C"><TR><TD BGCOLOR="#C2410C"><FONT COLOR="white"><B>App del almacenero</B></FONT></TD></TR><TR><TD ALIGN="LEFT"><FONT POINT-SIZE="10">KMP · Android e iOS</FONT></TD></TR><TR><TD ALIGN="LEFT"><FONT POINT-SIZE="10">Room: cola sin señal · uuid_cliente</FONT></TD></TR><TR><TD ALIGN="LEFT"><FONT POINT-SIZE="10">WorkManager reintenta al volver la señal</FONT></TD></TR></TABLE>>];
+  }
+  subgraph cluster_host { label=<<B>Servidor · Docker Compose «sigro» · red interna</B>>; style="rounded,filled"; fillcolor="#FAFAFA"; color="#111827"; penwidth=2;
+    "gateway" [label=<<TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="4" COLOR="#111827" BGCOLOR="#F3F4F6"><TR><TD BGCOLOR="#111827"><FONT COLOR="white"><B>gateway · única puerta pública</B></FONT></TD></TR><TR><TD ALIGN="LEFT"><FONT POINT-SIZE="10">build ./api · SERVICIO=gateway</FONT></TD></TR><TR><TD ALIGN="LEFT"><FONT POINT-SIZE="10">puerto público 8000</FONT></TD></TR><TR><TD ALIGN="LEFT"><FONT POINT-SIZE="10">/interno/* nunca se expone (404)</FONT></TD></TR></TABLE>>];
+    subgraph cluster_dominio { label=<<B>Microservicios de dominio</B>>; style="rounded"; color="#999999";
+      "obras" [label=<<TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="4" COLOR="#1F4E79" BGCOLOR="#EAF1F8"><TR><TD BGCOLOR="#1F4E79"><FONT COLOR="white"><B>obras</B></FONT></TD></TR><TR><TD ALIGN="LEFT"><FONT POINT-SIZE="10">build ./api · SERVICIO=obras</FONT></TD></TR><TR><TD ALIGN="LEFT"><FONT POINT-SIZE="10">solo red interna :8000</FONT></TD></TR><TR><TD ALIGN="LEFT"><FONT POINT-SIZE="10">base: usuario sigro_obras → rol sigro_svc_obras (esquema obra)</FONT></TD></TR><TR><TD ALIGN="LEFT"><FONT POINT-SIZE="10">/api/v1/{auth, usuarios, obras, notificaciones}</FONT></TD></TR></TABLE>>];
+      "catalogo" [label=<<TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="4" COLOR="#7A4B00" BGCOLOR="#FBF3E4"><TR><TD BGCOLOR="#7A4B00"><FONT COLOR="white"><B>catalogo</B></FONT></TD></TR><TR><TD ALIGN="LEFT"><FONT POINT-SIZE="10">build ./api · SERVICIO=catalogo</FONT></TD></TR><TR><TD ALIGN="LEFT"><FONT POINT-SIZE="10">solo red interna :8000</FONT></TD></TR><TR><TD ALIGN="LEFT"><FONT POINT-SIZE="10">base: usuario sigro_catalogo → rol sigro_svc_catalogo (esquema catalogo)</FONT></TD></TR><TR><TD ALIGN="LEFT"><FONT POINT-SIZE="10">/api/v1/catalogo</FONT></TD></TR></TABLE>>];
+      "compras" [label=<<TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="4" COLOR="#2E6B3A" BGCOLOR="#EAF5EC"><TR><TD BGCOLOR="#2E6B3A"><FONT COLOR="white"><B>compras</B></FONT></TD></TR><TR><TD ALIGN="LEFT"><FONT POINT-SIZE="10">build ./api · SERVICIO=compras</FONT></TD></TR><TR><TD ALIGN="LEFT"><FONT POINT-SIZE="10">solo red interna :8000</FONT></TD></TR><TR><TD ALIGN="LEFT"><FONT POINT-SIZE="10">base: usuario sigro_compras → rol sigro_svc_compras (esquema compras)</FONT></TD></TR><TR><TD ALIGN="LEFT"><FONT POINT-SIZE="10">/api/v1/obras/{id}/{compras, solicitudes, requerimiento, saldo-por-comprar, parametros-reposicion}</FONT></TD></TR><TR><TD ALIGN="LEFT"><FONT POINT-SIZE="10">/api/v1/proveedores</FONT></TD></TR></TABLE>>];
+      "tareo" [label=<<TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="4" COLOR="#6B2E6B" BGCOLOR="#F6ECF6"><TR><TD BGCOLOR="#6B2E6B"><FONT COLOR="white"><B>tareo</B></FONT></TD></TR><TR><TD ALIGN="LEFT"><FONT POINT-SIZE="10">build ./api · SERVICIO=tareo</FONT></TD></TR><TR><TD ALIGN="LEFT"><FONT POINT-SIZE="10">solo red interna :8000</FONT></TD></TR><TR><TD ALIGN="LEFT"><FONT POINT-SIZE="10">base: usuario sigro_tareo → rol sigro_svc_tareo (esquema tareo)</FONT></TD></TR><TR><TD ALIGN="LEFT"><FONT POINT-SIZE="10">/api/v1/obras/{id}/{trabajadores, jornadas, horas-acumuladas}</FONT></TD></TR></TABLE>>];
+      almacen [label=<<TABLE BORDER="1" CELLBORDER="0" CELLPADDING="4" COLOR="#999999" STYLE="dashed"><TR><TD BGCOLOR="#9CA3AF"><FONT COLOR="white"><B>almacen · costo</B></FONT></TD></TR><TR><TD ALIGN="LEFT"><FONT POINT-SIZE="10">por construir (mismo patrón)</FONT></TD></TR><TR><TD ALIGN="LEFT"><FONT POINT-SIZE="10">salidas, entradas, saldo, kárdex, costo promedio</FONT></TD></TR></TABLE>>];
+    }
+    subgraph cluster_apoyo { label=<<B>Servicios de apoyo</B>>; style="rounded"; color="#999999";
+      "relevo" [label=<<TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="4" COLOR="#8A3B12" BGCOLOR="#FBEDE6"><TR><TD BGCOLOR="#8A3B12"><FONT COLOR="white"><B>relevo</B></FONT></TD></TR><TR><TD ALIGN="LEFT"><FONT POINT-SIZE="10">build ./api · SERVICIO=relevo</FONT></TD></TR><TR><TD ALIGN="LEFT"><FONT POINT-SIZE="10">base: usuario sigro_relevo → rol sigro_svc_relevo (esquema outbox)</FONT></TD></TR><TR><TD ALIGN="LEFT"><FONT POINT-SIZE="10">proceso: python -m app.relay</FONT></TD></TR></TABLE>>];
+      "notificaciones" [label=<<TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="4" COLOR="#8A3B12" BGCOLOR="#FFF1EA"><TR><TD BGCOLOR="#8A3B12"><FONT COLOR="white"><B>notificaciones</B></FONT></TD></TR><TR><TD ALIGN="LEFT"><FONT POINT-SIZE="10">build ./notificaciones</FONT></TD></TR><TR><TD ALIGN="LEFT"><FONT POINT-SIZE="10">solo red interna :8000</FONT></TD></TR><TR><TD ALIGN="LEFT"><FONT POINT-SIZE="10">volumen datos_notif</FONT></TD></TR><TR><TD ALIGN="LEFT"><FONT POINT-SIZE="10">guarda su propia copia de los avisos</FONT></TD></TR></TABLE>>];
+      "integraciones" [label=<<TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="4" COLOR="#7A4B00" BGCOLOR="#FFF7E6"><TR><TD BGCOLOR="#7A4B00"><FONT COLOR="white"><B>integraciones</B></FONT></TD></TR><TR><TD ALIGN="LEFT"><FONT POINT-SIZE="10">build ./integraciones</FONT></TD></TR><TR><TD ALIGN="LEFT"><FONT POINT-SIZE="10">solo red interna :8000</FONT></TD></TR><TR><TD ALIGN="LEFT"><FONT POINT-SIZE="10">exige X-Servicio-Token · token de Factiliza solo en .env</FONT></TD></TR></TABLE>>];
+    }
+    subgraph cluster_datos { label=<<B>Datos</B>>; style="rounded"; color="#336791";
+      "db" [label=<<TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="4" COLOR="#336791" BGCOLOR="#EAF2FA"><TR><TD BGCOLOR="#336791"><FONT COLOR="white"><B>PostgreSQL 16 · una instancia</B></FONT></TD></TR><TR><TD ALIGN="LEFT"><FONT POINT-SIZE="10">postgres:16</FONT></TD></TR><TR><TD ALIGN="LEFT"><FONT POINT-SIZE="10">volumen datos_db</FONT></TD></TR><TR><TD ALIGN="LEFT"><FONT POINT-SIZE="10">esquemas: obra · catalogo · compras · tareo · outbox</FONT></TD></TR><TR><TD ALIGN="LEFT"><FONT POINT-SIZE="10">dueño sigro_owner (solo migrar lo usa)</FONT></TD></TR></TABLE>>];
+      "migrar" [label=<<TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="4" COLOR="#555555" BGCOLOR="#F2F2F2"><TR><TD BGCOLOR="#555555"><FONT COLOR="white"><B>migrar (one-shot)</B></FONT></TD></TR><TR><TD ALIGN="LEFT"><FONT POINT-SIZE="10">build ./api · SERVICIO=migrador</FONT></TD></TR><TR><TD ALIGN="LEFT"><FONT POINT-SIZE="10">corre una vez: alembic upgrade head + un usuario por servicio</FONT></TD></TR></TABLE>>];
+    }
+  }
+  factiliza [label=<<TABLE BORDER="1" CELLBORDER="0" CELLPADDING="4" COLOR="#666666" STYLE="dashed"><TR><TD><B>API externa de consulta</B></TD></TR><TR><TD><FONT POINT-SIZE="10">RUC (SUNAT) · DNI (RENIEC)</FONT></TD></TR></TABLE>>];
+  web -> gateway [label="HTTPS · JSON · Bearer JWT", penwidth=2];
+  app -> gateway [label="HTTPS · JSON · Bearer JWT\nreenvío idempotente", penwidth=2];
+  web -> integraciones [label="hoy: importación S10 directa\n(pendiente: pasar por el gateway)", color="#C00000", fontcolor="#C00000", style=dashed];
+  gateway -> obras [label="reenvía según enrutado.py", color="#111827"];
+  gateway -> catalogo [label="reenvía según enrutado.py", color="#111827"];
+  gateway -> compras [label="reenvía según enrutado.py", color="#111827"];
+  gateway -> tareo [label="reenvía según enrutado.py", color="#111827"];
+  gateway -> almacen [style=dashed, color="#999999"];
+  catalogo -> obras [label="POST /interno/autorizar\nX-Servicio-Token", color="#1F4E79", fontcolor="#1F4E79", style=dashed];
+  compras -> obras [label="POST /interno/autorizar · destinatarios\nX-Servicio-Token", color="#1F4E79", fontcolor="#1F4E79", style=dashed];
+  tareo -> obras [label="POST /interno/autorizar · GET periodos\nX-Servicio-Token", color="#1F4E79", fontcolor="#1F4E79", style=dashed];
+  compras -> catalogo [label="POST /interno/insumos/buscar\nX-Servicio-Token", color="#1F4E79", fontcolor="#1F4E79", style=dashed];
+  compras -> integraciones [label="GET /ruc/{ruc} (SUNAT)\nX-Servicio-Token", color="#7A4B00", fontcolor="#7A4B00", style=dashed];
+  obras -> notificaciones [label="GET /notificaciones (campana)\nX-Servicio-Token", color="#8A3B12", fontcolor="#8A3B12", style=dashed];
+  relevo -> notificaciones [label="POST /eventos\nX-Servicio-Token", color="#8A3B12", fontcolor="#8A3B12", style=dashed];
+  obras -> db [label="sigro_obras", color="#336791", fontcolor="#336791"];
+  catalogo -> db [label="sigro_catalogo", color="#336791", fontcolor="#336791"];
+  compras -> db [label="sigro_compras", color="#336791", fontcolor="#336791"];
+  tareo -> db [label="sigro_tareo", color="#336791", fontcolor="#336791"];
+  relevo -> db [label="sigro_relevo", color="#336791", fontcolor="#336791"];
+  migrar -> db [label="sigro_owner", color="#555555"];
+  integraciones -> factiliza [label="HTTPS · Bearer (token en .env)", style=dashed];
+  { rank=same; web; app; }
+}

@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Importar del S10</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;family=Sora:wght@600;700&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#C2410C}a:hover{color:#9A3412}
+.vidrio{background:rgba(255,255,255,0.58);-webkit-backdrop-filter:blur(18px) saturate(160%);backdrop-filter:blur(18px) saturate(160%);border:1px solid rgba(255,255,255,0.75);box-shadow:0 8px 28px rgba(15,23,42,0.10)}
+.vidrio-fuerte{background:rgba(255,255,255,0.78);-webkit-backdrop-filter:blur(22px) saturate(160%);backdrop-filter:blur(22px) saturate(160%);border:1px solid rgba(255,255,255,0.85)}
+.campo{box-sizing:border-box;height:48px;border-radius:14px;border:1px solid rgba(17,24,39,0.12);background:rgba(255,255,255,0.8);padding:0 14px;font:15px Inter,sans-serif;color:#111827;width:100%}
+.campo:focus,button:focus-visible,a:focus-visible{outline:2px solid #C2410C;outline-offset:2px}
+.campo::placeholder{color:#6B7280}
+.tabla{width:100%;border-collapse:collapse;font-size:14px;min-width:760px}
+.tabla th{padding:12px 14px;font-size:12px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;color:#4B5563;text-align:left;border-bottom:1px solid rgba(17,24,39,0.10)}
+.tabla td{padding:12px 14px;border-bottom:1px solid rgba(17,24,39,0.06);vertical-align:middle}
+.tabla .n{text-align:right;font-variant-numeric:tabular-nums}
+.tabla tr:last-child td{border-bottom:0}
+</style>
+</helmet>
+<div style="min-height: 1120px; box-sizing: border-box; font-family: Inter, system-ui, sans-serif; color: #111827; position: relative; overflow: hidden; background: #EDF1F6">
+<svg aria-hidden="true" width="100%" height="100%" viewBox="0 0 1440 900" preserveAspectRatio="xMidYMid slice" style="position: absolute; left: 0; top: 0">
+<defs>
+<linearGradient id="wi-f" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#EEF1F7"></stop><stop offset="0.55" stop-color="#F3F1EE"></stop><stop offset="1" stop-color="#F6EBE0"></stop></linearGradient>
+<pattern id="wi-c" width="24" height="24" patternUnits="userSpaceOnUse"><path d="M24 0H0V24" fill="none" stroke="#94A3B8" stroke-width="0.5" opacity="0.4"></path></pattern>
+<pattern id="wi-C" width="120" height="120" patternUnits="userSpaceOnUse"><path d="M120 0H0V120" fill="none" stroke="#64748B" stroke-width="0.8" opacity="0.3"></path></pattern>
+<radialGradient id="wi-mn" cx="0.5" cy="0.5" r="0.5"><stop offset="0" stop-color="#FB923C" stop-opacity="0.45"></stop><stop offset="1" stop-color="#FB923C" stop-opacity="0"></stop></radialGradient>
+<radialGradient id="wi-ma" cx="0.5" cy="0.5" r="0.5"><stop offset="0" stop-color="#60A5FA" stop-opacity="0.38"></stop><stop offset="1" stop-color="#60A5FA" stop-opacity="0"></stop></radialGradient>
+<radialGradient id="wi-mt" cx="0.5" cy="0.5" r="0.5"><stop offset="0" stop-color="#2DD4BF" stop-opacity="0.3"></stop><stop offset="1" stop-color="#2DD4BF" stop-opacity="0"></stop></radialGradient>
+</defs>
+<rect width="1440" height="900" fill="url(#wi-f)"></rect><rect width="1440" height="900" fill="url(#wi-c)"></rect><rect width="1440" height="900" fill="url(#wi-C)"></rect>
+<circle cx="1250" cy="260" r="340" fill="url(#wi-ma)"></circle><circle cx="180" cy="820" r="360" fill="url(#wi-mn)"></circle><circle cx="900" cy="1080" r="300" fill="url(#wi-mt)"></circle>
+<g fill="none" stroke="#475569" stroke-width="1.3" opacity="0.45"><path d="M1180 140h200v260h-200z"></path><path d="M1180 180h200M1180 220h200M1180 260h200M1180 300h200M1180 340h200M1240 140v260M1320 140v260"></path>
+<path d="M1150 170h200v260h-200" stroke-dasharray="4 4"></path></g><text x="1180" y="426" font-family="Inter, sans-serif" font-size="12" fill="#475569" opacity="0.7">RELACIÓN DE INSUMOS</text>
+</svg>
+<div style="position: relative; max-width: 1440px; margin: 0 auto; box-sizing: border-box; padding: 20px; display: flex; flex-wrap: wrap; gap: 20px; align-items: stretch">
+<nav aria-label="Menú principal" class="vidrio-fuerte" style="flex: 1 1 240px; max-width: 264px; box-sizing: border-box; border-radius: 30px; padding: 20px 14px 16px; display: flex; flex-direction: column; gap: 16px; box-shadow: 0 14px 40px rgba(15,23,42,0.12)">
+<a href="Panel.dc.html" style="display: flex; justify-content: center; padding: 2px 0 4px"><img src="/_blob/8e33877d36f8bc75df9452182ed5a38d" alt="SEVEN'S Ingenieros SAC" style="height: 58px; width: auto"></a>
+<a href="Panel.dc.html" class="vidrio" style="border-radius: 18px; padding: 10px 12px; display: flex; align-items: center; gap: 10px; text-decoration: none; color: #111827; box-shadow: none">
+<span style="width: 36px; height: 36px; border-radius: 12px; background: #FFEDD5; display: flex; align-items: center; justify-content: center; flex: none"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#C2410C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18M5 21V9l7-5 7 5v12M9 21v-6h6v6"></path></svg></span>
+<span style="flex: 1; min-width: 0; display: flex; flex-direction: column"><span style="font-size: 11px; font-weight: 700; letter-spacing: 0.06em; color: #6B7280">OBRA ACTIVA</span><span style="font-size: 14px; font-weight: 800">Multifamiliar Flores</span></span>
+<svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#4B5563" stroke-width="2.4" stroke-linecap="round"><path d="M6 9l6 6 6-6"></path></svg></a>
+<div style="display: flex; flex-direction: column; gap: 3px"><span style="padding: 0 10px 4px; font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #6B7280">Preparar la obra</span>
+<a href="Importar.dc.html" style="min-height: 44px; padding: 0 12px; border-radius: 15px; color: #374151; display: flex; align-items: center; gap: 10px; font-size: 14px; font-weight: 600; text-decoration: none"><svg aria-hidden="true" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#4B5563" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18M5 21V9l7-5 7 5v12M9 21v-6h6v6"></path></svg>Crear la obra</a>
+<a href="Importar.dc.html" aria-current="page" style="min-height: 44px; padding: 0 12px; border-radius: 15px; background: #C2410C; color: #FFFFFF; display: flex; align-items: center; gap: 10px; font-size: 14px; font-weight: 700; text-decoration: none; box-shadow: 0 8px 18px rgba(194,65,12,0.32)"><svg aria-hidden="true" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M7 10l5 5 5-5M4 19h16"></path></svg>Importar del S10</a>
+</div>
+<div style="display: flex; flex-direction: column; gap: 3px"><span style="padding: 0 10px 4px; font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #6B7280">Control de la obra</span>
+<a href="Panel.dc.html" style="min-height: 44px; padding: 0 12px; border-radius: 15px; color: #374151; display: flex; align-items: center; gap: 10px; font-size: 14px; font-weight: 600; text-decoration: none"><svg aria-hidden="true" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#4B5563" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"></path></svg>Gasto en recursos</a>
+<a href="Reposicion.dc.html" style="min-height: 44px; padding: 0 12px; border-radius: 15px; color: #374151; display: flex; align-items: center; gap: 10px; font-size: 14px; font-weight: 600; text-decoration: none"><svg aria-hidden="true" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#4B5563" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 15-6.7L21 8M21 3v5h-5M21 12a9 9 0 0 1-15 6.7L3 16M3 21v-5h5"></path></svg>Reposición</a>
+</div>
+<div style="display: flex; flex-direction: column; gap: 3px"><span style="padding: 0 10px 4px; font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #6B7280">Abastecimiento</span>
+<a href="Compras.dc.html" style="min-height: 44px; padding: 0 12px; border-radius: 15px; color: #374151; display: flex; align-items: center; gap: 10px; font-size: 14px; font-weight: 600; text-decoration: none"><svg aria-hidden="true" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#4B5563" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2h12v20l-3-2-3 2-3-2-3 2zM9 7h6M9 11h6M9 15h4"></path></svg>Compras</a>
+<a href="Compras.dc.html" style="min-height: 44px; padding: 0 12px; border-radius: 15px; color: #374151; display: flex; align-items: center; gap: 10px; font-size: 14px; font-weight: 600; text-decoration: none"><svg aria-hidden="true" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#4B5563" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7h13v10H3zM16 10h3l2 3v4h-5M7 20a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM18 20a2 2 0 1 0 0-4 2 2 0 0 0 0 4z"></path></svg>Proveedores</a>
+</div>
+<div style="display: flex; flex-direction: column; gap: 3px"><span style="padding: 0 10px 4px; font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #6B7280">Almacén</span>
+<a href="Movimientos.dc.html" style="min-height: 44px; padding: 0 12px; border-radius: 15px; color: #374151; display: flex; align-items: center; gap: 10px; font-size: 14px; font-weight: 600; text-decoration: none"><svg aria-hidden="true" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#4B5563" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4v16M3 8l4-4 4 4M17 20V4M13 16l4 4 4-4"></path></svg>Ingresos y salidas</a>
+</div>
+<div style="display: flex; flex-direction: column; gap: 3px"><span style="padding: 0 10px 4px; font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #6B7280">Catálogo</span>
+<a href="Catalogo.dc.html" style="min-height: 44px; padding: 0 12px; border-radius: 15px; color: #374151; display: flex; align-items: center; gap: 10px; font-size: 14px; font-weight: 600; text-decoration: none"><svg aria-hidden="true" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#4B5563" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-4-4"></path></svg>Catálogo de insumos</a>
+</div>
+<div style="display: flex; flex-direction: column; gap: 3px"><span style="padding: 0 10px 4px; font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #6B7280">Accesos</span>
+<a href="Accesos.dc.html" style="min-height: 44px; padding: 0 12px; border-radius: 15px; color: #374151; display: flex; align-items: center; gap: 10px; font-size: 14px; font-weight: 600; text-decoration: none"><svg aria-hidden="true" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#4B5563" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"></path><path d="M9 12l2 2 4-4"></path></svg>Usuarios y celulares</a>
+</div>
+<div style="margin-top: auto; border-top: 1px solid rgba(17,24,39,0.08); padding: 14px 6px 0; display: flex; align-items: center; gap: 10px">
+<span style="width: 40px; height: 40px; border-radius: 20px; background: #FEF3C7; display: flex; align-items: center; justify-content: center; flex: none">
+<svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#92400E" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 8.6a5.5 5.5 0 0 1 11 0z" fill="#FCD34D"></path><path d="M4.6 8.6h14.8M12 3.2v2.4"></path><path d="M8.2 10.6a3.8 3.8 0 0 0 7.6 0"></path><path d="M4.5 21c1-3.6 3.8-5.6 7.5-5.6s6.5 2 7.5 5.6"></path></svg></span>
+<span style="flex: 1; min-width: 0; display: flex; flex-direction: column"><span style="font-size: 14px; font-weight: 700">[Nombre del usuario]</span><span style="font-size: 12px; color: #4B5563">Residente de obra</span></span>
+<a href="Main.dc.html" aria-label="Cerrar sesión" style="width: 40px; height: 40px; border-radius: 20px; display: flex; align-items: center; justify-content: center"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4B5563" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 4h4v16h-4M10 17l5-5-5-5M15 12H3"></path></svg></a>
+</div>
+</nav>
+<main style="flex: 999 1 560px; min-width: 0; display: flex; flex-direction: column; gap: 18px">
+<header style="display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 14px; padding: 8px 4px 0">
+<div style="display: flex; flex-direction: column; gap: 4px; min-width: 0">
+<h1 style="margin: 0; font-size: 34px; font-weight: 800; letter-spacing: -0.03em">Importar del S10</h1>
+<p style="margin: 0; font-size: 15px; color: #4B5563">Relación de insumos del presupuesto: la base de la obra, sin escribir nada a mano</p>
+</div>
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 10px">
+<button aria-label="Avisos: 3 sin leer" class="vidrio" style="width: 48px; height: 48px; border-radius: 24px; display: flex; align-items: center; justify-content: center; position: relative; cursor: pointer; box-shadow: none">
+<svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#111827" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 1 1 12 0c0 7 3 9 3 9H3s3-2 3-9M10 21h4"></path></svg>
+<span style="position: absolute; top: 6px; right: 6px; min-width: 18px; height: 18px; border-radius: 9px; background: #C2410C; color: #FFFFFF; font-size: 11px; font-weight: 800; display: flex; align-items: center; justify-content: center; border: 2px solid #FFFFFF; box-sizing: border-box">3</span></button>
+<a href="Catalogo.dc.html" style="min-height: 44px; padding: 0 18px; border: 1px solid rgba(17,24,39,0.12); border-radius: 22px; background: rgba(255,255,255,0.85); color: #111827; display: inline-flex; align-items: center; justify-content: center; gap: 8px; font: 600 14px Inter, sans-serif; text-decoration: none; cursor: pointer">Ver catálogo</a>
+</div>
+</header>
+<ol style="margin: 0; padding: 0 4px; list-style: none; display: flex; flex-wrap: wrap; gap: 22px"><li style="display: flex; align-items: center; gap: 10px; font-size: 14px; font-weight: 700; color: #111827"><span style="width: 30px; height: 30px; border-radius: 15px; background: #166534; color: #FFFFFF; display: flex; align-items: center; justify-content: center; font-size: 13px">1</span>Subir el PDF</li><li style="display: flex; align-items: center; gap: 10px; font-size: 14px; font-weight: 700; color: #111827"><span style="width: 30px; height: 30px; border-radius: 15px; background: #C2410C; color: #FFFFFF; display: flex; align-items: center; justify-content: center; font-size: 13px">2</span>Revisar lo leído</li><li style="display: flex; align-items: center; gap: 10px; font-size: 14px; font-weight: 700; color: #4B5563"><span style="width: 30px; height: 30px; border-radius: 15px; background: rgba(17,24,39,0.10); color: #374151; display: flex; align-items: center; justify-content: center; font-size: 13px">3</span>Confirmar</li></ol>
+<div style="display: flex; flex-wrap: wrap; gap: 18px; align-items: stretch">
+<section class="vidrio" style="border-radius: 26px; padding: 20px 22px; flex: 1 1 340px; display: flex; flex-direction: column; gap: 14px">
+<div style="border: 2px dashed #C2410C; border-radius: 22px; background: rgba(255,237,213,0.5); padding: 22px; display: flex; align-items: center; gap: 14px">
+<span style="width: 52px; height: 60px; border-radius: 10px; background: #FFFFFF; border: 1px solid rgba(17,24,39,0.12); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 800; color: #B91C1C; flex: none">PDF</span>
+<span style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px"><span style="font-size: 15px; font-weight: 800">5.3. Relación de insumos.pdf</span><span style="font-size: 13px; color: #4B5563">Presupuesto 2701006 · subpresupuesto 002 «Multifamiliar Flores»</span></span>
+<button style="min-height: 44px; padding: 0 18px; border: 1px solid rgba(17,24,39,0.12); border-radius: 22px; background: rgba(255,255,255,0.85); color: #111827; display: inline-flex; align-items: center; justify-content: center; gap: 8px; font: 600 14px Inter, sans-serif; text-decoration: none; cursor: pointer">Cambiar</button></div>
+<ul style="margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 8px; font-size: 14px">
+<li style="display: flex; gap: 8px; align-items: center"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#166534" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10" fill="#DCFCE7" stroke="none"></circle><path d="M7.5 12.5l3 3 6-6.5"></path></svg>284 de 284 filas leídas, 0 fallidas</li>
+<li style="display: flex; gap: 8px; align-items: center"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#166534" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10" fill="#DCFCE7" stroke="none"></circle><path d="M7.5 12.5l3 3 6-6.5"></path></svg>El total cuadra al céntimo con el reporte</li>
+<li style="display: flex; gap: 8px; align-items: center"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#166534" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10" fill="#DCFCE7" stroke="none"></circle><path d="M7.5 12.5l3 3 6-6.5"></path></svg>Primera importación: los 284 se crean · al repetirla, 0 nuevos</li></ul></section>
+<section class="vidrio" style="border-radius: 26px; padding: 20px 22px; flex: 1 1 340px; display: flex; flex-direction: column; gap: 12px">
+<span style="font-size: 13px; font-weight: 600; color: #4B5563">Total del reporte</span>
+<span style="display: flex; align-items: baseline; gap: 6px"><span style="font-size: 16px; font-weight: 700; color: #4B5563">S/</span><span style="font-size: 38px; font-weight: 800; letter-spacing: -0.03em">1 479 338.33</span></span>
+<div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px">
+<div style="background: rgba(255,255,255,0.8); border-radius: 16px; padding: 10px 12px; display: flex; flex-direction: column"><span style="font-size: 13px; color: #4B5563">Materiales</span><span style="font-size: 18px; font-weight: 800">237</span><span style="font-size: 12.5px; color: #374151">S/ 768 310.00</span></div><div style="background: rgba(255,255,255,0.8); border-radius: 16px; padding: 10px 12px; display: flex; flex-direction: column"><span style="font-size: 13px; color: #4B5563">Mano de obra</span><span style="font-size: 18px; font-weight: 800">6</span><span style="font-size: 12.5px; color: #374151">S/ 542 997.71</span></div><div style="background: rgba(255,255,255,0.8); border-radius: 16px; padding: 10px 12px; display: flex; flex-direction: column"><span style="font-size: 13px; color: #4B5563">Equipos</span><span style="font-size: 18px; font-weight: 800">18</span><span style="font-size: 12.5px; color: #374151">S/ 33 310.39</span></div><div style="background: rgba(255,255,255,0.8); border-radius: 16px; padding: 10px 12px; display: flex; flex-direction: column"><span style="font-size: 13px; color: #4B5563">Subcontratos</span><span style="font-size: 18px; font-weight: 800">23</span><span style="font-size: 12.5px; color: #374151">S/ 134 720.22</span></div>
+</div></section></div>
+<section class="vidrio" style="border-radius: 26px; padding: 20px 22px; display: flex; flex-direction: column; gap: 12px">
+<div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 10px"><h2 style="margin: 0; font-size: 18px; font-weight: 800; letter-spacing: -0.01em">Lo que se va a importar</h2>
+<div role="tablist" style="display: flex; flex-wrap: wrap; gap: 6px"><sc-for list="{{pestanas}}" as="t" hint-placeholder-count="4"><button role="tab" aria-selected="{{t.on}}" onClick="{{t.elegir}}" style="min-height: 40px; padding: 0 14px; border: 0; border-radius: 20px; background: {{t.bg}}; color: {{t.fg}}; font: 700 13px Inter, sans-serif; cursor: pointer">{{t.texto}}</button></sc-for></div></div>
+<div style="overflow-x: auto"><table class="tabla"><thead><tr><th>Código S10</th><th>Descripción</th><th>Und.</th><th class="n">Cantidad</th><th class="n">Precio S/</th><th class="n">Parcial S/</th><th>Acción</th></tr></thead><tbody>
+<sc-for list="{{filas}}" as="r" hint-placeholder-count="5"><tr><td style="font-variant-numeric: tabular-nums; color: #4B5563">{{r.c}}</td><td style="font-weight: 600">{{r.d}}</td><td>{{r.u}}</td><td class="n">{{r.cant}}</td><td class="n">{{r.p}}</td><td class="n">{{r.parc}}</td><td><span style="display: inline-flex; align-items: center; gap: 6px; border-radius: 999px; padding: 4px 11px; font-size: 12px; font-weight: 700; white-space: nowrap; background: #DCFCE7; color: #166534">Crear</span></td></tr></sc-for></tbody></table></div>
+<span style="font-size: 13px; color: #4B5563">{{nota}}</span></section>
+<div style="display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 10px"><a href="Catalogo.dc.html" style="min-height: 44px; padding: 0 18px; border: 1px solid rgba(17,24,39,0.12); border-radius: 22px; background: rgba(255,255,255,0.85); color: #111827; display: inline-flex; align-items: center; justify-content: center; gap: 8px; font: 600 14px Inter, sans-serif; text-decoration: none; cursor: pointer">Cancelar</a><a href="Catalogo.dc.html" style="min-height: 48px; padding: 0 22px; border: 0; border-radius: 24px; background: #111827; color: #FFFFFF; display: inline-flex; align-items: center; justify-content: center; gap: 8px; font: 600 15px Inter, sans-serif; text-decoration: none; cursor: pointer; box-shadow: 0 10px 22px rgba(17,24,39,0.25)">Confirmar e importar 284 insumos</a></div>
+</main>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1120}}'>
+const DATOS = {"material": [{"c": "0203020004", "d": "ACERO CORRUGADO FY= 4200 Kg/cm2", "u": "kg", "cant": "36 357.42", "p": "4.54", "parc": "165 062.69"}, {"c": "0221000000", "d": "CEMENTO PORTLAND TIPO I (42.50 KG.)", "u": "bls", "cant": "3 492.36", "p": "36.00", "parc": "125 724.96"}, {"c": "0217080008", "d": "LADRILLO K.K. 9x13x24 (18 Huecos)", "u": "und", "cant": "21 684.93", "p": "1.18", "parc": "25 588.22"}, {"c": "0205010033", "d": "ARENA GRUESA", "u": "m3", "cant": "186.18", "p": "80.00", "parc": "14 894.77"}, {"c": "0204000000", "d": "ARENA FINA", "u": "m3", "cant": "54.79", "p": "95.00", "parc": "5 205.44"}, {"c": "0202000007", "d": "ALAMBRE NEGRO RECOCIDO # 16", "u": "kg", "cant": "1 385.27", "p": "6.00", "parc": "8 311.59"}], "mano_obra": [{"c": "0147010002", "d": "OPERARIO", "u": "hh", "cant": "10 108.09", "p": "29.99", "parc": "303 141.59"}, {"c": "0147010003", "d": "OFICIAL", "u": "hh", "cant": "4 702.01", "p": "23.60", "parc": "110 967.51"}, {"c": "0147010004", "d": "PEON", "u": "hh", "cant": "5 886.77", "p": "21.36", "parc": "125 741.48"}, {"c": "0147000022", "d": "OPERARIO DE EQUIPO LIVIANO", "u": "hh", "cant": "1.84", "p": "30.20", "parc": "55.71"}], "equipo": [{"c": "0348010011", "d": "MEZCLADORA DE CONCRETO DE 9 -11P3", "u": "hm", "cant": "161.13", "p": "15.00", "parc": "2 416.89"}, {"c": "0348090011", "d": "ANDAMIO METAL TABLAS-ALQUILER", "u": "HE", "cant": "630.96", "p": "3.75", "parc": "2 366.09"}, {"c": "0348960005", "d": "CIZALLA P/CORTE DE FIERRO", "u": "hm", "cant": "314.90", "p": "5.00", "parc": "1 574.49"}, {"c": "0384010002", "d": "PISON DE MANO", "u": "und", "cant": "665.20", "p": "20.00", "parc": "13 304.00"}], "subcontrato": [{"c": "0401010020", "d": "VENTANA METALICA DE 1.30X0.30M SEGUN DISEÑO", "u": "und", "cant": "95.71", "p": "250.00", "parc": "23 927.50"}, {"c": "0401030192", "d": "BAÑOS QUIMICOS INCLUYE ACCESORIOS", "u": "und", "cant": "8.00", "p": "500.00", "parc": "4 000.00"}, {"c": "0401030201", "d": "PUERTA DE MADERA SOLIDA P5 DE (0.95x2.10M)", "u": "und", "cant": "6.00", "p": "2,300.00", "parc": "13 800.00"}]};
+const TIPOS = [['material', 'Materiales · 237'], ['mano_obra', 'Mano de obra · 6'], ['equipo', 'Equipos · 18'], ['subcontrato', 'Subcontratos · 23']];
+class Component extends DCLogic {
+  constructor(p) { super(p); this.state = { t: 'material' }; }
+  renderVals() { const t = this.state.t;
+    return { filas: DATOS[t], nota: 'Vista previa: primeras filas de ' + TIPOS.find((x) => x[0] === t)[1].toLowerCase() + '. Los datos son los del reporte real del cliente.',
+      pestanas: TIPOS.map(([k, n]) => ({ texto: n, on: t === k, elegir: () => this.setState({ t: k }), bg: t === k ? '#111827' : 'rgba(255,255,255,0.8)', fg: t === k ? '#FFFFFF' : '#111827' })) }; }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Entrar · Oficina de obra</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;family=Sora:wght@600;700&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#C2410C}a:hover{color:#9A3412}
+.vidrio{background:rgba(255,255,255,0.58);-webkit-backdrop-filter:blur(18px) saturate(160%);backdrop-filter:blur(18px) saturate(160%);border:1px solid rgba(255,255,255,0.75);box-shadow:0 8px 28px rgba(15,23,42,0.10)}
+.vidrio-fuerte{background:rgba(255,255,255,0.78);-webkit-backdrop-filter:blur(22px) saturate(160%);backdrop-filter:blur(22px) saturate(160%);border:1px solid rgba(255,255,255,0.85)}
+.campo{box-sizing:border-box;height:48px;border-radius:14px;border:1px solid rgba(17,24,39,0.12);background:rgba(255,255,255,0.8);padding:0 14px;font:15px Inter,sans-serif;color:#111827;width:100%}
+.campo:focus,button:focus-visible,a:focus-visible{outline:2px solid #C2410C;outline-offset:2px}
+.campo::placeholder{color:#6B7280}
+.tabla{width:100%;border-collapse:collapse;font-size:14px;min-width:760px}
+.tabla th{padding:12px 14px;font-size:12px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;color:#4B5563;text-align:left;border-bottom:1px solid rgba(17,24,39,0.10)}
+.tabla td{padding:12px 14px;border-bottom:1px solid rgba(17,24,39,0.06);vertical-align:middle}
+.tabla .n{text-align:right;font-variant-numeric:tabular-nums}
+.tabla tr:last-child td{border-bottom:0}
+</style>
+</helmet>
+<div style="min-height: 900px; box-sizing: border-box; font-family: Inter, system-ui, sans-serif; color: #111827; position: relative; overflow: hidden; background: #EDF1F6">
+<svg aria-hidden="true" width="100%" height="100%" viewBox="0 0 1440 900" preserveAspectRatio="xMidYMid slice" style="position: absolute; left: 0; top: 0">
+<defs>
+<linearGradient id="we-f" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#EEF1F6"></stop><stop offset="0.55" stop-color="#F2F0EE"></stop><stop offset="1" stop-color="#F5EAE1"></stop></linearGradient>
+<pattern id="we-c" width="24" height="24" patternUnits="userSpaceOnUse"><path d="M24 0H0V24" fill="none" stroke="#94A3B8" stroke-width="0.5" opacity="0.4"></path></pattern>
+<pattern id="we-C" width="120" height="120" patternUnits="userSpaceOnUse"><path d="M120 0H0V120" fill="none" stroke="#64748B" stroke-width="0.8" opacity="0.3"></path></pattern>
+<radialGradient id="we-mn" cx="0.5" cy="0.5" r="0.5"><stop offset="0" stop-color="#FB923C" stop-opacity="0.45"></stop><stop offset="1" stop-color="#FB923C" stop-opacity="0"></stop></radialGradient>
+<radialGradient id="we-ma" cx="0.5" cy="0.5" r="0.5"><stop offset="0" stop-color="#60A5FA" stop-opacity="0.38"></stop><stop offset="1" stop-color="#60A5FA" stop-opacity="0"></stop></radialGradient>
+<radialGradient id="we-mt" cx="0.5" cy="0.5" r="0.5"><stop offset="0" stop-color="#2DD4BF" stop-opacity="0.3"></stop><stop offset="1" stop-color="#2DD4BF" stop-opacity="0"></stop></radialGradient>
+</defs>
+<rect width="1440" height="900" fill="url(#we-f)"></rect><rect width="1440" height="900" fill="url(#we-c)"></rect><rect width="1440" height="900" fill="url(#we-C)"></rect>
+<circle cx="1150" cy="640" r="380" fill="url(#we-mn)"></circle><circle cx="220" cy="820" r="340" fill="url(#we-ma)"></circle><circle cx="700" cy="120" r="260" fill="url(#we-mt)"></circle>
+<g fill="none" stroke="#475569" stroke-width="1" opacity="0.4" stroke-dasharray="8 6"><path d="M80 120v720M440 120v720M800 120v720M1160 120v720M40 200h1360M40 520h1360M40 820h1360"></path></g>
+<g fill="none" stroke="#475569" stroke-width="1.3" opacity="0.55"><circle cx="80" cy="104" r="14"></circle><circle cx="440" cy="104" r="14"></circle><circle cx="800" cy="104" r="14"></circle><circle cx="1160" cy="104" r="14"></circle></g>
+<g fill="#475569" opacity="0.6" font-family="Inter, sans-serif" font-size="12" font-weight="700" text-anchor="middle"><text x="80" y="108">A</text><text x="440" y="108">B</text><text x="800" y="108">C</text><text x="1160" y="108">D</text></g>
+<g fill="none" stroke="#475569" stroke-width="4" opacity="0.4"><path d="M80 200h300M500 200h660v320M1160 600v220H860M760 820H80V600M80 520V200M800 200v200M800 480v340M80 520h300M520 520h640"></path></g>
+<g fill="none" stroke="#C2410C" stroke-width="1.2" opacity="0.55"><path d="M80 860h1080M80 852v16M1160 852v16"></path></g>
+<text x="590" y="884" font-family="Inter, sans-serif" font-size="12" fill="#C2410C" opacity="0.75">32.40 m</text>
+</svg>
+<div style="position: relative; max-width: 1240px; min-height: 900px; margin: 0 auto; box-sizing: border-box; padding: 40px 24px; display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 28px">
+<section style="flex: 1 1 520px; max-width: 700px; min-height: 640px; box-sizing: border-box; border-radius: 40px; background: #0F172A; color: #FFFFFF; position: relative; overflow: hidden; padding: 48px; display: flex; flex-direction: column; justify-content: space-between; gap: 28px; box-shadow: 0 30px 60px rgba(15,23,42,0.30)">
+<svg aria-hidden="true" width="100%" height="100%" viewBox="0 0 700 640" preserveAspectRatio="xMidYMid slice" style="position: absolute; left: 0; top: 0">
+<defs><radialGradient id="we-g" cx="0.5" cy="0.5" r="0.5"><stop offset="0" stop-color="#FB923C" stop-opacity="0.45"></stop><stop offset="1" stop-color="#FB923C" stop-opacity="0"></stop></radialGradient>
+<pattern id="we-gc" width="28" height="28" patternUnits="userSpaceOnUse"><path d="M28 0H0V28" fill="none" stroke="#334155" stroke-width="0.6"></path></pattern></defs>
+<rect width="700" height="640" fill="url(#we-gc)" opacity="0.6"></rect>
+<circle cx="600" cy="560" r="300" fill="url(#we-g)"></circle>
+<g fill="none" stroke="#64748B" stroke-width="2" opacity="0.7"><path d="M360 640V300h160v340M360 340h160M360 380h160M360 420h160M360 460h160M360 500h160M360 540h160M360 580h160M413 300v340M466 300v340"></path>
+<path d="M540 640V220h120v420M540 260h120M540 300h120M540 340h120M540 380h120M540 420h120M540 460h120M540 500h120M540 540h120M540 580h120M600 220v420"></path>
+<path d="M630 220V90M630 90H470M630 90h50M470 90v30M455 120h30v14h-30zM630 110l-20 20M630 140l-20 20M630 170l-20 20"></path></g>
+</svg>
+<img src="/_blob/58ea577653ffe19342a62be9c52e1c0f" alt="SEVEN'S Ingenieros SAC" style="position: relative; height: 120px; width: auto; align-self: flex-start">
+<div style="position: relative; display: flex; flex-direction: column; gap: 18px; max-width: 420px">
+<span style="display: flex; align-items: center; gap: 12px"><span style="width: 28px; height: 1.5px; background: #FDBA74"></span>
+<span style="font-family: Sora, Inter, sans-serif; font-size: 18px; font-weight: 600; letter-spacing: 0.26em; text-transform: uppercase">Oficina de obra</span></span>
+<h1 style="margin: 0; font-size: 40px; font-weight: 800; line-height: 1.12; letter-spacing: -0.03em">Lo que pide el S10, lo que se compra y lo que se gasta. En un solo lugar.</h1>
+<ul style="margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 12px; font-size: 16px; color: #E2E8F0">
+<li style="display: flex; gap: 10px; align-items: flex-start"><span style="width: 24px; height: 24px; border-radius: 12px; background: rgba(251,146,60,0.2); display: flex; align-items: center; justify-content: center; flex: none"><svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#FDBA74" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg></span>El presupuesto del S10 se importa tal cual: 284 insumos, al céntimo.</li>
+<li style="display: flex; gap: 10px; align-items: flex-start"><span style="width: 24px; height: 24px; border-radius: 12px; background: rgba(251,146,60,0.2); display: flex; align-items: center; justify-content: center; flex: none"><svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#FDBA74" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg></span>El almacén registra ingresos y salidas desde la obra, aunque no haya señal.</li>
+<li style="display: flex; gap: 10px; align-items: flex-start"><span style="width: 24px; height: 24px; border-radius: 12px; background: rgba(251,146,60,0.2); display: flex; align-items: center; justify-content: center; flex: none"><svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#FDBA74" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg></span>El gasto en recursos se compara con lo planificado, insumo por insumo.</li>
+</ul></div>
+<span style="position: relative; font-size: 13px; color: #94A3B8">SEVENS INGENIEROS SAC · SIGRO</span>
+</section>
+<section class="vidrio-fuerte" style="flex: 1 1 360px; max-width: 440px; box-sizing: border-box; border-radius: 34px; padding: 36px 32px; display: flex; flex-direction: column; gap: 16px; box-shadow: 0 24px 50px rgba(15,23,42,0.16)">
+<div style="display: flex; flex-direction: column; gap: 6px"><h2 style="margin: 0; font-size: 30px; font-weight: 800; letter-spacing: -0.03em">Ingresar</h2>
+<p style="margin: 0; font-size: 15px; color: #4B5563">Con tu usuario de SIGRO. Verás solo las obras donde estás asignado.</p></div>
+<label style="display: flex; flex-direction: column; gap: 6px; font-size: 14px; font-weight: 600; color: #374151">Usuario
+<span style="position: relative; display: flex; align-items: center"><input class="campo" placeholder="Tu usuario" autocomplete="username" style="padding-right: 46px">
+<svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round" style="position: absolute; right: 14px"><path d="M6.5 8.6a5.5 5.5 0 0 1 11 0z" fill="#F59E0B" stroke="#B45309" stroke-width="1.6"></path><path d="M4.6 8.6h14.8M12 3.2v2.4" stroke="#B45309" stroke-width="1.8"></path><path d="M8.2 10.6a3.8 3.8 0 0 0 7.6 0M4.5 21c1-3.6 3.8-5.6 7.5-5.6s6.5 2 7.5 5.6" stroke="#64748B" stroke-width="2"></path></svg></span></label>
+<label style="display: flex; flex-direction: column; gap: 6px; font-size: 14px; font-weight: 600; color: #374151">Clave
+<span style="position: relative; display: flex; align-items: center"><input class="campo" type="{{tipoClave}}" placeholder="Tu clave" autocomplete="current-password" style="padding-right: 52px">
+<button onClick="{{alternar}}" aria-label="{{textoOjo}}" style="position: absolute; right: 4px; width: 44px; height: 44px; border: 0; background: transparent; border-radius: 22px; display: flex; align-items: center; justify-content: center; cursor: pointer">
+<svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#4B5563" stroke-width="2" stroke-linecap="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"></path><circle cx="12" cy="12" r="3"></circle></svg></button></span></label>
+<label style="display: flex; align-items: center; gap: 10px; font-size: 14px; color: #374151; min-height: 44px"><input type="checkbox" style="width: 20px; height: 20px; accent-color: #C2410C">Recordar mi usuario en este equipo</label>
+<a href="Panel.dc.html" style="min-height: 48px; padding: 0 22px; border: 0; border-radius: 24px; background: #111827; color: #FFFFFF; display: inline-flex; align-items: center; justify-content: center; gap: 8px; font: 600 15px Inter, sans-serif; text-decoration: none; cursor: pointer; box-shadow: 0 10px 22px rgba(17,24,39,0.25); min-height: 56px; border-radius: 28px; font-size: 16px">Entrar</a>
+<p style="margin: 0; text-align: center; font-size: 14px; color: #4B5563">¿No tienes usuario? <span style="color: #C2410C; font-weight: 700">Pídelo al administrador de la obra</span></p>
+<span style="align-self: center; font-size: 13px; color: #4B5563; display: flex; align-items: center; gap: 6px; min-height: 32px">
+<svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#4B5563" stroke-width="2"><rect x="3" y="4" width="18" height="6" rx="1.5"></rect><rect x="3" y="14" width="18" height="6" rx="1.5"></rect></svg>Servidor: pruebas.sigro</span>
+</section>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  constructor(p) { super(p); this.state = { ver: false }; }
+  renderVals() { const v = this.state.ver;
+    return { tipoClave: v ? 'text' : 'password', textoOjo: v ? 'Ocultar clave' : 'Mostrar clave', alternar: () => this.setState({ ver: !v }) }; }
+}
+</script>
+</body>
+</html>

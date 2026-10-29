@@ -1,0 +1,2219 @@
+{
+ "openapi": "3.1.0",
+ "info": {
+  "title": "SIGRO · servicio obras",
+  "description": "Identidad, obras, accesos y dispositivos. Responde a los demás servicios quién puede qué.",
+  "version": "0.2.0"
+ },
+ "paths": {
+  "/salud": {
+   "get": {
+    "tags": [
+     "sistema"
+    ],
+    "summary": "Salud",
+    "operationId": "salud_salud_get",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/auth/login": {
+   "post": {
+    "tags": [
+     "sesión"
+    ],
+    "summary": "Iniciar Sesion",
+    "operationId": "iniciar_sesion_api_v1_auth_login_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/LoginIn"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/SesionOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/auth/yo": {
+   "get": {
+    "tags": [
+     "sesión"
+    ],
+    "summary": "Quien Soy",
+    "operationId": "quien_soy_api_v1_auth_yo_get",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/YoOut"
+        }
+       }
+      }
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ]
+   }
+  },
+  "/api/v1/auth/cambiar-clave": {
+   "post": {
+    "tags": [
+     "sesión"
+    ],
+    "summary": "Cambiar Clave",
+    "operationId": "cambiar_clave_api_v1_auth_cambiar_clave_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/CambiarClaveIn"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "204": {
+      "description": "Successful Response"
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ]
+   }
+  },
+  "/api/v1/usuarios": {
+   "get": {
+    "tags": [
+     "usuarios"
+    ],
+    "summary": "Listar Usuarios",
+    "operationId": "listar_usuarios_api_v1_usuarios_get",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "items": {
+          "$ref": "#/components/schemas/UsuarioOut"
+         },
+         "type": "array",
+         "title": "Response Listar Usuarios Api V1 Usuarios Get"
+        }
+       }
+      }
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ]
+   },
+   "post": {
+    "tags": [
+     "usuarios"
+    ],
+    "summary": "Crear Usuario",
+    "operationId": "crear_usuario_api_v1_usuarios_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/UsuarioIn"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "201": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/UsuarioOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ]
+   }
+  },
+  "/api/v1/usuarios/{usuario_id}/baja": {
+   "post": {
+    "tags": [
+     "usuarios"
+    ],
+    "summary": "Dar De Baja Usuario",
+    "description": "Nada se borra, tampoco las personas (R10): la baja es un estado con fecha, y corta el acceso al instante.",
+    "operationId": "dar_de_baja_usuario_api_v1_usuarios__usuario_id__baja_post",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "usuario_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Usuario Id"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/UsuarioOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/obras": {
+   "get": {
+    "tags": [
+     "obra"
+    ],
+    "summary": "Listar Obras",
+    "description": "Solo las obras donde la persona está asignada (R9).",
+    "operationId": "listar_obras_api_v1_obras_get",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "items": {
+          "$ref": "#/components/schemas/ObraOut"
+         },
+         "type": "array",
+         "title": "Response Listar Obras Api V1 Obras Get"
+        }
+       }
+      }
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ]
+   },
+   "post": {
+    "tags": [
+     "obra"
+    ],
+    "summary": "Crear Obra",
+    "description": "Los periodos nacen solos (HU-03). Quien crea la obra queda asignado a ella con su mismo rol.",
+    "operationId": "crear_obra_api_v1_obras_post",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/ObraIn"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "201": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ObraOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    },
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ]
+   }
+  },
+  "/api/v1/obras/{obra_id}": {
+   "get": {
+    "tags": [
+     "obra"
+    ],
+    "summary": "Ver Obra",
+    "operationId": "ver_obra_api_v1_obras__obra_id__get",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "obra_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "minimum": 1,
+       "title": "Obra Id"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ObraOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/obras/{obra_id}/ampliar-plazo": {
+   "post": {
+    "tags": [
+     "obra"
+    ],
+    "summary": "Ampliar Plazo",
+    "description": "HU-02: el plazo no se pisa; la ampliación deja rastro y genera los periodos que faltan.",
+    "operationId": "ampliar_plazo_api_v1_obras__obra_id__ampliar_plazo_post",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "obra_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "minimum": 1,
+       "title": "Obra Id"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/AmpliarPlazoIn"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ObraOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/obras/{obra_id}/plazo-historial": {
+   "get": {
+    "tags": [
+     "obra"
+    ],
+    "summary": "Historial Plazo",
+    "operationId": "historial_plazo_api_v1_obras__obra_id__plazo_historial_get",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "obra_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "minimum": 1,
+       "title": "Obra Id"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "type": "array",
+         "items": {
+          "$ref": "#/components/schemas/PlazoHistorialOut"
+         },
+         "title": "Response Historial Plazo Api V1 Obras  Obra Id  Plazo Historial Get"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/obras/{obra_id}/periodos": {
+   "get": {
+    "tags": [
+     "obra"
+    ],
+    "summary": "Listar Periodos",
+    "operationId": "listar_periodos_api_v1_obras__obra_id__periodos_get",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "obra_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "minimum": 1,
+       "title": "Obra Id"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "type": "array",
+         "items": {
+          "$ref": "#/components/schemas/PeriodoOut"
+         },
+         "title": "Response Listar Periodos Api V1 Obras  Obra Id  Periodos Get"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/obras/{obra_id}/almacenes": {
+   "get": {
+    "tags": [
+     "obra"
+    ],
+    "summary": "Listar Almacenes",
+    "operationId": "listar_almacenes_api_v1_obras__obra_id__almacenes_get",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "obra_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "minimum": 1,
+       "title": "Obra Id"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "type": "array",
+         "items": {
+          "$ref": "#/components/schemas/AlmacenOut"
+         },
+         "title": "Response Listar Almacenes Api V1 Obras  Obra Id  Almacenes Get"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   },
+   "post": {
+    "tags": [
+     "obra"
+    ],
+    "summary": "Crear Almacen",
+    "operationId": "crear_almacen_api_v1_obras__obra_id__almacenes_post",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "obra_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "minimum": 1,
+       "title": "Obra Id"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/AlmacenIn"
+       }
+      }
+     }
+    },
+    "responses": {
+     "201": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/AlmacenOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/obras/{obra_id}/asignaciones": {
+   "get": {
+    "tags": [
+     "obra"
+    ],
+    "summary": "Listar Asignaciones",
+    "operationId": "listar_asignaciones_api_v1_obras__obra_id__asignaciones_get",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "obra_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "minimum": 1,
+       "title": "Obra Id"
+      }
+     },
+     {
+      "name": "vigentes",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "boolean",
+       "default": true,
+       "title": "Vigentes"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "type": "array",
+         "items": {
+          "$ref": "#/components/schemas/AsignacionOut"
+         },
+         "title": "Response Listar Asignaciones Api V1 Obras  Obra Id  Asignaciones Get"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   },
+   "post": {
+    "tags": [
+     "obra"
+    ],
+    "summary": "Asignar",
+    "description": "El rol vive junto a la obra (R9): la misma persona puede ser almacenero aquí y nada allá.",
+    "operationId": "asignar_api_v1_obras__obra_id__asignaciones_post",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "obra_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "minimum": 1,
+       "title": "Obra Id"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/AsignacionIn"
+       }
+      }
+     }
+    },
+    "responses": {
+     "201": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/AsignacionOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/obras/{obra_id}/asignaciones/{asignacion_id}/retiro": {
+   "post": {
+    "tags": [
+     "obra"
+    ],
+    "summary": "Retirar",
+    "description": "No se borra: se retira con fecha. Tampoco se deja la obra sin administrador.",
+    "operationId": "retirar_api_v1_obras__obra_id__asignaciones__asignacion_id__retiro_post",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "asignacion_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Asignacion Id"
+      }
+     },
+     {
+      "name": "obra_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "minimum": 1,
+       "title": "Obra Id"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/AsignacionOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/obras/{obra_id}/dispositivos": {
+   "get": {
+    "tags": [
+     "obra"
+    ],
+    "summary": "Listar Dispositivos",
+    "operationId": "listar_dispositivos_api_v1_obras__obra_id__dispositivos_get",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "obra_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "minimum": 1,
+       "title": "Obra Id"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "type": "array",
+         "items": {
+          "$ref": "#/components/schemas/DispositivoOut"
+         },
+         "title": "Response Listar Dispositivos Api V1 Obras  Obra Id  Dispositivos Get"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   },
+   "post": {
+    "tags": [
+     "obra"
+    ],
+    "summary": "Solicitar Dispositivo",
+    "description": "El almacenero o el SSOMA pide autorizar su celular. Queda pendiente hasta que un administrador lo autorice.",
+    "operationId": "solicitar_dispositivo_api_v1_obras__obra_id__dispositivos_post",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "obra_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "minimum": 1,
+       "title": "Obra Id"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/DispositivoIn"
+       }
+      }
+     }
+    },
+    "responses": {
+     "201": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/DispositivoOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/obras/{obra_id}/dispositivos/{dispositivo_id}/autorizar": {
+   "post": {
+    "tags": [
+     "obra"
+    ],
+    "summary": "Autorizar Dispositivo",
+    "description": "La regla de «un dispositivo por responsable, máximo dos por obra» la sostiene el motor (disparador + bloqueo).",
+    "operationId": "autorizar_dispositivo_api_v1_obras__obra_id__dispositivos__dispositivo_id__autorizar_post",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "dispositivo_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Dispositivo Id"
+      }
+     },
+     {
+      "name": "obra_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "minimum": 1,
+       "title": "Obra Id"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/DispositivoOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/obras/{obra_id}/dispositivos/{dispositivo_id}/revocar": {
+   "post": {
+    "tags": [
+     "obra"
+    ],
+    "summary": "Revocar Dispositivo",
+    "operationId": "revocar_dispositivo_api_v1_obras__obra_id__dispositivos__dispositivo_id__revocar_post",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "dispositivo_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Dispositivo Id"
+      }
+     },
+     {
+      "name": "obra_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "minimum": 1,
+       "title": "Obra Id"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/RevocarIn"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/DispositivoOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/notificaciones": {
+   "get": {
+    "tags": [
+     "notificaciones"
+    ],
+    "summary": "Mis Notificaciones",
+    "operationId": "mis_notificaciones_api_v1_notificaciones_get",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "solo_no_leidas",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "boolean",
+       "default": false,
+       "title": "Solo No Leidas"
+      }
+     },
+     {
+      "name": "limite",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "integer",
+       "maximum": 200,
+       "minimum": 1,
+       "default": 50,
+       "title": "Limite"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/notificaciones/{notificacion_id}/leida": {
+   "post": {
+    "tags": [
+     "notificaciones"
+    ],
+    "summary": "Marcar Leida",
+    "operationId": "marcar_leida_api_v1_notificaciones__notificacion_id__leida_post",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "notificacion_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Notificacion Id"
+      }
+     }
+    ],
+    "responses": {
+     "204": {
+      "description": "Successful Response"
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/interno/autorizar": {
+   "post": {
+    "tags": [
+     "interno"
+    ],
+    "summary": "Autorizar",
+    "description": "Regla 9 para los demás servicios: 401 si la persona no existe o está de baja; 403 si su rol vigente no alcanza.",
+    "operationId": "autorizar_interno_autorizar_post",
+    "parameters": [
+     {
+      "name": "x-servicio-token",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "X-Servicio-Token"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/AutorizarIn"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/AutorizarOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/interno/obras/{obra_id}": {
+   "get": {
+    "tags": [
+     "interno"
+    ],
+    "summary": "Obra Resumen",
+    "operationId": "obra_resumen_interno_obras__obra_id__get",
+    "parameters": [
+     {
+      "name": "obra_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Obra Id"
+      }
+     },
+     {
+      "name": "x-servicio-token",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "X-Servicio-Token"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/interno/obras/{obra_id}/destinatarios": {
+   "get": {
+    "tags": [
+     "interno"
+    ],
+    "summary": "Destinatarios",
+    "description": "Usuarios activos con alguno de esos roles vigentes en la obra (a quién avisar de un evento).",
+    "operationId": "destinatarios_interno_obras__obra_id__destinatarios_get",
+    "parameters": [
+     {
+      "name": "obra_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Obra Id"
+      }
+     },
+     {
+      "name": "roles",
+      "in": "query",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "minLength": 1,
+       "title": "Roles"
+      }
+     },
+     {
+      "name": "excepto",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "integer"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Excepto"
+      }
+     },
+     {
+      "name": "x-servicio-token",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "X-Servicio-Token"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "type": "array",
+         "items": {
+          "type": "integer"
+         },
+         "title": "Response Destinatarios Interno Obras  Obra Id  Destinatarios Get"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/interno/obras/{obra_id}/periodos": {
+   "get": {
+    "tags": [
+     "interno"
+    ],
+    "summary": "Periodos",
+    "operationId": "periodos_interno_obras__obra_id__periodos_get",
+    "parameters": [
+     {
+      "name": "obra_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Obra Id"
+      }
+     },
+     {
+      "name": "x-servicio-token",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "X-Servicio-Token"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  }
+ },
+ "components": {
+  "schemas": {
+   "AlmacenIn": {
+    "properties": {
+     "nombre": {
+      "type": "string",
+      "maxLength": 80,
+      "minLength": 1,
+      "title": "Nombre"
+     },
+     "tipo": {
+      "type": "string",
+      "enum": [
+       "central",
+       "frente"
+      ],
+      "title": "Tipo",
+      "default": "frente"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "nombre"
+    ],
+    "title": "AlmacenIn"
+   },
+   "AlmacenOut": {
+    "properties": {
+     "id": {
+      "type": "integer",
+      "title": "Id"
+     },
+     "nombre": {
+      "type": "string",
+      "title": "Nombre"
+     },
+     "tipo": {
+      "type": "string",
+      "title": "Tipo"
+     },
+     "estado": {
+      "type": "string",
+      "title": "Estado"
+     }
+    },
+    "type": "object",
+    "required": [
+     "id",
+     "nombre",
+     "tipo",
+     "estado"
+    ],
+    "title": "AlmacenOut"
+   },
+   "AmpliarPlazoIn": {
+    "properties": {
+     "nueva_fecha_fin": {
+      "type": "string",
+      "format": "date",
+      "title": "Nueva Fecha Fin"
+     },
+     "motivo": {
+      "type": "string",
+      "maxLength": 500,
+      "minLength": 3,
+      "title": "Motivo"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "nueva_fecha_fin",
+     "motivo"
+    ],
+    "title": "AmpliarPlazoIn"
+   },
+   "AsignacionIn": {
+    "properties": {
+     "usuario_id": {
+      "type": "integer",
+      "minimum": 1.0,
+      "title": "Usuario Id"
+     },
+     "rol": {
+      "type": "string",
+      "enum": [
+       "almacenero",
+       "ssoma",
+       "residente",
+       "administrador",
+       "gerente"
+      ],
+      "title": "Rol"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "usuario_id",
+     "rol"
+    ],
+    "title": "AsignacionIn"
+   },
+   "AsignacionOut": {
+    "properties": {
+     "id": {
+      "type": "integer",
+      "title": "Id"
+     },
+     "usuario_id": {
+      "type": "integer",
+      "title": "Usuario Id"
+     },
+     "usuario_nombre": {
+      "type": "string",
+      "title": "Usuario Nombre"
+     },
+     "usuario": {
+      "type": "string",
+      "title": "Usuario"
+     },
+     "rol": {
+      "type": "string",
+      "enum": [
+       "almacenero",
+       "ssoma",
+       "residente",
+       "administrador",
+       "gerente"
+      ],
+      "title": "Rol"
+     },
+     "fecha_asignacion": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Fecha Asignacion"
+     },
+     "fecha_retiro": {
+      "anyOf": [
+       {
+        "type": "string",
+        "format": "date-time"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Fecha Retiro"
+     }
+    },
+    "type": "object",
+    "required": [
+     "id",
+     "usuario_id",
+     "usuario_nombre",
+     "usuario",
+     "rol",
+     "fecha_asignacion",
+     "fecha_retiro"
+    ],
+    "title": "AsignacionOut"
+   },
+   "AutorizarIn": {
+    "properties": {
+     "usuario_id": {
+      "type": "integer",
+      "title": "Usuario Id"
+     },
+     "obra_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Obra Id"
+     },
+     "roles": {
+      "anyOf": [
+       {
+        "items": {
+         "type": "string"
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Roles"
+     }
+    },
+    "type": "object",
+    "required": [
+     "usuario_id"
+    ],
+    "title": "AutorizarIn"
+   },
+   "AutorizarOut": {
+    "properties": {
+     "usuario_id": {
+      "type": "integer",
+      "title": "Usuario Id"
+     },
+     "nombre": {
+      "type": "string",
+      "title": "Nombre"
+     },
+     "obra_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Obra Id"
+     },
+     "rol": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Rol"
+     }
+    },
+    "type": "object",
+    "required": [
+     "usuario_id",
+     "nombre"
+    ],
+    "title": "AutorizarOut"
+   },
+   "CambiarClaveIn": {
+    "properties": {
+     "clave_actual": {
+      "type": "string",
+      "maxLength": 200,
+      "title": "Clave Actual"
+     },
+     "clave_nueva": {
+      "type": "string",
+      "maxLength": 200,
+      "title": "Clave Nueva"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "clave_actual",
+     "clave_nueva"
+    ],
+    "title": "CambiarClaveIn"
+   },
+   "DispositivoIn": {
+    "properties": {
+     "identificador": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._:-]{8,128}$",
+      "title": "Identificador"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "identificador"
+    ],
+    "title": "DispositivoIn"
+   },
+   "DispositivoOut": {
+    "properties": {
+     "id": {
+      "type": "integer",
+      "title": "Id"
+     },
+     "usuario_id": {
+      "type": "integer",
+      "title": "Usuario Id"
+     },
+     "usuario_nombre": {
+      "type": "string",
+      "title": "Usuario Nombre"
+     },
+     "identificador": {
+      "type": "string",
+      "title": "Identificador"
+     },
+     "estado": {
+      "type": "string",
+      "title": "Estado"
+     },
+     "solicitado_en": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Solicitado En"
+     },
+     "fecha_autorizacion": {
+      "anyOf": [
+       {
+        "type": "string",
+        "format": "date-time"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Fecha Autorizacion"
+     },
+     "fecha_revocacion": {
+      "anyOf": [
+       {
+        "type": "string",
+        "format": "date-time"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Fecha Revocacion"
+     },
+     "motivo_revocacion": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Motivo Revocacion"
+     }
+    },
+    "type": "object",
+    "required": [
+     "id",
+     "usuario_id",
+     "usuario_nombre",
+     "identificador",
+     "estado",
+     "solicitado_en",
+     "fecha_autorizacion",
+     "fecha_revocacion",
+     "motivo_revocacion"
+    ],
+    "title": "DispositivoOut"
+   },
+   "HTTPValidationError": {
+    "properties": {
+     "detail": {
+      "items": {
+       "$ref": "#/components/schemas/ValidationError"
+      },
+      "type": "array",
+      "title": "Detail"
+     }
+    },
+    "type": "object",
+    "title": "HTTPValidationError"
+   },
+   "LoginIn": {
+    "properties": {
+     "usuario": {
+      "type": "string",
+      "maxLength": 60,
+      "minLength": 1,
+      "title": "Usuario"
+     },
+     "clave": {
+      "type": "string",
+      "maxLength": 200,
+      "minLength": 1,
+      "title": "Clave"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "usuario",
+     "clave"
+    ],
+    "title": "LoginIn"
+   },
+   "ObraIn": {
+    "properties": {
+     "nombre": {
+      "type": "string",
+      "maxLength": 120,
+      "minLength": 1,
+      "title": "Nombre"
+     },
+     "fecha_inicio": {
+      "type": "string",
+      "format": "date",
+      "title": "Fecha Inicio"
+     },
+     "fecha_fin": {
+      "type": "string",
+      "format": "date",
+      "title": "Fecha Fin"
+     },
+     "dia_corte": {
+      "type": "integer",
+      "maximum": 7.0,
+      "minimum": 1.0,
+      "title": "Dia Corte",
+      "description": "ISO: 1 lunes … 7 domingo. No se edita después (D-P2).",
+      "default": 7
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "nombre",
+     "fecha_inicio",
+     "fecha_fin"
+    ],
+    "title": "ObraIn"
+   },
+   "ObraOut": {
+    "properties": {
+     "id": {
+      "type": "integer",
+      "title": "Id"
+     },
+     "nombre": {
+      "type": "string",
+      "title": "Nombre"
+     },
+     "fecha_inicio": {
+      "type": "string",
+      "format": "date",
+      "title": "Fecha Inicio"
+     },
+     "fecha_fin": {
+      "type": "string",
+      "format": "date",
+      "title": "Fecha Fin"
+     },
+     "dia_corte": {
+      "type": "integer",
+      "title": "Dia Corte"
+     },
+     "estado": {
+      "type": "string",
+      "title": "Estado"
+     },
+     "semana": {
+      "type": "integer",
+      "title": "Semana"
+     },
+     "semanas_totales": {
+      "type": "integer",
+      "title": "Semanas Totales"
+     },
+     "rol": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Rol"
+     }
+    },
+    "type": "object",
+    "required": [
+     "id",
+     "nombre",
+     "fecha_inicio",
+     "fecha_fin",
+     "dia_corte",
+     "estado",
+     "semana",
+     "semanas_totales"
+    ],
+    "title": "ObraOut"
+   },
+   "ObraRol": {
+    "properties": {
+     "id": {
+      "type": "integer",
+      "title": "Id"
+     },
+     "nombre": {
+      "type": "string",
+      "title": "Nombre"
+     },
+     "rol": {
+      "type": "string",
+      "enum": [
+       "almacenero",
+       "ssoma",
+       "residente",
+       "administrador",
+       "gerente"
+      ],
+      "title": "Rol"
+     }
+    },
+    "type": "object",
+    "required": [
+     "id",
+     "nombre",
+     "rol"
+    ],
+    "title": "ObraRol"
+   },
+   "PeriodoOut": {
+    "properties": {
+     "id": {
+      "type": "integer",
+      "title": "Id"
+     },
+     "numero": {
+      "type": "integer",
+      "title": "Numero"
+     },
+     "fecha_inicio": {
+      "type": "string",
+      "format": "date",
+      "title": "Fecha Inicio"
+     },
+     "fecha_fin": {
+      "type": "string",
+      "format": "date",
+      "title": "Fecha Fin"
+     },
+     "estado": {
+      "type": "string",
+      "title": "Estado"
+     }
+    },
+    "type": "object",
+    "required": [
+     "id",
+     "numero",
+     "fecha_inicio",
+     "fecha_fin",
+     "estado"
+    ],
+    "title": "PeriodoOut"
+   },
+   "PlazoHistorialOut": {
+    "properties": {
+     "id": {
+      "type": "integer",
+      "title": "Id"
+     },
+     "fecha_fin_anterior": {
+      "type": "string",
+      "format": "date",
+      "title": "Fecha Fin Anterior"
+     },
+     "fecha_fin_nueva": {
+      "type": "string",
+      "format": "date",
+      "title": "Fecha Fin Nueva"
+     },
+     "motivo": {
+      "type": "string",
+      "title": "Motivo"
+     },
+     "autor": {
+      "type": "string",
+      "title": "Autor"
+     },
+     "fecha": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Fecha"
+     }
+    },
+    "type": "object",
+    "required": [
+     "id",
+     "fecha_fin_anterior",
+     "fecha_fin_nueva",
+     "motivo",
+     "autor",
+     "fecha"
+    ],
+    "title": "PlazoHistorialOut"
+   },
+   "RevocarIn": {
+    "properties": {
+     "motivo": {
+      "type": "string",
+      "maxLength": 300,
+      "minLength": 3,
+      "title": "Motivo"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "motivo"
+    ],
+    "title": "RevocarIn"
+   },
+   "SesionOut": {
+    "properties": {
+     "token": {
+      "type": "string",
+      "title": "Token"
+     },
+     "tipo": {
+      "type": "string",
+      "title": "Tipo",
+      "default": "bearer"
+     },
+     "expira_en": {
+      "type": "integer",
+      "title": "Expira En"
+     },
+     "usuario": {
+      "$ref": "#/components/schemas/UsuarioMin"
+     },
+     "obras": {
+      "items": {
+       "$ref": "#/components/schemas/ObraRol"
+      },
+      "type": "array",
+      "title": "Obras"
+     }
+    },
+    "type": "object",
+    "required": [
+     "token",
+     "expira_en",
+     "usuario",
+     "obras"
+    ],
+    "title": "SesionOut"
+   },
+   "UsuarioIn": {
+    "properties": {
+     "nombre": {
+      "type": "string",
+      "maxLength": 120,
+      "minLength": 1,
+      "title": "Nombre"
+     },
+     "usuario": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._-]{3,40}$",
+      "title": "Usuario"
+     },
+     "clave": {
+      "type": "string",
+      "maxLength": 200,
+      "title": "Clave"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "nombre",
+     "usuario",
+     "clave"
+    ],
+    "title": "UsuarioIn"
+   },
+   "UsuarioMin": {
+    "properties": {
+     "id": {
+      "type": "integer",
+      "title": "Id"
+     },
+     "nombre": {
+      "type": "string",
+      "title": "Nombre"
+     },
+     "usuario": {
+      "type": "string",
+      "title": "Usuario"
+     }
+    },
+    "type": "object",
+    "required": [
+     "id",
+     "nombre",
+     "usuario"
+    ],
+    "title": "UsuarioMin"
+   },
+   "UsuarioOut": {
+    "properties": {
+     "id": {
+      "type": "integer",
+      "title": "Id"
+     },
+     "nombre": {
+      "type": "string",
+      "title": "Nombre"
+     },
+     "usuario": {
+      "type": "string",
+      "title": "Usuario"
+     },
+     "estado": {
+      "type": "string",
+      "title": "Estado"
+     },
+     "creado_en": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Creado En"
+     }
+    },
+    "type": "object",
+    "required": [
+     "id",
+     "nombre",
+     "usuario",
+     "estado",
+     "creado_en"
+    ],
+    "title": "UsuarioOut"
+   },
+   "ValidationError": {
+    "properties": {
+     "loc": {
+      "items": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "integer"
+        }
+       ]
+      },
+      "type": "array",
+      "title": "Location"
+     },
+     "msg": {
+      "type": "string",
+      "title": "Message"
+     },
+     "type": {
+      "type": "string",
+      "title": "Error Type"
+     },
+     "input": {
+      "title": "Input"
+     },
+     "ctx": {
+      "type": "object",
+      "title": "Context"
+     }
+    },
+    "type": "object",
+    "required": [
+     "loc",
+     "msg",
+     "type"
+    ],
+    "title": "ValidationError"
+   },
+   "YoOut": {
+    "properties": {
+     "usuario": {
+      "$ref": "#/components/schemas/UsuarioMin"
+     },
+     "obras": {
+      "items": {
+       "$ref": "#/components/schemas/ObraRol"
+      },
+      "type": "array",
+      "title": "Obras"
+     }
+    },
+    "type": "object",
+    "required": [
+     "usuario",
+     "obras"
+    ],
+    "title": "YoOut"
+   }
+  },
+  "securitySchemes": {
+   "HTTPBearer": {
+    "type": "http",
+    "scheme": "bearer"
+   }
+  }
+ }
+}

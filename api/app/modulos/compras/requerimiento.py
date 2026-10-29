@@ -6,7 +6,7 @@ unidad del S10; el stock de reposición, en unidad de compra. Factor de conversi
 """
 from __future__ import annotations
 
-from decimal import Decimal
+from decimal import ROUND_HALF_UP, Decimal
 from typing import Literal
 
 from fastapi import APIRouter, Depends, Query
@@ -15,7 +15,8 @@ from sqlalchemy import text
 
 from app.dependencias import Actor, exigir
 from app.errores import ErrorSigro
-from app.modulos.obra.rutas import fila, filas
+from app.modulos.compras import catalogo_cliente
+from app.sql import fila, filas
 
 router = APIRouter(prefix="/obras/{obra_id}", tags=["compras · requerimiento y reposición"])
 D4 = Decimal("0.0001")
@@ -111,10 +112,33 @@ class ParametroOut(BaseModel):
     vigente_desde: str
 
 
+# ------------------------------------------------- datos del insumo: son del servicio catálogo
+def _con_insumo(rows: list[dict], campos: tuple[str, ...], q: str | None = None) -> list[dict]:
+    """Agrega a cada fila los datos del insumo que pide el catálogo; filtra por código o descripción y ordena por código."""
+    insumos = catalogo_cliente.por_id(r["insumo_id"] for r in rows)
+    salida = []
+    for r in rows:
+        ins = insumos.get(r["insumo_id"])
+        if ins is None:
+            continue
+        for c in campos:
+            r["insumo_codigo" if c == "codigo" else c] = ins[c]
+        if q and q.lower() not in ins["codigo"].lower() and q.lower() not in ins["descripcion"].lower():
+            continue
+        salida.append(r)
+    return salida
+
+
+def _id_por_codigo(codigo: str) -> int | None:
+    ins = catalogo_cliente.por_codigo([codigo]).get(codigo.upper())
+    return ins["id"] if ins and ins["codigo"] == codigo else None
+
+
 # ------------------------------------------------------------------ requerimiento (HU-19)
-_REQ = ("SELECT r.id, r.insumo_id, i.codigo AS insumo_codigo, i.descripcion, i.unidad_s10, r.cantidad_planificada, "
+_REQ = ("SELECT r.id, r.insumo_id, r.cantidad_planificada, "
         "r.precio_planificado, round(r.cantidad_planificada * r.precio_planificado, 2) AS costo_planificado "
-        "FROM compras.requerimiento r JOIN catalogo.insumo i ON i.id = r.insumo_id ")
+        "FROM compras.requerimiento r ")
+_CAMPOS_REQ = ("codigo", "descripcion", "unidad_s10")
 
 
 @router.post("/requerimiento/importar", response_model=ResultadoRequerimientoOut)
@@ -125,15 +149,20 @@ def importar_requerimiento(d: ImportarRequerimientoIn, a: Actor = Depends(exigir
     fallidos: list[FallidoOut] = []
     avisos: list[str] = []
     vistos: set[str] = set()
+    # Una sola consulta al catálogo por importación (no una por fila). El código debe coincidir exactamente.
+    del_catalogo = catalogo_cliente.por_codigo(f.insumo_codigo for f in d.filas)
+    conocidos = {f.insumo_codigo: del_catalogo[f.insumo_codigo.upper()]["id"] for f in d.filas
+                 if f.insumo_codigo.upper() in del_catalogo and del_catalogo[f.insumo_codigo.upper()]["codigo"] == f.insumo_codigo}
     for f in d.filas:
         if f.insumo_codigo in vistos:
             fallidos.append(FallidoOut(insumo_codigo=f.insumo_codigo, motivo="Aparece repetido en el archivo."))
             continue
         vistos.add(f.insumo_codigo)
-        ins = fila(a.sesion, "SELECT id FROM catalogo.insumo WHERE codigo = :c", c=f.insumo_codigo)
-        if ins is None:
+        ins_id = conocidos.get(f.insumo_codigo)
+        if ins_id is None:
             fallidos.append(FallidoOut(insumo_codigo=f.insumo_codigo, motivo="El insumo no está en el catálogo."))
             continue
+        ins = {"id": ins_id}
         ex = fila(a.sesion, "SELECT id, cantidad_planificada, precio_planificado FROM compras.requerimiento "
                             "WHERE proyecto_id = :p AND insumo_id = :i", p=a.obra_id, i=ins["id"])
         if ex is None:
@@ -154,15 +183,13 @@ def importar_requerimiento(d: ImportarRequerimientoIn, a: Actor = Depends(exigir
 
 @router.get("/requerimiento", response_model=list[RequerimientoOut])
 def ver_requerimiento(q: str | None = Query(None, max_length=100), a: Actor = Depends(exigir("requerimiento.consultar"))):
-    cond, p = "", {"p": a.obra_id}
-    if q:
-        cond = " AND (i.codigo ILIKE :q OR i.descripcion ILIKE :q)"
-        p["q"] = f"%{q.strip()}%"
-    return filas(a.sesion, _REQ + f"WHERE r.proyecto_id = :p{cond} ORDER BY i.codigo", **p)
+    rows = _con_insumo(filas(a.sesion, _REQ + "WHERE r.proyecto_id = :p", p=a.obra_id), _CAMPOS_REQ, (q or "").strip() or None)
+    return sorted(rows, key=lambda r: r["insumo_codigo"])
 
 
 def _req_de_la_obra(a: Actor, req_id: int) -> dict:
     r = fila(a.sesion, _REQ + "WHERE r.id = :i AND r.proyecto_id = :p", i=req_id, p=a.obra_id)
+    r = (_con_insumo([r], _CAMPOS_REQ) or [None])[0] if r else None
     if r is None:
         raise ErrorSigro(404, "no_existe", "Ese requerimiento no existe en esta obra.")
     return r
@@ -198,53 +225,54 @@ def saldo_por_comprar(
     a: Actor = Depends(exigir("requerimiento.consultar")),
 ):
     """Lo planificado menos lo comprado (solo compras registradas), por insumo, en la unidad del S10 y en unidad de compra."""
-    cond, p = "", {"p": a.obra_id}
-    if solo_pendientes:
-        cond += " AND s.saldo > 0"
-    if q:
-        cond += " AND (i.codigo ILIKE :q OR i.descripcion ILIKE :q)"
-        p["q"] = f"%{q.strip()}%"
+    cond = " AND s.saldo > 0" if solo_pendientes else ""
     rows = filas(
         a.sesion,
-        "SELECT s.insumo_id, i.codigo AS insumo_codigo, i.descripcion, i.unidad_s10, i.unidad_compra, round(s.requerido, 4) AS requerido, round(s.comprado, 4) AS comprado, "
-        "round(s.saldo, 4) AS saldo, round(s.saldo / i.factor_conversion, 4) AS saldo_en_unidad_compra, round(s.exceso, 4) AS exceso "
-        "FROM compras.saldo_por_comprar s JOIN catalogo.insumo i ON i.id = s.insumo_id "
-        f"WHERE s.proyecto_id = :p{cond} ORDER BY s.saldo DESC, i.codigo", **p)
+        "SELECT s.insumo_id, round(s.requerido, 4) AS requerido, round(s.comprado, 4) AS comprado, "
+        "s.saldo AS saldo_exacto, round(s.saldo, 4) AS saldo, round(s.exceso, 4) AS exceso "
+        f"FROM compras.saldo_por_comprar s WHERE s.proyecto_id = :p{cond}", p=a.obra_id)
+    rows = _con_insumo(rows, ("codigo", "descripcion", "unidad_s10", "unidad_compra", "factor_conversion"), (q or "").strip() or None)
     for r in rows:
+        factor = r.pop("factor_conversion")
+        r["saldo_en_unidad_compra"] = (r.pop("saldo_exacto") / factor).quantize(D4, rounding=ROUND_HALF_UP)   # igual que round() de PostgreSQL
         r["estado"] = "excedido" if r["exceso"] > 0 else ("completo" if r["saldo"] == 0 else "pendiente")
-    return rows
+    return sorted(rows, key=lambda r: (-r["saldo"], r["insumo_codigo"]))
 
 
 # ------------------------------------------------------------------ parámetros de reposición (HU-25)
-_PAR = ("SELECT v.id, v.insumo_id, i.codigo AS insumo_codigo, i.descripcion, i.unidad_compra, v.stock_seguridad, "
+_PAR = ("SELECT v.id, v.insumo_id, v.stock_seguridad, "
         "v.punto_reposicion, v.registrado_por, v.vigente_desde::text AS vigente_desde ")
+_CAMPOS_PAR = ("codigo", "descripcion", "unidad_compra")
 
 
 @router.post("/parametros-reposicion", response_model=ParametroOut, status_code=201)
 def registrar_parametro(d: ParametroIn, a: Actor = Depends(exigir("reposicion.registrar"))):
     """Fija el stock de seguridad y el punto de reposición. Cambiarlos agrega una fila con su vigencia; la anterior queda."""
-    ins = fila(a.sesion, "SELECT id FROM catalogo.insumo WHERE codigo = :c", c=d.insumo_codigo)
-    if ins is None:
+    ins_id = _id_por_codigo(d.insumo_codigo)
+    if ins_id is None:
         raise ErrorSigro(404, "insumo_no_existe", "Ese insumo no está en el catálogo.")
+    ins = {"id": ins_id}
     nuevo = fila(
         a.sesion,
         "INSERT INTO compras.parametro_reposicion (proyecto_id, insumo_id, stock_seguridad, punto_reposicion, registrado_por) "
         "VALUES (:p, :i, :s, :pr, :u) RETURNING id",
         p=a.obra_id, i=ins["id"], s=d.stock_seguridad, pr=d.punto_reposicion, u=a.usuario_id)
-    return fila(a.sesion, _PAR + "FROM compras.parametro_reposicion v JOIN catalogo.insumo i ON i.id = v.insumo_id WHERE v.id = :i", i=nuevo["id"])
+    return _con_insumo([fila(a.sesion, _PAR + "FROM compras.parametro_reposicion v WHERE v.id = :i", i=nuevo["id"])], _CAMPOS_PAR)[0]
 
 
 @router.get("/parametros-reposicion", response_model=list[ParametroOut])
 def ver_parametros(a: Actor = Depends(exigir("reposicion.consultar"))):
     """Los vigentes: el último de cada insumo."""
-    return filas(a.sesion, _PAR + "FROM compras.parametro_reposicion_vigente v JOIN catalogo.insumo i ON i.id = v.insumo_id "
-                                  "WHERE v.proyecto_id = :p ORDER BY i.codigo", p=a.obra_id)
+    rows = _con_insumo(filas(a.sesion, _PAR + "FROM compras.parametro_reposicion_vigente v WHERE v.proyecto_id = :p", p=a.obra_id),
+                       _CAMPOS_PAR)
+    return sorted(rows, key=lambda r: r["insumo_codigo"])
 
 
 @router.get("/parametros-reposicion/{insumo_id}/historial", response_model=list[ParametroOut])
 def historial_parametros(insumo_id: int, a: Actor = Depends(exigir("reposicion.consultar"))):
-    return filas(a.sesion, _PAR + "FROM compras.parametro_reposicion v JOIN catalogo.insumo i ON i.id = v.insumo_id "
-                                  "WHERE v.proyecto_id = :p AND v.insumo_id = :i ORDER BY v.id DESC", p=a.obra_id, i=insumo_id)
+    return _con_insumo(filas(a.sesion, _PAR + "FROM compras.parametro_reposicion v "
+                                         "WHERE v.proyecto_id = :p AND v.insumo_id = :i ORDER BY v.id DESC", p=a.obra_id, i=insumo_id),
+                       _CAMPOS_PAR)
 
 
 routers = [router]

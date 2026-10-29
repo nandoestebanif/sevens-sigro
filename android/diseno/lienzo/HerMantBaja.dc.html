@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Mantenimiento o baja</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#C2410C}a:hover{color:#9A3412}
+.vidrio{background:rgba(255,255,255,0.58);-webkit-backdrop-filter:blur(18px) saturate(160%);backdrop-filter:blur(18px) saturate(160%);border:1px solid rgba(255,255,255,0.75);box-shadow:0 8px 28px rgba(15,23,42,0.10)}
+.vidrio-fuerte{background:rgba(255,255,255,0.78);-webkit-backdrop-filter:blur(22px) saturate(160%);backdrop-filter:blur(22px) saturate(160%);border:1px solid rgba(255,255,255,0.85)}
+.campo{box-sizing:border-box;height:52px;border-radius:16px;border:1px solid rgba(255,255,255,0.9);background:rgba(255,255,255,0.74);padding:0 16px;font:16px Inter,sans-serif;color:#111827;width:100%}
+.campo:focus{outline:2px solid #C2410C;outline-offset:1px}
+.campo::placeholder{color:#6B7280}
+</style>
+</helmet>
+<div style="width: 390px; height: 1000px; box-sizing: border-box; font-family: Inter, system-ui, sans-serif; color: #111827; position: relative; overflow: hidden; background: #EDF1F6">
+<svg aria-hidden="true" width="390" height="1000" viewBox="0 0 390 1000" style="position: absolute; left: 0; top: 0">
+<defs>
+<linearGradient id="hm-f" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#EEF0F6"></stop><stop offset="0.55" stop-color="#F2F1EE"></stop><stop offset="1" stop-color="#F6EADF"></stop></linearGradient>
+<pattern id="hm-c" width="24" height="24" patternUnits="userSpaceOnUse"><path d="M24 0H0V24" fill="none" stroke="#94A3B8" stroke-width="0.5" opacity="0.4"></path></pattern>
+<pattern id="hm-C" width="120" height="120" patternUnits="userSpaceOnUse"><path d="M120 0H0V120" fill="none" stroke="#64748B" stroke-width="0.8" opacity="0.3"></path></pattern>
+<radialGradient id="hm-mn" cx="0.5" cy="0.5" r="0.5"><stop offset="0" stop-color="#FB923C" stop-opacity="0.5"></stop><stop offset="1" stop-color="#FB923C" stop-opacity="0"></stop></radialGradient>
+<radialGradient id="hm-ma" cx="0.5" cy="0.5" r="0.5"><stop offset="0" stop-color="#60A5FA" stop-opacity="0.4"></stop><stop offset="1" stop-color="#60A5FA" stop-opacity="0"></stop></radialGradient>
+<radialGradient id="hm-mt" cx="0.5" cy="0.5" r="0.5"><stop offset="0" stop-color="#2DD4BF" stop-opacity="0.32"></stop><stop offset="1" stop-color="#2DD4BF" stop-opacity="0"></stop></radialGradient>
+</defs>
+<rect width="390" height="1000" fill="url(#hm-f)"></rect>
+<rect width="390" height="1000" fill="url(#hm-c)"></rect>
+<rect width="390" height="1000" fill="url(#hm-C)"></rect>
+<circle cx="330" cy="200" r="200" fill="url(#hm-mn)"></circle><circle cx="40" cy="560" r="200" fill="url(#hm-ma)"></circle><circle cx="320" cy="920" r="160" fill="url(#hm-mt)"></circle>
+<g fill="none" stroke="#475569" stroke-width="1.4" opacity="0.5"><circle cx="300" cy="190" r="70"></circle><circle cx="300" cy="190" r="26"></circle>
+<path d="M370.0 190.0L386.0 190.0 M360.6 225.0L374.5 233.0 M335.0 250.6L343.0 264.5 M300.0 260.0L300.0 276.0 M265.0 250.6L257.0 264.5 M239.4 225.0L225.5 233.0 M230.0 190.0L214.0 190.0 M239.4 155.0L225.5 147.0 M265.0 129.4L257.0 115.5 M300.0 120.0L300.0 104.0 M335.0 129.4L343.0 115.5 M360.6 155.0L374.5 147.0" stroke-width="8" stroke-linecap="round" opacity="0.6"></path></g>
+<g fill="none" stroke="#475569" stroke-width="1.3" opacity="0.45"><rect x="30" y="760" width="150" height="120" rx="8"></rect><path d="M30 790h150M60 750v20M150 750v20"></path>
+<path d="M50 810h20M90 810h20M130 810h20M50 840h20M90 840h20"></path></g>
+<circle cx="140" cy="850" r="11" fill="none" stroke="#C2410C" stroke-width="1.6" opacity="0.6"></circle>
+</svg>
+<header style="position: relative; padding: 44px 16px 8px 12px; display: flex; align-items: center; gap: 4px">
+<a href="HerFicha.dc.html" aria-label="Volver" class="vidrio" style="width: 44px; height: 44px; border-radius: 22px; margin-right: 8px; display: flex; align-items: center; justify-content: center; flex: none">
+<svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#111827" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"></path></svg>
+</a>
+<div style="display: flex; flex-direction: column; gap: 2px; min-width: 0">
+<h1 style="margin: 0; font-size: 28px; font-weight: 800; letter-spacing: -0.03em">Mantenimiento o baja</h1>
+<p style="margin: 0; font-size: 14px; color: #4B5563">La baja no borra su historial</p>
+</div>
+</header>
+<div style="position: relative; padding: 8px 16px 24px; display: flex; flex-direction: column; gap: 14px">
+<div class="vidrio" style="border-radius: 24px; padding: 14px 16px; display: flex; align-items: center; gap: 12px">
+<span style="width: 48px; height: 48px; border-radius: 16px; background: #FFEDD5; display: flex; align-items: center; justify-content: center; flex: none">
+<svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#C2410C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 0 5.4-5.4l-2.5 2.5-2.4-.6-.6-2.4z"></path></svg></span>
+<span style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px"><span style="font-size: 16px; font-weight: 800">Mezcladora de concreto 9 p³</span>
+<span style="font-size: 13px; color: #4B5563">H-003 · última: Trabajador 05</span></span>
+<span style="background: #DCFCE7; color: #166534; border-radius: 999px; padding: 4px 10px; font-size: 12px; font-weight: 700">Disponible</span>
+</div>
+<div role="tablist" class="vidrio" style="border-radius: 26px; padding: 5px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px">
+<sc-for list="{{pestanas}}" as="t" hint-placeholder-count="2">
+<button role="tab" aria-selected="{{t.on}}" onClick="{{t.elegir}}" style="min-height: 46px; border-radius: 22px; border: 0; background: {{t.bg}}; color: {{t.fg}}; font: 700 15px Inter, sans-serif; cursor: pointer">{{t.texto}}</button>
+</sc-for>
+</div>
+<sc-if value="{{esMant}}" hint-placeholder-val="{{ true }}">
+<div class="vidrio" style="border-radius: 26px; padding: 18px; display: flex; flex-direction: column; gap: 14px">
+<div style="display: flex; flex-direction: column; gap: 6px; font-size: 14px; font-weight: 600; color: #374151">Tipo *<div style="display: flex; flex-wrap: wrap; gap: 8px">
+<sc-for list="{{tipos}}" as="o" hint-placeholder-count="3">
+<button onClick="{{o.elegir}}" aria-pressed="{{o.on}}" style="min-height: 44px; padding: 0 16px; border-radius: 22px; border: 0; background: {{o.bg}}; color: {{o.fg}}; font: 700 14px Inter, sans-serif; cursor: pointer">{{o.texto}}</button>
+</sc-for>
+</div></div>
+<div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px">
+<label style="display: flex; flex-direction: column; gap: 6px; font-size: 14px; font-weight: 600; color: #374151">Fecha *<input class="campo" type="date" value="{{hoy}}"></label>
+<label style="display: flex; flex-direction: column; gap: 6px; font-size: 14px; font-weight: 600; color: #374151">Costo (S/)<input class="campo" inputmode="decimal" placeholder="Si lo hubo"></label>
+</div>
+<label style="display: flex; flex-direction: column; gap: 6px; font-size: 14px; font-weight: 600; color: #374151">Próximo mantenimiento<input class="campo" type="date"></label>
+<span style="font-size: 13px; color: #4B5563; line-height: 1.4">Mientras dure, queda «en mantenimiento» y no puede entregarse. Si pasa la fecha del próximo, la lista lo señala.</span>
+</div>
+<button style="height: 58px; border: 0; border-radius: 29px; background: #111827; color: #FFFFFF; display: flex; align-items: center; justify-content: center; gap: 10px; font: 600 17px Inter, sans-serif; text-decoration: none; cursor: pointer"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#FB923C" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg>Enviar a mantenimiento</button>
+</sc-if>
+<sc-if value="{{esBaja}}" hint-placeholder-val="{{ false }}">
+<div class="vidrio" style="border-radius: 26px; padding: 18px; display: flex; flex-direction: column; gap: 14px">
+<div style="display: flex; flex-direction: column; gap: 6px; font-size: 14px; font-weight: 600; color: #374151">Motivo *<div style="display: flex; flex-wrap: wrap; gap: 8px">
+<sc-for list="{{motivos}}" as="o" hint-placeholder-count="3">
+<button onClick="{{o.elegir}}" aria-pressed="{{o.on}}" style="min-height: 44px; padding: 0 16px; border-radius: 22px; border: 0; background: {{o.bg}}; color: {{o.fg}}; font: 700 14px Inter, sans-serif; cursor: pointer">{{o.texto}}</button>
+</sc-for>
+</div></div>
+<div style="background: rgba(255,255,255,0.8); border-radius: 16px; padding: 12px 14px; display: flex; flex-direction: column; gap: 2px">
+<span style="font-size: 12px; color: #4B5563">Último responsable (se registra en la baja)</span><span style="font-size: 15px; font-weight: 700">Trabajador 05 · Operario · Cuadrilla B</span></div>
+<label style="display: flex; flex-direction: column; gap: 6px; font-size: 14px; font-weight: 600; color: #374151">Detalle<textarea rows="3" placeholder="Qué pasó, cuándo y dónde" class="campo" style="height: auto; padding: 12px 16px; resize: none; font: 16px Inter, sans-serif"></textarea></label>
+</div>
+<div style="background: #FEE2E2; color: #991B1B; border-radius: 18px; padding: 12px 14px; font-size: 14px; font-weight: 600; line-height: 1.45">La baja queda pendiente hasta que el residente la autorice. Después ya no puede entregarse ni devolverse, pero su historial se conserva.</div>
+<button disabled="{{sinMotivo}}" style="{{estiloBaja}}">Solicitar baja</button>
+</sc-if>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":1000}}'>
+const opciones = (lista, sel, fijar, colorOn) => lista.map((t, i) => ({
+  texto: t, on: sel === i, elegir: () => fijar(i),
+  bg: sel === i ? (colorOn || '#111827') : 'rgba(255,255,255,0.82)', fg: sel === i ? '#FFFFFF' : '#111827' }));
+
+const BOTON = "height: 58px; border: 0; border-radius: 29px; background: #991B1B; color: #FFFFFF; display: flex; align-items: center; justify-content: center; gap: 10px; font: 600 17px Inter, sans-serif; text-decoration: none; cursor: pointer";
+const BOTON_OFF = "height: 58px; border: 0; border-radius: 29px; background: #9CA3AF; color: #FFFFFF; display: flex; align-items: center; justify-content: center; gap: 10px; font: 600 17px Inter, sans-serif; text-decoration: none; cursor: not-allowed";
+class Component extends DCLogic {
+  constructor(p) { super(p); this.state = { tab: 0, tipo: 1, motivo: -1 }; }
+  renderVals() {
+    const st = this.state;
+    return {
+      pestanas: ['Mantenimiento', 'Dar de baja'].map((t, i) => ({ texto: t, on: st.tab === i, elegir: () => this.setState({ tab: i }),
+        bg: st.tab === i ? '#111827' : 'transparent', fg: st.tab === i ? '#FFFFFF' : '#111827' })),
+      esMant: st.tab === 0, esBaja: st.tab === 1,
+      tipos: opciones(['Preventivo', 'Correctivo'], st.tipo, (i) => this.setState({ tipo: i }), '#C2410C'),
+      motivos: opciones(['Pérdida', 'Deterioro irreparable', 'Robo'], st.motivo, (i) => this.setState({ motivo: i }), '#991B1B'),
+      hoy: new Date().toISOString().slice(0, 10),
+      sinMotivo: st.motivo < 0, estiloBaja: st.motivo < 0 ? BOTON_OFF : BOTON
+    };
+  }
+}
+</script>
+</body>
+</html>
