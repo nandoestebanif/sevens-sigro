@@ -164,3 +164,6 @@ probada con datos inventados **no está terminada**.
 | `docs/decisiones-arquitectura.md` | Por qué el sistema es como es |
 | `docs/flujo-de-trabajo.md` | Git, ramas, PR y pruebas |
 | `equipo/*.md` | Qué le toca a cada uno |
+| `docs/plan-claude-code.md` | **Plan de trabajo vigente para Claude Code** (orden de tareas y criterios de hecho) |
+| `docs/despliegue-pruebas.md` · `render.yaml` | Ambiente de pruebas (HT-01) en Render + Neon |
+| `docs/diagramas/c4/` | Arquitectura C4: C1 contexto, C2 contenedores, C3 componentes (compras y app) |

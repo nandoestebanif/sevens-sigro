@@ -13,4 +13,5 @@ RUN python -m app.servicios.podar "${SERVICIO}"
 RUN useradd --system --no-create-home sigro && chown -R sigro /app
 USER sigro
 EXPOSE 8000
-CMD ["sh", "-c", "exec uvicorn app.servicios.${SIGRO_SERVICIO}:app --host 0.0.0.0 --port 8000"]
+# PORT lo fija la nube (Render, Railway); en docker compose queda 8000.
+CMD ["sh", "-c", "exec uvicorn app.servicios.${SIGRO_SERVICIO}:app --host 0.0.0.0 --port ${PORT:-8000}"]
