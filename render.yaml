@@ -1,0 +1,138 @@
+# SIGRO · ambiente de PRUEBAS (HT-01) en Render, plan gratuito. La base vive en Neon (PostgreSQL gestionado, gratis).
+# Guía paso a paso: docs/despliegue-pruebas.md
+#
+# Render crea un servicio web por microservicio. Los nombres definen las URL (https://<nombre>.onrender.com):
+# si Render agrega un sufijo porque el nombre está tomado, corrige las SIGRO_URL_* del grupo «sigro-comun».
+# Los servicios gratuitos se duermen tras 15 min sin uso: la primera petición tarda ~1 min en despertar la cadena.
+
+envVarGroups:
+  - name: sigro-comun
+    envVars:
+      - key: SIGRO_ENTORNO
+        value: pruebas
+      - key: SIGRO_JWT_SECRET
+        generateValue: true
+      - key: SIGRO_SERVICIO_TOKEN
+        generateValue: true
+      - key: SIGRO_CORS
+        value: https://sigro-web.onrender.com
+      - key: SIGRO_URL_OBRAS
+        value: https://sigro-obras.onrender.com
+      - key: SIGRO_URL_CATALOGO
+        value: https://sigro-catalogo.onrender.com
+      - key: SIGRO_URL_COMPRAS
+        value: https://sigro-compras.onrender.com
+      - key: SIGRO_URL_TAREO
+        value: https://sigro-tareo.onrender.com
+      - key: SIGRO_INTEGRACIONES_URL
+        value: https://sigro-integraciones.onrender.com
+
+services:
+  - type: web
+    name: sigro-gateway
+    runtime: docker
+    plan: free
+    dockerContext: ./api
+    dockerfilePath: ./api/Dockerfile
+    healthCheckPath: /salud
+    envVars:
+      - fromGroup: sigro-comun
+      - key: SERVICIO          # Render pasa las variables como build args: la imagen se poda a este servicio
+        value: gateway
+      - key: SIGRO_SERVICIO
+        value: gateway
+
+  - type: web
+    name: sigro-obras
+    runtime: docker
+    plan: free
+    dockerContext: ./api
+    dockerfilePath: ./api/Dockerfile
+    healthCheckPath: /salud
+    envVars:
+      - fromGroup: sigro-comun
+      - key: SERVICIO
+        value: obras
+      - key: SIGRO_SERVICIO
+        value: obras
+      - key: SIGRO_APP_DATABASE_URL   # postgresql+psycopg://sigro_obras:<clave>@<host-neon-pooler>/neondb?sslmode=require
+        sync: false
+
+  - type: web
+    name: sigro-catalogo
+    runtime: docker
+    plan: free
+    dockerContext: ./api
+    dockerfilePath: ./api/Dockerfile
+    healthCheckPath: /salud
+    envVars:
+      - fromGroup: sigro-comun
+      - key: SERVICIO
+        value: catalogo
+      - key: SIGRO_SERVICIO
+        value: catalogo
+      - key: SIGRO_APP_DATABASE_URL
+        sync: false
+
+  - type: web
+    name: sigro-compras
+    runtime: docker
+    plan: free
+    dockerContext: ./api
+    dockerfilePath: ./api/Dockerfile
+    healthCheckPath: /salud
+    envVars:
+      - fromGroup: sigro-comun
+      - key: SERVICIO
+        value: compras
+      - key: SIGRO_SERVICIO
+        value: compras
+      - key: SIGRO_APP_DATABASE_URL
+        sync: false
+
+  - type: web
+    name: sigro-tareo
+    runtime: docker
+    plan: free
+    dockerContext: ./api
+    dockerfilePath: ./api/Dockerfile
+    healthCheckPath: /salud
+    envVars:
+      - fromGroup: sigro-comun
+      - key: SERVICIO
+        value: tareo
+      - key: SIGRO_SERVICIO
+        value: tareo
+      - key: SIGRO_APP_DATABASE_URL
+        sync: false
+
+  - type: web
+    name: sigro-integraciones
+    runtime: docker
+    plan: free
+    dockerContext: ./integraciones
+    dockerfilePath: ./integraciones/Dockerfile
+    healthCheckPath: /salud
+    envVars:
+      - key: FACTILIZA_TOKEN      # se escribe en el panel de Render, nunca en el repositorio
+        sync: false
+      # Sin SERVICIO_TOKEN en pruebas: la web todavía llama directo a Integraciones para el S10
+      # (incidencia del 28/10). Cuando la importación pase por el gateway, se agrega el token aquí.
+
+  - type: web
+    name: sigro-web
+    runtime: static
+    buildCommand: cd web && npm ci && npm run build
+    staticPublishPath: ./web/dist
+    envVars:
+      - key: VITE_API_URL
+        value: https://sigro-gateway.onrender.com
+      - key: VITE_INTEGRACIONES_URL
+        value: https://sigro-integraciones.onrender.com
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+
+# Fuera del plan gratuito (se agregan cuando haga falta):
+#   relevo y notificaciones: los avisos se acumulan en outbox.evento y no se pierden; se entregan cuando se despliegue el relevo.

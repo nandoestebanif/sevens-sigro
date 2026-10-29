@@ -33,7 +33,8 @@ export interface ResultadoImportacion {
   fallidos: { texto: string; error: string }[]
 }
 
-const BASE = 'http://localhost:8001'
+// En desarrollo, el micro corre en :8001; desplegado, se indica con VITE_INTEGRACIONES_URL.
+const BASE = (import.meta.env.VITE_INTEGRACIONES_URL ?? 'http://localhost:8001').replace(/\/$/, '')
 
 export class ErrorImportacion extends Error {}
 
