@@ -27,7 +27,7 @@
   --marca-tinte-tinta: #9a3e00;
 
   /* estados · nunca solos: siempre con su etiqueta */
-  --bien: #15803d;
+  --bien: #166534; /* el del lienzo de vidrio: #15803d sobre su tinte daba 4.49:1 */
   --bien-tinte: #e7f6ec;
   --aviso: #b45309;
   --aviso-tinte: #fdf2e3;
