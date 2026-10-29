@@ -39,8 +39,11 @@ async def _reenviar(request: Request) -> Response:
         return _error(503, "servicio_no_configurado", f"El gateway no conoce la dirección del servicio {servicio}.")
     if _cliente is None:
         _cliente = httpx.AsyncClient(timeout=httpx.Timeout(30.0, connect=3.0))
-    cabeceras = {k: v for k, v in request.headers.items() if k.lower() not in _SALTO}
+    cabeceras = {k: v for k, v in request.headers.items() if k.lower() not in _SALTO | {"accept-encoding"}}
     cabeceras["x-forwarded-for"] = request.client.host if request.client else ""
+    # Se pide solo gzip, que httpx sabe descomprimir: si se reenviara el «br» del navegador, Cloudflare (Render)
+    # respondería en brotli, httpx lo dejaría comprimido y, al quitar Content-Encoding, el navegador recibiría basura.
+    cabeceras["accept-encoding"] = "gzip"
     try:
         r = await _cliente.request(
             request.method, f"{base.rstrip('/')}{request.url.path}", params=request.query_params,
