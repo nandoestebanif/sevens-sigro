@@ -19,3 +19,23 @@ Sin la variable sigue con el cliente simulado, así nadie queda bloqueado.
 
 Para pasar otro método al servidor: se sobreescribe en `ClienteHttp` (al final de `src/api/cliente.ts`) y
 ninguna pantalla cambia.
+
+### 28/10 · catálogo e importación del S10 conectados
+
+- **Catálogo (HU-08):** lista, alta y verificación van a `/catalogo/insumos`. El código lo genera el servidor
+  (`SIGRO-00001`…) y un nombre repetido con la misma unidad lo rechaza la API. Corregir el nombre o la marca
+  todavía no existe en la API: la pantalla lo dice en lugar de fallar en silencio.
+- **Importar del S10 (HU-07):** el microservicio lee el PDF y muestra la vista previa; el botón **«Aplicar al
+  catálogo»** manda las filas a `/catalogo/insumos/importar-s10`. Probado con el PDF real: 284 creados la primera
+  vez; la segunda, 0 creados y 284 sin cambios (no duplica).
+- **Pendiente de decisión:** los 284 códigos del S10 y los 2 243 del catálogo del cliente son códigos distintos para
+  muchos de los mismos materiales. Falta emparejarlos (qué código manda) antes de usarlos en compras.
+
+### 28/10 · reposición conectada (HU-19, HU-24, HU-25)
+
+- **Importar del S10 → paso 2:** «Cargar requerimiento de la obra» manda cantidad y precio planificados a
+  `/obras/{id}/requerimiento/importar`. Probado con el PDF real: 284 insumos cargados en Multifamiliar Flores.
+- **Reposición (HU-24):** «Saldo por comprar» sale de `/obras/{id}/saldo-por-comprar` (requerido − comprado, en
+  unidad de compra). Fase y crítico llegan en el Sprint 2 (HU-20, HU-28); recibido y consumido, con almacén.
+- **Parámetros de reposición (HU-25):** pantalla nueva (menú «Control de la obra»): stock de seguridad y punto de
+  reposición por insumo, cambio con historial y el rechazo del servidor cuando el punto es menor que el colchón.

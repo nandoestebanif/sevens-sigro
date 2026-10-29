@@ -15,11 +15,11 @@ import { INSUMOS_S10 } from '../datos/insumos-s10'
 import type {
   AlertaReposicion, AvanceInsumo, Compra, InsumoCatalogo, InsumoMaestro,
   LineaCompra, LineaRecepcion, Movimiento, Obra, ObraActiva, Proveedor,
-  ResumenTablero, Semana, StockInsumo, TipoComprobante,
+  ParametroReposicion, ResultadoRequerimiento, ResumenTablero, Semana, StockInsumo, TipoComprobante,
 } from './tipos'
 
 import { ErrorApi } from './error'
-import { obrasHttp, proveedoresHttp, usaApiReal } from './http'
+import { catalogoHttp, obrasHttp, proveedoresHttp, reposicionHttp, usaApiReal } from './http'
 export { ErrorApi }
 
 export interface ClienteSigro {
@@ -28,6 +28,19 @@ export interface ClienteSigro {
   /** regla 9: el alcance es la obra — al cambiarla, lo de empresa (catálogo,
       proveedores) permanece y lo de obra (stock, compras, gasto) cambia */
   elegirObra(id: string): Promise<ObraActiva>
+  /** HU-07: aplica al catálogo lo que leyó el microservicio del S10. El código es la
+      clave: repetir la importación actualiza, no duplica, y no toca saldos. */
+  aplicarImportacionS10(filas: { codigo: string; descripcion: string; unidad: string; tipo: string }[]):
+    Promise<{ creados: number; actualizados: number; sinCambios: number; advertencias: string[] }>
+  /** HU-24: lo que falta comprar de cada insumo (requerido − comprado), calculado en el servidor */
+  saldoPorComprar(): Promise<AvanceInsumo[]>
+  /** HU-25: parámetros vigentes de la obra activa */
+  parametrosReposicion(): Promise<ParametroReposicion[]>
+  /** HU-25: fijar o cambiar; el anterior queda en el historial con su vigencia */
+  registrarParametro(datos: { insumoCodigo: string; stockSeguridad: number; puntoReposicion: number }): Promise<ParametroReposicion>
+  historialParametro(insumoCodigo: string): Promise<ParametroReposicion[]>
+  /** HU-19: carga lo planificado del S10 en la obra activa; no pisa lo ya cargado */
+  cargarRequerimiento(filas: { insumoCodigo: string; cantidad: number; precio: number }[]): Promise<ResultadoRequerimiento>
   /** HU-26: el aviso salta solo al cruzar el punto; HU-27: con su sugerencia */
   alertasReposicion(): Promise<AlertaReposicion[]>
   /** HU-01: nombre y plazo obligatorios; nace «en ejecución».
@@ -328,6 +341,49 @@ export class ClienteSimulado implements ClienteSigro {
     }
     proveedores.unshift(nuevo)
     return nuevo
+  }
+
+  async aplicarImportacionS10(filas: { codigo: string; descripcion: string; unidad: string; tipo: string }[]) {
+    await espera(400)
+    const existentes = new Set(INSUMOS_S10.map((i) => i.codigo))
+    const creados = filas.filter((f) => !existentes.has(f.codigo)).length
+    return { creados, actualizados: 0, sinCambios: filas.length - creados, advertencias: [] as string[] }
+  }
+
+  async saldoPorComprar(): Promise<AvanceInsumo[]> {
+    return this.avancePorInsumo()
+  }
+
+  private parametros: (ParametroReposicion & { vigente: boolean })[] = []
+
+  async parametrosReposicion(): Promise<ParametroReposicion[]> {
+    await espera(100)
+    return this.parametros.filter((p) => p.vigente).map(({ vigente: _v, ...p }) => p)
+  }
+
+  async registrarParametro(d: { insumoCodigo: string; stockSeguridad: number; puntoReposicion: number }): Promise<ParametroReposicion> {
+    await espera(200)
+    if (d.puntoReposicion < d.stockSeguridad) {
+      throw new ErrorApi('datos_invalidos', 'El punto de reposición no puede ser menor que el stock de seguridad.')
+    }
+    const ins = INSUMOS_S10.find((i) => i.codigo === d.insumoCodigo)
+    if (!ins) throw new ErrorApi('insumo_no_existe', 'Ese insumo no está en el catálogo.')
+    this.parametros.forEach((p) => { if (p.insumoCodigo === d.insumoCodigo) p.vigente = false })
+    const nuevo = { insumoCodigo: d.insumoCodigo, descripcion: ins.descripcion, unidadCompra: ins.unidad,
+      stockSeguridad: d.stockSeguridad, puntoReposicion: d.puntoReposicion, vigenteDesde: new Date().toISOString(), vigente: true }
+    this.parametros.push(nuevo)
+    const { vigente: _v, ...p } = nuevo
+    return p
+  }
+
+  async historialParametro(insumoCodigo: string): Promise<ParametroReposicion[]> {
+    await espera(100)
+    return this.parametros.filter((p) => p.insumoCodigo === insumoCodigo).reverse().map(({ vigente: _v, ...p }) => p)
+  }
+
+  async cargarRequerimiento(filas: { insumoCodigo: string; cantidad: number; precio: number }[]): Promise<ResultadoRequerimiento> {
+    await espera(400)
+    return { creados: filas.length, sinCambios: 0, fallidos: [], advertencias: [] }
   }
 
   async listarInsumos(): Promise<InsumoCatalogo[]> {
@@ -745,6 +801,26 @@ class ClienteHttp extends ClienteSimulado {
   override crearProveedor(datos: { ruc: string; razonSocial: string; validadoEnSunat?: boolean }) {
     // el veredicto de SUNAT lo decide el servidor (HU-31), no la pantalla
     return proveedoresHttp.crear(datos.ruc, datos.razonSocial)
+  }
+  override listarMaestro() { return catalogoHttp.maestro() }
+  override listarInsumos() { return catalogoHttp.insumos() }
+  override crearInsumoCatalogo(datos: { nombre: string; um: string; medida?: string; marca?: string }) {
+    return catalogoHttp.crear(datos)
+  }
+  override editarInsumo(codigo: string, datos: { nombre?: string; marca?: string; verificar?: boolean }) {
+    return catalogoHttp.editar(codigo, datos)
+  }
+  override aplicarImportacionS10(filas: { codigo: string; descripcion: string; unidad: string; tipo: string }[]) {
+    return catalogoHttp.aplicarS10(filas)
+  }
+  override saldoPorComprar() { return reposicionHttp.saldo() }
+  override parametrosReposicion() { return reposicionHttp.parametros() }
+  override registrarParametro(d: { insumoCodigo: string; stockSeguridad: number; puntoReposicion: number }) {
+    return reposicionHttp.registrar(d)
+  }
+  override historialParametro(insumoCodigo: string) { return reposicionHttp.historial(insumoCodigo) }
+  override cargarRequerimiento(filas: { insumoCodigo: string; cantidad: number; precio: number }[]) {
+    return reposicionHttp.cargarRequerimiento(filas)
   }
 }
 
