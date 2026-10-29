@@ -215,6 +215,39 @@ def test_el_gateway_reenvia_al_dueno_con_cuerpo_y_cabeceras_y_aisla_caidas(monke
     assert c.get("/salud").json() == {"estado": "ok", "servicio": "gateway"}
 
 
+def test_el_gateway_pide_gzip_y_entrega_la_respuesta_legible_aunque_el_navegador_acepte_brotli(monkeypatch):
+    """En Render, Cloudflare comprime según el Accept-Encoding que le llega. Si el gateway reenviara el «br» del
+    navegador, la respuesta vendría en brotli, httpx no la descomprimiría y el navegador recibiría bytes ilegibles."""
+    import gzip
+    import json
+
+    from fastapi.testclient import TestClient
+    from app.servicios import gateway
+
+    monkeypatch.setenv("SIGRO_URL_CATALOGO", "http://catalogo.interno")
+    pedidos: list[str | None] = []
+
+    class Cloudflare(httpx.AsyncBaseTransport):
+        async def handle_async_request(self, request):
+            acepta = request.headers.get("accept-encoding")
+            pedidos.append(acepta)
+            cuerpo = json.dumps({"insumos": ["acero corrugado fy=4200"]}).encode()
+            if "br" in (acepta or ""):          # brotli que httpx (sin el paquete brotli) deja tal cual
+                return httpx.Response(200, headers={"content-encoding": "br", "content-type": "application/json"},
+                                      content=b"\x8b\x0b\x80" + cuerpo[::-1])
+            if "gzip" in (acepta or ""):
+                return httpx.Response(200, headers={"content-encoding": "gzip", "content-type": "application/json"},
+                                      content=gzip.compress(cuerpo))
+            return httpx.Response(200, headers={"content-type": "application/json"}, content=cuerpo)
+
+    monkeypatch.setattr(gateway, "_cliente", httpx.AsyncClient(transport=Cloudflare()))
+    c = TestClient(gateway.crear_app())
+    r = c.get("/api/v1/catalogo/insumos", headers={"Accept-Encoding": "gzip, deflate, br, zstd"})
+    assert pedidos == ["gzip"]
+    assert r.status_code == 200 and "content-encoding" not in r.headers
+    assert r.json() == {"insumos": ["acero corrugado fy=4200"]}
+
+
 # ---------------------------------------------------------------- la imagen de cada servicio arranca solo con su código
 @pytest.mark.parametrize("servicio", ["obras", "catalogo", "compras", "tareo", "gateway"])
 def test_cada_imagen_arranca_solo_con_su_codigo(servicio, tmp_path):
