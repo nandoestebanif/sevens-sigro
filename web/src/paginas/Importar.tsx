@@ -55,10 +55,9 @@ export function Importar() {
     setAplicado(null)
     setRequerimiento(null)
     try {
-      // «la obra ya tiene catálogo»: la API mandaría los códigos que ya tiene;
-      // aquí se simula con la relación actual de la obra
-      // con la API real, los códigos que ya existen los dice el catálogo del servidor
-      const existentes = conCatalogo || usaApiReal ? (await api.listarInsumos()).map((i) => i.codigo) : []
+      // con la API real, los códigos que ya existen los pone el catálogo del servidor;
+      // con el simulado, «la obra ya tiene catálogo» los toma de la relación actual
+      const existentes = conCatalogo && !usaApiReal ? (await api.listarInsumos()).map((i) => i.codigo) : []
       setResultado(await importarRelacionS10(archivo, existentes))
     } catch (e) {
       setError(e instanceof ErrorImportacion ? e.message : 'No se pudo importar el archivo.')
@@ -123,10 +122,12 @@ export function Importar() {
           <span style={{ fontSize: 13, color: archivo ? 'var(--tinta)' : 'var(--tinta-3)', fontWeight: archivo ? 600 : 400, flex: '1 1 200px', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {archivo ? archivo.name : 'Relación de insumos (precios y cantidades de recursos requeridos por tipo)'}
           </span>
-          <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12.5, color: 'var(--tinta-2)', cursor: 'pointer' }}>
-            <input type="checkbox" checked={conCatalogo} onChange={(e) => setConCatalogo(e.target.checked)} style={{ accentColor: 'var(--accion)' }} />
-            la obra ya tiene catálogo (los repetidos se actualizan)
-          </label>
+          {!usaApiReal && (
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12.5, color: 'var(--tinta-2)', cursor: 'pointer' }}>
+              <input type="checkbox" checked={conCatalogo} onChange={(e) => setConCatalogo(e.target.checked)} style={{ accentColor: 'var(--accion)' }} />
+              la obra ya tiene catálogo (los repetidos se actualizan)
+            </label>
+          )}
           <Boton enClic={importar} deshabilitado={!archivo || subiendo}>
             {subiendo ? 'Leyendo el archivo…' : 'Importar'}
           </Boton>

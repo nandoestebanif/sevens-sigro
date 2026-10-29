@@ -1,9 +1,14 @@
 /* ─────────────────────────────────────────────────────────────────────────────
-   Puente con el micro de integraciones · importación del S10 (HU-07).
-   La web NUNCA parsea el PDF: lo sube al micro (localhost:8001 en desarrollo)
-   y muestra lo que el micro normalizó. Si el micro está apagado, la pantalla
-   lo dice con claridad y no pasa nada más.
+   Importación del S10 (HU-07). La web NUNCA parsea el PDF: lo sube y muestra
+   lo que el micro de integraciones normalizó.
+   - Con la API real, el PDF va por el gateway con el JWT de la sesión
+     (POST /api/v1/catalogo/importaciones-s10). El catálogo lo reenvía a
+     Integraciones con su token de servicio y pone él los códigos que ya
+     existen: el navegador nunca ve ese token ni habla con Integraciones.
+   - Con el cliente simulado (sin VITE_API_URL), en desarrollo se sube directo
+     al micro en localhost:8001, que corre sin token.
    ───────────────────────────────────────────────────────────────────────── */
+import { API_URL, cerrarSesion, sesionActual, usaApiReal } from './http'
 
 export interface InsumoImportado {
   codigo: string
@@ -33,8 +38,7 @@ export interface ResultadoImportacion {
   fallidos: { texto: string; error: string }[]
 }
 
-// En desarrollo, el micro corre en :8001; desplegado, se indica con VITE_INTEGRACIONES_URL.
-const BASE = (import.meta.env.VITE_INTEGRACIONES_URL ?? 'http://localhost:8001').replace(/\/$/, '')
+const MICRO_LOCAL = 'http://localhost:8001'
 
 export class ErrorImportacion extends Error {}
 
@@ -44,22 +48,37 @@ export async function importarRelacionS10(
 ): Promise<ResultadoImportacion> {
   const datos = new FormData()
   datos.append('archivo', archivo)
-  datos.append('codigos_existentes', codigosExistentes.join(','))
+  // con la API real, los códigos que ya existen los pone el servidor
+  if (!usaApiReal) datos.append('codigos_existentes', codigosExistentes.join(','))
+  const sesion = sesionActual()
+  const url = usaApiReal ? `${API_URL}/api/v1/catalogo/importaciones-s10` : `${MICRO_LOCAL}/s10/relacion-insumos`
 
   let r: Response
   try {
     const control = new AbortController()
-    const t = setTimeout(() => control.abort(), 30000)
-    r = await fetch(`${BASE}/s10/relacion-insumos`, { method: 'POST', body: datos, signal: control.signal })
+    // en el ambiente de pruebas la primera petición despierta la cadena gateway → catálogo → integraciones
+    const t = setTimeout(() => control.abort(), usaApiReal ? 90000 : 30000)
+    r = await fetch(url, {
+      method: 'POST',
+      body: datos,
+      headers: usaApiReal && sesion ? { Authorization: `Bearer ${sesion.token}` } : {},
+      signal: control.signal,
+    })
     clearTimeout(t)
   } catch {
-    throw new ErrorImportacion(
-      'El servicio de integraciones no responde. Arranca el micro (puerto 8001) y vuelve a intentar: el archivo no se pierde.',
-    )
+    throw new ErrorImportacion(usaApiReal
+      ? 'No se pudo conectar con el servidor de SIGRO. Revisa tu conexión y vuelve a intentar: el archivo no se pierde.'
+      : 'El servicio de integraciones no responde. Arranca el micro (puerto 8001) y vuelve a intentar: el archivo no se pierde.')
+  }
+  if (r.status === 401 && usaApiReal && sesion) {
+    cerrarSesion() // token vencido o usuario dado de baja: se vuelve a entrar
+    throw new ErrorImportacion('Tu sesión venció. Vuelve a ingresar.')
   }
   if (!r.ok) {
-    const detalle = await r.json().catch(() => null) as { detail?: string } | null
-    throw new ErrorImportacion(detalle?.detail ?? `El servicio respondió ${r.status}.`)
+    // la API responde {codigo, mensaje}; el micro, {detail}
+    const d = await r.json().catch(() => null) as { mensaje?: string; detail?: unknown } | null
+    const mensaje = d?.mensaje ?? (typeof d?.detail === 'string' ? d.detail : null)
+    throw new ErrorImportacion(mensaje ?? `El servidor respondió ${r.status}.`)
   }
   return r.json() as Promise<ResultadoImportacion>
 }
