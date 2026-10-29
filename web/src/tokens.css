@@ -356,3 +356,19 @@ body { transition: background-color 0.25s ease-out, color 0.25s ease-out; }
 .tabla-vidrio .n { text-align: right; }
 .tabla-vidrio tr:last-child td { border-bottom: 0; }
 .tabla-vidrio tbody tr:hover { background-color: var(--vidrio-celda); }
+
+/* ── W1 · Entrar: la tarjeta oscura de la marca y el formulario de vidrio.
+   En angosto el formulario va primero: es lo que se viene a hacer. ── */
+.entrar-marca {
+  flex: 1 1 520px; max-width: 700px; min-height: 640px; border-radius: 40px; padding: 48px;
+  background: #0f172a; color: #ffffff; position: relative; overflow: hidden;
+  display: flex; flex-direction: column; justify-content: space-between; gap: 28px;
+  box-shadow: 0 30px 60px rgba(15, 23, 42, 0.3);
+}
+.entrar-marca h1 { font-size: 40px; font-weight: 800; line-height: 1.12; letter-spacing: -0.03em; }
+.entrar-formulario { flex: 1 1 360px; max-width: 440px; border-radius: 34px; padding: 36px 32px; }
+@media (max-width: 760px) {
+  .entrar-formulario { order: -1; padding: 28px 22px; border-radius: 28px; }
+  .entrar-marca { min-height: 0; padding: 28px 24px; border-radius: 28px; }
+  .entrar-marca h1 { font-size: 26px; }
+}
