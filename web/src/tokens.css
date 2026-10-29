@@ -219,3 +219,140 @@ body { transition: background-color 0.25s ease-out, color 0.25s ease-out; }
     transition-duration: 0.01ms !important;
   }
 }
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Vidrio · lienzo «SIGRO Oficina · Web (estilo vidrio)» (web/diseno/lienzo)
+   Mismo lenguaje que la app: superficies de vidrio (58 % y 18 px de desenfoque)
+   sobre un fondo de plano distinto por página, acento #C2410C, botón negro en
+   píldora y menú lateral con la sección activa en naranja. Se aplica página por
+   página: las que aún no migran siguen con las piezas de ui/base.tsx.
+   Sobre vidrio el texto secundario usa --tinta-2 (7:1); --tinta-3 no llega a AA.
+   ───────────────────────────────────────────────────────────────────────── */
+:root {
+  --vidrio: rgba(255, 255, 255, 0.58);
+  --vidrio-fuerte: rgba(255, 255, 255, 0.78);
+  --vidrio-borde: rgba(255, 255, 255, 0.75);
+  --vidrio-borde-fuerte: rgba(255, 255, 255, 0.85);
+  --vidrio-sombra: 0 8px 28px rgba(15, 23, 42, 0.1);
+  --vidrio-sombra-alta: 0 24px 50px rgba(15, 23, 42, 0.16);
+  --desenfoque: blur(18px) saturate(160%);
+  --desenfoque-fuerte: blur(22px) saturate(160%);
+  --vidrio-celda: rgba(255, 255, 255, 0.8); /* cifras dentro de una tarjeta de vidrio */
+  --separador: rgba(17, 24, 39, 0.08);
+
+  --radio-vidrio: 26px;
+  --radio-menu: 30px;
+
+  /* botones en píldora: negro el principal, vidrio claro el secundario */
+  --pildora: #111827;
+  --pildora-tinta: #ffffff;
+  --pildora-sombra: 0 10px 22px rgba(17, 24, 39, 0.25);
+  --pildora-2: rgba(255, 255, 255, 0.85);
+  --pildora-2-tinta: #111827;
+  --pildora-2-borde: rgba(17, 24, 39, 0.12);
+
+  --campo-fondo: rgba(255, 255, 255, 0.8);
+  --campo-borde: rgba(17, 24, 39, 0.12);
+
+  /* menú: la sección activa en naranja con texto blanco (5.2:1) */
+  --menu-activo: #c2410c;
+  --menu-activo-tinta: #ffffff;
+  --menu-activo-sombra: 0 8px 18px rgba(194, 65, 12, 0.32);
+
+  /* fondo de plano */
+  --plano-0: #eef1f6;
+  --plano-1: #f2f0ee;
+  --plano-2: #f5eae1;
+  --plano-reticula: #94a3b8;
+  --plano-reticula-mayor: #64748b;
+  --plano-trazo: #475569;
+  --plano-cota: #c2410c;
+  --plano-mancha-naranja: #fb923c;
+  --plano-mancha-azul: #60a5fa;
+  --plano-mancha-turquesa: #2dd4bf;
+}
+
+:root[data-tema='oscuro'] {
+  --vidrio: rgba(23, 25, 29, 0.62);
+  --vidrio-fuerte: rgba(23, 25, 29, 0.8);
+  --vidrio-borde: rgba(255, 255, 255, 0.08);
+  --vidrio-borde-fuerte: rgba(255, 255, 255, 0.1);
+  --vidrio-sombra: 0 8px 28px rgba(0, 0, 0, 0.35);
+  --vidrio-sombra-alta: 0 24px 50px rgba(0, 0, 0, 0.45);
+  --vidrio-celda: rgba(255, 255, 255, 0.05);
+  --separador: rgba(255, 255, 255, 0.08);
+
+  /* en oscuro el negro no se distinguiría: el principal pasa a claro */
+  --pildora: #f3f4f6;
+  --pildora-tinta: #111827;
+  --pildora-sombra: 0 10px 22px rgba(0, 0, 0, 0.4);
+  --pildora-2: rgba(255, 255, 255, 0.08);
+  --pildora-2-tinta: #ffffff;
+  --pildora-2-borde: rgba(255, 255, 255, 0.16);
+
+  --campo-fondo: rgba(255, 255, 255, 0.06);
+  --campo-borde: rgba(255, 255, 255, 0.16);
+
+  --menu-activo: #ff7700;
+  --menu-activo-tinta: #180d00;
+  --menu-activo-sombra: 0 8px 18px rgba(255, 119, 0, 0.3);
+
+  --plano-0: #0e1116;
+  --plano-1: #121418;
+  --plano-2: #1a1410;
+  --plano-reticula: #475569;
+  --plano-reticula-mayor: #64748b;
+  --plano-trazo: #94a3b8;
+  --plano-cota: #ff9a4d;
+}
+
+.vidrio {
+  background: var(--vidrio);
+  -webkit-backdrop-filter: var(--desenfoque);
+  backdrop-filter: var(--desenfoque);
+  border: 1px solid var(--vidrio-borde);
+  box-shadow: var(--vidrio-sombra);
+}
+
+.vidrio-fuerte {
+  background: var(--vidrio-fuerte);
+  -webkit-backdrop-filter: var(--desenfoque-fuerte);
+  backdrop-filter: var(--desenfoque-fuerte);
+  border: 1px solid var(--vidrio-borde-fuerte);
+}
+
+.campo {
+  box-sizing: border-box;
+  height: 48px;
+  width: 100%;
+  border-radius: 14px;
+  border: 1px solid var(--campo-borde);
+  background: var(--campo-fondo);
+  padding: 0 14px;
+  font: 15px var(--fuente);
+  color: var(--tinta);
+}
+.campo::placeholder { color: var(--tinta-2); }
+
+.campo:focus,
+.foco-vidrio:focus-visible {
+  outline: 2px solid var(--accion);
+  outline-offset: 2px;
+}
+
+/* el logo a color sobre claro, el blanco sobre oscuro */
+.solo-oscuro { display: none; }
+:root[data-tema='oscuro'] .solo-claro { display: none; }
+:root[data-tema='oscuro'] .solo-oscuro { display: block; }
+
+/* tablas sobre vidrio: encabezado en versales, filas separadas por hilo */
+.tabla-vidrio { width: 100%; border-collapse: collapse; font-size: 14px; min-width: 760px; }
+.tabla-vidrio th {
+  padding: 12px 14px; font-size: 12px; font-weight: 700; letter-spacing: 0.04em;
+  text-transform: uppercase; color: var(--tinta-2); text-align: left;
+  border-bottom: 1px solid var(--campo-borde);
+}
+.tabla-vidrio td { padding: 12px 14px; border-bottom: 1px solid var(--separador); vertical-align: middle; }
+.tabla-vidrio .n { text-align: right; }
+.tabla-vidrio tr:last-child td { border-bottom: 0; }
+.tabla-vidrio tbody tr:hover { background-color: var(--vidrio-celda); }
