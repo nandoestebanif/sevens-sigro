@@ -1,10 +1,17 @@
-/* SIGRO · armazón de la web de oficina: barra lateral, obra activa y rutas. */
+/* SIGRO · armazón de la web de oficina: menú lateral de vidrio (lienzo «SIGRO Oficina · Web»), obra activa y rutas. */
 import { Component, useEffect, useState, type ReactNode } from 'react'
 import { HashRouter, NavLink, Navigate, Route, Routes } from 'react-router-dom'
 import { api } from './api/cliente'
 import { cerrarSesion, sesionActual, usaApiReal } from './api/http'
 import { Entrar } from './paginas/Entrar'
 import type { Obra, ObraActiva } from './api/tipos'
+import logo from './assets/sevens-logo.png'
+import logoBlanco from './assets/sevens-logo-blanco.png'
+
+const ROLES: Record<string, string> = {
+  residente: 'Residente de obra', administrador: 'Administrador', gerente: 'Gerente',
+  almacenero: 'Almacenero', ssoma: 'Ingeniero SSOMA',
+}
 
 /* Guardián de errores del frontend: si una pantalla revienta por un error no
    previsto, la persona ve esta tarjeta y el resto de la web sigue vivo — nunca
@@ -54,9 +61,9 @@ import { Proveedores } from './paginas/Proveedores'
 import { Reposicion } from './paginas/Reposicion'
 import { Tablero } from './paginas/Tablero'
 
-/* Íconos del menú: trazo simple, 16 px, heredan el color del texto. */
-const Icono = ({ d }: { d: string }) => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ flex: 'none' }}>
+/* Íconos del menú: trazo simple, heredan el color del texto. */
+const Icono = ({ d, tam = 16 }: { d: string; tam?: number }) => (
+  <svg width={tam} height={tam} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ flex: 'none' }}>
     {d.split('|').map((seg, i) => <path key={i} d={seg} />)}
   </svg>
 )
@@ -244,102 +251,84 @@ function Sistema() {
     setObras(await api.listarObras())
   }
 
+  const sesion = sesionActual()
+  const rol = sesion?.obras.find((o) => String(o.id) === obra?.id)?.rol ?? sesion?.obras[0]?.rol
+
   return (
     <HashRouter>
-      <div style={{ display: 'flex', minHeight: '100%' }}>
-        <aside
-          style={{
-            width: 228, padding: '22px 14px', display: 'flex', flexDirection: 'column',
-            gap: 22, borderRight: '1px solid var(--borde)', background: 'var(--tarjeta)',
-            position: 'sticky', top: 0, height: '100vh',
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '0 13px' }}>
-            <div
-              aria-hidden
-              style={{
-                width: 32, height: 32, borderRadius: 10, background: 'var(--marca)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                color: '#fff', fontWeight: 800, fontSize: 15,
-              }}
-            >
-              S
+      <div className="armazon">
+        <aside aria-label="Menú principal" className="vidrio-fuerte menu-lateral">
+          <NavLink to="/tablero" aria-label="SIGRO · inicio" style={{ display: 'flex', justifyContent: 'center', padding: '2px 0 4px' }}>
+            <img src={logo} alt="SEVEN'S Ingenieros SAC" className="solo-claro" style={{ height: 58, width: 'auto' }} />
+            <img src={logoBlanco} alt="SEVEN'S Ingenieros SAC" className="solo-oscuro" style={{ height: 58, width: 'auto' }} />
+          </NavLink>
+
+          <div className="vidrio" style={{ borderRadius: 18, padding: '10px 12px', display: 'flex', alignItems: 'center', gap: 10, boxShadow: 'none' }}>
+            <span aria-hidden style={{ width: 36, height: 36, borderRadius: 12, background: 'var(--marca-tinte)', color: 'var(--accion)', display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 'none' }}>
+              <Icono d={ICONOS.obra} tam={18} />
+            </span>
+            <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
+              <label htmlFor="obra-activa" style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--tinta-2)' }}>
+                Obra activa
+              </label>
+              {obras.length > 1 ? (
+                <select
+                  id="obra-activa"
+                  value={obra?.id ?? ''}
+                  onChange={(e) => cambiarObra(e.target.value)}
+                  className="foco-vidrio"
+                  style={{
+                    width: '100%', minHeight: 32, border: 0, padding: 0, fontSize: 14, fontWeight: 800,
+                    fontFamily: 'inherit', background: 'transparent', color: 'var(--tinta)', cursor: 'pointer',
+                  }}
+                >
+                  {obras.map((o) => <option key={o.id} value={o.id}>{o.nombre}</option>)}
+                </select>
+              ) : (
+                <span style={{ fontSize: 14, fontWeight: 800 }}>{obra?.nombre ?? '…'}</span>
+              )}
+              <span className="n" style={{ fontSize: 12, color: 'var(--tinta-2)' }}>
+                {obra ? `${obra.semana === 0 ? 'aún no inicia' : `semana ${obra.semana} de ${obra.semanasTotales}`} · solo ves lo de esta obra` : ''}
+              </span>
             </div>
-            <div style={{ fontSize: 17, fontWeight: 700, letterSpacing: '-0.3px' }}>SIGRO</div>
           </div>
 
-          <nav style={{ display: 'flex', flexDirection: 'column', gap: 14, overflowY: 'auto' }}>
+          <nav aria-label="Secciones" className="menu-grupos">
             {GRUPOS.map((g) => (
-              <div key={g.rotulo}>
-                <div style={{ padding: '0 13px 5px', fontSize: 10.5, fontWeight: 700, letterSpacing: 0.8, textTransform: 'uppercase', color: 'var(--tinta-3)' }}>
-                  {g.rotulo}
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                  {g.items.map((s) => (
-                    <NavLink
-                      key={s.ruta}
-                      to={s.ruta}
-                      style={({ isActive }) => ({
-                        display: 'flex', alignItems: 'center', gap: 10,
-                        padding: '8px 13px', borderRadius: 'var(--radio-chico)',
-                        fontSize: 13.5, textDecoration: 'none',
-                        fontWeight: isActive ? 700 : 500,
-                        color: isActive ? 'var(--marca-tinte-tinta)' : 'var(--tinta-3)',
-                        background: isActive ? 'var(--marca-tinte)' : 'transparent',
-                      })}
-                    >
-                      <Icono d={ICONOS[s.icono]} />
-                      {s.nombre}
-                    </NavLink>
-                  ))}
-                </div>
+              <div key={g.rotulo} className="menu-grupo">
+                <span className="menu-grupo-rotulo">{g.rotulo}</span>
+                {g.items.map((s) => (
+                  <NavLink key={s.ruta} to={s.ruta} className="menu-enlace">
+                    <Icono d={ICONOS[s.icono]} tam={19} />
+                    {s.nombre}
+                  </NavLink>
+                ))}
               </div>
             ))}
           </nav>
 
-          <div
-            style={{
-              marginTop: 'auto', background: 'var(--fondo)', border: '1px solid var(--borde)',
-              borderRadius: 14, padding: 13,
-            }}
-          >
-            <label htmlFor="obra-activa" style={{ display: 'block', fontSize: 11.5, color: 'var(--tinta-3)' }}>
-              Obra activa
-            </label>
-            {obras.length > 1 ? (
-              <select
-                id="obra-activa"
-                value={obra?.id ?? ''}
-                onChange={(e) => cambiarObra(e.target.value)}
-                style={{
-                  width: '100%', marginTop: 5, height: 36, border: '1px solid var(--borde)',
-                  borderRadius: 'var(--radio-chico)', padding: '0 8px', fontSize: 12.5,
-                  fontWeight: 600, fontFamily: 'inherit', background: 'var(--tarjeta)',
-                  color: 'var(--tinta)',
-                }}
+          {usaApiReal && sesion && (
+            <div style={{ marginTop: 'auto', borderTop: '1px solid var(--separador)', padding: '14px 6px 0', display: 'flex', alignItems: 'center', gap: 10 }}>
+              <span aria-hidden style={{ width: 40, height: 40, borderRadius: 20, background: 'var(--aviso-tinte)', color: 'var(--aviso)', display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 'none', fontWeight: 800 }}>
+                {sesion.usuario.nombre.trim().charAt(0).toUpperCase()}
+              </span>
+              <span style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
+                <span style={{ fontSize: 14, fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{sesion.usuario.nombre}</span>
+                {rol && <span style={{ fontSize: 12, color: 'var(--tinta-2)' }}>{ROLES[rol] ?? rol}</span>}
+              </span>
+              <button
+                type="button" onClick={cerrarSesion} aria-label="Cerrar sesión" title="Cerrar sesión" className="foco-vidrio"
+                style={{ width: 44, height: 44, borderRadius: 22, border: 0, background: 'transparent', color: 'var(--tinta-2)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flex: 'none' }}
               >
-                {obras.map((o) => <option key={o.id} value={o.id}>{o.nombre}</option>)}
-              </select>
-            ) : (
-              <div style={{ fontSize: 13.5, fontWeight: 600, marginTop: 3 }}>{obra?.nombre ?? '…'}</div>
-            )}
-            <div className="n" style={{ fontSize: 11.5, color: 'var(--tinta-3)', marginTop: 5 }}>
-              {obra ? `${obra.semana === 0 ? 'aún no inicia' : `semana ${obra.semana} de ${obra.semanasTotales}`} · solo ves lo de esta obra` : ''}
-            </div>
-          </div>
-          {usaApiReal && (
-            <div style={{ padding: '0 13px', fontSize: 12, color: 'var(--tinta-3)', display: 'flex', justifyContent: 'space-between', gap: 8 }}>
-              <span>{sesionActual()?.usuario.nombre}</span>
-              <button type="button" onClick={cerrarSesion} style={{ background: 'none', border: 'none', color: 'var(--accion)', cursor: 'pointer', fontFamily: 'inherit', fontSize: 12, fontWeight: 600 }}>
-                Salir
+                <Icono d="M15 4h4v16h-4|M10 17l5-5-5-5|M15 12H3" tam={18} />
               </button>
             </div>
           )}
         </aside>
 
-        <main style={{ flex: 1, minWidth: 0, padding: '24px 28px' }}>
+        <main className="contenido">
           {/* la clave remonta las pantallas al cambiar de obra: vuelven a consultar */}
-          <div key={obra?.id ?? 'sin-obra'} style={{ maxWidth: 1180, margin: '0 auto' }}>
+          <div key={obra?.id ?? 'sin-obra'}>
           <GuardianErrores>
           <Routes>
             <Route path="/" element={<Navigate to="/proveedores" replace />} />

@@ -357,6 +357,44 @@ body { transition: background-color 0.25s ease-out, color 0.25s ease-out; }
 .tabla-vidrio tr:last-child td { border-bottom: 0; }
 .tabla-vidrio tbody tr:hover { background-color: var(--vidrio-celda); }
 
+/* ── armazón: menú lateral de vidrio a la izquierda, contenido fluido hasta
+   1440 px. En angosto el menú pasa arriba y sus secciones corren en una fila
+   que se desplaza de lado. ── */
+.armazon {
+  max-width: 1440px; min-height: 100%; margin: 0 auto; padding: 20px;
+  display: flex; gap: 20px; align-items: flex-start;
+}
+.menu-lateral {
+  flex: none; width: 264px; position: sticky; top: 20px; max-height: calc(100vh - 40px); overflow-y: auto;
+  border-radius: var(--radio-menu); padding: 20px 14px 16px;
+  display: flex; flex-direction: column; gap: 16px; box-shadow: 0 14px 40px rgba(15, 23, 42, 0.12);
+}
+.menu-grupos { display: flex; flex-direction: column; gap: 14px; }
+.menu-grupo { display: flex; flex-direction: column; gap: 3px; }
+.menu-grupo-rotulo {
+  padding: 0 10px 4px; font-size: 11px; font-weight: 700; letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--tinta-2);
+}
+.menu-enlace {
+  min-height: 44px; padding: 0 12px; border-radius: 15px; display: flex; align-items: center; gap: 10px;
+  font-size: 14px; font-weight: 600; text-decoration: none; color: var(--tinta-2);
+}
+.menu-enlace.active {
+  background: var(--menu-activo); color: var(--menu-activo-tinta); font-weight: 700;
+  box-shadow: var(--menu-activo-sombra);
+}
+.menu-enlace:focus-visible { outline: 2px solid var(--accion); outline-offset: 2px; }
+.contenido { flex: 1; min-width: 0; padding-top: 4px; }
+
+@media (max-width: 900px) {
+  .armazon { flex-direction: column; align-items: stretch; padding: 12px; gap: 14px; }
+  .menu-lateral { width: auto; position: static; max-height: none; padding: 14px; gap: 12px; border-radius: 24px; }
+  .menu-grupos { flex-direction: row; overflow-x: auto; gap: 6px; padding-bottom: 2px; }
+  .menu-grupo { flex-direction: row; }
+  .menu-grupo-rotulo { display: none; }
+  .menu-enlace { white-space: nowrap; }
+}
+
 /* ── W1 · Entrar: la tarjeta oscura de la marca y el formulario de vidrio.
    En angosto el formulario va primero: es lo que se viene a hacer. ── */
 .entrar-marca {
