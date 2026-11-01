@@ -65,7 +65,7 @@ val moduloPresentacion = module {
     viewModel { EntrarViewModel(get()) }
     viewModel { InicioViewModel(get(), get(), get(), get()) }
     viewModel { SalidaViewModel(get(), get(), get()) }
-    viewModel { PendientesViewModel(get()) }
+    viewModel { PendientesViewModel(get(), get()) }
     viewModel { DispositivoViewModel(get()) }
     viewModel { ObrasViewModel(get(), get(), get()) }
 }
