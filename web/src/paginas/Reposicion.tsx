@@ -8,11 +8,14 @@
    - Se puede filtrar por fase y por insumo crítico → chips y selector.
    - La consulta se exporta para armar el pedido → botón que baja un CSV con lo
      filtrado, listo para convertirse en la solicitud de materiales (HU-66).
+   Lienzo W5 «Reposición» (estilo vidrio).
    ───────────────────────────────────────────────────────────────────────── */
 import { useEffect, useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { api } from '../api/cliente'
 import type { AlertaReposicion, AvanceInsumo } from '../api/tipos'
-import { Boton, Chip, Tarjeta, Titulo, Vacio } from '../ui/base'
+import { Chip, Vacio } from '../ui/base'
+import { Chips, Encabezado, Fondo, Pildora, Segmentado, TituloSeccion, Vidrio, estiloPildora } from '../ui/vidrio'
 
 const n2 = (v: number) => v.toLocaleString('es-PE', { maximumFractionDigits: 0 })
 
@@ -23,43 +26,38 @@ function Alerta({ a }: { a: AlertaReposicion }) {
   const [cantidad, setCantidad] = useState(String(a.sugerencia))
   const activa = a.estado === 'activa'
   return (
-    <Tarjeta estilo={{ borderLeft: `4px solid ${activa ? 'var(--grave)' : 'var(--aviso)'}`, padding: '14px 16px' }}>
+    <Vidrio estilo={{ borderLeft: `4px solid ${activa ? 'var(--grave)' : 'var(--aviso)'}`, padding: '16px 20px' }} etiqueta={`Aviso de reposición: ${a.descripcion}`}>
       <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'baseline', flexWrap: 'wrap' }}>
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-          <strong style={{ fontSize: 13.5 }}>{a.descripcion}</strong>
+          <strong style={{ fontSize: 15 }}>{a.descripcion}</strong>
           {activa
             ? <Chip tono="grave">bajo el punto de reposición</Chip>
             : <Chip tono="aviso">atendida · compra {a.atendidaPor}</Chip>}
         </span>
-        <span className="n" style={{ fontSize: 12.5, color: 'var(--tinta-2)' }}>
+        <span className="n" style={{ fontSize: 13.5, color: 'var(--tinta-2)' }}>
           saldo <strong>{n2(a.saldo)} {a.unidad}</strong> · punto {n2(a.punto)} · falta por comprar {n2(a.faltaPorComprar)}
         </span>
       </div>
-      <div style={{ fontSize: 11.5, color: 'var(--tinta-3)', marginTop: 4 }}>
+      <div style={{ fontSize: 13, color: 'var(--tinta-2)', marginTop: 4 }}>
         punto configurado como {a.criterioPunto}
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 10, flexWrap: 'wrap' }}>
-        <label htmlFor={`sug-${a.insumoId}`} style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--tinta-2)' }}>
+        <label htmlFor={`sug-${a.insumoId}`} style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--tinta-2)' }}>
           Sugerencia de compra:
         </label>
         <input
           id={`sug-${a.insumoId}`}
-          className="n"
+          className="n campo"
           value={cantidad}
           onChange={(e) => setCantidad(e.target.value)}
-          style={{
-            width: 96, height: 36, border: '1px solid var(--borde)', borderRadius: 'var(--radio-chico)',
-            padding: '0 10px', fontSize: 13.5, fontWeight: 700, textAlign: 'right',
-            fontFamily: 'inherit', background: 'var(--tarjeta)', color: 'var(--tinta)',
-            outlineColor: 'var(--accion)',
-          }}
+          style={{ width: 110, height: 44, padding: '0 12px', fontWeight: 700, textAlign: 'right' }}
         />
-        <span style={{ fontSize: 12.5, color: 'var(--tinta-2)' }}>{a.unidad}</span>
-        <span style={{ fontSize: 11.5, color: 'var(--tinta-3)', flex: '1 1 260px' }}>
+        <span style={{ fontSize: 13.5, color: 'var(--tinta-2)' }}>{a.unidad}</span>
+        <span style={{ fontSize: 13, color: 'var(--tinta-2)', flex: '1 1 260px' }}>
           referencia editable, nunca pedido automático · criterio: {a.criterioSugerencia}
         </span>
       </div>
-    </Tarjeta>
+    </Vidrio>
   )
 }
 
@@ -99,99 +97,92 @@ export function Reposicion() {
     URL.revokeObjectURL(a.href)
   }
 
-  const chipFiltro = (activo: boolean, texto: string, alClic: () => void) => (
-    <button
-      type="button"
-      onClick={alClic}
-      style={{
-        border: `1px solid ${activo ? 'var(--accion)' : 'var(--borde)'}`,
-        background: activo ? 'var(--marca-tinte)' : 'var(--tarjeta)',
-        color: activo ? 'var(--marca-tinte-tinta)' : 'var(--tinta-2)',
-        borderRadius: 'var(--radio-pildora)', padding: '8px 14px',
-        fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
-      }}
-    >
-      {texto}
-    </button>
-  )
-
   return (
-    <div className="pagina" style={{ display: 'flex', flexDirection: 'column', gap: 15 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16 }}>
-        <Titulo sub="Falta por comprar = requerido − comprado. La base cierta para formular la siguiente solicitud de materiales.">
-          Saldo por comprar
-        </Titulo>
-        <Boton enClic={exportar} deshabilitado={!visibles.length}>Exportar para el pedido</Boton>
+    <>
+      <Fondo dibujo="reposicion" />
+      <div className="pagina" style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+        <Encabezado
+          titulo="Reposición"
+          sub="Qué falta comprar de lo planificado y qué está por acabarse en la obra"
+          acciones={
+            <>
+              <Link to="/parametros" className="foco-vidrio" style={estiloPildora('secundario')}>Parámetros de reposición</Link>
+              <Pildora enClic={exportar} deshabilitado={!visibles.length}>Exportar para el pedido</Pildora>
+            </>
+          }
+        />
+
+        <Chips>
+          <Chip tono="info">Comprado y stock: datos de ejemplo · lo requerido es el S10 real</Chip>
+          <Chip tono="neutro">El requerimiento avisa, no bloquea</Chip>
+        </Chips>
+
+        {alertas.map((a) => <Alerta key={a.insumoId} a={a} />)}
+
+        <Vidrio estilo={{ display: 'flex', flexDirection: 'column', gap: 14 }} etiqueta="Saldo por comprar">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            <TituloSeccion>Saldo por comprar</TituloSeccion>
+            <p style={{ fontSize: 13.5, color: 'var(--tinta-2)', lineHeight: 1.5 }}>
+              Falta por comprar = requerido − comprado. La base cierta para formular la siguiente solicitud de materiales.
+            </p>
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center' }}>
+            <Segmentado
+              etiqueta="Filtro por criticidad" valor={soloCriticos} enCambio={setSoloCriticos}
+              opciones={[{ valor: false, texto: 'Todos' }, { valor: true, texto: 'Solo críticos' }]}
+            />
+            <select
+              aria-label="Filtrar por fase"
+              value={fase}
+              onChange={(e) => setFase(e.target.value)}
+              className="campo"
+              style={{ width: 'auto', minWidth: 200, height: 46, borderRadius: 23, fontWeight: 600, fontSize: 14 }}
+            >
+              <option value="todas">Todas las fases</option>
+              {fases.map((f) => <option key={f} value={f}>{f}</option>)}
+            </select>
+          </div>
+
+          {filas === null ? (
+            <Vacio titulo="Cargando…" detalle="Calculando el saldo por comprar de cada insumo." />
+          ) : visibles.length === 0 ? (
+            <Vacio titulo="Nada pendiente con este filtro" detalle="Todos los insumos filtrados ya tienen su compra completa." />
+          ) : (
+            <div style={{ overflowX: 'auto' }}>
+              <table className="tabla-vidrio">
+                <thead>
+                  <tr>
+                    <th>Insumo</th><th>Fase</th><th className="n">Requerido (S10)</th><th className="n">Comprado</th><th className="n">Falta por comprar</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {visibles.map((f) => (
+                    <tr key={f.insumoId}>
+                      <td style={{ minWidth: 240 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                          <span style={{ fontWeight: 600 }}>{f.descripcion}</span>
+                          {f.critico && <Chip tono="aviso">crítico</Chip>}
+                        </div>
+                        <div className="n" style={{ fontSize: 12, color: 'var(--tinta-2)', marginTop: 2, textAlign: 'left' }}>SKU {f.codigo}</div>
+                      </td>
+                      <td style={{ color: 'var(--tinta-2)' }}>{f.fase}</td>
+                      <td className="n" style={{ whiteSpace: 'nowrap' }}>{n2(f.planificadoCantidad)} {f.unidadS10}</td>
+                      <td className="n" style={{ whiteSpace: 'nowrap' }}>{n2(f.compradoCantidad)} {f.unidadS10} · {f.compradoPct} %</td>
+                      <td className="n" style={{ fontWeight: 800, whiteSpace: 'nowrap' }}>{n2(f.saldoPorComprar)} {f.unidadCompra}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </Vidrio>
+
+        <p style={{ fontSize: 13, color: 'var(--tinta-plano)', padding: '0 4px', lineHeight: 1.5 }}>
+          El faltante se muestra en la <strong>unidad de compra</strong>: el acero se pide en
+          varillas aunque el S10 lo planifique en kilos (factor de conversión del catálogo).
+          La sugerencia de compra (HU-27) aparece en la alerta de arriba: el menor entre lo que falta y lo que exige la fase en curso.
+        </p>
       </div>
-
-      {alertas.map((a) => <Alerta key={a.insumoId} a={a} />)}
-
-      <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-        {chipFiltro(!soloCriticos, 'Todos', () => setSoloCriticos(false))}
-        {chipFiltro(soloCriticos, 'Solo críticos', () => setSoloCriticos(true))}
-        <select
-          aria-label="Filtrar por fase"
-          value={fase}
-          onChange={(e) => setFase(e.target.value)}
-          style={{
-            height: 37, border: '1px solid var(--borde)', borderRadius: 'var(--radio-pildora)',
-            padding: '0 14px', fontSize: 13, fontWeight: 600, fontFamily: 'inherit',
-            background: 'var(--tarjeta)', color: 'var(--tinta-2)',
-          }}
-        >
-          <option value="todas">Todas las fases</option>
-          {fases.map((f) => <option key={f} value={f}>{f}</option>)}
-        </select>
-      </div>
-
-      <Tarjeta relleno={false}>
-        {filas === null ? (
-          <Vacio titulo="Cargando…" detalle="Calculando el saldo por comprar de cada insumo." />
-        ) : visibles.length === 0 ? (
-          <Vacio titulo="Nada pendiente con este filtro" detalle="Todos los insumos filtrados ya tienen su compra completa." />
-        ) : (
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead>
-              <tr style={{ background: 'var(--tarjeta-suave)', borderBottom: '1px solid var(--borde)' }}>
-                {['Insumo', 'Fase', 'Requerido', 'Comprado', 'Falta por comprar'].map((h, i) => (
-                  <th key={h} style={{ padding: '11px 18px', fontSize: 11, fontWeight: 600, color: 'var(--tinta-3)', letterSpacing: 0.4, textAlign: i >= 2 ? 'right' : 'left' }}>
-                    {h}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {visibles.map((f, i) => (
-                <tr key={f.insumoId} style={{ borderBottom: i === visibles.length - 1 ? 'none' : '1px solid var(--linea)' }}>
-                  <td style={{ padding: '12px 18px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <span style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--tinta)' }}>{f.descripcion}</span>
-                      {f.critico && <Chip tono="aviso">crítico</Chip>}
-                    </div>
-                    <div className="n" style={{ fontSize: 11.5, color: 'var(--tinta-3)', marginTop: 2 }}>SKU {f.codigo}</div>
-                  </td>
-                  <td style={{ padding: '12px 18px', fontSize: 13, color: 'var(--tinta-2)' }}>{f.fase}</td>
-                  <td className="n" style={{ padding: '12px 18px', fontSize: 13, color: 'var(--tinta-2)', textAlign: 'right' }}>
-                    {n2(f.planificadoCantidad)} {f.unidadS10}
-                  </td>
-                  <td className="n" style={{ padding: '12px 18px', fontSize: 13, color: 'var(--tinta-2)', textAlign: 'right' }}>
-                    {n2(f.compradoCantidad)} {f.unidadS10} · {f.compradoPct} %
-                  </td>
-                  <td className="n" style={{ padding: '12px 18px', fontSize: 14, fontWeight: 700, color: 'var(--tinta)', textAlign: 'right' }}>
-                    {n2(f.saldoPorComprar)} {f.unidadCompra}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </Tarjeta>
-
-      <p style={{ fontSize: 12.5, color: 'var(--tinta-3)' }}>
-        El faltante se muestra en la <strong>unidad de compra</strong>: el acero se pide en
-        varillas aunque el S10 lo planifique en kilos (factor de conversión del catálogo).
-        La sugerencia de compra (HU-27) aparece en la alerta de arriba: el menor entre lo que falta y lo que exige la fase en curso.
-      </p>
-    </div>
+    </>
   )
 }
