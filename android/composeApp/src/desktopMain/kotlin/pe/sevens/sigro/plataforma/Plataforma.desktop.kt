@@ -11,6 +11,7 @@ actual object Plataforma {
     actual fun ahoraMs(): Long = System.currentTimeMillis()
     actual fun formatearHora(ms: Long): String =
         SimpleDateFormat("dd/MM HH:mm", Locale.forLanguageTag("es-PE")).format(Date(ms))
+    actual fun fechaIso(ms: Long): String = SimpleDateFormat("yyyy-MM-dd", Locale.ROOT).format(Date(ms))
 }
 
 @Composable

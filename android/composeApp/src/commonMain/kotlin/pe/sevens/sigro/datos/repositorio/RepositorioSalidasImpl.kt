@@ -85,36 +85,22 @@ class RepositorioSalidasImpl(
                 salidas.marcar(s.uuidCliente, EstadoEnvio.ENVIADO.name, null, null, reloj())
                 enviados++
             } catch (e: ErrorSigro) {
-                when (val decision = decidir(e)) {
-                    is Decision.Reintentar -> {
+                when (val decision = decidirEnvio(e, "salidas")) {
+                    is DecisionEnvio.Reintentar -> {
                         salidas.marcar(s.uuidCliente, EstadoEnvio.PENDIENTE.name, null, decision.nota, reloj())
                         // Si falla por señal, sesión o servidor, fallarán todas: se corta y se reintenta después.
                         if (decision.cortar) break
                     }
-                    Decision.YaRecibido -> {
+                    DecisionEnvio.YaRecibido -> {
                         salidas.marcar(s.uuidCliente, EstadoEnvio.ENVIADO.name, null, null, reloj()); enviados++
                     }
-                    is Decision.Rechazar -> {
+                    is DecisionEnvio.Rechazar -> {
                         salidas.marcar(s.uuidCliente, EstadoEnvio.RECHAZADO.name, decision.motivo, null, reloj()); rechazados++
                     }
                 }
             }
         }
         ResultadoSincronizacion(enviados, rechazados, salidas.pendientes().size)
-    }
-
-    private sealed interface Decision {
-        data class Reintentar(val nota: String, val cortar: Boolean) : Decision
-        data object YaRecibido : Decision
-        data class Rechazar(val motivo: String) : Decision
-    }
-
-    private fun decidir(e: ErrorSigro): Decision = when {
-        e.esTransitorio -> Decision.Reintentar("Sin señal o servidor ocupado: se reintenta solo.", cortar = true)
-        e.estadoHttp == 401 -> Decision.Reintentar("Tu sesión venció: vuelve a ingresar y se envía.", cortar = true)
-        e.estadoHttp == 404 -> Decision.Reintentar("El servidor aún no recibe salidas: queda guardada en el celular.", cortar = true)
-        e.estadoHttp == 409 && e.codigo.contains("uuid") -> Decision.YaRecibido // el servidor ya la tenía (regla 3)
-        else -> Decision.Rechazar(e.message) // regla de negocio: stock insuficiente, dispositivo no autorizado…
     }
 
     private fun SalidaLocalEntity.aEnvio(dispositivo: String) = SalidaIn(

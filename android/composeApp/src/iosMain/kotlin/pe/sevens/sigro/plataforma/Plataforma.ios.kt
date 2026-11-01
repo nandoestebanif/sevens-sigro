@@ -19,6 +19,12 @@ actual object Plataforma {
         f.locale = NSLocale(localeIdentifier = "es_PE")
         return f.stringFromDate(NSDate.dateWithTimeIntervalSince1970(ms / 1000.0))
     }
+    actual fun fechaIso(ms: Long): String {
+        val f = NSDateFormatter()
+        f.dateFormat = "yyyy-MM-dd"
+        f.locale = NSLocale(localeIdentifier = "en_US_POSIX")
+        return f.stringFromDate(NSDate.dateWithTimeIntervalSince1970(ms / 1000.0))
+    }
 }
 
 @Composable

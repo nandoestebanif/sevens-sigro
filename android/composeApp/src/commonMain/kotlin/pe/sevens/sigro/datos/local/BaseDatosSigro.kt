@@ -1,5 +1,6 @@
 package pe.sevens.sigro.datos.local
 
+import androidx.room.AutoMigration
 import androidx.room.ConstructedBy
 import androidx.room.Dao
 import androidx.room.Database
@@ -58,6 +59,43 @@ data class InsumoLocalEntity(
     val unidad: String,
 )
 
+/**
+ * Cola general (Sprint 2): asistencia y registros de almacén. Igual que `salida_local`, la fila NUNCA se
+ * borra: cambia de estado y un rechazo queda con su motivo. `cuerpo` es el JSON que viaja al servidor,
+ * armado al registrar, así un reenvío manda exactamente lo mismo con el mismo uuid (regla 3).
+ */
+@Entity(tableName = "registro_local")
+data class RegistroLocalEntity(
+    @PrimaryKey val uuidCliente: String,
+    val obraId: Int,
+    val tipo: String,
+    val titulo: String,
+    val detalle: String,
+    val cuerpo: String,
+    /** Clave de negocio para no registrar dos veces lo mismo en el celular (jornada: trabajador + fecha). */
+    val clave: String?,
+    val horaDispositivoMs: Long,
+    val estado: String,
+    val motivoRechazo: String?,
+    val nota: String?,
+    val intentos: Int,
+    val ultimoIntentoMs: Long?,
+)
+
+/** Copia de los trabajadores de cada obra, para tomar asistencia sin señal (HU-63). */
+@Entity(tableName = "trabajador_local")
+data class TrabajadorLocalEntity(
+    @PrimaryKey val id: Int,
+    val obraId: Int,
+    val nombre: String,
+    val tipoDocumento: String,
+    val documento: String,
+    val categoria: String,
+    val cuadrilla: String,
+    val fechaIngreso: String,
+    val fechaSalida: String?,
+)
+
 @Dao
 interface AjusteDao {
     @Upsert suspend fun guardar(a: AjusteEntity)
@@ -100,16 +138,55 @@ interface InsumoDao {
     @Query("SELECT COUNT(*) FROM insumo_local") suspend fun contar(): Int
 }
 
+@Dao
+interface RegistroDao {
+    /** ABORT: un uuid repetido en el celular es un error de programación, no se pisa. */
+    @Insert(onConflict = OnConflictStrategy.ABORT) suspend fun insertar(r: RegistroLocalEntity)
+
+    @Query("SELECT * FROM registro_local WHERE obraId = :obraId ORDER BY horaDispositivoMs DESC")
+    fun observarDeObra(obraId: Int): Flow<List<RegistroLocalEntity>>
+
+    @Query("SELECT * FROM registro_local WHERE estado = 'PENDIENTE' AND tipo IN (:tipos) ORDER BY horaDispositivoMs")
+    suspend fun pendientes(tipos: List<String>): List<RegistroLocalEntity>
+
+    @Query("SELECT COUNT(*) FROM registro_local WHERE estado = 'PENDIENTE' AND tipo IN (:tipos)")
+    fun contarPendientes(tipos: List<String>): Flow<Int>
+
+    @Query("SELECT clave FROM registro_local WHERE obraId = :obraId AND clave LIKE :prefijo || '%' AND estado != 'RECHAZADO'")
+    suspend fun clavesVigentes(obraId: Int, prefijo: String): List<String>
+
+    @Query(
+        "UPDATE registro_local SET estado = :estado, motivoRechazo = :motivoRechazo, nota = :nota, " +
+            "intentos = intentos + 1, ultimoIntentoMs = :ahora WHERE uuidCliente = :uuid"
+    )
+    suspend fun marcar(uuid: String, estado: String, motivoRechazo: String?, nota: String?, ahora: Long)
+}
+
+@Dao
+interface TrabajadorDao {
+    @Upsert suspend fun guardarTodos(lista: List<TrabajadorLocalEntity>)
+
+    @Query("SELECT * FROM trabajador_local WHERE obraId = :obraId ORDER BY cuadrilla, nombre")
+    fun observarDeObra(obraId: Int): Flow<List<TrabajadorLocalEntity>>
+}
+
 @Database(
-    entities = [AjusteEntity::class, SalidaLocalEntity::class, InsumoLocalEntity::class],
-    version = 1,
+    entities = [
+        AjusteEntity::class, SalidaLocalEntity::class, InsumoLocalEntity::class,
+        RegistroLocalEntity::class, TrabajadorLocalEntity::class,
+    ],
+    version = 2,
     exportSchema = true,
+    // 1 → 2 solo agrega tablas: la cola de salidas que ya está en el celular no se toca.
+    autoMigrations = [AutoMigration(from = 1, to = 2)],
 )
 @ConstructedBy(ConstructorBaseDatos::class)
 abstract class BaseDatosSigro : RoomDatabase() {
     abstract fun ajustes(): AjusteDao
     abstract fun salidas(): SalidaDao
     abstract fun insumos(): InsumoDao
+    abstract fun registros(): RegistroDao
+    abstract fun trabajadores(): TrabajadorDao
 }
 
 /** Room genera la implementación para cada plataforma (KSP). */
