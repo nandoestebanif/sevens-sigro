@@ -193,6 +193,6 @@ fun main(args: Array<String>) {
     capturar(dir, "09-mis-registros") { PantallaPendientes(1, {}, PendientesViewModel(salidas, registros)) }
     capturar(dir, "09-mis-registros-oscuro", oscuro = true) { PantallaPendientes(1, {}, PendientesViewModel(salidas, registros)) }
 
-    capturar(dir, "10-mi-celular") { PantallaDispositivo(1, {}, DispositivoViewModel(DispositivoFalso)) }
+    capturar(dir, "10-mi-celular") { PantallaDispositivo(1, {}, "Multifamiliar Flores", DispositivoViewModel(DispositivoFalso)) }
     kotlin.system.exitProcess(0)
 }
