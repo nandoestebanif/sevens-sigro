@@ -8,6 +8,7 @@ import io.ktor.client.request.get
 import io.ktor.client.request.parameter
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
+import io.ktor.http.content.TextContent
 import io.ktor.client.statement.HttpResponse
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.ContentType
@@ -46,6 +47,58 @@ import pe.sevens.sigro.dominio.ErrorSigro
     @SerialName("unidad_compra") val unidadCompra: String,
     val tipo: String,
     val activo: Boolean,
+    // Sprint 2 (ficha del insumo, HU-17): opcionales para no romper con una API anterior.
+    @SerialName("factor_conversion") val factorConversion: String? = null,
+    val verificado: Boolean? = null,
+)
+
+@Serializable data class InsumoIn(val descripcion: String, val unidad: String, val tipo: String = "material")
+
+@Serializable data class TrabajadorIn(
+    val nombre: String,
+    @SerialName("tipo_documento") val tipoDocumento: String,
+    val documento: String,
+    val categoria: String,
+    val cuadrilla: String,
+    @SerialName("fecha_ingreso") val fechaIngreso: String,
+)
+@Serializable data class TrabajadorDto(
+    val id: Int,
+    val nombre: String,
+    @SerialName("tipo_documento") val tipoDocumento: String,
+    val documento: String,
+    val categoria: String,
+    val cuadrilla: String,
+    @SerialName("fecha_ingreso") val fechaIngreso: String,
+    @SerialName("fecha_salida") val fechaSalida: String? = null,
+)
+
+/** HU-63. `uuid_cliente` es la clave de idempotencia: un reenvío devuelve la jornada original (200). */
+@Serializable data class JornadaIn(
+    @SerialName("trabajador_id") val trabajadorId: Int,
+    val fecha: String,
+    val estado: String,
+    @SerialName("horas_normales") val horasNormales: String,
+    @SerialName("horas_extra") val horasExtra: String,
+    @SerialName("uuid_cliente") val uuidCliente: String,
+)
+
+@Serializable data class ObraDto(val id: Int, val nombre: String, val estado: String? = null, val rol: String? = null)
+@Serializable data class AlmacenDto(val id: Int, val nombre: String, val tipo: String, val estado: String)
+@Serializable data class LineaCompraDto(
+    @SerialName("insumo_codigo") val insumoCodigo: String,
+    val descripcion: String,
+    val cantidad: String,
+    @SerialName("unidad_compra") val unidadCompra: String,
+)
+@Serializable data class CompraDto(
+    val id: Int,
+    @SerialName("proveedor_razon_social") val proveedor: String,
+    @SerialName("tipo_comprobante") val tipoComprobante: String,
+    @SerialName("numero_comprobante") val numeroComprobante: String,
+    val fecha: String,
+    val estado: String,
+    val lineas: List<LineaCompraDto> = emptyList(),
 )
 
 @Serializable data class DispositivoIn(val identificador: String)
@@ -100,6 +153,39 @@ class ApiSigro(private val http: HttpClient, private val json: Json) {
                 cuerpo(DispositivoIn(identificador))
             }
         }
+
+    suspend fun registrarInsumo(servidor: String, token: String, nuevo: InsumoIn): InsumoDto =
+        llamar { http.post(url(servidor, "/catalogo/insumos")) { bearerAuth(token); cuerpo(nuevo) } }
+
+    suspend fun trabajadores(servidor: String, token: String, obraId: Int): List<TrabajadorDto> =
+        llamar { http.get(url(servidor, "/obras/$obraId/trabajadores")) { bearerAuth(token) } }
+
+    suspend fun registrarTrabajador(servidor: String, token: String, obraId: Int, nuevo: TrabajadorIn): TrabajadorDto =
+        llamar { http.post(url(servidor, "/obras/$obraId/trabajadores")) { bearerAuth(token); cuerpo(nuevo) } }
+
+    suspend fun obras(servidor: String, token: String): List<ObraDto> =
+        llamar { http.get(url(servidor, "/obras")) { bearerAuth(token) } }
+
+    suspend fun almacenes(servidor: String, token: String, obraId: Int): List<AlmacenDto> =
+        llamar { http.get(url(servidor, "/obras/$obraId/almacenes")) { bearerAuth(token) } }
+
+    suspend fun compras(servidor: String, token: String, obraId: Int): List<CompraDto> =
+        llamar {
+            http.get(url(servidor, "/obras/$obraId/compras")) { bearerAuth(token); parameter("estado", "registrada") }
+        }
+
+    /**
+     * Envía un registro de la cola general: el cuerpo es el JSON que se armó al registrarlo (mismo uuid,
+     * mismo contenido en cada reintento). `ruta` va relativa a /api/v1.
+     */
+    suspend fun enviarRegistro(servidor: String, token: String, ruta: String, cuerpoJson: String) {
+        llamar<JsonObject?>(permitirVacio = true) {
+            http.post(url(servidor, ruta)) {
+                bearerAuth(token)
+                setBody(TextContent(cuerpoJson, ContentType.Application.Json))
+            }
+        }
+    }
 
     /**
      * POST /obras/{id}/almacen/salidas — contrato propuesto a Adiel para HU-40 (aún no existe en la API).

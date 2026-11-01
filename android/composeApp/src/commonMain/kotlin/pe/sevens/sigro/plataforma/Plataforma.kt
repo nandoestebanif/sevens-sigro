@@ -15,6 +15,9 @@ expect object Plataforma {
 
     /** «28/10 14:05» en la zona del celular. */
     fun formatearHora(ms: Long): String
+
+    /** «2026-11-01» en la zona del celular: la fecha de la jornada (HU-63) y de ingreso (HU-62). */
+    fun fechaIso(ms: Long): String
 }
 
 /** Botón «atrás» del sistema (Android). En iOS el gesto lo maneja la barra superior. */
