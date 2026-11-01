@@ -84,7 +84,7 @@ private fun Navegacion(e: EstadoRaiz.Dentro) {
             Destino.Inicio -> PantallaInicio(e.sesion, e.obra, irA = irA)
             Destino.Salida -> PantallaSalida(e.obra.id, alVolver = volver)
             Destino.Pendientes -> PantallaPendientes(e.obra.id, alVolver = volver)
-            Destino.Dispositivo -> PantallaDispositivo(e.obra.id, alVolver = volver)
+            Destino.Dispositivo -> PantallaDispositivo(e.obra.id, alVolver = volver, obraNombre = e.obra.nombre)
             else -> PantallaInicio(e.sesion, e.obra, irA = irA) // pantallas del Sprint 2 en construcción
         }
     }

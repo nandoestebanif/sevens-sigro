@@ -1,5 +1,6 @@
 package pe.sevens.sigro
 
+import pe.sevens.sigro.dominio.EstadoDispositivo
 import pe.sevens.sigro.dominio.EstadoEnvio
 import pe.sevens.sigro.dominio.Insumo
 import pe.sevens.sigro.dominio.ObraAsignada
@@ -8,10 +9,13 @@ import pe.sevens.sigro.dominio.SalidaRegistrada
 import pe.sevens.sigro.dominio.TipoRegistro
 import pe.sevens.sigro.ui.pantallas.unirRegistros
 import pe.sevens.sigro.ui.pantallas.CelularEnObra
+import pe.sevens.sigro.ui.pantallas.EstadoPantallaDispositivo
 import pe.sevens.sigro.ui.pantallas.celularEnObra
 import pe.sevens.sigro.ui.pantallas.filtrarObras
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertTrue
 
 /* Lógica de las pantallas del Sprint 2 que vive fuera de Compose (la pantalla solo pinta). */
 
@@ -45,5 +49,13 @@ class PantallasSprint2Test {
         assertEquals("25 bolsas", filas[1].cantidad)
         assertEquals("No hay stock suficiente.", filas[1].motivoRechazo, "HU-38: el rechazo se ve con su motivo")
         assertEquals("Asistencia", filas[0].tipo)
+    }
+
+    @Test
+    fun miCelularSoloPidePermisoSinSolicitarORevocado() {
+        fun p(estado: String?) = EstadoPantallaDispositivo(EstadoDispositivo("sigro-android-x", estado)).puedePedir
+        assertTrue(p(null)); assertTrue(p("revocado"))
+        assertFalse(p("pendiente")); assertFalse(p("autorizado"))
+        assertFalse(EstadoPantallaDispositivo().puedePedir, "mientras consulta no se ofrece el botón")
     }
 }
