@@ -190,8 +190,8 @@ fun main(args: Array<String>) {
         guardada.elegir(insumo("ARENA GRUESA")); guardada.cantidad("3,5"); guardada.motivo("Tarrajeo"); guardada.quienRetira("Maestro de obra (ejemplo)"); guardada.guardar(1)
     }) { PantallaSalida(1, {}, guardada) }
 
-    capturar(dir, "09-mis-registros") { PantallaPendientes(1, {}, PendientesViewModel(salidas)) }
-    capturar(dir, "09-mis-registros-oscuro", oscuro = true) { PantallaPendientes(1, {}, PendientesViewModel(salidas)) }
+    capturar(dir, "09-mis-registros") { PantallaPendientes(1, {}, PendientesViewModel(salidas, registros)) }
+    capturar(dir, "09-mis-registros-oscuro", oscuro = true) { PantallaPendientes(1, {}, PendientesViewModel(salidas, registros)) }
 
     capturar(dir, "10-mi-celular") { PantallaDispositivo(1, {}, DispositivoViewModel(DispositivoFalso)) }
     kotlin.system.exitProcess(0)
