@@ -20,7 +20,13 @@ import pe.sevens.sigro.dominio.ObraAsignada
 import pe.sevens.sigro.dominio.ProgramadorSincronizacion
 import pe.sevens.sigro.dominio.RepositorioCatalogo
 import pe.sevens.sigro.dominio.RepositorioDispositivo
+import pe.sevens.sigro.dominio.RepositorioRegistros
 import pe.sevens.sigro.dominio.RepositorioSalidas
+import pe.sevens.sigro.dominio.RegistroAlmacen
+import pe.sevens.sigro.dominio.RegistroLocal
+import pe.sevens.sigro.dominio.MarcaAsistencia
+import pe.sevens.sigro.dominio.TipoRegistro
+import pe.sevens.sigro.dominio.NOTA_SIN_SERVICIO_ALMACEN
 import pe.sevens.sigro.dominio.RepositorioSesion
 import pe.sevens.sigro.dominio.ResultadoSincronizacion
 import pe.sevens.sigro.dominio.SalidaRegistrada
@@ -28,6 +34,7 @@ import pe.sevens.sigro.dominio.Sesion
 import pe.sevens.sigro.ui.pantallas.DispositivoViewModel
 import pe.sevens.sigro.ui.pantallas.EntrarViewModel
 import pe.sevens.sigro.ui.pantallas.InicioViewModel
+import pe.sevens.sigro.ui.pantallas.ObrasViewModel
 import pe.sevens.sigro.ui.pantallas.PantallaDispositivo
 import pe.sevens.sigro.ui.pantallas.PantallaEntrar
 import pe.sevens.sigro.ui.pantallas.PantallaInicio
@@ -111,6 +118,23 @@ private object DispositivoFalso : RepositorioDispositivo {
     override suspend fun solicitarAutorizacion(obraId: Int) = estado(obraId)
 }
 
+/** Cola general de ejemplo: una asistencia por enviar y un ingreso que espera al servicio almacén. */
+private class RegistrosFalsos : RepositorioRegistros {
+    private val ahora = System.currentTimeMillis()
+    val lista = MutableStateFlow(
+        listOf(
+            RegistroLocal("r-1", 1, TipoRegistro.JORNADA, "Trabajador 01 (ejemplo)", "Presente · 8 h + 2 extra", ahora - 600_000L, EstadoEnvio.PENDIENTE, null, null, 0),
+            RegistroLocal("r-2", 1, TipoRegistro.INGRESO_SIN_COMPRA, insumo("ARENA GRUESA").descripcion, "1.5 m3 · Devolución de cuadrilla", ahora - 2_400_000L, EstadoEnvio.PENDIENTE, null, NOTA_SIN_SERVICIO_ALMACEN, 0),
+        )
+    )
+    override fun deObra(obraId: Int) = lista
+    override val pendientes: Flow<Int> = lista.map { l -> l.count { it.estado == EstadoEnvio.PENDIENTE && it.tipo.conServicio } }
+    override suspend fun registrarAsistencia(obraId: Int, fecha: String, marcas: List<MarcaAsistencia>) = emptyList<RegistroLocal>()
+    override suspend fun yaMarcados(obraId: Int, fecha: String) = emptySet<Int>()
+    override suspend fun registrarAlmacen(obraId: Int, registro: RegistroAlmacen) = lista.value.last()
+    override suspend fun sincronizar() = ResultadoSincronizacion(0, 0, 1)
+}
+
 private val sinProgramar = object : ProgramadorSincronizacion { override fun programar() {} }
 
 private fun capturar(dir: File, nombre: String, oscuro: Boolean = false, ms: Int = 1500, preparar: () -> Unit = {}, contenido: @Composable () -> Unit) {
@@ -142,9 +166,10 @@ fun main(args: Array<String>) {
 
     capturar(dir, "02-entrar-error", preparar = { entrarMal.usuario("almacenero"); entrarMal.clave("x"); entrarMal.entrar() }) { PantallaEntrar(entrarMal) }
 
-    capturar(dir, "03-elegir-obra") { PantallaObras(sesionEjemplo, {}, {}) }
-
     val salidas = SalidasFalsas()
+    val registros = RegistrosFalsos()
+    capturar(dir, "03-elegir-obra") { PantallaObras(sesionEjemplo, {}, {}, ObrasViewModel(DispositivoFalso, salidas, registros)) }
+
     capturar(dir, "04-inicio") { PantallaInicio(sesionEjemplo, obra, {}, InicioViewModel(SesionFalsa(), salidas, CatalogoFalso, sinProgramar)) }
     capturar(dir, "04-inicio-oscuro", oscuro = true) { PantallaInicio(sesionEjemplo, obra, {}, InicioViewModel(SesionFalsa(), salidas, CatalogoFalso, sinProgramar)) }
 
