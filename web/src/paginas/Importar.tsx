@@ -324,7 +324,7 @@ export function Importar() {
           </Vidrio>
         )}
 
-        <p style={{ fontSize: 13, color: 'var(--tinta-2)', padding: '0 4px', lineHeight: 1.5 }}>
+        <p style={{ fontSize: 13, color: 'var(--tinta-plano)', padding: '0 4px', lineHeight: 1.5 }}>
           El emparejamiento usa el <strong>código del insumo como clave</strong>: por eso
           repetir la importación actualiza en vez de duplicar. Y nunca toca los saldos,
           porque el catálogo no es el almacén — el stock vive en los movimientos.
