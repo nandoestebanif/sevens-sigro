@@ -25,8 +25,8 @@ import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { ErrorApi, api } from '../api/cliente'
 import type { InsumoMaestro } from '../api/tipos'
 import { Boton, Campo, Chip, Modal, Tarjeta, Titulo, Vacio } from '../ui/base'
+import { FilasVirtuales } from '../ui/FilasVirtuales'
 
-const PASO = 60
 const CORTAS = new Set(['DE', 'LA', 'EL', 'Y', 'A', 'EN', 'SIN', 'CON', 'POR', 'DEL', 'LOS', 'LAS'])
 
 /** MAYÚSCULAS → caja amable: baja las palabras comunes y conserva siglas,
@@ -184,7 +184,6 @@ export function Catalogo() {
   const [maestro, setMaestro] = useState<InsumoMaestro[] | null>(null)
   const [busqueda, setBusqueda] = useState('')
   const [um, setUm] = useState('todas')
-  const [tope, setTope] = useState(PASO)
   const [editando, setEditando] = useState<InsumoMaestro | null>(null)
   const [viendo, setViendo] = useState<InsumoMaestro | null>(null)
   const [altaAbierta, setAltaAbierta] = useState(false)
@@ -206,8 +205,6 @@ export function Catalogo() {
       (um === 'todas' || i.um === um) &&
       (!q || i.nombre.toLowerCase().includes(q) || i.medida.toLowerCase().includes(q) || i.codigo.includes(q)))
   }, [maestro, busqueda, um])
-
-  const recorte = visibles.slice(0, tope)
 
   // seguridad: un texto que empieza con = + - @ se neutraliza con apóstrofo,
   // para que Excel no lo ejecute como fórmula al abrir el CSV
@@ -266,7 +263,7 @@ export function Catalogo() {
       <div style={{ display: 'flex', gap: 10 }}>
         <input
           value={busqueda}
-          onChange={(e) => { setBusqueda(e.target.value); setTope(PASO) }}
+          onChange={(e) => { setBusqueda(e.target.value) }}
           placeholder="Buscar por nombre o código…"
           aria-label="Buscar insumo por nombre o código"
           style={{
@@ -278,7 +275,7 @@ export function Catalogo() {
         <select
           aria-label="Filtrar por unidad de medida"
           value={um}
-          onChange={(e) => { setUm(e.target.value); setTope(PASO) }}
+          onChange={(e) => { setUm(e.target.value) }}
           style={{
             height: 42, border: '1px solid var(--borde)', borderRadius: 'var(--radio-chico)',
             padding: '0 14px', fontSize: 13, fontWeight: 600, fontFamily: 'inherit',
@@ -296,7 +293,11 @@ export function Catalogo() {
         ) : visibles.length === 0 ? (
           <Vacio titulo="Ningún insumo coincide" detalle="Prueba con otro nombre u otro código, o agrégalo al catálogo." />
         ) : (
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
+            {/* anchos fijos: con la lista virtual las filas entran y salen, y sin esto las columnas bailarían */}
+            <colgroup>
+              <col style={{ width: 110 }} /><col /><col style={{ width: 130 }} /><col style={{ width: 140 }} /><col style={{ width: 140 }} /><col style={{ width: 170 }} />
+            </colgroup>
             <thead>
               <tr style={{ background: 'var(--tarjeta-suave)', borderBottom: '1px solid var(--borde)' }}>
                 {['Código', 'Insumo', 'Unidad', 'Marca', 'Precio promedio', 'Acciones'].map((h, i) => (
@@ -306,9 +307,9 @@ export function Catalogo() {
                 ))}
               </tr>
             </thead>
-            <tbody>
-              {recorte.map((ins, i) => (
-                <tr key={ins.codigo} style={{ borderBottom: i === recorte.length - 1 ? 'none' : '1px solid var(--linea)' }}>
+            {/* las 2 243 filas, pero en el DOM solo las que se ven (antes: de 60 en 60 con «Mostrar 60 más») */}
+            <FilasVirtuales items={visibles} columnas={6} fila={(ins, i, medir) => (
+                <tr key={ins.codigo} {...medir} style={{ borderBottom: i === visibles.length - 1 ? 'none' : '1px solid var(--linea)' }}>
                   <td className="n" style={{ padding: '10px 16px', fontSize: 12.5, color: 'var(--tinta-3)', width: 70 }}>{ins.codigo}</td>
                   <td style={{ padding: '10px 16px', fontSize: 13.5, fontWeight: 600, color: 'var(--tinta)' }}>
                     <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
@@ -328,16 +329,8 @@ export function Catalogo() {
                     </span>
                   </td>
                 </tr>
-              ))}
-            </tbody>
+              )} />
           </table>
-        )}
-        {visibles.length > tope && (
-          <div style={{ padding: 14, display: 'flex', justifyContent: 'center', borderTop: '1px solid var(--borde)' }}>
-            <Boton tipo="secundario" enClic={() => setTope(tope + PASO)}>
-              Mostrar 60 más · van {recorte.length.toLocaleString('es-PE')} de {visibles.length.toLocaleString('es-PE')}
-            </Boton>
-          </div>
         )}
       </Tarjeta>
 
