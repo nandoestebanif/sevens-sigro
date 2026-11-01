@@ -12,11 +12,13 @@
      y estado «pendiente de recepción» en la lista.
    Cierra además el criterio pendiente de HU-30: el alta rápida de proveedor se
    abre desde aquí y el creado queda seleccionado en la compra en curso.
+   Lienzo W6 «Compras» (estilo vidrio): la lista a la izquierda, el registro a la derecha.
    ───────────────────────────────────────────────────────────────────────── */
 import { useEffect, useMemo, useState } from 'react'
 import { ErrorApi, api } from '../api/cliente'
 import type { Compra, EstadoCompra, InsumoCatalogo, LineaCompra, LineaRecepcion, Proveedor, TipoComprobante } from '../api/tipos'
-import { Boton, Campo, Chip, Modal, Tarjeta, Titulo, Vacio, type TonoChip } from '../ui/base'
+import { Campo, Chip, Modal, Vacio, type TonoChip } from '../ui/base'
+import { Aviso, Chips, Encabezado, Fondo, Pildora, TituloSeccion, Vidrio } from '../ui/vidrio'
 import { AltaProveedor } from './Proveedores'
 
 /* HU-35: el estado lo deriva el servidor de las recepciones; aquí solo se pinta */
@@ -68,22 +70,23 @@ function RecepcionCompra({ compra, enCerrar, enListo }: {
         <Vacio titulo="Cargando…" detalle="Consultando pedido, recibido y pendiente." />
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-          <p style={{ fontSize: 12.5, color: 'var(--tinta-3)', lineHeight: 1.5 }}>
+          <p style={{ fontSize: 12.5, color: 'var(--tinta-2)', lineHeight: 1.5 }}>
             {compra.proveedorRazonSocial} · {compra.fecha}. Se propone la recepción total;
             si el camión llegó con menos, corrige la cantidad: la compra queda parcial y
             admite más recepciones hasta completarse.
           </p>
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <div style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 380 }}>
             <thead>
-              <tr style={{ borderBottom: '1px solid var(--borde)' }}>
+              <tr style={{ borderBottom: '1px solid var(--campo-borde)' }}>
                 {['Insumo', 'Pedido', 'Recibido', 'Pendiente', 'Recibir ahora'].map((h, i) => (
-                  <th key={h} style={{ padding: '7px 6px', fontSize: 10.5, fontWeight: 600, color: 'var(--tinta-3)', letterSpacing: 0.4, textAlign: i ? 'right' : 'left' }}>{h}</th>
+                  <th key={h} style={{ padding: '7px 6px', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: 'var(--tinta-2)', letterSpacing: 0.4, textAlign: i ? 'right' : 'left' }}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {detalle.map((l) => (
-                <tr key={l.insumoId} style={{ borderBottom: '1px solid var(--linea)' }}>
+                <tr key={l.insumoId} style={{ borderBottom: '1px solid var(--separador)' }}>
                   <td style={{ padding: '9px 6px', fontSize: 12.5, fontWeight: 600 }}>{l.descripcion}</td>
                   <td className="n" style={{ padding: '9px 6px', fontSize: 12.5, color: 'var(--tinta-2)', textAlign: 'right' }}>{l.pedido.toLocaleString('es-PE')} {l.unidadCompra}</td>
                   <td className="n" style={{ padding: '9px 6px', fontSize: 12.5, color: 'var(--tinta-2)', textAlign: 'right' }}>{l.recibido.toLocaleString('es-PE')}</td>
@@ -93,27 +96,25 @@ function RecepcionCompra({ compra, enCerrar, enListo }: {
                       aria-label={`Cantidad a recibir de ${l.descripcion}`}
                       value={cantidades[l.insumoId] ?? ''}
                       onChange={(e) => setCantidades((c) => ({ ...c, [l.insumoId]: e.target.value }))}
-                      style={{
-                        width: 86, height: 36, border: '1px solid var(--borde)', borderRadius: 'var(--radio-chico)',
-                        padding: '0 10px', fontSize: 13, fontFamily: 'inherit', textAlign: 'right',
-                        background: 'var(--tarjeta)', color: 'var(--tinta)', outlineColor: 'var(--accion)',
-                      }}
+                      className="campo"
+                      style={{ width: 86, height: 40, padding: '0 10px', fontSize: 14, textAlign: 'right' }}
                     />
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
+          </div>
           {error && <p role="alert" style={{ fontSize: 12.5, color: 'var(--grave)', fontWeight: 600 }}>{error}</p>}
-          <p style={{ fontSize: 12, color: 'var(--tinta-3)', lineHeight: 1.5 }}>
+          <p style={{ fontSize: 12, color: 'var(--tinta-2)', lineHeight: 1.5 }}>
             Esta recepción es la que mueve el stock: cada línea genera su ingreso en el
             kárdex (Ingresos y salidas) y recalcula el costo promedio del insumo.
           </p>
-          <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
-            <Boton tipo="secundario" enClic={enCerrar}>Cancelar</Boton>
-            <Boton enClic={recibir} deshabilitado={guardando}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, justifyContent: 'flex-end' }}>
+            <Pildora tipo="secundario" enClic={enCerrar}>Cancelar</Pildora>
+            <Pildora enClic={recibir} deshabilitado={guardando}>
               {guardando ? 'Registrando…' : 'Registrar recepción'}
-            </Boton>
+            </Pildora>
           </div>
         </div>
       )}
@@ -125,8 +126,8 @@ const soles = (n: number) =>
   n.toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 
 const estiloCampo: React.CSSProperties = {
-  height: 42, border: '1px solid var(--borde)', borderRadius: 'var(--radio-chico)',
-  padding: '0 12px', fontSize: 14, fontFamily: 'inherit', background: 'var(--tarjeta)',
+  height: 44, border: '1px solid var(--campo-borde)', borderRadius: 14,
+  padding: '0 12px', fontSize: 14, fontFamily: 'inherit', background: 'var(--campo-fondo)',
   color: 'var(--tinta)', outlineColor: 'var(--accion)',
   // responsive: el campo ocupa su celda y jamás la empuja (un select con 626
   // razones sociales largas, sin esto, desborda toda la fila)
@@ -145,7 +146,7 @@ const acorta = (texto: string, max = 44) =>
 
 function Etiqueta({ htmlFor, children }: { htmlFor: string; children: string }) {
   return (
-    <label htmlFor={htmlFor} style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--tinta-2)' }}>
+    <label htmlFor={htmlFor} style={{ fontSize: 13, fontWeight: 600, color: 'var(--tinta-2)' }}>
       {children}
     </label>
   )
@@ -225,194 +226,186 @@ export function Compras() {
   }
 
   return (
-    <div className="pagina" style={{ display: 'flex', flexDirection: 'column', gap: 15 }}>
-      <Titulo sub="Registrar la compra deja constancia de lo adquirido. El stock se mueve recién con la recepción, desde la app del almacén.">
-        Registrar la compra
-      </Titulo>
+    <>
+    <Fondo dibujo="compras" />
+    <div className="pagina" style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+      <Encabezado
+        titulo="Compras"
+        sub="Lo que el residente compra a sus proveedores · la compra no mueve el stock: lo mueve la recepción en almacén"
+      />
 
-      <Tarjeta>
-        {/* cabecera · flex con envoltura: en pantallas angostas los campos
-            bajan de fila en vez de desbordarse */}
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'flex-end' }}>
-          <div style={celdaForm(3, 240)}>
-            <Etiqueta htmlFor="c-prov">Proveedor</Etiqueta>
-            <select id="c-prov" value={proveedorId} onChange={(e) => setProveedorId(e.target.value)} style={estiloCampo}>
-              <option value="">Elegir…</option>
-              {proveedores.map((p) => (
-                <option key={p.id} value={p.id}>{acorta(p.razonSocial)} · {p.ruc}</option>
-              ))}
-            </select>
-          </div>
-          <div style={{ flex: 'none' }}>
-            <Boton tipo="secundario" enClic={() => setAltaAbierta(true)}>+ Nuevo</Boton>
-          </div>
-          <div style={celdaForm(0, 110)}>
-            <Etiqueta htmlFor="c-tipo">Tipo</Etiqueta>
-            <select id="c-tipo" value={tipo} onChange={(e) => setTipo(e.target.value as TipoComprobante)} style={estiloCampo}>
-              <option value="factura">Factura</option>
-              <option value="boleta">Boleta</option>
-            </select>
-          </div>
-          <div style={celdaForm(1, 150)}>
-            <Campo id="c-numero" etiqueta="N.º de comprobante" valor={numero} enCambio={setNumero} marcador="F001-4512" />
-          </div>
-          <div style={celdaForm(0, 150)}>
-            <Etiqueta htmlFor="c-fecha">Fecha</Etiqueta>
-            <input id="c-fecha" type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} style={estiloCampo} />
-          </div>
-        </div>
+      <Chips>
+        <Chip tono="info">Compras y recepciones: datos de ejemplo · insumos del S10 real</Chip>
+        <Chip tono="marca">Proveedores: los reales del cliente</Chip>
+      </Chips>
 
-        {/* línea en edición · misma envoltura */}
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'flex-end', marginTop: 16, paddingTop: 16, borderTop: '1px solid var(--linea)' }}>
-          <div style={celdaForm(3, 240)}>
-            <Etiqueta htmlFor="c-insumo">Insumo (busca entre los 237 del S10)</Etiqueta>
-            <input
-              id="c-insumo"
-              list="catalogo-insumos"
-              value={insumoTexto}
-              onChange={(e) => {
-                setInsumoTexto(e.target.value)
-                const cod = e.target.value.split(' · ')[0]
-                setInsumoId(insumos.some((i) => i.codigo === cod) ? cod : '')
-              }}
-              placeholder="Escribe código o nombre…"
-              style={estiloCampo}
-            />
-            <datalist id="catalogo-insumos">
-              {insumos.map((i) => (
-                <option key={i.id} value={`${i.codigo} · ${i.descripcion}`} />
-              ))}
-            </datalist>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 18, alignItems: 'flex-start' }}>
+        <Vidrio estilo={{ flex: '999 1 560px', display: 'flex', flexDirection: 'column', gap: 12 }} etiqueta="Compras registradas">
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 12, flexWrap: 'wrap' }}>
+            <TituloSeccion>Compras registradas</TituloSeccion>
+            <span style={{ fontSize: 13, color: 'var(--tinta-2)' }}>una compra admite varias recepciones hasta completar lo comprado</span>
           </div>
-          <div style={celdaForm(1, 130)}>
-            <Campo id="c-cant" etiqueta={`Cantidad${insumoId ? ` (${insumos.find((i) => i.id === insumoId)?.unidadCompra})` : ''}`} valor={cantidad} enCambio={setCantidad} marcador="0" />
-          </div>
-          <div style={celdaForm(1, 150)}>
-            <Campo id="c-precio" etiqueta="Precio unit. S/ (con IGV)" valor={precio} enCambio={setPrecio} marcador="0.00" />
-          </div>
-          <div style={{ flex: 'none' }}>
-            <Boton tipo="secundario" enClic={agregarLinea}>Agregar</Boton>
-          </div>
-        </div>
-
-        {/* líneas agregadas */}
-        {lineas.length > 0 && (
-          <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: 16 }}>
-            <tbody>
-              {lineas.map((l, i) => (
-                <tr key={`${l.insumoId}-${i}`} style={{ borderTop: '1px solid var(--linea)' }}>
-                  <td style={{ padding: '10px 2px', fontSize: 13.5, fontWeight: 600 }}>{l.descripcion}</td>
-                  <td className="n" style={{ padding: '10px 2px', fontSize: 13, color: 'var(--tinta-2)', textAlign: 'right' }}>
-                    {l.cantidad} {l.unidadCompra}
-                  </td>
-                  <td className="n" style={{ padding: '10px 2px', fontSize: 13, color: 'var(--tinta-2)', textAlign: 'right' }}>
-                    × S/ {soles(l.precioUnitario)}
-                  </td>
-                  <td className="n" style={{ padding: '10px 2px', fontSize: 13.5, fontWeight: 700, textAlign: 'right' }}>
-                    S/ {soles(l.cantidad * l.precioUnitario)}
-                  </td>
-                  <td style={{ padding: '10px 2px', textAlign: 'right', width: 40 }}>
-                    <button
-                      type="button"
-                      aria-label={`Quitar ${l.descripcion}`}
-                      onClick={() => setLineas((ls) => ls.filter((_, j) => j !== i))}
-                      style={{ border: 0, background: 'transparent', color: 'var(--tinta-3)', cursor: 'pointer', fontSize: 15 }}
-                    >
-                      ✕
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-
-        {/* totales: base imponible, impuesto y total (criterio de HU-32) */}
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 28, marginTop: 14, paddingTop: 14, borderTop: '1px solid var(--linea)' }}>
-          {[['Base imponible', base], ['IGV 18 %', total - base], ['Total', total]].map(([rot, val]) => (
-            <div key={rot as string} style={{ textAlign: 'right' }}>
-              <div style={{ fontSize: 11.5, color: 'var(--tinta-3)' }}>{rot as string}</div>
-              <div className="n" style={{ fontSize: rot === 'Total' ? 19 : 14.5, fontWeight: 700, marginTop: 2 }}>
-                S/ {soles(val as number)}
-              </div>
+          {avisoRecepcion && <Aviso tono="bien" rol="status">{avisoRecepcion}</Aviso>}
+          {compras.length === 0 ? (
+            <Vacio titulo="Todavía no hay compras" detalle="Las que registres aparecerán aquí con su estado de recepción." />
+          ) : (
+            <div style={{ overflowX: 'auto' }}>
+              <table className="tabla-vidrio" style={{ minWidth: 640 }}>
+                <thead>
+                  <tr>
+                    <th>Comprobante</th><th>Fecha</th><th className="n">Insumos</th><th className="n">Total S/</th>
+                    <th>Recepción</th><th aria-label="Acción" />
+                  </tr>
+                </thead>
+                <tbody>
+                  {compras.map((c) => (
+                    <tr key={c.id}>
+                      <td style={{ minWidth: 220 }}>
+                        <div className="n" style={{ fontWeight: 700, textAlign: 'left' }}>
+                          {c.tipoComprobante === 'factura' ? 'Factura' : 'Boleta'} {c.numeroComprobante}
+                        </div>
+                        <div style={{ fontSize: 12.5, color: 'var(--tinta-2)', marginTop: 2 }}>{c.proveedorRazonSocial}</div>
+                      </td>
+                      <td className="n" style={{ whiteSpace: 'nowrap' }}>{c.fecha}</td>
+                      <td className="n">{c.lineas.length} {c.lineas.length === 1 ? 'insumo' : 'insumos'}</td>
+                      <td className="n" style={{ fontWeight: 800, whiteSpace: 'nowrap' }}>{soles(c.totales.total)}</td>
+                      <td><Chip tono={ESTADO_COMPRA[c.estado].tono}>{ESTADO_COMPRA[c.estado].texto}</Chip></td>
+                      <td style={{ textAlign: 'right', width: 100 }}>
+                        {c.estado !== 'recibida' && (
+                          <Pildora tipo="secundario" chica enClic={() => setRecibiendo(c)}>Recibir</Pildora>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
-          ))}
-        </div>
+          )}
+          <span style={{ fontSize: 13, color: 'var(--tinta-2)', lineHeight: 1.5 }}>
+            Una compra no se edita. El IGV se guarda aparte porque no es costo del insumo (NIC 2).
+          </span>
+        </Vidrio>
 
-        {error && (
-          <p role="alert" style={{ marginTop: 12, fontSize: 13, color: 'var(--grave)', fontWeight: 600 }}>{error}</p>
-        )}
-        {exito && (
-          <p style={{ marginTop: 12, fontSize: 13, color: 'var(--bien)', fontWeight: 600 }}>
-            Compra {exito.numeroComprobante} registrada. El stock no se movió: se moverá con la recepción, desde la app.
-          </p>
-        )}
+        <aside className="vidrio-fuerte" aria-label="Registrar la compra" style={{ flex: '1 1 380px', minWidth: 0, borderRadius: 'var(--radio-vidrio)', padding: '20px 22px', display: 'flex', flexDirection: 'column', gap: 14, boxShadow: 'var(--vidrio-sombra-alta)' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            <TituloSeccion>Registrar la compra</TituloSeccion>
+            <p style={{ fontSize: 13, color: 'var(--tinta-2)', lineHeight: 1.5 }}>
+              Registrar la compra deja constancia de lo adquirido. El stock se mueve recién con la recepción, desde la app del almacén.
+            </p>
+          </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginTop: 14 }}>
-          <Boton enClic={registrar} deshabilitado={guardando}>
+          {/* cabecera · flex con envoltura: en angosto los campos bajan de fila en vez de desbordarse */}
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'flex-end' }}>
+            <div style={celdaForm(3, 220)}>
+              <Etiqueta htmlFor="c-prov">Proveedor</Etiqueta>
+              <select id="c-prov" value={proveedorId} onChange={(e) => setProveedorId(e.target.value)} style={estiloCampo}>
+                <option value="">Elegir…</option>
+                {proveedores.map((p) => (
+                  <option key={p.id} value={p.id}>{acorta(p.razonSocial)} · {p.ruc}</option>
+                ))}
+              </select>
+            </div>
+            <div style={{ flex: 'none' }}>
+              <Pildora tipo="secundario" enClic={() => setAltaAbierta(true)}>+ Nuevo</Pildora>
+            </div>
+            <div style={celdaForm(1, 110)}>
+              <Etiqueta htmlFor="c-tipo">Tipo</Etiqueta>
+              <select id="c-tipo" value={tipo} onChange={(e) => setTipo(e.target.value as TipoComprobante)} style={estiloCampo}>
+                <option value="factura">Factura</option>
+                <option value="boleta">Boleta</option>
+              </select>
+            </div>
+            <div style={celdaForm(1, 150)}>
+              <Campo id="c-numero" etiqueta="N.º de comprobante" valor={numero} enCambio={setNumero} marcador="F001-4512" />
+            </div>
+            <div style={celdaForm(1, 150)}>
+              <Etiqueta htmlFor="c-fecha">Fecha</Etiqueta>
+              <input id="c-fecha" type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} style={estiloCampo} />
+            </div>
+          </div>
+
+          {/* línea en edición · misma envoltura */}
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'flex-end', paddingTop: 14, borderTop: '1px solid var(--separador)' }}>
+            <div style={celdaForm(3, 220)}>
+              <Etiqueta htmlFor="c-insumo">Insumo (busca entre los 237 del S10)</Etiqueta>
+              <input
+                id="c-insumo"
+                list="catalogo-insumos"
+                value={insumoTexto}
+                onChange={(e) => {
+                  setInsumoTexto(e.target.value)
+                  const cod = e.target.value.split(' · ')[0]
+                  setInsumoId(insumos.some((i) => i.codigo === cod) ? cod : '')
+                }}
+                placeholder="Escribe código o nombre…"
+                style={estiloCampo}
+              />
+              <datalist id="catalogo-insumos">
+                {insumos.map((i) => (
+                  <option key={i.id} value={`${i.codigo} · ${i.descripcion}`} />
+                ))}
+              </datalist>
+            </div>
+            <div style={celdaForm(1, 120)}>
+              <Campo id="c-cant" etiqueta={`Cantidad${insumoId ? ` (${insumos.find((i) => i.id === insumoId)?.unidadCompra})` : ''}`} valor={cantidad} enCambio={setCantidad} marcador="0" />
+            </div>
+            <div style={celdaForm(1, 150)}>
+              <Campo id="c-precio" etiqueta="Precio unit. S/ (con IGV)" valor={precio} enCambio={setPrecio} marcador="0.00" />
+            </div>
+            <div style={{ flex: 'none' }}>
+              <Pildora tipo="secundario" enClic={agregarLinea}>Agregar</Pildora>
+            </div>
+          </div>
+
+          {/* líneas agregadas */}
+          {lineas.length > 0 && (
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
+              {lineas.map((l, i) => (
+                <div key={`${l.insumoId}-${i}`} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', borderBottom: '1px solid var(--separador)', fontSize: 14 }}>
+                  <span style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
+                    <span style={{ fontWeight: 700 }}>{l.descripcion}</span>
+                    <span className="n" style={{ fontSize: 13, color: 'var(--tinta-2)' }}>{l.cantidad} {l.unidadCompra} × S/ {soles(l.precioUnitario)}</span>
+                  </span>
+                  <span className="n" style={{ fontWeight: 700, whiteSpace: 'nowrap' }}>S/ {soles(l.cantidad * l.precioUnitario)}</span>
+                  <button
+                    type="button"
+                    aria-label={`Quitar ${l.descripcion}`}
+                    onClick={() => setLineas((ls) => ls.filter((_, j) => j !== i))}
+                    className="foco-vidrio"
+                    style={{ width: 44, height: 44, borderRadius: 22, border: 0, background: 'transparent', color: 'var(--tinta-2)', cursor: 'pointer', fontSize: 15, flex: 'none' }}
+                  >
+                    ✕
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* totales: base imponible, impuesto y total (criterio de HU-32) */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 8 }}>
+            {[['Base imponible', base], ['IGV 18 %', total - base], ['Total', total]].map(([rot, val]) => (
+              <div key={rot as string} style={{ display: 'flex', flexDirection: 'column', background: 'var(--vidrio-celda)', borderRadius: 14, padding: '8px 10px' }}>
+                <span style={{ fontSize: 12.5, color: 'var(--tinta-2)' }}>{rot as string}</span>
+                <span className="n" style={{ fontSize: rot === 'Total' ? 17 : 15, fontWeight: 800 }}>S/ {soles(val as number)}</span>
+              </div>
+            ))}
+          </div>
+
+          {error && <Aviso tono="grave" rol="alert">{error}</Aviso>}
+          {exito && (
+            <Aviso tono="bien" rol="status">
+              Compra {exito.numeroComprobante} registrada. El stock no se movió: se moverá con la recepción, desde la app.
+            </Aviso>
+          )}
+
+          <Pildora enClic={registrar} deshabilitado={guardando} anchoCompleto>
             {guardando ? 'Registrando…' : 'Registrar compra'}
-          </Boton>
-          <span style={{ fontSize: 12.5, color: 'var(--tinta-3)' }}>
+          </Pildora>
+          <span style={{ fontSize: 12.5, color: 'var(--tinta-2)' }}>
             Esto no mueve el stock: el material entra al almacén con la recepción.
           </span>
-        </div>
-      </Tarjeta>
-
-      <Tarjeta relleno={false}>
-        <div style={{ padding: '13px 18px', borderBottom: '1px solid var(--borde)', display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 12, flexWrap: 'wrap' }}>
-          <span style={{ fontSize: 13.5, fontWeight: 700 }}>Compras registradas</span>
-          <span style={{ fontSize: 11.5, color: 'var(--tinta-3)' }}>una compra admite varias recepciones hasta completar lo comprado</span>
-        </div>
-        {avisoRecepcion && (
-          <div style={{ padding: '10px 18px', borderBottom: '1px solid var(--borde)', fontSize: 12.5, color: 'var(--bien)', fontWeight: 600 }}>
-            {avisoRecepcion}
-          </div>
-        )}
-        {compras.length === 0 ? (
-          <Vacio titulo="Todavía no hay compras" detalle="Las que registres aparecerán aquí con su estado de recepción." />
-        ) : (
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <tbody>
-              {compras.map((c, i) => (
-                <tr key={c.id} style={{ borderBottom: i === compras.length - 1 ? 'none' : '1px solid var(--linea)' }}>
-                  <td style={{ padding: '12px 18px' }}>
-                    <div className="n" style={{ fontSize: 13.5, fontWeight: 700 }}>
-                      {c.tipoComprobante === 'factura' ? 'Factura' : 'Boleta'} {c.numeroComprobante}
-                    </div>
-                    <div style={{ fontSize: 12, color: 'var(--tinta-3)', marginTop: 2 }}>{c.proveedorRazonSocial}</div>
-                  </td>
-                  <td className="n" style={{ padding: '12px 18px', fontSize: 13, color: 'var(--tinta-2)' }}>{c.fecha}</td>
-                  <td className="n" style={{ padding: '12px 18px', fontSize: 13, color: 'var(--tinta-2)', textAlign: 'right' }}>
-                    {c.lineas.length} {c.lineas.length === 1 ? 'insumo' : 'insumos'}
-                  </td>
-                  <td className="n" style={{ padding: '12px 18px', fontSize: 13.5, fontWeight: 700, textAlign: 'right' }}>
-                    S/ {soles(c.totales.total)}
-                  </td>
-                  <td style={{ padding: '12px 18px', textAlign: 'right' }}>
-                    <Chip tono={ESTADO_COMPRA[c.estado].tono}>{ESTADO_COMPRA[c.estado].texto}</Chip>
-                  </td>
-                  <td style={{ padding: '12px 18px', textAlign: 'right', width: 100 }}>
-                    {c.estado !== 'recibida' && (
-                      <button
-                        type="button"
-                        onClick={() => setRecibiendo(c)}
-                        style={{
-                          border: '1px solid var(--borde)', background: 'var(--tarjeta)',
-                          color: 'var(--tinta-2)', borderRadius: 'var(--radio-pildora)',
-                          padding: '5px 12px', fontSize: 12, fontWeight: 600,
-                          cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap',
-                        }}
-                      >
-                        Recibir
-                      </button>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </Tarjeta>
+        </aside>
+      </div>
 
       {recibiendo && (
         <RecepcionCompra
@@ -437,5 +430,6 @@ export function Compras() {
         />
       )}
     </div>
+    </>
   )
 }
