@@ -68,8 +68,8 @@ fun App() {
 }
 
 /**
- * Navegación dentro de la obra: una pila simple. Son cuatro pantallas; una librería de
- * navegación entra cuando haya más (Sprint 2: recepción, stock, tareo).
+ * Navegación dentro de la obra: una pila simple de [Destino]. Cada pantalla recibe `irA` para abrir
+ * otra y `volver` para cerrarse; el botón atrás del sistema hace lo mismo.
  */
 @Composable
 private fun Navegacion(e: EstadoRaiz.Dentro) {
@@ -78,12 +78,14 @@ private fun Navegacion(e: EstadoRaiz.Dentro) {
     val volver: () -> Unit = { if (pila.size > 1) pila.removeAt(pila.lastIndex) }
     ManejarAtras(activo = pila.size > 1, alVolver = volver)
 
+    val irA: (Destino) -> Unit = { pila.add(it) }
     AnimatedContent(actual, transitionSpec = { fadeIn() togetherWith fadeOut() }) { d ->
         when (d) {
-            Destino.Inicio -> PantallaInicio(e.sesion, e.obra, irA = { pila.add(it) })
+            Destino.Inicio -> PantallaInicio(e.sesion, e.obra, irA = irA)
             Destino.Salida -> PantallaSalida(e.obra.id, alVolver = volver)
             Destino.Pendientes -> PantallaPendientes(e.obra.id, alVolver = volver)
             Destino.Dispositivo -> PantallaDispositivo(e.obra.id, alVolver = volver)
+            else -> PantallaInicio(e.sesion, e.obra, irA = irA) // pantallas del Sprint 2 en construcción
         }
     }
 }
