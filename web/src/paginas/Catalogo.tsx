@@ -2,7 +2,7 @@
    HU-08 · Como almacenero, quiero registrar un insumo con información
            estandarizada, para identificarlo de la misma manera en todas las
            obras.
-   (Pantalla 16 del lienzo, «Catálogo e insumo»: consulta + alta + detalle.)
+   Lienzo W4 «Catálogo de insumos» (estilo vidrio): consulta + alta + detalle.
 
    Criterios de HU-08 cubiertos:
    - Material y unidad de medida son obligatorios.
@@ -24,7 +24,8 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { ErrorApi, api } from '../api/cliente'
 import type { InsumoMaestro } from '../api/tipos'
-import { Boton, Campo, Chip, Modal, Tarjeta, Titulo, Vacio } from '../ui/base'
+import { Campo, Chip, Modal, Vacio } from '../ui/base'
+import { Chips, Encabezado, Fondo, Pildora, TituloSeccion, Vidrio } from '../ui/vidrio'
 
 const PASO = 60
 const CORTAS = new Set(['DE', 'LA', 'EL', 'Y', 'A', 'EN', 'SIN', 'CON', 'POR', 'DEL', 'LOS', 'LAS'])
@@ -48,9 +49,9 @@ function precio(v: number): string {
 
 function FilaDetalle({ rot, children }: { rot: string; children: ReactNode }) {
   return (
-    <div style={{ display: 'flex', justifyContent: 'space-between', gap: 14, padding: '9px 0', borderBottom: '1px solid var(--linea)' }}>
-      <span style={{ fontSize: 12.5, color: 'var(--tinta-3)', fontWeight: 600 }}>{rot}</span>
-      <span style={{ fontSize: 13, color: 'var(--tinta)', textAlign: 'right' }}>{children}</span>
+    <div style={{ display: 'flex', justifyContent: 'space-between', gap: 14, padding: '10px 0', borderBottom: '1px solid var(--separador)' }}>
+      <span style={{ fontSize: 13, color: 'var(--tinta-2)', fontWeight: 600 }}>{rot}</span>
+      <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--tinta)', textAlign: 'right' }}>{children}</span>
     </div>
   )
 }
@@ -72,13 +73,13 @@ function VerInsumo({ insumo, enCerrar, enEditar }: {
             {insumo.estado === 'activo' ? 'activo' : 'por verificar'}
           </Chip>
         </FilaDetalle>
-        <p style={{ fontSize: 12, color: 'var(--tinta-3)', lineHeight: 1.5, marginTop: 10 }}>
+        <p style={{ fontSize: 13, color: 'var(--tinta-2)', lineHeight: 1.5, marginTop: 10 }}>
           Las compras y el kárdex de este insumo se consultan en sus pantallas
           (HU-32 y HU-43); el precio promedio lo recalcula cada ingreso (NIC 2).
         </p>
-        <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 8 }}>
-          <Boton tipo="secundario" enClic={enCerrar}>Cerrar</Boton>
-          <Boton enClic={enEditar}>Editar</Boton>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, justifyContent: 'flex-end', marginTop: 8 }}>
+          <Pildora tipo="secundario" enClic={enCerrar}>Cerrar</Pildora>
+          <Pildora enClic={enEditar}>Editar</Pildora>
         </div>
       </div>
     </Modal>
@@ -130,16 +131,16 @@ function AltaInsumo({ unidades, editando, enCerrar, enListo }: {
           autoFoco
           error={error?.campo === 'nombre' ? error.texto : undefined}
         />
-        <div style={{ display: 'flex', gap: 12 }}>
-          <div style={{ flex: 1 }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
+          <div style={{ flex: '1 1 160px' }}>
             <Campo id="ins-medida" etiqueta="Medida (si el tipo la lleva)" valor={medida} enCambio={setMedida} marcador="p. ej. 1/2¨ x 9 m" deshabilitado={!!editando} />
           </div>
-          <div style={{ flex: 1 }}>
+          <div style={{ flex: '1 1 160px' }}>
             <Campo id="ins-marca" etiqueta="Marca (opcional)" valor={marca} enCambio={setMarca} marcador="p. ej. SIKA" />
           </div>
         </div>
         <div>
-          <label htmlFor="ins-um" style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--tinta-3)', marginBottom: 6 }}>
+          <label htmlFor="ins-um" style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--tinta-2)', marginBottom: 6 }}>
             Unidad de medida
           </label>
           <select
@@ -147,33 +148,30 @@ function AltaInsumo({ unidades, editando, enCerrar, enListo }: {
             value={um}
             onChange={(e) => setUm(e.target.value)}
             disabled={!!editando}
-            style={{
-              width: '100%', height: 42, border: '1px solid var(--borde)',
-              borderRadius: 'var(--radio-chico)', padding: '0 12px', fontSize: 14,
-              fontFamily: 'inherit', background: 'var(--tarjeta)', color: 'var(--tinta)',
-            }}
+            className="campo"
+            style={{ height: 44, opacity: editando ? 0.6 : 1 }}
           >
             {unidades.map((u) => <option key={u} value={u}>{u}</option>)}
           </select>
           {error?.campo === 'um' && (
-            <div style={{ fontSize: 12, color: 'var(--grave)', marginTop: 5 }}>{error.texto}</div>
+            <div style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--grave)', marginTop: 5 }}>{error.texto}</div>
           )}
         </div>
-        <p style={{ fontSize: 12.5, color: 'var(--tinta-3)', lineHeight: 1.5 }}>
+        <p style={{ fontSize: 13, color: 'var(--tinta-2)', lineHeight: 1.5 }}>
           {editando
             ? 'El código y la unidad no se editan nunca: los movimientos históricos los referencian. Se corrige el nombre o la marca.'
             : 'El código lo genera el sistema (único e irrepetible). Un insumo creado a mano nace «por verificar» hasta que el residente lo revisa. No se admite otro insumo con el mismo material, medida y marca.'}
         </p>
-        <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
-          <Boton tipo="secundario" enClic={enCerrar}>Cancelar</Boton>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, justifyContent: 'flex-end' }}>
+          <Pildora tipo="secundario" enClic={enCerrar}>Cancelar</Pildora>
           {porVerificar && (
-            <Boton tipo="secundario" enClic={() => guardar(false)} deshabilitado={guardando}>
+            <Pildora tipo="secundario" enClic={() => guardar(false)} deshabilitado={guardando}>
               Guardar sin verificar
-            </Boton>
+            </Pildora>
           )}
-          <Boton enClic={() => guardar(porVerificar)} deshabilitado={guardando}>
+          <Pildora enClic={() => guardar(porVerificar)} deshabilitado={guardando}>
             {guardando ? 'Guardando…' : porVerificar ? 'Guardar y verificar' : editando ? 'Guardar cambios' : 'Agregar al catálogo'}
-          </Boton>
+          </Pildora>
         </div>
       </div>
     </Modal>
@@ -226,127 +224,117 @@ export function Catalogo() {
     URL.revokeObjectURL(a.href)
   }
 
-  const accion = (texto: string, alClic: () => void) => (
-    <button
-      type="button"
-      onClick={alClic}
-      style={{
-        border: '1px solid var(--borde)', background: 'var(--tarjeta)',
-        color: 'var(--tinta-2)', borderRadius: 'var(--radio-pildora)',
-        padding: '5px 12px', fontSize: 12, fontWeight: 600, cursor: 'pointer',
-        fontFamily: 'inherit',
-      }}
-    >
-      {texto}
-    </button>
-  )
-
   return (
-    <div className="pagina" style={{ display: 'flex', flexDirection: 'column', gap: 15 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16 }}>
-        <Titulo sub={`${(maestro?.length ?? 0).toLocaleString('es-PE')} insumos normalizados · el mismo nombre y código en todas las obras`}>
-          Catálogo de insumos
-        </Titulo>
-        <div style={{ display: 'flex', gap: 10 }}>
-          <Boton tipo="secundario" enClic={exportar} deshabilitado={!visibles.length}>Exportar</Boton>
-          <Boton enClic={() => { setEditando(null); setAltaAbierta(true) }}>Agregar insumo</Boton>
-        </div>
-      </div>
+    <>
+    <Fondo dibujo="catalogo" />
+    <div className="pagina" style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+      <Encabezado
+        titulo="Catálogo de insumos"
+        sub={`${(maestro?.length ?? 0).toLocaleString('es-PE')} insumos normalizados · el mismo nombre y código en todas las obras`}
+        acciones={
+          <>
+            <Pildora tipo="secundario" enClic={exportar} deshabilitado={!visibles.length}>Exportar</Pildora>
+            <Pildora enClic={() => { setEditando(null); setAltaAbierta(true) }}>Agregar insumo</Pildora>
+          </>
+        }
+      />
 
-      <Tarjeta estilo={{ padding: '12px 16px', borderLeft: '4px solid var(--marca)' }}>
-        <span style={{ fontSize: 12.5, color: 'var(--tinta-2)', lineHeight: 1.5 }}>
-          <strong style={{ color: 'var(--tinta)' }}>El catálogo es de la empresa; la relación de insumos es de cada obra.</strong>{' '}
-          Aquí vive el nombre normalizado, el código único y la unidad con que se compra.
-          Lo que cada obra necesita viene de su propio S10 y se empareja contra este
-          catálogo al importarlo. Del catálogo nada se elimina: un insumo mal creado se
-          corrige, y la baja es un estado con fecha.
-        </span>
-      </Tarjeta>
+      <Chips>
+        <Chip tono="marca">Catálogo real del cliente: nombres, unidades, marcas y precios</Chip>
+        <Chip tono="neutro">Código único en todas las obras</Chip>
+      </Chips>
 
-      <div style={{ display: 'flex', gap: 10 }}>
-        <input
-          value={busqueda}
-          onChange={(e) => { setBusqueda(e.target.value); setTope(PASO) }}
-          placeholder="Buscar por nombre o código…"
-          aria-label="Buscar insumo por nombre o código"
-          style={{
-            flex: 1, height: 42, border: '1px solid var(--borde)', borderRadius: 'var(--radio-chico)',
-            padding: '0 14px', fontSize: 14, fontFamily: 'inherit', background: 'var(--tarjeta)',
-            color: 'var(--tinta)', outlineColor: 'var(--accion)',
-          }}
-        />
-        <select
-          aria-label="Filtrar por unidad de medida"
-          value={um}
-          onChange={(e) => { setUm(e.target.value); setTope(PASO) }}
-          style={{
-            height: 42, border: '1px solid var(--borde)', borderRadius: 'var(--radio-chico)',
-            padding: '0 14px', fontSize: 13, fontWeight: 600, fontFamily: 'inherit',
-            background: 'var(--tarjeta)', color: 'var(--tinta-2)', maxWidth: 230,
-          }}
-        >
-          <option value="todas">Todas las unidades</option>
-          {unidades.map(([u, n]) => <option key={u} value={u}>{u} · {n}</option>)}
-        </select>
-      </div>
-
-      <Tarjeta relleno={false}>
-        {maestro === null ? (
-          <Vacio titulo="Cargando…" detalle="Trayendo el catálogo de la empresa." />
-        ) : visibles.length === 0 ? (
-          <Vacio titulo="Ningún insumo coincide" detalle="Prueba con otro nombre u otro código, o agrégalo al catálogo." />
-        ) : (
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead>
-              <tr style={{ background: 'var(--tarjeta-suave)', borderBottom: '1px solid var(--borde)' }}>
-                {['Código', 'Insumo', 'Unidad', 'Marca', 'Precio promedio', 'Acciones'].map((h, i) => (
-                  <th key={h} style={{ padding: '11px 16px', fontSize: 11, fontWeight: 600, color: 'var(--tinta-3)', letterSpacing: 0.4, textAlign: i >= 4 ? 'right' : 'left' }}>
-                    {h}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {recorte.map((ins, i) => (
-                <tr key={ins.codigo} style={{ borderBottom: i === recorte.length - 1 ? 'none' : '1px solid var(--linea)' }}>
-                  <td className="n" style={{ padding: '10px 16px', fontSize: 12.5, color: 'var(--tinta-3)', width: 70 }}>{ins.codigo}</td>
-                  <td style={{ padding: '10px 16px', fontSize: 13.5, fontWeight: 600, color: 'var(--tinta)' }}>
-                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                      {amable(ins.medida ? `${ins.nombre} ${ins.medida}` : ins.nombre)}
-                      {ins.estado === 'por_verificar' && <Chip tono="aviso">por verificar</Chip>}
-                    </span>
-                  </td>
-                  <td style={{ padding: '10px 16px' }}><Chip tono="neutro">{ins.um.toLowerCase()}</Chip></td>
-                  <td style={{ padding: '10px 16px', fontSize: 12, color: 'var(--tinta-3)' }}>{ins.marca || '—'}</td>
-                  <td className="n" style={{ padding: '10px 16px', fontSize: 12.5, color: 'var(--tinta-2)', textAlign: 'right' }}>
-                    {precio(ins.precioPromedio)}
-                  </td>
-                  <td style={{ padding: '10px 16px', textAlign: 'right', whiteSpace: 'nowrap', width: 150 }}>
-                    <span style={{ display: 'inline-flex', gap: 6 }}>
-                      {accion('Ver', () => setViendo(ins))}
-                      {accion(ins.estado === 'por_verificar' ? 'Verificar' : 'Editar', () => { setEditando(ins); setAltaAbierta(true) })}
-                    </span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-        {visibles.length > tope && (
-          <div style={{ padding: 14, display: 'flex', justifyContent: 'center', borderTop: '1px solid var(--borde)' }}>
-            <Boton tipo="secundario" enClic={() => setTope(tope + PASO)}>
-              Mostrar 60 más · van {recorte.length.toLocaleString('es-PE')} de {visibles.length.toLocaleString('es-PE')}
-            </Boton>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 18, alignItems: 'flex-start' }}>
+        <Vidrio estilo={{ borderLeft: '4px solid var(--accion)', padding: '14px 20px', flex: '999 1 520px' }} etiqueta="El catálogo y la relación de cada obra">
+          <p style={{ fontSize: 14, color: 'var(--tinta-2)', lineHeight: 1.55 }}>
+            <strong style={{ color: 'var(--tinta)' }}>El catálogo es de la empresa; la relación de insumos es de cada obra.</strong>{' '}
+            Aquí vive el nombre normalizado, el código único y la unidad con que se compra.
+            Lo que cada obra necesita viene de su propio S10 y se empareja contra este
+            catálogo al importarlo. Del catálogo nada se elimina: un insumo mal creado se
+            corrige, y la baja es un estado con fecha.
+          </p>
+        </Vidrio>
+        <aside className="vidrio-fuerte" style={{ flex: '1 1 300px', minWidth: 0, borderRadius: 'var(--radio-vidrio)', padding: '20px 22px', display: 'flex', flexDirection: 'column', gap: 12, boxShadow: 'var(--vidrio-sombra-alta)' }}>
+          <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--tinta-2)' }}>Factor de conversión</span>
+          <TituloSeccion>La excepción del acero</TituloSeccion>
+          <p style={{ fontSize: 14, color: 'var(--tinta-2)', lineHeight: 1.55 }}>
+            El catálogo lo registra como{' '}
+            <strong style={{ color: 'var(--tinta)' }}>fierro corrugado por diámetro, en unidades de 9 m</strong> (así se compra),
+            mientras el S10 lo planifica como un solo insumo en kilos (36 357 kg). El factor de conversión
+            del catálogo los empareja; nunca se convierte a mano.
+          </p>
+          <div style={{ background: 'var(--vidrio-celda)', borderRadius: 16, padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 4 }}>
+            <span style={{ fontSize: 12.5, color: 'var(--tinta-2)' }}>Ejemplo</span>
+            <span className="n" style={{ fontSize: 17, fontWeight: 800 }}>1 varilla = [factor] kg</span>
+            <span style={{ fontSize: 12.5, color: 'var(--tinta-2)' }}>Compara lo requerido, comprado y consumido en la misma unidad.</span>
           </div>
-        )}
-      </Tarjeta>
+        </aside>
+      </div>
 
-      <p style={{ fontSize: 12.5, color: 'var(--tinta-3)' }}>
-        La excepción del acero se lee aquí: el catálogo lo registra como{' '}
-        <strong>fierro corrugado por diámetro, en unidades de 9 m</strong> (así se compra),
-        mientras el S10 lo planifica como un solo insumo en kilos. El factor de conversión
-        del catálogo los empareja; nunca se convierte a mano.
-      </p>
+      <div>
+        <Vidrio estilo={{ display: 'flex', flexDirection: 'column', gap: 12 }} etiqueta="Insumos del catálogo">
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
+            <label className="vidrio-fuerte" style={{ flex: '1 1 260px', minWidth: 0, height: 52, borderRadius: 26, padding: '0 18px', display: 'flex', alignItems: 'center', gap: 10 }}>
+              <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accion)" strokeWidth="2.4" strokeLinecap="round" style={{ flex: 'none' }}>
+                <circle cx="11" cy="11" r="7" /><path d="M20 20l-4-4" />
+              </svg>
+              <input
+                value={busqueda}
+                onChange={(e) => { setBusqueda(e.target.value); setTope(PASO) }}
+                placeholder="Buscar por nombre o código…"
+                aria-label="Buscar insumo por nombre o código"
+                className="foco-vidrio"
+                style={{ flex: 1, minWidth: 0, height: 40, border: 0, background: 'transparent', fontSize: 15, fontFamily: 'inherit', color: 'var(--tinta)' }}
+              />
+            </label>
+            <select
+              aria-label="Filtrar por unidad de medida"
+              value={um}
+              onChange={(e) => { setUm(e.target.value); setTope(PASO) }}
+              className="campo"
+              style={{ flex: '0 1 240px', height: 52, borderRadius: 26, fontWeight: 600, fontSize: 14 }}
+            >
+              <option value="todas">Todas las unidades</option>
+              {unidades.map(([u, n]) => <option key={u} value={u}>{u} · {n}</option>)}
+            </select>
+          </div>
+
+          {maestro === null ? (
+            <Vacio titulo="Cargando…" detalle="Trayendo el catálogo de la empresa." />
+          ) : visibles.length === 0 ? (
+            <Vacio titulo="Ningún insumo coincide" detalle="Prueba con otro nombre u otro código, o agrégalo al catálogo." />
+          ) : (
+            <div style={{ overflowX: 'auto' }}>
+              <table className="tabla-vidrio">
+                <thead>
+                  <tr>
+                    <th>Código</th><th>Insumo</th><th>Unidad</th><th>Marca</th>
+                    <th className="n">Precio promedio</th><th style={{ textAlign: 'right' }}>Acciones</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {recorte.map((ins) => (
+                    <FilaInsumo
+                      key={ins.codigo}
+                      insumo={ins}
+                      enVer={() => setViendo(ins)}
+                      enEditar={() => { setEditando(ins); setAltaAbierta(true) }}
+                    />
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+          {visibles.length > tope && (
+            <div style={{ paddingTop: 6, display: 'flex', justifyContent: 'center' }}>
+              <Pildora tipo="secundario" enClic={() => setTope(tope + PASO)}>
+                Mostrar 60 más · van {recorte.length.toLocaleString('es-PE')} de {visibles.length.toLocaleString('es-PE')}
+              </Pildora>
+            </div>
+          )}
+        </Vidrio>
+
+      </div>
 
       {viendo && (
         <VerInsumo
@@ -364,5 +352,32 @@ export function Catalogo() {
         />
       )}
     </div>
+    </>
   )
 }
+
+/** Una fila del catálogo. Va aparte para que la lista pueda virtualizarse
+    (envolver las filas) sin tocar cómo se dibuja cada una. */
+function FilaInsumo({ insumo: ins, enVer, enEditar }: { insumo: InsumoMaestro; enVer: () => void; enEditar: () => void }) {
+  return (
+    <tr>
+      <td className="n" style={{ fontWeight: 800, color: 'var(--marca-tinte-tinta)', textAlign: 'left', width: 70 }}>{ins.codigo}</td>
+      <td style={{ fontWeight: 600, minWidth: 240 }}>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+          {amable(ins.medida ? `${ins.nombre} ${ins.medida}` : ins.nombre)}
+          {ins.estado === 'por_verificar' && <Chip tono="aviso">por verificar</Chip>}
+        </span>
+      </td>
+      <td><Chip tono="neutro">{ins.um.toLowerCase()}</Chip></td>
+      <td style={{ color: 'var(--tinta-2)' }}>{ins.marca || '—'}</td>
+      <td className="n" style={{ whiteSpace: 'nowrap' }}>{precio(ins.precioPromedio)}</td>
+      <td style={{ textAlign: 'right', whiteSpace: 'nowrap', width: 170 }}>
+        <span style={{ display: 'inline-flex', gap: 6 }}>
+          <Pildora tipo="secundario" chica enClic={enVer}>Ver</Pildora>
+          <Pildora tipo="secundario" chica enClic={enEditar}>{ins.estado === 'por_verificar' ? 'Verificar' : 'Editar'}</Pildora>
+        </span>
+      </td>
+    </tr>
+  )
+}
+
