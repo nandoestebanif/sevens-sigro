@@ -88,6 +88,11 @@ android {
     buildTypes {
         getByName("release") { isMinifyEnabled = false }
     }
+    lint {
+        // El detector de LiveData de AGP 8.7 se cae con Kotlin 2.1 (IncompatibleClassChangeError) y tumba
+        // lintVitalAnalyzeRelease, o sea assembleRelease. La app no usa LiveData: se apaga solo esa regla.
+        disable += "NullSafeMutableLiveData"
+    }
 }
 
 room {
