@@ -102,9 +102,10 @@ export function Campo({ etiqueta, valor, enCambio, marcador, error, autoFoco, id
   id: string
   deshabilitado?: boolean
 }) {
+  // mismo aspecto que .campo del estilo vidrio (tokens.css)
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-      <label htmlFor={id} style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--tinta-2)' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 6, minWidth: 0 }}>
+      <label htmlFor={id} style={{ fontSize: 13, fontWeight: 600, color: 'var(--tinta-2)' }}>
         {etiqueta}
       </label>
       <input
@@ -114,14 +115,11 @@ export function Campo({ etiqueta, valor, enCambio, marcador, error, autoFoco, id
         autoFocus={autoFoco}
         disabled={deshabilitado}
         onChange={(e) => enCambio(e.target.value)}
-        style={{
-          height: 42, border: `1px solid ${error ? 'var(--grave)' : 'var(--borde)'}`,
-          borderRadius: 'var(--radio-chico)', padding: '0 13px', fontSize: 14,
-          fontFamily: 'inherit', color: 'var(--tinta)', background: 'var(--tarjeta)',
-          outlineColor: 'var(--accion)',
-        }}
+        className="campo"
+        aria-invalid={error ? true : undefined}
+        style={{ height: 44, borderColor: error ? 'var(--grave)' : undefined, opacity: deshabilitado ? 0.6 : 1 }}
       />
-      {error && <span style={{ fontSize: 12, color: 'var(--grave)' }}>{error}</span>}
+      {error && <span style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--grave)' }}>{error}</span>}
     </div>
   )
 }
