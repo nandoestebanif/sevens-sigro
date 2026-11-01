@@ -51,6 +51,7 @@ class GuardianErrores extends Component<{ children: ReactNode }, { error: Error 
     )
   }
 }
+import { Accesos } from './paginas/Accesos'
 import { Catalogo } from './paginas/Catalogo'
 import { Compras } from './paginas/Compras'
 import { Importar } from './paginas/Importar'
@@ -76,6 +77,7 @@ const ICONOS = {
   catalogo: 'M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z|M3.3 7 12 12l8.7-5|M12 22V12',
   importar: 'M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4|M7 8l5-5 5 5|M12 3v12',
   parametros: 'M4 21v-7|M4 10V3|M12 21v-9|M12 8V3|M20 21v-5|M20 12V3|M1 14h6|M9 8h6|M17 16h6',
+  accesos: 'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2|M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8|M17 2h4v7h-4z|M19 7v.01',
   obra: 'M3 21h18|M5 21V7l7-4 7 4v14|M9 21v-4h6v4|M9 10h.01|M15 10h.01|M9 14h.01|M15 14h.01',
 }
 
@@ -113,6 +115,10 @@ const GRUPOS: { rotulo: string; items: { ruta: string; nombre: string; icono: ke
   {
     rotulo: 'Catálogo',
     items: [{ ruta: '/catalogo', nombre: 'Catálogo de insumos', icono: 'catalogo' }],
+  },
+  {
+    rotulo: 'Administración',
+    items: [{ ruta: '/accesos', nombre: 'Usuarios y celulares', icono: 'accesos' }],
   },
 ]
 
@@ -341,6 +347,7 @@ function Sistema() {
             <Route path="/importar" element={<Importar />} />
             <Route path="/obra" element={<Obras />} />
             <Route path="/parametros" element={<Parametros />} />
+            <Route path="/accesos" element={<Accesos />} />
           </Routes>
           </GuardianErrores>
           </div>
