@@ -17,6 +17,9 @@
   --tinta: #1c1d1f;
   --tinta-2: #4c5257;
   --tinta-3: #70777d;
+  /* texto secundario directo sobre el fondo de plano (sin vidrio debajo): --tinta-2
+     baja a 3.7:1 donde cae la mancha naranja; este queda en 4.8:1 en el peor punto */
+  --tinta-plano: #374151;
 
   /* marca: el naranja es identidad; la acción rellena usa el naranja oscuro,
      porque #FF7700 con texto blanco da 2.6:1 y no se usa jamás así */
@@ -29,10 +32,12 @@
   /* estados · nunca solos: siempre con su etiqueta */
   --bien: #166534; /* el del lienzo de vidrio: #15803d sobre su tinte daba 4.49:1 */
   --bien-tinte: #e7f6ec;
-  --aviso: #b45309;
+  --aviso: #92400e; /* #b45309 daba 3.7:1 como texto sobre vidrio; este, 5.3:1 en el peor punto del plano */
   --aviso-tinte: #fdf2e3;
   --grave: #b91c1c;
   --grave-tinte: #fcebeb;
+  --info: #1e40af; /* chip informativo («datos de ejemplo»): 8.1:1 sobre su tinte */
+  --info-tinte: #dbeafe;
 
   /* familias de recurso · paleta categórica validada (daltonismo y contraste) */
   --fam-materiales: #c2410c;
@@ -69,6 +74,7 @@
   --tinta: #ffffff;
   --tinta-2: #b9c0c7;
   --tinta-3: #9ba3ac;
+  --tinta-plano: #b9c0c7;
 
   --accion: #ff7700;
   --accion-tinta: #180d00;
@@ -81,6 +87,8 @@
   --aviso-tinte: rgba(255, 196, 0, 0.12);
   --grave: #ff9d93;
   --grave-tinte: rgba(255, 107, 91, 0.14);
+  --info: #a5c8ff;
+  --info-tinte: rgba(96, 165, 250, 0.16);
 
   --sombra: none;
   --sombra-accion: 0 4px 18px rgba(255, 119, 0, 0.35);
@@ -410,3 +418,6 @@ body { transition: background-color 0.25s ease-out, color 0.25s ease-out; }
   .entrar-marca { min-height: 0; padding: 28px 24px; border-radius: 28px; }
   .entrar-marca h1 { font-size: 26px; }
 }
+
+/* chips de «qué es real y qué es de ejemplo»: en angosto el texto largo baja de línea */
+.fila-chips > span { white-space: normal !important; }

@@ -64,7 +64,7 @@ export function Boton({ children, tipo = 'primario', deshabilitado, enClic, anch
   )
 }
 
-export type TonoChip = 'bien' | 'aviso' | 'grave' | 'neutro'
+export type TonoChip = 'bien' | 'aviso' | 'grave' | 'neutro' | 'info' | 'marca'
 
 /** Estado con etiqueta: el color nunca va solo (criterio de accesibilidad). */
 export function Chip({ tono, children }: { tono: TonoChip; children: ReactNode }) {
@@ -72,15 +72,19 @@ export function Chip({ tono, children }: { tono: TonoChip; children: ReactNode }
     bien: ['var(--bien)', 'var(--bien-tinte)'],
     aviso: ['var(--aviso)', 'var(--aviso-tinte)'],
     grave: ['var(--grave)', 'var(--grave-tinte)'],
-    neutro: ['var(--tinta-3)', 'var(--linea)'],
+    // neutro con --tinta-2: sobre vidrio --tinta-3 no llega a AA
+    neutro: ['var(--tinta-2)', 'var(--linea)'],
+    info: ['var(--info)', 'var(--info-tinte)'],
+    marca: ['var(--marca-tinte-tinta)', 'var(--marca-tinte)'],
   }
   const [color, fondo] = mapa[tono]
   return (
     <span
       className="n"
       style={{
-        fontSize: 11.5, fontWeight: 600, color, background: fondo,
-        borderRadius: 'var(--radio-pildora)', padding: '5px 10px', whiteSpace: 'nowrap',
+        display: 'inline-flex', alignItems: 'center', gap: 6,
+        fontSize: 12, fontWeight: 700, color, background: fondo,
+        borderRadius: 'var(--radio-pildora)', padding: '4px 11px', whiteSpace: 'nowrap',
       }}
     >
       {children}
@@ -187,21 +191,21 @@ export function Modal({ titulo, children, enCerrar }: {
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="modal-caja"
+        className="modal-caja vidrio-fuerte"
         style={{
-          width: 420, maxWidth: 'calc(100vw - 32px)', background: 'var(--tarjeta)',
-          border: '1px solid var(--borde)',
-          borderRadius: 'var(--radio)', boxShadow: '0 24px 60px rgba(20,20,20,0.25)',
-          padding: '20px 22px',
+          width: 440, maxWidth: 'calc(100vw - 32px)', maxHeight: 'calc(100vh - 32px)', overflowY: 'auto',
+          borderRadius: 'var(--radio-vidrio)', boxShadow: 'var(--vidrio-sombra-alta)',
+          padding: '22px 24px',
         }}
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-          <h2 style={{ fontSize: 17, fontWeight: 700 }}>{titulo}</h2>
+          <h2 style={{ fontSize: 18, fontWeight: 800, letterSpacing: '-0.01em' }}>{titulo}</h2>
           <button
             type="button"
             onClick={enCerrar}
             aria-label="Cerrar"
-            style={{ border: 0, background: 'transparent', fontSize: 18, cursor: 'pointer', color: 'var(--tinta-3)' }}
+            className="foco-vidrio"
+            style={{ width: 44, height: 44, borderRadius: 22, border: 0, background: 'transparent', fontSize: 18, cursor: 'pointer', color: 'var(--tinta-2)' }}
           >
             ✕
           </button>
