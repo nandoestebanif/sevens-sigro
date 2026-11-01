@@ -1,12 +1,12 @@
 /* SIGRO · armazón de la web de oficina: menú lateral de vidrio (lienzo «SIGRO Oficina · Web»), obra activa y rutas. */
-import { Component, useEffect, useState, type ReactNode } from 'react'
+import { Component, Suspense, lazy, useEffect, useState, type ReactNode } from 'react'
 import { HashRouter, NavLink, Navigate, Route, Routes } from 'react-router-dom'
 import { api } from './api/cliente'
 import { cerrarSesion, sesionActual, usaApiReal } from './api/http'
 import { Entrar } from './paginas/Entrar'
 import type { Obra, ObraActiva } from './api/tipos'
-import logo from './assets/sevens-logo.png'
-import logoBlanco from './assets/sevens-logo-blanco.png'
+import logo from './assets/sevens-logo.webp'   // 165×116: el doble de los 58 px de alto que ocupa (pantallas 2x)
+import logoBlanco from './assets/sevens-logo-blanco.webp'
 
 const ROLES: Record<string, string> = {
   residente: 'Residente de obra', administrador: 'Administrador', gerente: 'Gerente',
@@ -51,15 +51,22 @@ class GuardianErrores extends Component<{ children: ReactNode }, { error: Error 
     )
   }
 }
-import { Catalogo } from './paginas/Catalogo'
-import { Compras } from './paginas/Compras'
-import { Importar } from './paginas/Importar'
-import { Movimientos } from './paginas/Movimientos'
-import { Obras } from './paginas/Obra'
-import { Parametros } from './paginas/Parametros'
-import { Proveedores } from './paginas/Proveedores'
-import { Reposicion } from './paginas/Reposicion'
-import { Tablero } from './paginas/Tablero'
+
+/* Cada pantalla es su propio trozo de JS (React.lazy): la web arranca con el armazón y baja
+   solo la pantalla que se abre. Las páginas exportan con nombre; lazy pide `default`. */
+const Catalogo = lazy(() => import('./paginas/Catalogo').then((m) => ({ default: m.Catalogo })))
+const Compras = lazy(() => import('./paginas/Compras').then((m) => ({ default: m.Compras })))
+const Importar = lazy(() => import('./paginas/Importar').then((m) => ({ default: m.Importar })))
+const Movimientos = lazy(() => import('./paginas/Movimientos').then((m) => ({ default: m.Movimientos })))
+const Obras = lazy(() => import('./paginas/Obra').then((m) => ({ default: m.Obras })))
+const Parametros = lazy(() => import('./paginas/Parametros').then((m) => ({ default: m.Parametros })))
+const Proveedores = lazy(() => import('./paginas/Proveedores').then((m) => ({ default: m.Proveedores })))
+const Reposicion = lazy(() => import('./paginas/Reposicion').then((m) => ({ default: m.Reposicion })))
+const Tablero = lazy(() => import('./paginas/Tablero').then((m) => ({ default: m.Tablero })))
+
+const CargandoPantalla = () => (
+  <p role="status" style={{ fontSize: 13, color: 'var(--tinta-3)', padding: '24px 4px' }}>Cargando la pantalla…</p>
+)
 
 /* Íconos del menú: trazo simple, heredan el color del texto. */
 const Icono = ({ d, tam = 16 }: { d: string; tam?: number }) => (
@@ -259,8 +266,8 @@ function Sistema() {
       <div className="armazon">
         <aside aria-label="Menú principal" className="vidrio-fuerte menu-lateral">
           <NavLink to="/tablero" aria-label="SIGRO · inicio" style={{ display: 'flex', justifyContent: 'center', padding: '2px 0 4px' }}>
-            <img src={logo} alt="SEVEN'S Ingenieros SAC" className="solo-claro" style={{ height: 58, width: 'auto' }} />
-            <img src={logoBlanco} alt="SEVEN'S Ingenieros SAC" className="solo-oscuro" style={{ height: 58, width: 'auto' }} />
+            <img src={logo} alt="SEVEN'S Ingenieros SAC" className="solo-claro" width={83} height={58} decoding="async" style={{ height: 58, width: 'auto' }} />
+            <img src={logoBlanco} alt="SEVEN'S Ingenieros SAC" className="solo-oscuro" width={83} height={58} decoding="async" style={{ height: 58, width: 'auto' }} />
           </NavLink>
 
           <div className="vidrio" style={{ borderRadius: 18, padding: '10px 12px', display: 'flex', alignItems: 'center', gap: 10, boxShadow: 'none' }}>
@@ -330,6 +337,7 @@ function Sistema() {
           {/* la clave remonta las pantallas al cambiar de obra: vuelven a consultar */}
           <div key={obra?.id ?? 'sin-obra'}>
           <GuardianErrores>
+          <Suspense fallback={<CargandoPantalla />}>
           <Routes>
             <Route path="/" element={<Navigate to="/proveedores" replace />} />
             <Route path="/proveedores" element={<Proveedores />} />
@@ -342,6 +350,7 @@ function Sistema() {
             <Route path="/obra" element={<Obras />} />
             <Route path="/parametros" element={<Parametros />} />
           </Routes>
+          </Suspense>
           </GuardianErrores>
           </div>
         </main>

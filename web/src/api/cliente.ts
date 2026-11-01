@@ -11,7 +11,8 @@
    - Registrar la compra NO mueve el stock.
    - Los estados y los números derivados vienen calculados, nunca los arma la UI.
    ───────────────────────────────────────────────────────────────────────── */
-import { INSUMOS_S10 } from '../datos/insumos-s10'
+// los 284 insumos del S10 solo los usa el cliente simulado: van en su propio trozo, fuera del arranque
+const insumosS10 = () => import('../datos/insumos-s10').then((m) => m.INSUMOS_S10)
 import type {
   AlertaReposicion, AvanceInsumo, Compra, InsumoCatalogo, InsumoMaestro,
   LineaCompra, LineaRecepcion, Movimiento, Obra, ObraActiva, Proveedor,
@@ -345,7 +346,7 @@ export class ClienteSimulado implements ClienteSigro {
 
   async aplicarImportacionS10(filas: { codigo: string; descripcion: string; unidad: string; tipo: string }[]) {
     await espera(400)
-    const existentes = new Set(INSUMOS_S10.map((i) => i.codigo))
+    const existentes = new Set((await insumosS10()).map((i) => i.codigo))
     const creados = filas.filter((f) => !existentes.has(f.codigo)).length
     return { creados, actualizados: 0, sinCambios: filas.length - creados, advertencias: [] as string[] }
   }
@@ -366,7 +367,7 @@ export class ClienteSimulado implements ClienteSigro {
     if (d.puntoReposicion < d.stockSeguridad) {
       throw new ErrorApi('datos_invalidos', 'El punto de reposición no puede ser menor que el stock de seguridad.')
     }
-    const ins = INSUMOS_S10.find((i) => i.codigo === d.insumoCodigo)
+    const ins = (await insumosS10()).find((i) => i.codigo === d.insumoCodigo)
     if (!ins) throw new ErrorApi('insumo_no_existe', 'Ese insumo no está en el catálogo.')
     this.parametros.forEach((p) => { if (p.insumoCodigo === d.insumoCodigo) p.vigente = false })
     const nuevo = { insumoCodigo: d.insumoCodigo, descripcion: ins.descripcion, unidadCompra: ins.unidad,
@@ -392,7 +393,7 @@ export class ClienteSimulado implements ClienteSigro {
     // la única excepción: se planifica en kg y se compra en varillas (factor).
     // Cuando llegue la lista de nombres normalizados del cliente, se reemplaza
     // la descripción aquí sin tocar ninguna pantalla.
-    return INSUMOS_S10.filter((i) => i.tipo === 'material').map((i) => ({
+    return (await insumosS10()).filter((i) => i.tipo === 'material').map((i) => ({
       id: i.codigo,
       codigo: i.codigo,
       descripcion: i.descripcion,
