@@ -248,71 +248,74 @@ Todo error se verifica además con la forma `{codigo, mensaje}`.
 | 156 | 08 · Requerimiento, solicitudes, compras y reposición | Historial de parámetros del cemento | `GET /obras/{obra_id}/parametros-reposicion/{insumo_id}/historial` | HU-25 | 200 |
 | 157 | 08 · Requerimiento, solicitudes, compras y reposición | 401 · sin token | `GET /obras/{obra_id}/parametros-reposicion/{insumo_id}/historial` | R9 | 401 |
 | 158 | 08 · Requerimiento, solicitudes, compras y reposición | 403 · obra fuera de alcance | `GET /obras/{obra_id}/parametros-reposicion/{insumo_id}/historial` | R9 | 403 |
-| 159 | 08 · Requerimiento, solicitudes, compras y reposición | 404 · no existe | `GET /obras/{obra_id}/parametros-reposicion/{insumo_id}/historial` | R9 | 404 |
-| 160 | 09 · Tareo | El almacenero registra un trabajador | `POST /obras/{obra_id}/trabajadores` | HU-61 | 201 |
-| 161 | 09 · Tareo | 401 · sin token | `POST /obras/{obra_id}/trabajadores` | R9 | 401 |
-| 162 | 09 · Tareo | 403 · obra fuera de alcance | `POST /obras/{obra_id}/trabajadores` | R9 | 403 |
-| 163 | 09 · Tareo | 422 · cuerpo inválido | `POST /obras/{obra_id}/trabajadores` | contrato | 422 |
-| 164 | 09 · Tareo | Trabajadores activos | `GET /obras/{obra_id}/trabajadores` | HU-61 | 200 |
-| 165 | 09 · Tareo | 401 · sin token | `GET /obras/{obra_id}/trabajadores` | R9 | 401 |
-| 166 | 09 · Tareo | 403 · obra fuera de alcance | `GET /obras/{obra_id}/trabajadores` | R9 | 403 |
-| 167 | 09 · Tareo | Registrar la jornada de ayer con uuid_cliente | `POST /obras/{obra_id}/jornadas` | HU-62 · R3 | 201 |
-| 168 | 09 · Tareo | 401 · sin token | `POST /obras/{obra_id}/jornadas` | R9 | 401 |
-| 169 | 09 · Tareo | 403 · obra fuera de alcance | `POST /obras/{obra_id}/jornadas` | R9 | 403 |
-| 170 | 09 · Tareo | 422 · cuerpo inválido | `POST /obras/{obra_id}/jornadas` | contrato | 422 |
-| 171 | 09 · Tareo | Reenviar la misma jornada no duplica (R3) | `POST /obras/{obra_id}/jornadas` | HU-62 · R3 | 200 |
-| 172 | 09 · Tareo | Jornadas de ayer | `GET /obras/{obra_id}/jornadas` | HU-62 | 200 |
-| 173 | 09 · Tareo | 401 · sin token | `GET /obras/{obra_id}/jornadas` | R9 | 401 |
-| 174 | 09 · Tareo | 403 · obra fuera de alcance | `GET /obras/{obra_id}/jornadas` | R9 | 403 |
-| 175 | 09 · Tareo | Corregir la jornada con motivo (la original no se toca) | `POST /obras/{obra_id}/jornadas/{jornada_id}/correccion` | HU-63 · R1 | 201 |
-| 176 | 09 · Tareo | 401 · sin token | `POST /obras/{obra_id}/jornadas/{jornada_id}/correccion` | R9 | 401 |
-| 177 | 09 · Tareo | 403 · obra fuera de alcance | `POST /obras/{obra_id}/jornadas/{jornada_id}/correccion` | R9 | 403 |
-| 178 | 09 · Tareo | 422 · cuerpo inválido | `POST /obras/{obra_id}/jornadas/{jornada_id}/correccion` | contrato | 422 |
-| 179 | 09 · Tareo | 404 · no existe | `POST /obras/{obra_id}/jornadas/{jornada_id}/correccion` | R9 | 404 |
-| 180 | 09 · Tareo | Horas acumuladas (cuenta la versión vigente) | `GET /obras/{obra_id}/horas-acumuladas` | HU-64 | 200 |
-| 181 | 09 · Tareo | 401 · sin token | `GET /obras/{obra_id}/horas-acumuladas` | R9 | 401 |
-| 182 | 09 · Tareo | 403 · obra fuera de alcance | `GET /obras/{obra_id}/horas-acumuladas` | R9 | 403 |
-| 183 | 09 · Tareo | Dar de baja al trabajador con fecha (R10) | `POST /obras/{obra_id}/trabajadores/{trabajador_id}/baja` | HU-61 · R10 | 200 |
-| 184 | 09 · Tareo | 401 · sin token | `POST /obras/{obra_id}/trabajadores/{trabajador_id}/baja` | R9 | 401 |
-| 185 | 09 · Tareo | 403 · obra fuera de alcance | `POST /obras/{obra_id}/trabajadores/{trabajador_id}/baja` | R9 | 403 |
-| 186 | 09 · Tareo | 422 · cuerpo inválido | `POST /obras/{obra_id}/trabajadores/{trabajador_id}/baja` | contrato | 422 |
-| 187 | 09 · Tareo | 404 · no existe | `POST /obras/{obra_id}/trabajadores/{trabajador_id}/baja` | R9 | 404 |
-| 188 | 90 · Reglas de dominio (errores) | 401 · usuario inexistente (misma respuesta que clave mala) | `POST /auth/login` | HU-12 | 401 |
-| 189 | 90 · Reglas de dominio (errores) | 403 · el almacenero no ve una obra donde no está asignado (R9) | `GET /obras/{obra_id}` | R9 | 403 |
-| 190 | 90 · Reglas de dominio (errores) | 403 · el almacenero no registra compras (rol) | `POST /obras/{obra_id}/compras` | R9 · permisos | 403 |
-| 191 | 90 · Reglas de dominio (errores) | 403 · el administrador no emite solicitudes (D-C4) | `POST /obras/{obra_id}/solicitudes` | HU-66 · D-C4 | 403 |
-| 192 | 90 · Reglas de dominio (errores) | 422 · clave débil | `POST /usuarios` | HU-13 | 422 |
-| 193 | 90 · Reglas de dominio (errores) | 409 · nombre repetido con la misma unidad (HU-08) | `POST /catalogo/insumos` | HU-08 | 409 |
-| 194 | 90 · Reglas de dominio (errores) | 409 · documento repetido | `POST /proveedores` | HU-30 | 409 |
-| 195 | 90 · Reglas de dominio (errores) | 409 · corregir dos veces la misma versión | `POST /obras/{obra_id}/jornadas/{jornada_id}/correccion` | HU-63 | 409 |
-| 196 | 90 · Reglas de dominio (errores) | 422 · punto de reposición menor que el stock de seguridad | `POST /obras/{obra_id}/parametros-reposicion` | HU-25 | 422 |
-| 197 | 99 · Cierre | Retirar al residente de la obra de prueba | `POST /obras/{obra_id}/asignaciones/{asignacion_id}/retiro` | HU-14 | 200 |
-| 198 | 99 · Cierre | 401 · sin token | `POST /obras/{obra_id}/asignaciones/{asignacion_id}/retiro` | R9 | 401 |
-| 199 | 99 · Cierre | 403 · obra fuera de alcance | `POST /obras/{obra_id}/asignaciones/{asignacion_id}/retiro` | R9 | 403 |
-| 200 | 99 · Cierre | 404 · no existe | `POST /obras/{obra_id}/asignaciones/{asignacion_id}/retiro` | R9 | 404 |
-| 201 | 99 · Cierre | Retirado: el residente pierde el acceso al instante | `GET /obras/{obra_id}/requerimiento` | HU-14 · R9 | 403 |
-| 202 | 99 · Cierre | Dar de baja al proveedor de prueba | `POST /proveedores/{proveedor_id}/baja` | HU-30 · R10 | 200 |
-| 203 | 99 · Cierre | 401 · sin token | `POST /proveedores/{proveedor_id}/baja` | R9 | 401 |
-| 204 | 99 · Cierre | 404 · no existe | `POST /proveedores/{proveedor_id}/baja` | R9 | 404 |
-| 205 | 99 · Cierre | Dar de baja al almacenero de prueba | `POST /usuarios/{usuario_id}/baja` | HU-13 · R10 | 200 |
-| 206 | 99 · Cierre | 401 · sin token | `POST /usuarios/{usuario_id}/baja` | R9 | 401 |
-| 207 | 99 · Cierre | 404 · no existe | `POST /usuarios/{usuario_id}/baja` | R9 | 404 |
-| 208 | 99 · Cierre | Dar de baja al residente de prueba | `POST /usuarios/{usuario_id}/baja` | HU-13 · R10 | 200 |
-| 209 | 99 · Cierre | De baja: su token deja de servir al instante | `GET /auth/yo` | HU-13 · R9 | 401 |
-| 210 | 99 · Cierre | 409 · retirar dos veces | `POST /obras/{obra_id}/asignaciones/{asignacion_id}/retiro` | HU-14 | 409 |
+| 159 | 09 · Tareo | El almacenero registra un trabajador | `POST /obras/{obra_id}/trabajadores` | HU-61 | 201 |
+| 160 | 09 · Tareo | 401 · sin token | `POST /obras/{obra_id}/trabajadores` | R9 | 401 |
+| 161 | 09 · Tareo | 403 · obra fuera de alcance | `POST /obras/{obra_id}/trabajadores` | R9 | 403 |
+| 162 | 09 · Tareo | 422 · cuerpo inválido | `POST /obras/{obra_id}/trabajadores` | contrato | 422 |
+| 163 | 09 · Tareo | Trabajadores activos | `GET /obras/{obra_id}/trabajadores` | HU-61 | 200 |
+| 164 | 09 · Tareo | 401 · sin token | `GET /obras/{obra_id}/trabajadores` | R9 | 401 |
+| 165 | 09 · Tareo | 403 · obra fuera de alcance | `GET /obras/{obra_id}/trabajadores` | R9 | 403 |
+| 166 | 09 · Tareo | Registrar la jornada de ayer con uuid_cliente | `POST /obras/{obra_id}/jornadas` | HU-62 · R3 | 201 |
+| 167 | 09 · Tareo | 401 · sin token | `POST /obras/{obra_id}/jornadas` | R9 | 401 |
+| 168 | 09 · Tareo | 403 · obra fuera de alcance | `POST /obras/{obra_id}/jornadas` | R9 | 403 |
+| 169 | 09 · Tareo | 422 · cuerpo inválido | `POST /obras/{obra_id}/jornadas` | contrato | 422 |
+| 170 | 09 · Tareo | Reenviar la misma jornada no duplica (R3) | `POST /obras/{obra_id}/jornadas` | HU-62 · R3 | 200 |
+| 171 | 09 · Tareo | Jornadas de ayer | `GET /obras/{obra_id}/jornadas` | HU-62 | 200 |
+| 172 | 09 · Tareo | 401 · sin token | `GET /obras/{obra_id}/jornadas` | R9 | 401 |
+| 173 | 09 · Tareo | 403 · obra fuera de alcance | `GET /obras/{obra_id}/jornadas` | R9 | 403 |
+| 174 | 09 · Tareo | Corregir la jornada con motivo (la original no se toca) | `POST /obras/{obra_id}/jornadas/{jornada_id}/correccion` | HU-63 · R1 | 201 |
+| 175 | 09 · Tareo | 401 · sin token | `POST /obras/{obra_id}/jornadas/{jornada_id}/correccion` | R9 | 401 |
+| 176 | 09 · Tareo | 403 · obra fuera de alcance | `POST /obras/{obra_id}/jornadas/{jornada_id}/correccion` | R9 | 403 |
+| 177 | 09 · Tareo | 422 · cuerpo inválido | `POST /obras/{obra_id}/jornadas/{jornada_id}/correccion` | contrato | 422 |
+| 178 | 09 · Tareo | 404 · no existe | `POST /obras/{obra_id}/jornadas/{jornada_id}/correccion` | R9 | 404 |
+| 179 | 09 · Tareo | Horas acumuladas (cuenta la versión vigente) | `GET /obras/{obra_id}/horas-acumuladas` | HU-64 | 200 |
+| 180 | 09 · Tareo | 401 · sin token | `GET /obras/{obra_id}/horas-acumuladas` | R9 | 401 |
+| 181 | 09 · Tareo | 403 · obra fuera de alcance | `GET /obras/{obra_id}/horas-acumuladas` | R9 | 403 |
+| 182 | 09 · Tareo | Dar de baja al trabajador con fecha (R10) | `POST /obras/{obra_id}/trabajadores/{trabajador_id}/baja` | HU-61 · R10 | 200 |
+| 183 | 09 · Tareo | 401 · sin token | `POST /obras/{obra_id}/trabajadores/{trabajador_id}/baja` | R9 | 401 |
+| 184 | 09 · Tareo | 403 · obra fuera de alcance | `POST /obras/{obra_id}/trabajadores/{trabajador_id}/baja` | R9 | 403 |
+| 185 | 09 · Tareo | 422 · cuerpo inválido | `POST /obras/{obra_id}/trabajadores/{trabajador_id}/baja` | contrato | 422 |
+| 186 | 09 · Tareo | 404 · no existe | `POST /obras/{obra_id}/trabajadores/{trabajador_id}/baja` | R9 | 404 |
+| 187 | 90 · Reglas de dominio (errores) | 401 · usuario inexistente (misma respuesta que clave mala) | `POST /auth/login` | HU-12 | 401 |
+| 188 | 90 · Reglas de dominio (errores) | 403 · el almacenero no ve una obra donde no está asignado (R9) | `GET /obras/{obra_id}` | R9 | 403 |
+| 189 | 90 · Reglas de dominio (errores) | 403 · el almacenero no registra compras (rol) | `POST /obras/{obra_id}/compras` | R9 · permisos | 403 |
+| 190 | 90 · Reglas de dominio (errores) | 403 · el administrador no emite solicitudes (D-C4) | `POST /obras/{obra_id}/solicitudes` | HU-66 · D-C4 | 403 |
+| 191 | 90 · Reglas de dominio (errores) | 422 · clave débil | `POST /usuarios` | HU-13 | 422 |
+| 192 | 90 · Reglas de dominio (errores) | 409 · nombre repetido con la misma unidad (HU-08) | `POST /catalogo/insumos` | HU-08 | 409 |
+| 193 | 90 · Reglas de dominio (errores) | 409 · documento repetido | `POST /proveedores` | HU-30 | 409 |
+| 194 | 90 · Reglas de dominio (errores) | 409 · corregir dos veces la misma versión | `POST /obras/{obra_id}/jornadas/{jornada_id}/correccion` | HU-63 | 409 |
+| 195 | 90 · Reglas de dominio (errores) | 422 · punto de reposición menor que el stock de seguridad | `POST /obras/{obra_id}/parametros-reposicion` | HU-25 | 422 |
+| 196 | 99 · Cierre | Retirar al residente de la obra de prueba | `POST /obras/{obra_id}/asignaciones/{asignacion_id}/retiro` | HU-14 | 200 |
+| 197 | 99 · Cierre | 401 · sin token | `POST /obras/{obra_id}/asignaciones/{asignacion_id}/retiro` | R9 | 401 |
+| 198 | 99 · Cierre | 403 · obra fuera de alcance | `POST /obras/{obra_id}/asignaciones/{asignacion_id}/retiro` | R9 | 403 |
+| 199 | 99 · Cierre | 404 · no existe | `POST /obras/{obra_id}/asignaciones/{asignacion_id}/retiro` | R9 | 404 |
+| 200 | 99 · Cierre | Retirado: el residente pierde el acceso al instante | `GET /obras/{obra_id}/requerimiento` | HU-14 · R9 | 403 |
+| 201 | 99 · Cierre | Dar de baja al proveedor de prueba | `POST /proveedores/{proveedor_id}/baja` | HU-30 · R10 | 200 |
+| 202 | 99 · Cierre | 401 · sin token | `POST /proveedores/{proveedor_id}/baja` | R9 | 401 |
+| 203 | 99 · Cierre | 404 · no existe | `POST /proveedores/{proveedor_id}/baja` | R9 | 404 |
+| 204 | 99 · Cierre | Dar de baja al almacenero de prueba | `POST /usuarios/{usuario_id}/baja` | HU-13 · R10 | 200 |
+| 205 | 99 · Cierre | 401 · sin token | `POST /usuarios/{usuario_id}/baja` | R9 | 401 |
+| 206 | 99 · Cierre | 404 · no existe | `POST /usuarios/{usuario_id}/baja` | R9 | 404 |
+| 207 | 99 · Cierre | Dar de baja al residente de prueba | `POST /usuarios/{usuario_id}/baja` | HU-13 · R10 | 200 |
+| 208 | 99 · Cierre | De baja: su token deja de servir al instante | `GET /auth/yo` | HU-13 · R9 | 401 |
+| 209 | 99 · Cierre | 409 · retirar dos veces | `POST /obras/{obra_id}/asignaciones/{asignacion_id}/retiro` | HU-14 | 409 |
 <!-- casos-postman:fin -->
 
 ## Resultados de esta entrega (01/11/2026)
 
+Pila local: PostgreSQL 16.10 en :5435 (nativo: Docker Desktop no arrancó en la máquina), migraciones 0001→0009,
+un usuario de base por servicio, gateway + obras + catálogo + compras + tareo + integraciones con `SERVICIO_TOKEN`.
+
 | Qué | Resultado |
 |---|---|
-| Lectura del PDF real con el parser de Integraciones (`s10.leer_relacion_de_insumos`) | **284 insumos, 0 fallidos** (lo mismo que verifican Postman y Playwright) |
-| Postman · los 56 casos «401 · sin token» y el 422 del login, contra gateway + 4 servicios reales (sin base) | **57/57 pasan, 228 aserciones, 0 fallas** |
-| Postman · resto de la colección (necesita PostgreSQL) | **no ejecutado**: Docker Desktop no arrancó en la máquina («Docker Desktop is unable to start») |
-| Playwright · 11 casos | **no ejecutados contra la API** por lo mismo; la configuración arranca la web en :5174 y los 11 se omiten limpios sin credenciales |
+| Postman · colección completa (209 peticiones) por newman, 3 corridas seguidas sobre la misma base | **208 corridas, 778 aserciones, 0 fallas**; 1 omitida a propósito (marcar notificación leída: no hay micro de notificaciones) · ~70 s |
+| Playwright · 11 casos contra la web de `main` | **10 pasan, 0 fallan, 1 omitido** (SUNAT: sin `FACTILIZA_TOKEN`) · ~40 s |
+| Playwright · los mismos 11 contra la web del PR #15 (rediseño de estilos) | **10 pasan, 0 fallan, 1 omitido**: los selectores sobreviven al rediseño |
+| Lectura del PDF real (`POST /catalogo/importaciones-s10` → Integraciones) | **284 insumos, 0 fallidos**, 6/237/18/23 por tipo, S/ 1 479 338.33 |
 
-Lo no ejecutado no se da por bueno: la primera corrida completa con base puede pedir ajustar alguna aserción
-(sobre todo los 404 genéricos y los formatos de número en pantalla). Quien la corra anota aquí el resultado.
+Lo que hubo que corregir en la primera corrida fueron errores de las pruebas, no del producto: los valores reales
+de `estado` del proveedor (`sin_validar`, `de_baja`), un caso que tomaba la obra antes de tenerla y un enlace del menú
+que coincidía con «Parámetros de reposición». El único comportamiento del producto que no calza es I-5.
 
 ## Qué NO cubre
 
@@ -334,4 +337,6 @@ Lo no ejecutado no se da por bueno: la primera corrida completa con base puede p
 | I-1 | `web/src/api/sunat.ts` | La consulta de RUC llama **directo** a `http://localhost:8001` (fijo en el código), no por el gateway | En Render la web nunca consulta SUNAT (apunta al localhost de quien la abre); localmente exige Integraciones en 8001 sin `SERVICIO_TOKEN`. Es el mismo hallazgo que ya se resolvió para el S10 (decisión «A»): falta hacerlo para el RUC |
 | I-2 | `api/docs/openapi.json` | Las rutas declaran `security: HTTPBearer` pero el contrato no define `components.securitySchemes` | Importadores (Postman, generadores de clientes) no saben que es un Bearer; el generador lo resuelve poniendo la cabecera a mano |
 | I-3 | `CLAUDE.md` | Dice que los reportes del S10 son de fecha **09/01/2026**; el PDF de la Relación de insumos dice **01/01/2026** (y así lo lee Integraciones) | Solo documentación; conviene confirmarlo con el cliente |
-| I-4 | Entorno | Docker Desktop no arrancó («unable to start») | Bloqueó la corrida completa de Postman y Playwright en esta entrega |
+| I-4 | Entorno | Docker Desktop no arrancó («unable to start», la VM de WSL quedó trabada) | Se corrió con un PostgreSQL 16 nativo en :5435; `levantar-local.sh` sirve con cualquier PostgreSQL |
+| I-5 | `GET /obras/{id}/parametros-reposicion/{insumo_id}/historial` | Con un insumo que no existe responde **200 `[]`**; las demás rutas con id (factor, ajustes, compras…) responden 404 `no_existe` | Inconsistencia menor: la pantalla no distingue «sin historial» de «insumo equivocado». Se excluyó del 404 genérico (`SIN_404`) hasta que se decida |
+| O-1 | Web · Reposición | «Saldo por comprar» muestra las cantidades redondeadas a enteros (3 492.36 bls → «3,492 bls») | Observación, no incidencia: el servidor guarda los decimales; la prueba acepta ambas formas |

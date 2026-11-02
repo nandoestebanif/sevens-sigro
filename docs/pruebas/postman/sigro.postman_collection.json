@@ -299,7 +299,7 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/api/v1/obras/{{obra_qa_id}}",
+              "raw": "{{baseUrl}}/api/v1/obras/{{obra_id}}",
               "host": [
                 "{{baseUrl}}"
               ],
@@ -307,7 +307,7 @@
                 "api",
                 "v1",
                 "obras",
-                "{{obra_qa_id}}"
+                "{{obra_id}}"
               ]
             },
             "description": "**HU-01** · `GET /api/v1/obras/{obra_id}`"
@@ -4259,7 +4259,7 @@
                 "exec": [
                   "pm.test('responde 201', () => pm.response.to.have.status(201));",
                   "const p = pm.response.json();",
-                  "pm.test('nace activo', () => pm.expect(p.estado).to.eql('activo'));",
+                  "pm.test('un DNI nunca se consulta en SUNAT: nace sin validar', () => pm.expect(p.estado).to.eql('sin_validar'));",
                   "if (pm.response.code < 300) { pm.collectionVariables.set('proveedor_id', p.id); }"
                 ]
               }
@@ -7449,49 +7449,6 @@
               }
             }
           ]
-        },
-        {
-          "id": "54f0efd3-9ec8-5f2e-a787-7c40e8ae98e6",
-          "name": "404 · no existe · GET /obras/{obra_id}/parametros-reposicion/{insumo_id}/historial",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{token}}"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/api/v1/obras/{{obra_qa_id}}/parametros-reposicion/999999/historial",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "obras",
-                "{{obra_qa_id}}",
-                "parametros-reposicion",
-                "999999",
-                "historial"
-              ]
-            },
-            "description": "**R9** · `GET /api/v1/obras/{obra_id}/parametros-reposicion/{insumo_id}/historial`"
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "id": "dbe7cf60-bf65-54ad-9f6d-04163b98968e",
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('responde 404', () => pm.response.to.have.status(404));",
-                  "pm.test('error con la forma {codigo, mensaje}', () => { const e = pm.response.json(); pm.expect(e.codigo).to.be.a('string'); pm.expect(e.mensaje).to.be.a('string'); });",
-                  "pm.test('código no_existe', () => pm.expect(pm.response.json().codigo).to.match(/no_existe/));"
-                ]
-              }
-            }
-          ]
         }
       ]
     },
@@ -9604,7 +9561,7 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('responde 200', () => pm.response.to.have.status(200));",
-                  "pm.test('queda de baja', () => pm.expect(pm.response.json().estado).to.eql('baja'));"
+                  "pm.test('queda de baja', () => pm.expect(pm.response.json().estado).to.eql('de_baja'));"
                 ]
               }
             }

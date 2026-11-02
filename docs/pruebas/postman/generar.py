@@ -97,7 +97,7 @@ CASOS: list = [   # un texto suelto abre una carpeta; lo que sigue va en ella
          pruebas=js("pm.test('devuelve el usuario y sus obras', () => { const r = pm.response.json(); pm.expect(r.usuario.id).to.be.a('number'); pm.expect(r.obras).to.be.an('array'); });")),
     dict(metodo="GET", ruta="/api/v1/obras", nombre="Mis obras (solo donde estoy asignado)", hu="HU-01", token=ADMIN, espera=200,
          pruebas=js(lista(), "pm.test('incluye la obra de la sesión', () => pm.expect(pm.response.json().map(o => o.id)).to.include(Number(pm.collectionVariables.get('obra_id'))));")),
-    dict(metodo="GET", ruta="/api/v1/obras/{obra_id}", nombre="Ver la obra de la sesión", hu="HU-01", token=ADMIN, espera=200,
+    dict(metodo="GET", ruta="/api/v1/obras/{obra_id}", nombre="Ver la obra de la sesión", hu="HU-01", token=ADMIN, path={"obra_id": "{{obra_id}}"}, espera=200,
          pruebas=js("pm.test('es la obra pedida', () => pm.expect(pm.response.json().id).to.eql(Number(pm.collectionVariables.get('obra_id'))));")),
     "02 · Obra de prueba",
     dict(metodo="POST", ruta="/api/v1/obras", nombre="Crear la obra de prueba (los periodos nacen solos)", hu="HU-01 · HU-03", token=ADMIN,
@@ -209,7 +209,7 @@ CASOS: list = [   # un texto suelto abre una carpeta; lo que sigue va en ella
     dict(metodo="POST", ruta="/api/v1/proveedores", nombre="Registrar un proveedor con DNI (queda sin validar)", hu="HU-30 · D-C5", token=ADMIN,
          body={"ruc": "{{dni}}", "razon_social": "[QA] Proveedor Postman {{corrida}}"}, espera=201,
          pruebas=js("const p = pm.response.json();",
-                    "pm.test('nace activo', () => pm.expect(p.estado).to.eql('activo'));",
+                    "pm.test('un DNI nunca se consulta en SUNAT: nace sin validar', () => pm.expect(p.estado).to.eql('sin_validar'));",
                     guarda("proveedor_id", "p.id"))),
     dict(metodo="GET", ruta="/api/v1/proveedores", nombre="Buscar proveedores por razón social", hu="HU-29", token=ADMIN,
          query={"q": "[QA] Proveedor Postman {{corrida}}"}, espera=200,
@@ -316,7 +316,7 @@ CASOS: list = [   # un texto suelto abre una carpeta; lo que sigue va en ella
          pruebas=js("pm.test('código sin_permiso', () => pm.expect(pm.response.json().codigo).to.eql('sin_permiso'));")),
     dict(metodo="POST", ruta="/api/v1/proveedores/{proveedor_id}/baja", nombre="Dar de baja al proveedor de prueba", hu="HU-30 · R10", token=ADMIN,
          path={"proveedor_id": "{{proveedor_id}}"}, espera=200, carpeta="99 · Cierre",
-         pruebas=js("pm.test('queda de baja', () => pm.expect(pm.response.json().estado).to.eql('baja'));")),
+         pruebas=js("pm.test('queda de baja', () => pm.expect(pm.response.json().estado).to.eql('de_baja'));")),
     dict(metodo="POST", ruta="/api/v1/usuarios/{usuario_id}/baja", nombre="Dar de baja al almacenero de prueba", hu="HU-13 · R10", token=ADMIN,
          path={"usuario_id": "{{usuario_alm_id}}"}, espera=200, carpeta="99 · Cierre",
          pruebas=js("pm.test('queda de baja', () => pm.expect(pm.response.json().estado).to.eql('baja'));")),
@@ -361,6 +361,7 @@ ERRORES_EXTRA: list[dict] = [
 # Rutas donde el 404 genérico no aplica (la ruta no busca el recurso o el micro externo responde otra cosa).
 SIN_404 = {
     ("POST", "/api/v1/notificaciones/{notificacion_id}/leida"),   # sin el micro de notificaciones responde 503
+    ("GET", "/api/v1/obras/{obra_id}/parametros-reposicion/{insumo_id}/historial"),  # insumo inexistente: 200 [] (incidencia I-5)
 }
 # Valores válidos de los path params para los casos de error genéricos (403 y 404).
 PATH_VALIDO = {"obra_id": "{{obra_qa_id}}", "usuario_id": "{{usuario_alm_id}}", "insumo_id": "{{insumo_id}}",
