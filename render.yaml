@@ -16,6 +16,10 @@ envVarGroups:
         generateValue: true
       - key: SIGRO_CORS
         value: https://sigro-web.onrender.com
+      # Red privada (docs/rendimiento-render.md): en el plan gratuito un servicio web PUEDE enviar tráfico privado
+      # pero NO recibirlo, así que el gateway y los servicios siguen hablándose por https://…onrender.com (pasando
+      # por Cloudflare). Al pasar los servicios a un plan pago (o a «type: pserv»), en la misma región, se cambian a
+      # su hostname interno, sin TLS ni Cloudflare:  http://sigro-obras:10000  ·  http://sigro-catalogo:10000 …
       - key: SIGRO_URL_OBRAS
         value: https://sigro-obras.onrender.com
       - key: SIGRO_URL_CATALOGO
@@ -26,6 +30,17 @@ envVarGroups:
         value: https://sigro-tareo.onrender.com
       - key: SIGRO_INTEGRACIONES_URL
         value: https://sigro-integraciones.onrender.com
+      # Pool chico pero persistente por servicio (app/db.py). Con la cadena -pooler de Neon, 2+3 por servicio
+      # sobra; reciclar a los 240 s evita usar una conexión que Neon cortó al suspender el cómputo (5 min).
+      - key: SIGRO_DB_POOL
+        value: "2"
+      - key: SIGRO_DB_POOL_EXTRA
+        value: "3"
+      - key: SIGRO_DB_RECICLAR_S
+        value: "240"
+      # Server-Timing y CF-Ray en el log (app/medicion.py). "0" quita la cabecera; el log se mantiene.
+      - key: SIGRO_SERVER_TIMING
+        value: "1"
 
 services:
   - type: web
@@ -55,6 +70,9 @@ services:
         value: obras
       - key: SIGRO_SERVICIO
         value: obras
+      # Cadena CON pooling de Neon (host «ep-…-pooler…»): la usan los servicios en ejecución. Las migraciones
+      # siguen con la directa (SIGRO_DATABASE_URL, sin -pooler), que se usa a mano desde docs/despliegue-pruebas.md.
+      # El log de arranque dice «sigro base: pooler=sí» si quedó bien.
       - key: SIGRO_APP_DATABASE_URL   # postgresql+psycopg://sigro_obras:<clave>@<host-neon-pooler>/neondb?sslmode=require
         sync: false
 
@@ -71,7 +89,7 @@ services:
         value: catalogo
       - key: SIGRO_SERVICIO
         value: catalogo
-      - key: SIGRO_APP_DATABASE_URL
+      - key: SIGRO_APP_DATABASE_URL   # con -pooler, como obras
         sync: false
 
   - type: web
@@ -87,7 +105,7 @@ services:
         value: compras
       - key: SIGRO_SERVICIO
         value: compras
-      - key: SIGRO_APP_DATABASE_URL
+      - key: SIGRO_APP_DATABASE_URL   # con -pooler, como obras
         sync: false
 
   - type: web
@@ -103,7 +121,7 @@ services:
         value: tareo
       - key: SIGRO_SERVICIO
         value: tareo
-      - key: SIGRO_APP_DATABASE_URL
+      - key: SIGRO_APP_DATABASE_URL   # con -pooler, como obras
         sync: false
 
   - type: web

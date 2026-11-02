@@ -20,6 +20,7 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
 from starlette.routing import Route
 
+from app import medicion
 from app.enrutado import servicio_para
 
 _SALTO = {"connection", "keep-alive", "proxy-authenticate", "proxy-authorization", "te", "trailers",
@@ -46,13 +47,20 @@ async def _reenviar(request: Request) -> Response:
     # Se pide solo gzip, que httpx sabe descomprimir: si se reenviara el «br» del navegador, Cloudflare (Render)
     # respondería en brotli, httpx lo dejaría comprimido y, al quitar Content-Encoding, el navegador recibiría basura.
     cabeceras["accept-encoding"] = "gzip"
+    cabeceras.pop(medicion.CABECERA_RAY, None)
+    if ray := medicion.ray_actual():
+        cabeceras[medicion.CABECERA_RAY] = ray     # Cloudflare marca el salto al servicio con otro ray: este los une
+    cuerpo = await request.body()
+    inicio = time.perf_counter()
     try:
         r = await _cliente.request(
             request.method, f"{base.rstrip('/')}{request.url.path}", params=request.query_params,
-            content=await request.body(), headers=cabeceras,
+            content=cuerpo, headers=cabeceras,
         )
     except httpx.HTTPError:
         return _error(503, "servicio_no_disponible", f"El servicio de {servicio} no responde; inténtalo en un momento.")
+    finally:
+        medicion.sumar_interno((time.perf_counter() - inicio) * 1000)
     salida = {k: v for k, v in r.headers.items() if k.lower() not in _SALTO | {"content-encoding"}}
     return Response(content=r.content, status_code=r.status_code, headers=salida)
 
@@ -109,7 +117,8 @@ def crear_app() -> Starlette:
             Route("/salud/servicios", salud_servicios, methods=["GET"]),
             Route("/api/v1/{resto:path}", _reenviar, methods=["GET", "POST", "PUT", "PATCH", "DELETE"]),
         ],
-        middleware=[Middleware(CORSMiddleware, allow_origins=origenes, allow_methods=["GET", "POST"],
+        middleware=[Middleware(medicion.MedirPeticion, nombre=medicion.GATEWAY),     # el primero es el más externo
+                    Middleware(CORSMiddleware, allow_origins=origenes, allow_methods=["GET", "POST"],
                                allow_headers=["Authorization", "Content-Type"])],
     )
 
