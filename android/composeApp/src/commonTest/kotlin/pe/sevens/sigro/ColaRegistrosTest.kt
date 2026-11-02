@@ -11,6 +11,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.test.runTest
+import kotlinx.serialization.json.JsonNull
+import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import pe.sevens.sigro.datos.local.AjusteDao
@@ -21,7 +23,9 @@ import pe.sevens.sigro.datos.remoto.ApiSigro
 import pe.sevens.sigro.datos.remoto.crearClienteHttp
 import pe.sevens.sigro.datos.remoto.jsonSigro
 import pe.sevens.sigro.datos.repositorio.RepositorioRegistrosImpl
+import pe.sevens.sigro.dominio.CompraParaRecibir
 import pe.sevens.sigro.dominio.EstadoAsistencia
+import pe.sevens.sigro.dominio.LineaCompra
 import pe.sevens.sigro.dominio.EstadoEnvio
 import pe.sevens.sigro.dominio.Insumo
 import pe.sevens.sigro.dominio.LineaAlmacen
@@ -212,4 +216,32 @@ class ColaRegistrosTest {
 
     @Test fun uuidReutilizadoEsUnConflictoNoUnReenvio() =
         rechazoCon(HttpStatusCode.Conflict, "uuid_reutilizado", "Ese identificador ya se usó para otro movimiento.")
+
+    // ── Entrada de compra → POST /almacen/recepciones ──────────────────────────────────────
+
+    private val compra = CompraParaRecibir(10, "[Proveedor]", "Factura [número]", "2026-10-27", listOf(
+        LineaCompra("1151", "CEMENTO PORTLAND TIPO I - 42.5 KG", "100", "bolsas", insumoId = 1151),
+        LineaCompra("423", "ARENA GRUESA", "6", "metro cúbico", insumoId = 423),
+    ))
+
+    @Test
+    fun recepcionLlegoTodoViajaSinLineas() = runTest {
+        val c = Cola { HttpStatusCode.Created to "{}" }
+        c.repo.registrarAlmacen(1, RegistroAlmacen.Entrada(2, compra, compra.lineas.map { it to it.cantidad }, todo = true))
+        c.repo.sincronizar()
+        assertEquals("/api/v1/obras/1/almacen/recepciones", c.rutas.single())
+        val cuerpo = jsonSigro.parseToJsonElement(c.cuerpos.single()).jsonObject
+        assertEquals(JsonNull, cuerpo["lineas"], "sin líneas = el total pendiente")
+        assertEquals("10", cuerpo["compra_id"]!!.jsonPrimitive.content)
+    }
+
+    @Test
+    fun recepcionParcialViajaPorInsumoId() = runTest {
+        val c = Cola { HttpStatusCode.Created to "{}" }
+        c.repo.registrarAlmacen(1, RegistroAlmacen.Entrada(2, compra, listOf(compra.lineas[0] to "60"), todo = false))
+        c.repo.sincronizar()
+        val l = jsonSigro.parseToJsonElement(c.cuerpos.single()).jsonObject["lineas"]!!.jsonArray.single().jsonObject
+        assertEquals("1151", l["insumo_id"]!!.jsonPrimitive.content)
+        assertEquals("60", l["cantidad"]!!.jsonPrimitive.content)
+    }
 }
