@@ -78,7 +78,7 @@ recorrido() {
     sh_ am start -W -n "$ACT" > /dev/null; sleep 3
     case "$(sh_ dumpsys activity activities)" in *"topResumedActivity="*"$PKG/"*) ;; *) echo "la app no quedó al frente" >&2; return 1 ;; esac
     [ "${1:-}" = gfx ] && sh_ dumpsys gfxinfo "$PKG" reset > /dev/null
-    captura entrar
+    centro "Servidor:" > /dev/null; captura entrar          # espera a que Entrar esté pintada
     # Entrar
     tocar "Servidor:"
     tocar "=Dirección del servidor"
