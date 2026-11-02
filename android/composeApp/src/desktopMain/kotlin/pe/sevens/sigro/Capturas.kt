@@ -45,6 +45,15 @@ import pe.sevens.sigro.dominio.BusquedaInsumos
 import pe.sevens.sigro.dominio.FichaInsumo
 import pe.sevens.sigro.dominio.NuevoInsumo
 import pe.sevens.sigro.dominio.CatalogoTexto
+import pe.sevens.sigro.dominio.RepositorioTrabajadores
+import pe.sevens.sigro.dominio.Trabajador
+import pe.sevens.sigro.dominio.NuevoTrabajador
+import pe.sevens.sigro.ui.pantallas.TrabajadoresViewModel
+import pe.sevens.sigro.ui.pantallas.TrabajadorNuevoViewModel
+import pe.sevens.sigro.ui.pantallas.AsistenciaViewModel
+import pe.sevens.sigro.ui.pantallas.PantallaTrabajadores
+import pe.sevens.sigro.ui.pantallas.PantallaTrabajadorNuevo
+import pe.sevens.sigro.ui.pantallas.PantallaAsistencia
 import pe.sevens.sigro.ui.pantallas.PantallaDispositivo
 import pe.sevens.sigro.ui.pantallas.PantallaEntrar
 import pe.sevens.sigro.ui.pantallas.PantallaInicio
@@ -152,6 +161,18 @@ private object InsumosFalsos : RepositorioInsumos {
     override suspend fun registrar(nuevo: NuevoInsumo) = FichaInsumo(9999, "9999", nuevo.descripcion, nuevo.unidad)
 }
 
+/** Trabajadores de ejemplo: las personas no son datos del cliente y lo dicen. */
+private object TrabajadoresFalsos : RepositorioTrabajadores {
+    private val cats = listOf("operario", "oficial", "oficial", "peon", "operario", "peon", "peon")
+    val lista = MutableStateFlow((1..7).map { n ->
+        Trabajador(n, 1, "Trabajador 0$n (ejemplo)", "DNI", "[documento]", cats[n - 1], if (n <= 3) "Cuadrilla A" else "Cuadrilla B",
+            "2026-10-01", if (n == 7) "2026-10-20" else null)
+    })
+    override fun deObra(obraId: Int) = lista
+    override suspend fun actualizar(obraId: Int) = lista.value.size
+    override suspend fun registrar(obraId: Int, nuevo: NuevoTrabajador) = lista.value.first()
+}
+
 private val sinProgramar = object : ProgramadorSincronizacion { override fun programar() {} }
 
 private fun capturar(dir: File, nombre: String, oscuro: Boolean = false, ms: Int = 1500, preparar: () -> Unit = {}, contenido: @Composable () -> Unit) {
@@ -219,5 +240,14 @@ fun main(args: Array<String>) {
     }
     val nuevo = InsumoNuevoViewModel(InsumosFalsos)
     capturar(dir, "13-catalogo-nuevo", ms = 2500, preparar = { nuevo.material("Fierro corrugado"); nuevo.medida("1/2"); nuevo.unidad("unidades") }) { PantallaInsumoNuevo({}, {}, nuevo) }
+    capturar(dir, "14-trabajadores") { PantallaTrabajadores(1, "Multifamiliar Flores", {}, {}, TrabajadoresViewModel(TrabajadoresFalsos, registros)) }
+    val tn = TrabajadorNuevoViewModel(TrabajadoresFalsos)
+    capturar(dir, "15-trabajador-nuevo", preparar = { tn.documento("1234567"); tn.nombre("Trabajador 08 (ejemplo)") }) {
+        PantallaTrabajadorNuevo(1, {}, tn, TrabajadoresViewModel(TrabajadoresFalsos, registros))
+    }
+    val asis = AsistenciaViewModel(TrabajadoresFalsos, registros, sinProgramar)
+    capturar(dir, "16-asistencia", preparar = { asis.cargar(1); Thread.sleep(300); asis.extra(1, 2); asis.estado(4, pe.sevens.sigro.dominio.EstadoAsistencia.AUSENTE) }) {
+        PantallaAsistencia(1, {}, {}, asis)
+    }
     kotlin.system.exitProcess(0)
 }
