@@ -30,6 +30,7 @@ import pe.sevens.sigro.dominio.EstadoEnvio
 import pe.sevens.sigro.dominio.Insumo
 import pe.sevens.sigro.dominio.LineaAlmacen
 import pe.sevens.sigro.dominio.MarcaAsistencia
+import pe.sevens.sigro.dominio.MotivoDiferencia
 import pe.sevens.sigro.dominio.NOTA_SIN_SERVICIO_ALMACEN
 import pe.sevens.sigro.dominio.OrigenIngreso
 import pe.sevens.sigro.dominio.RegistroAlmacen
@@ -258,5 +259,68 @@ class ColaRegistrosTest {
         assertEquals("2", cuerpo["destino_obra_id"]!!.jsonPrimitive.content)
         assertEquals("Falta cemento allá", cuerpo["motivo"]!!.jsonPrimitive.content)
         assertEquals("423", cuerpo["lineas"]!!.jsonArray.single().jsonObject["insumo_id"]!!.jsonPrimitive.content)
+    }
+
+    // ── Conteo → abrir, contar las líneas que faltan y confirmar ──────────────────────────
+
+    private val cemento = Insumo(1151, "1151", "CEMENTO PORTLAND TIPO I - 42.5 KG", "bolsas")
+
+    @Test
+    fun conteoAbreCuentaYConfirma() = runTest {
+        val c = Cola { n ->
+            when (n) {
+                1 -> HttpStatusCode.Created to """{"id": 5, "estado": "borrador", "lineas": []}"""
+                else -> HttpStatusCode.Created to """{"id": 5, "estado": "borrador", "lineas": []}"""
+            }
+        }
+        c.repo.registrarAlmacen(1, RegistroAlmacen.Conteo(3, "2026-11-01", listOf(
+            LineaAlmacen(arena, "4,5") to null, LineaAlmacen(cemento, "36") to MotivoDiferencia.MERMA,
+        )))
+        assertEquals(1, c.repo.sincronizar().enviados)
+        assertEquals(
+            listOf("/api/v1/obras/1/almacen/conteos", "/api/v1/obras/1/almacen/conteos/5/lineas",
+                "/api/v1/obras/1/almacen/conteos/5/lineas", "/api/v1/obras/1/almacen/conteos/5/confirmar"),
+            c.rutas,
+        )
+        val apertura = jsonSigro.parseToJsonElement(c.cuerpos[0]).jsonObject
+        assertTrue("lineas" !in apertura, "ConteoIn no admite campos de más (extra=forbid)")
+        assertEquals("4.5", jsonSigro.parseToJsonElement(c.cuerpos[1]).jsonObject["cantidad_contada"]!!.jsonPrimitive.content)
+        assertEquals("Merma", jsonSigro.parseToJsonElement(c.cuerpos[2]).jsonObject["motivo"]!!.jsonPrimitive.content)
+    }
+
+    @Test
+    fun conteoReenviadoNoRepiteLoQueYaLlego() = runTest {
+        // 1.er intento: abre y cuenta la arena, se corta la señal en el cemento. 2.º: el servidor devuelve el conteo con la arena.
+        val c = Cola { n ->
+            when (n) {
+                1 -> HttpStatusCode.Created to """{"id": 5, "estado": "borrador", "lineas": []}"""
+                2 -> HttpStatusCode.Created to """{"id": 5, "estado": "borrador", "lineas": [{"insumo_id": 423}]}"""
+                3 -> null
+                4 -> HttpStatusCode.OK to """{"id": 5, "estado": "borrador", "lineas": [{"insumo_id": 423}]}"""
+                else -> HttpStatusCode.Created to """{"id": 5, "estado": "confirmado", "lineas": [{"insumo_id": 423}, {"insumo_id": 1151}]}"""
+            }
+        }
+        val r = c.repo.registrarAlmacen(1, RegistroAlmacen.Conteo(3, "2026-11-01", listOf(
+            LineaAlmacen(arena, "4.5") to null, LineaAlmacen(cemento, "36") to MotivoDiferencia.MERMA,
+        )))
+        assertEquals(1, c.repo.sincronizar().siguenPendientes)
+        assertEquals("PENDIENTE", c.filas.una(r.uuidCliente).estado)
+        c.repo.sincronizar()
+        assertEquals("ENVIADO", c.filas.una(r.uuidCliente).estado)
+        val lineasEnviadas = c.rutas.filter { it.endsWith("/lineas") }.size
+        assertEquals(3, lineasEnviadas, "arena una vez; cemento: el intento sin señal y el bueno")
+        assertEquals(c.cuerpos[0], c.cuerpos[3], "la apertura se reenvía idéntica (mismo uuid_cliente)")
+    }
+
+    @Test
+    fun conteoConDiferenciaSinMotivoQuedaRechazado() = runTest {
+        val c = Cola { n ->
+            if (n == 1) HttpStatusCode.Created to """{"id": 5, "estado": "borrador", "lineas": []}"""
+            else HttpStatusCode.UnprocessableEntity to """{"codigo":"diferencia_sin_motivo","mensaje":"El sistema tiene 38 y se contó 36: toda diferencia exige un motivo."}"""
+        }
+        val r = c.repo.registrarAlmacen(1, RegistroAlmacen.Conteo(3, "2026-11-01", listOf(LineaAlmacen(cemento, "36") to null)))
+        c.repo.sincronizar()
+        assertEquals("RECHAZADO", c.filas.una(r.uuidCliente).estado)
+        assertTrue(c.filas.una(r.uuidCliente).motivoRechazo!!.contains("exige un motivo"))
     }
 }

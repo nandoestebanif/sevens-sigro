@@ -8,6 +8,9 @@ import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.addJsonObject
 import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonArray
 import pe.sevens.sigro.datos.local.AjusteDao
@@ -111,7 +114,7 @@ class RepositorioRegistrosImpl(
         for (r in cola) {
             val tipo = TipoRegistro.valueOf(r.tipo)
             try {
-                api.enviarRegistro(servidor, token, ruta(tipo, r.obraId), r.cuerpo)
+                enviar(servidor, token, tipo, r)
                 registros.marcar(r.uuidCliente, EstadoEnvio.ENVIADO.name, null, null, reloj())
                 enviados++
             } catch (e: ErrorSigro) {
@@ -131,6 +134,31 @@ class RepositorioRegistrosImpl(
             }
         }
         ResultadoSincronizacion(enviados, rechazados, registros.pendientes(tiposConServicio).size)
+    }
+
+    private suspend fun enviar(servidor: String, token: String, tipo: TipoRegistro, r: RegistroLocalEntity) {
+        if (tipo == TipoRegistro.CONTEO) enviarConteo(servidor, token, r) else api.enviarRegistro(servidor, token, ruta(tipo, r.obraId), r.cuerpo)
+    }
+
+    /**
+     * HU-46 en tres pasos: abrir (idempotente por uuid: un reenvío devuelve el mismo conteo con sus líneas),
+     * contar las líneas que el servidor aún no tiene y confirmar si no está confirmado. Repetirlo entero es
+     * seguro: lo que ya llegó no se vuelve a mandar.
+     */
+    private suspend fun enviarConteo(servidor: String, token: String, r: RegistroLocalEntity) {
+        val cuerpo = jsonSigro.parseToJsonElement(r.cuerpo).jsonObject
+        val apertura = JsonObject(cuerpo - "lineas")
+        val conteo = api.enviarConRespuesta(servidor, token, ruta(TipoRegistro.CONTEO, r.obraId), apertura.toString())
+        val id = conteo["id"]!!.jsonPrimitive.content
+        val yaContados = conteo["lineas"]?.jsonArray.orEmpty().mapNotNull { it.jsonObject["insumo_id"]?.jsonPrimitive?.content }.toSet()
+        cuerpo["lineas"]?.jsonArray.orEmpty().forEach { l ->
+            if (l.jsonObject["insumo_id"]!!.jsonPrimitive.content !in yaContados) {
+                api.enviarConRespuesta(servidor, token, "/obras/${r.obraId}/almacen/conteos/$id/lineas", l.toString())
+            }
+        }
+        if (conteo["estado"]?.jsonPrimitive?.content != "confirmado") {
+            api.enviarConRespuesta(servidor, token, "/obras/${r.obraId}/almacen/conteos/$id/confirmar", "{}")
+        }
     }
 
     private fun nueva(
@@ -210,12 +238,12 @@ class RepositorioRegistrosImpl(
                         r.lineas.forEach { addJsonObject { put("insumo_id", it.insumo.id); put("cantidad", cant(it.cantidad)) } }
                     }
                 }
-                is RegistroAlmacen.Conteo -> {
+                is RegistroAlmacen.Conteo -> { // ConteoIn + las ConteoLineaIn que se mandan después de abrirlo
                     put("almacen_id", r.almacenId)
                     put("fecha", r.fecha)
                     putJsonArray("lineas") {
                         r.lineas.forEach { (l, m) ->
-                            addJsonObject { put("insumo_id", l.insumo.id); put("contado", cant(l.cantidad)); put("motivo", m?.legible) }
+                            addJsonObject { put("insumo_id", l.insumo.id); put("cantidad_contada", cant(l.cantidad)); put("motivo", m?.legible) }
                         }
                     }
                 }

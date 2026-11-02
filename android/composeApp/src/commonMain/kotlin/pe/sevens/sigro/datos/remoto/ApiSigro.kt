@@ -197,6 +197,15 @@ class ApiSigro(private val http: HttpClient, private val json: Json) {
         }
     }
 
+    /** Como [enviarRegistro], pero devuelve la respuesta: el conteo necesita su id para las líneas y la confirmación. */
+    suspend fun enviarConRespuesta(servidor: String, token: String, ruta: String, cuerpoJson: String): JsonObject =
+        llamar {
+            http.post(url(servidor, ruta)) {
+                bearerAuth(token)
+                setBody(TextContent(cuerpoJson, ContentType.Application.Json))
+            }
+        }
+
     /**
      * POST /obras/{id}/almacen/salidas — contrato propuesto a Adiel para HU-40 (aún no existe en la API).
      * Mientras responda 404, la sincronización deja la salida PENDIENTE con una nota: no se pierde nada.
