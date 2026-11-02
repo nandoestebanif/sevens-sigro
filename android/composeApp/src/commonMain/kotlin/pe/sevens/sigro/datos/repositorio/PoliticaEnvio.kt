@@ -21,6 +21,8 @@ internal fun decidirEnvio(e: ErrorSigro, que: String): DecisionEnvio = when {
     e.esTransitorio -> DecisionEnvio.Reintentar("Sin señal o servidor ocupado: se reintenta solo.", cortar = true)
     e.estadoHttp == 401 -> DecisionEnvio.Reintentar("Tu sesión venció: vuelve a ingresar y se envía.", cortar = true)
     e.estadoHttp == 404 -> DecisionEnvio.Reintentar("El servidor aún no recibe $que: queda guardada en el celular.", cortar = true)
+    // «uuid_reutilizado»: ese uuid ya se usó para OTRO registro; no es un reenvío, es un conflicto (servicio almacén).
+    e.estadoHttp == 409 && e.codigo == "uuid_reutilizado" -> DecisionEnvio.Rechazar(e.message)
     e.estadoHttp == 409 && e.codigo.contains("uuid") -> DecisionEnvio.YaRecibido // el servidor ya la tenía (regla 3)
     else -> DecisionEnvio.Rechazar(e.message) // regla de negocio: stock insuficiente, dispositivo no autorizado…
 }

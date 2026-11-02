@@ -48,9 +48,9 @@ import pe.sevens.sigro.ui.componentes.vidrio
 import pe.sevens.sigro.ui.tema.Paleta
 
 /*
- * Piezas comunes de las pantallas de almacén (Materiales, página 2 del lienzo). Mientras no exista el
- * servicio almacén, lo que se registra aquí se guarda en el celular con su uuid_cliente y NO se envía:
- * cada pantalla lo dice. Ninguna calcula saldo (regla 2).
+ * Piezas comunes de las pantallas de almacén (Materiales, página 2 del lienzo). Todo lo que se registra
+ * aquí nace con su uuid_cliente y se guarda en el celular antes de enviarse; lo que aún no tiene servicio
+ * (cierre de obra) se guarda y lo dice. Ninguna pantalla calcula saldo (regla 2).
  */
 
 /** Búsqueda de insumos en la copia del celular (funciona sin señal), como en la salida. */
@@ -123,7 +123,7 @@ fun ElegirInsumo(
 
 /** Confirmación común: guardado en el celular, «por enviar», y el aviso del servicio almacén. */
 @Composable
-fun GuardadoEnCelular(titulo: String, detalle: String, textoOtro: String, alOtro: () -> Unit, alVolver: () -> Unit) {
+fun GuardadoEnCelular(titulo: String, detalle: String, textoOtro: String, alOtro: () -> Unit, alVolver: () -> Unit, conServicio: Boolean = false) {
     Column(
         Modifier.fillMaxWidth().vidrio(RoundedCornerShape(28.dp), fuerte = true, sombra = 16.dp).padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -133,7 +133,14 @@ fun GuardadoEnCelular(titulo: String, detalle: String, textoOtro: String, alOtro
         Text(titulo, fontSize = 24.sp, fontWeight = FontWeight.Bold, color = Paleta.Tinta, modifier = Modifier.semantics { heading() })
         Text(detalle, fontSize = 16.sp, lineHeight = 23.sp, color = Paleta.Texto3, textAlign = TextAlign.Center)
         ChipEstado(EstadoEnvio.PENDIENTE)
-        AvisoSinServicioAlmacen()
+        if (conServicio) {
+            Text(
+                "Se envía solo cuando hay señal; un reenvío no lo duplica. Si el servidor lo rechaza, queda en «Mis registros» con el motivo.",
+                fontSize = 14.sp, lineHeight = 20.sp, color = Paleta.Texto2, textAlign = TextAlign.Center,
+            )
+        } else {
+            AvisoSinServicioAlmacen()
+        }
         Column(Modifier.fillMaxWidth().padding(top = 4.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             BotonNegro(textoOtro, alOtro)
             BotonNegro("Volver al inicio", alVolver, contorno = true)

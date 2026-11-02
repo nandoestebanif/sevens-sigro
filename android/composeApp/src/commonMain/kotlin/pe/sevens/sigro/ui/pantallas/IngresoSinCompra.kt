@@ -17,13 +17,13 @@ import org.koin.compose.viewmodel.koinViewModel
 import pe.sevens.sigro.dominio.Insumo
 import pe.sevens.sigro.dominio.LineaAlmacen
 import pe.sevens.sigro.dominio.OrigenIngreso
+import pe.sevens.sigro.dominio.ProgramadorSincronizacion
 import pe.sevens.sigro.dominio.RegistroAlmacen
 import pe.sevens.sigro.dominio.RepositorioCatalogo
 import pe.sevens.sigro.dominio.RepositorioObra
 import pe.sevens.sigro.dominio.RepositorioRegistros
 import pe.sevens.sigro.dominio.ValidarAlmacen
 import pe.sevens.sigro.ui.componentes.AvisoNaranja
-import pe.sevens.sigro.ui.componentes.AvisoSinServicioAlmacen
 import pe.sevens.sigro.ui.componentes.BotonNegro
 import pe.sevens.sigro.ui.componentes.CampoVidrio
 import pe.sevens.sigro.ui.componentes.Opciones
@@ -34,14 +34,21 @@ import pe.sevens.sigro.ui.tema.Paleta
 /*
  * 2.4 · Ingreso sin compra (lienzo IngresoSinCompra.dc.html, HU-41): material que llega sin compra
  * (devolución, préstamo, sobrante…). El costo unitario es obligatorio: sin él no se valoriza.
- * Se guarda en el celular y se envía cuando exista el servicio almacén.
+ * Va por la cola sin señal a POST /obras/{id}/almacen/ingresos. Si la obra de origen está en SIGRO,
+ * el servidor responde 422 `usar_traslado` y queda rechazado con ese motivo en «Mis registros».
  */
 
 /** HU-41: exige insumo, cantidad y costo. Devuelve campo → mensaje. */
-fun validarIngreso(insumo: Insumo?, cantidad: String, costo: String): Map<String, String> = buildMap {
+fun validarIngreso(
+    insumo: Insumo?, cantidad: String, costo: String,
+    origen: OrigenIngreso = OrigenIngreso.DEVOLUCION, detalle: String = "",
+): Map<String, String> = buildMap {
     if (insumo == null) put("insumo", "Elige el insumo que ingresa")
     ValidarAlmacen.cantidad(cantidad)?.let { put("cantidad", it) }
     ValidarAlmacen.costo(costo)?.let { put("costo", it) }
+    if (origen.exigeDetalle && detalle.isBlank()) {
+        put("detalle", if (origen == OrigenIngreso.OTRA_OBRA) "Escribe el nombre de la obra de donde viene" else "Di de dónde viene")
+    }
 }
 
 data class EstadoIngreso(
@@ -60,6 +67,7 @@ class IngresoSinCompraViewModel(
     catalogo: RepositorioCatalogo,
     private val obra: RepositorioObra,
     private val registros: RepositorioRegistros,
+    private val programador: ProgramadorSincronizacion,
 ) : ViewModel() {
     val buscador = BuscadorInsumos(catalogo, viewModelScope)
     private val _e = MutableStateFlow(EstadoIngreso())
@@ -77,11 +85,11 @@ class IngresoSinCompraViewModel(
     fun quitar() = _e.update { it.copy(insumo = null) }
     fun cantidad(v: String) = _e.update { it.copy(cantidad = v, errores = it.errores - "cantidad") }
     fun costo(v: String) = _e.update { it.copy(costo = v, errores = it.errores - "costo") }
-    fun detalle(v: String) = _e.update { it.copy(detalle = v) }
+    fun detalle(v: String) = _e.update { it.copy(detalle = v, errores = it.errores - "detalle") }
 
     fun guardar(obraId: Int) {
         val s = _e.value
-        val errores = validarIngreso(s.insumo, s.cantidad, s.costo)
+        val errores = validarIngreso(s.insumo, s.cantidad, s.costo, s.origen, s.detalle)
         if (errores.isNotEmpty()) { _e.update { it.copy(errores = errores) }; return }
         _e.update { it.copy(guardando = true) }
         viewModelScope.launch {
@@ -89,6 +97,7 @@ class IngresoSinCompraViewModel(
                 obraId,
                 RegistroAlmacen.IngresoSinCompra(s.almacenId, s.origen, LineaAlmacen(s.insumo!!, s.cantidad), s.costo, s.detalle.trim().ifEmpty { null }),
             )
+            programador.programar() // con señal se envía ya; si no, cuando vuelva
             _e.update { it.copy(guardando = false, guardado = true) }
         }
     }
@@ -106,11 +115,10 @@ fun PantallaIngresoSinCompra(obraId: Int, alVolver: () -> Unit, vm: IngresoSinCo
         if (e.guardado) {
             GuardadoEnCelular(
                 "Ingreso guardado", "El ingreso de ${e.cantidad} ${e.insumo?.unidad.orEmpty()} de ${e.insumo?.descripcion.orEmpty()} quedó en el celular con su código único.",
-                "Registrar otro ingreso", vm::otro, alVolver,
+                "Registrar otro ingreso", vm::otro, alVolver, conServicio = true,
             )
             return@PantallaVidrio
         }
-        AvisoSinServicioAlmacen()
         FormularioAlmacen {
             PasoAlmacen("1", "¿De dónde viene?")
             Opciones(OrigenIngreso.entries, e.origen, { it.legible }, vm::origen)
@@ -126,7 +134,12 @@ fun PantallaIngresoSinCompra(obraId: Int, alVolver: () -> Unit, vm: IngresoSinCo
                 e.costo, vm::costo, "Costo unitario", teclado = KeyboardType.Decimal, sufijo = "S/", error = e.errores["costo"],
                 ayuda = "Obligatorio: sin él no se puede valorizar el material.",
             )
-            CampoVidrio(e.detalle, vm::detalle, "Detalle (opcional)", marcador = "Ej.: devuelve la cuadrilla de acabados")
+            CampoVidrio(
+                e.detalle, vm::detalle,
+                when (e.origen) { OrigenIngreso.OTRA_OBRA -> "Obra de origen *"; OrigenIngreso.OTRO -> "Detalle *"; else -> "Detalle (opcional)" },
+                marcador = if (e.origen == OrigenIngreso.OTRA_OBRA) "Nombre de la obra" else "Ej.: devuelve la cuadrilla de acabados",
+                error = e.errores["detalle"],
+            )
         }
         BotonNegro("Guardar ingreso", { vm.guardar(obraId) }, icono = Icons.Filled.Save, colorIcono = Paleta.NaranjaVivo, cargando = e.guardando)
     }

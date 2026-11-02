@@ -134,4 +134,11 @@ class PantallasSprint2Test {
         assertFalse(EstadoCierre("2026-11-01").puedeGuardar)
         assertTrue(EstadoCierre("2026-11-01", confirmo = true).puedeGuardar)
     }
+
+    @Test
+    fun ingresoDeOtraObraExigeSuNombre() {
+        val arena = Insumo(423, "423", "ARENA GRUESA", "metro cúbico")
+        assertEquals(setOf("detalle"), validarIngreso(arena, "1", "60", pe.sevens.sigro.dominio.OrigenIngreso.OTRA_OBRA, "").keys)
+        assertTrue(validarIngreso(arena, "1", "60", pe.sevens.sigro.dominio.OrigenIngreso.OTRA_OBRA, "Obra X").isEmpty())
+    }
 }

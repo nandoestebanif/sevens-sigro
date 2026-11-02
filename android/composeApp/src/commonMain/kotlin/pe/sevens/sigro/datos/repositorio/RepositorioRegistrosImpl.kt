@@ -89,9 +89,11 @@ class RepositorioRegistrosImpl(
         val uuid = Uuid.random().toString()
         val hora = reloj()
         val (titulo, detalle) = resumen(registro)
+        // Regla 5: el celular viaja en el cuerpo; el servidor rechaza (403) si no está autorizado en la obra.
+        val dispositivo = cred.identificadorDispositivo()
         val fila = nueva(
-            uuid, obraId, registro.tipo, titulo, detalle, cuerpoAlmacen(uuid, hora, registro).toString(),
-            null, hora, NOTA_SIN_SERVICIO_ALMACEN,
+            uuid, obraId, registro.tipo, titulo, detalle, cuerpoAlmacen(uuid, hora, dispositivo, registro).toString(),
+            null, hora, if (registro.tipo.conServicio) null else NOTA_SIN_SERVICIO_ALMACEN,
         )
         registros.insertar(fila)
         return aDominio(fila)
@@ -173,9 +175,10 @@ class RepositorioRegistrosImpl(
         }
 
         /** El cuerpo que viajará al servicio almacén, armado ya para que el reenvío sea idéntico. */
-        fun cuerpoAlmacen(uuid: String, hora: Long, r: RegistroAlmacen): JsonObject = buildJsonObject {
+        fun cuerpoAlmacen(uuid: String, hora: Long, dispositivo: String, r: RegistroAlmacen): JsonObject = buildJsonObject {
             put("uuid_cliente", uuid)
             put("hora_dispositivo_ms", hora)
+            put("dispositivo", dispositivo)
             when (r) {
                 is RegistroAlmacen.Entrada -> {
                     put("almacen_id", r.almacenId)
@@ -185,13 +188,14 @@ class RepositorioRegistrosImpl(
                         r.recibido.forEach { (l, c) -> addJsonObject { put("insumo_codigo", l.insumoCodigo); put("cantidad", cant(c)) } }
                     }
                 }
-                is RegistroAlmacen.IngresoSinCompra -> {
+                is RegistroAlmacen.IngresoSinCompra -> { // IngresoIn del servicio almacén
                     put("almacen_id", r.almacenId)
-                    put("origen", r.origen.api)
                     put("insumo_id", r.linea.insumo.id)
                     put("cantidad", cant(r.linea.cantidad))
+                    put("unidad", r.linea.insumo.unidad) // unidad de compra: el servidor convierte con el factor
                     put("costo_unitario", cant(r.costoUnitario))
-                    put("detalle", r.detalle)
+                    put("origen", r.origen.api)
+                    put("origen_detalle", r.detalle)
                 }
                 is RegistroAlmacen.Traslado -> {
                     put("almacen_id", r.almacenId)
