@@ -21,6 +21,7 @@ import pe.sevens.sigro.dominio.LineaCompra
 import pe.sevens.sigro.dominio.NuevoInsumo
 import pe.sevens.sigro.dominio.NuevoTrabajador
 import pe.sevens.sigro.dominio.ObraAsignada
+import pe.sevens.sigro.dominio.PendienteRecepcion
 import pe.sevens.sigro.dominio.RepositorioInsumos
 import pe.sevens.sigro.dominio.RepositorioObra
 import pe.sevens.sigro.dominio.RepositorioTrabajadores
@@ -121,6 +122,11 @@ class RepositorioObraImpl(private val api: ApiSigro, ajustes: AjusteDao) : Repos
                 c.lineas.map { LineaCompra(it.insumoCodigo, it.descripcion, it.cantidad, it.unidadCompra) },
             )
         }
+    }
+
+    override suspend fun estadoRecepcion(obraId: Int, compraId: Int): List<PendienteRecepcion> {
+        val (s, t) = cred.exigir()
+        return api.estadoRecepcion(s, t, obraId, compraId).map { PendienteRecepcion(it.insumoId, it.unidadCompra, it.pedido, it.recibido, it.pendiente) }
     }
 
     override suspend fun obrasDestino(obraId: Int): List<ObraAsignada> {

@@ -97,8 +97,8 @@ class PantallasSprint2Test {
     @Test
     fun entradaNoRecibeMasDeLoComprado() {
         val c = CompraParaRecibir(1, "[Proveedor]", "Factura [número]", "2026-10-27", listOf(
-            LineaCompra("1151", "CEMENTO PORTLAND TIPO I - 42.5 KG", "100", "bolsas"),
-            LineaCompra("423", "ARENA GRUESA", "6", "metro cúbico"),
+            LineaCompra("1151", "CEMENTO PORTLAND TIPO I - 42.5 KG", "100", "bolsas", insumoId = 1151),
+            LineaCompra("423", "ARENA GRUESA", "6", "metro cúbico", insumoId = 423),
         ))
         assertTrue(validarRecepcion(c, mapOf(0 to "60", 1 to "0")).isEmpty(), "una parte puede llegar después")
         assertTrue(validarRecepcion(c, mapOf(0 to "101", 1 to "6")).containsKey(0), "HU-35: no más de lo comprado")
@@ -140,5 +140,18 @@ class PantallasSprint2Test {
         val arena = Insumo(423, "423", "ARENA GRUESA", "metro cúbico")
         assertEquals(setOf("detalle"), validarIngreso(arena, "1", "60", pe.sevens.sigro.dominio.OrigenIngreso.OTRA_OBRA, "").keys)
         assertTrue(validarIngreso(arena, "1", "60", pe.sevens.sigro.dominio.OrigenIngreso.OTRA_OBRA, "Obra X").isEmpty())
+    }
+
+    @Test
+    fun entradaRespetaLoPendienteDelServidor() {
+        val c = CompraParaRecibir(1, "[Proveedor]", "Factura [número]", "2026-10-27", listOf(
+            LineaCompra("1151", "CEMENTO PORTLAND TIPO I - 42.5 KG", "100", "bolsas", insumoId = 1151),
+            LineaCompra("9", "SIN CATALOGO", "5", "unidades"),
+        ))
+        val pend = mapOf(1151 to pe.sevens.sigro.dominio.PendienteRecepcion(1151, "bolsas", "100", "60", "40"))
+        assertTrue(validarRecepcion(c, mapOf(0 to "41"), pend).containsKey(0), "el pendiente lo dice el servidor")
+        assertTrue(validarRecepcion(c, mapOf(0 to "40"), pend).isEmpty())
+        assertTrue(validarRecepcion(c, mapOf(1 to "2"), pend).containsKey(1), "sin id del catálogo no se puede enviar por línea")
+        assertTrue(validarRecepcion(c, emptyMap(), pend, todo = true).isEmpty(), "«llegó todo» viaja sin líneas")
     }
 }

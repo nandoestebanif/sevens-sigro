@@ -91,6 +91,13 @@ import pe.sevens.sigro.dominio.ErrorSigro
     val cantidad: String,
     @SerialName("unidad_compra") val unidadCompra: String,
 )
+@Serializable data class RecepcionLineaDto(
+    @SerialName("insumo_id") val insumoId: Int,
+    @SerialName("unidad_compra") val unidadCompra: String,
+    val pedido: String,
+    val recibido: String,
+    val pendiente: String,
+)
 @Serializable data class CompraDto(
     val id: Int,
     @SerialName("proveedor_razon_social") val proveedor: String,
@@ -173,6 +180,9 @@ class ApiSigro(private val http: HttpClient, private val json: Json) {
         llamar {
             http.get(url(servidor, "/obras/$obraId/compras")) { bearerAuth(token); parameter("estado", "registrada") }
         }
+
+    suspend fun estadoRecepcion(servidor: String, token: String, obraId: Int, compraId: Int): List<RecepcionLineaDto> =
+        llamar { http.get(url(servidor, "/obras/$obraId/almacen/compras/$compraId/recepcion")) { bearerAuth(token) } }
 
     /**
      * Envía un registro de la cola general: el cuerpo es el JSON que se armó al registrarlo (mismo uuid,

@@ -4,6 +4,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.addJsonObject
 import kotlinx.serialization.json.buildJsonObject
@@ -180,12 +181,15 @@ class RepositorioRegistrosImpl(
             put("hora_dispositivo_ms", hora)
             put("dispositivo", dispositivo)
             when (r) {
-                is RegistroAlmacen.Entrada -> {
-                    put("almacen_id", r.almacenId)
+                is RegistroAlmacen.Entrada -> { // RecepcionIn: sin líneas = el total pendiente
                     put("compra_id", r.compra.id)
-                    put("con_foto_guia", r.conFotoGuia)
-                    putJsonArray("lineas") {
-                        r.recibido.forEach { (l, c) -> addJsonObject { put("insumo_codigo", l.insumoCodigo); put("cantidad", cant(c)) } }
+                    put("almacen_id", r.almacenId)
+                    if (r.todo) {
+                        put("lineas", JsonNull)
+                    } else {
+                        putJsonArray("lineas") {
+                            r.recibido.forEach { (l, c) -> addJsonObject { put("insumo_id", l.insumoId); put("cantidad", cant(c)) } }
+                        }
                     }
                 }
                 is RegistroAlmacen.IngresoSinCompra -> { // IngresoIn del servicio almacén

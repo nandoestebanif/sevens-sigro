@@ -198,6 +198,7 @@ private object ObraFalsa : RepositorioObra {
             listOf("CEMENTO PORTLAND TIPO I", "ARENA GRUESA", "CLAVOS").map { insumo(it) }.map { LineaCompra(it.codigo, it.descripcion, "10", it.unidad) },
         ),
     )
+    override suspend fun estadoRecepcion(obraId: Int, compraId: Int) = emptyList<pe.sevens.sigro.dominio.PendienteRecepcion>()
     override suspend fun obrasDestino(obraId: Int) = listOf(ObraAsignada(2, "[Otra obra registrada en SIGRO]", ""))
 }
 
@@ -279,8 +280,8 @@ fun main(args: Array<String>) {
     }
     val stock = StockViewModel(CatalogoFalso, ObraFalsa)
     capturar(dir, "17-stock", preparar = { stock.cargar(1); stock.buscador.buscar("cemento") }) { PantallaStock(1, {}, stock) }
-    val entrada = EntradaViewModel(ObraFalsa, registros)
-    capturar(dir, "18-entrada", preparar = { entrada.cargar(1); Thread.sleep(300); entrada.estado.value.compras.firstOrNull()?.let(entrada::elegir); entrada.alternarModo(); entrada.recibido(0, "6") }) {
+    val entrada = EntradaViewModel(ObraFalsa, registros, CatalogoFalso, sinProgramar)
+    capturar(dir, "18-entrada", preparar = { entrada.cargar(1); Thread.sleep(300); entrada.estado.value.compras.firstOrNull()?.let { entrada.elegir(1, it) }; entrada.alternarModo(); entrada.recibido(0, "6") }) {
         PantallaEntrada(1, {}, entrada)
     }
     val ingreso = IngresoSinCompraViewModel(CatalogoFalso, ObraFalsa, registros, sinProgramar)

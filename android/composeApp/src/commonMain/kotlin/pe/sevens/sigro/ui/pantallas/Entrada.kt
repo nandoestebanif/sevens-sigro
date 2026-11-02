@@ -35,14 +35,16 @@ import kotlinx.coroutines.launch
 import org.koin.compose.viewmodel.koinViewModel
 import pe.sevens.sigro.dominio.CompraParaRecibir
 import pe.sevens.sigro.dominio.ErrorSigro
+import pe.sevens.sigro.dominio.PendienteRecepcion
+import pe.sevens.sigro.dominio.ProgramadorSincronizacion
 import pe.sevens.sigro.dominio.RegistroAlmacen
+import pe.sevens.sigro.dominio.RepositorioCatalogo
 import pe.sevens.sigro.dominio.RepositorioObra
 import pe.sevens.sigro.dominio.RepositorioRegistros
 import pe.sevens.sigro.dominio.ValidarAlmacen
 import pe.sevens.sigro.dominio.ValidarSalida
 import pe.sevens.sigro.ui.componentes.AvisoNaranja
 import pe.sevens.sigro.ui.componentes.AvisoRojo
-import pe.sevens.sigro.ui.componentes.AvisoSinServicioAlmacen
 import pe.sevens.sigro.ui.componentes.BotonNegro
 import pe.sevens.sigro.ui.componentes.CampoVidrio
 import pe.sevens.sigro.ui.componentes.Marcador
@@ -53,26 +55,37 @@ import pe.sevens.sigro.ui.tema.Paleta
 
 /*
  * 2.3 · Entrada de compra (lienzo Entrada.dc.html, HU-35 / HU-36). Las compras de la obra llegan de
- * GET /obras/{id}/compras; lo recibido se guarda en el celular con su uuid_cliente y se envía cuando
- * exista el servicio almacén. Lo pendiente de entregas anteriores lo calcula el servidor.
+ * GET /obras/{id}/compras y lo pendiente de cada línea, del servidor (GET …/compras/{id}/recepcion).
+ * Lo recibido va por la cola sin señal a POST /almacen/recepciones con su uuid_cliente; «llegó todo»
+ * viaja sin líneas y el servidor recibe el total pendiente. El costo lo pone el servidor.
  */
 
 /**
  * HU-35: no se recibe más de lo comprado; lo que falte queda pendiente. Devuelve índice de línea → error;
  * la clave -1 es un error de toda la entrada.
  */
-fun validarRecepcion(compra: CompraParaRecibir, recibido: Map<Int, String>): Map<Int, String> = buildMap {
+fun validarRecepcion(
+    compra: CompraParaRecibir,
+    recibido: Map<Int, String>,
+    pendientes: Map<Int, PendienteRecepcion> = emptyMap(),
+    todo: Boolean = false,
+): Map<Int, String> = buildMap {
+    if (todo) return@buildMap // sin líneas: el servidor recibe el total pendiente
     compra.lineas.forEachIndexed { i, l ->
         val txt = recibido[i].orEmpty()
         val e = ValidarAlmacen.cantidad(txt, permitirCero = true)
+        val q = ValidarSalida.normalizarCantidad(txt).toDoubleOrNull() ?: 0.0
+        val tope = l.insumoId?.let { pendientes[it] }
         when {
             txt.isBlank() -> {} // vacío = no llegó en esta entrega
             e != null -> put(i, e)
-            (ValidarSalida.normalizarCantidad(txt).toDoubleOrNull() ?: 0.0) > (l.cantidad.toDoubleOrNull() ?: Double.MAX_VALUE) ->
-                put(i, "No se puede recibir más de lo comprado (${l.cantidad} ${l.unidad})")
+            tope != null && q > (tope.pendiente.toDoubleOrNull() ?: Double.MAX_VALUE) ->
+                put(i, "Queda pendiente ${tope.pendiente} ${tope.unidad}: no se recibe más de lo comprado")
+            q > (l.cantidad.toDoubleOrNull() ?: Double.MAX_VALUE) -> put(i, "No se puede recibir más de lo comprado (${l.cantidad} ${l.unidad})")
+            q > 0.0 && l.insumoId == null -> put(i, "Este insumo no está en el catálogo del celular: actualízalo desde «Más» con señal")
         }
     }
-    val alguna = compra.lineas.indices.any { (ValidarSalida.normalizarCantidad(recibido[it].orEmpty()).toDoubleOrNull() ?: 0.0) > 0.0 }
+    val alguna = todo || compra.lineas.indices.any { (ValidarSalida.normalizarCantidad(recibido[it].orEmpty()).toDoubleOrNull() ?: 0.0) > 0.0 }
     if (!alguna) put(-1, "Escribe al menos una cantidad recibida")
 }
 
@@ -81,6 +94,7 @@ data class EstadoEntrada(
     val compras: List<CompraParaRecibir> = emptyList(),
     val aviso: String? = null,
     val compra: CompraParaRecibir? = null,
+    val pendientes: Map<Int, PendienteRecepcion> = emptyMap(),
     val almacenId: Int? = null,
     val llegoTodo: Boolean = true,
     val recibido: Map<Int, String> = emptyMap(),
@@ -89,7 +103,12 @@ data class EstadoEntrada(
     val guardada: Boolean = false,
 )
 
-class EntradaViewModel(private val obra: RepositorioObra, private val registros: RepositorioRegistros) : ViewModel() {
+class EntradaViewModel(
+    private val obra: RepositorioObra,
+    private val registros: RepositorioRegistros,
+    private val catalogo: RepositorioCatalogo,
+    private val programador: ProgramadorSincronizacion,
+) : ViewModel() {
     private val _e = MutableStateFlow(EstadoEntrada())
     val estado = _e.asStateFlow()
 
@@ -107,9 +126,19 @@ class EntradaViewModel(private val obra: RepositorioObra, private val registros:
         }
     }
 
-    /** Al elegir la compra se propone «llegó todo»: lo recibido = lo pedido. */
-    fun elegir(c: CompraParaRecibir) = _e.update {
-        it.copy(compra = c, llegoTodo = true, recibido = c.lineas.indices.associateWith { i -> c.lineas[i].cantidad }, errores = emptyMap())
+    /**
+     * Al elegir la compra se propone «llegó todo». Cada línea busca su insumo en el catálogo del celular por el
+     * código (la recepción lo pide por id) y, con señal, lo pendiente que dice el servidor.
+     */
+    fun elegir(obraId: Int, c: CompraParaRecibir) {
+        _e.update { it.copy(compra = c, llegoTodo = true, recibido = c.lineas.indices.associateWith { i -> c.lineas[i].cantidad }, errores = emptyMap()) }
+        viewModelScope.launch {
+            val conId = c.copy(lineas = c.lineas.map { l ->
+                l.copy(insumoId = runCatching { catalogo.buscar(l.insumoCodigo) }.getOrDefault(emptyList()).firstOrNull { it.codigo == l.insumoCodigo }?.id)
+            })
+            val pend = runCatching { obra.estadoRecepcion(obraId, c.id) }.getOrDefault(emptyList()).associateBy { it.insumoId }
+            _e.update { s -> if (s.compra?.id != c.id) s else s.copy(compra = conId, pendientes = pend) }
+        }
     }
 
     fun alternarModo() = _e.update { s ->
@@ -123,7 +152,7 @@ class EntradaViewModel(private val obra: RepositorioObra, private val registros:
     fun guardar(obraId: Int) {
         val s = _e.value
         val c = s.compra ?: return
-        val errores = validarRecepcion(c, s.recibido)
+        val errores = validarRecepcion(c, s.recibido, s.pendientes, s.llegoTodo)
         if (errores.isNotEmpty()) { _e.update { it.copy(errores = errores) }; return }
         _e.update { it.copy(guardando = true) }
         viewModelScope.launch {
@@ -131,7 +160,8 @@ class EntradaViewModel(private val obra: RepositorioObra, private val registros:
                 val v = s.recibido[i].orEmpty()
                 if ((ValidarSalida.normalizarCantidad(v).toDoubleOrNull() ?: 0.0) > 0.0) l to v else null
             }
-            registros.registrarAlmacen(obraId, RegistroAlmacen.Entrada(s.almacenId, c, lineas, conFotoGuia = false))
+            registros.registrarAlmacen(obraId, RegistroAlmacen.Entrada(s.almacenId, c, lineas, todo = s.llegoTodo))
+            programador.programar()
             _e.update { it.copy(guardando = false, guardada = true) }
         }
     }
@@ -148,11 +178,10 @@ fun PantallaEntrada(obraId: Int, alVolver: () -> Unit, vm: EntradaViewModel = ko
         if (e.guardada) {
             GuardadoEnCelular(
                 "Entrada guardada", "Lo recibido de ${e.compra?.proveedor ?: "la compra"} quedó en el celular con su código único.",
-                "Registrar otra entrada", vm::otra, alVolver,
+                "Registrar otra entrada", vm::otra, alVolver, conServicio = true,
             )
             return@PantallaVidrio
         }
-        AvisoSinServicioAlmacen()
         val compra = e.compra
         if (compra == null) {
             TarjetaVidrio {
@@ -162,7 +191,7 @@ fun PantallaEntrada(obraId: Int, alVolver: () -> Unit, vm: EntradaViewModel = ko
                 e.compras.forEach { c ->
                     Column(
                         Modifier.fillMaxWidth().background(Color.White.copy(alpha = 0.8f), RoundedCornerShape(18.dp))
-                            .clickable(onClickLabel = "Recibir esta compra") { vm.elegir(c) }.heightIn(min = 60.dp).padding(14.dp)
+                            .clickable(onClickLabel = "Recibir esta compra") { vm.elegir(obraId, c) }.heightIn(min = 60.dp).padding(14.dp)
                             .semantics(mergeDescendants = true) {},
                         verticalArrangement = Arrangement.spacedBy(2.dp),
                     ) {
@@ -189,7 +218,11 @@ fun PantallaEntrada(obraId: Int, alVolver: () -> Unit, vm: EntradaViewModel = ko
             compra.lineas.forEachIndexed { i, l ->
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Text(l.descripcion, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = Paleta.Tinta)
-                    Text("Pedido ${l.cantidad} ${l.unidad} · pendiente [lo calcula el servidor]", fontSize = 13.sp, color = Paleta.Texto3)
+                    val p = l.insumoId?.let { e.pendientes[it] }
+                    Text(
+                        "Pedido ${l.cantidad} ${l.unidad} · pendiente " + (p?.let { "${it.pendiente} ${it.unidad} (del servidor)" } ?: "[se ve con señal]"),
+                        fontSize = 13.sp, color = Paleta.Texto3,
+                    )
                     CampoVidrio(e.recibido[i].orEmpty(), { vm.recibido(i, it) }, "Recibido", teclado = KeyboardType.Decimal, sufijo = l.unidad, error = e.errores[i])
                 }
             }

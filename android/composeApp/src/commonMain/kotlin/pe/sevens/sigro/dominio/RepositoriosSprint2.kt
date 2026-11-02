@@ -43,7 +43,8 @@ interface RepositorioRegistros {
 sealed interface RegistroAlmacen {
     val tipo: TipoRegistro
 
-    data class Entrada(val almacenId: Int?, val compra: CompraParaRecibir, val recibido: List<Pair<LineaCompra, String>>, val conFotoGuia: Boolean) : RegistroAlmacen {
+    /** `todo`: llegó todo lo pendiente (la recepción viaja sin líneas y el servidor recibe el total pendiente). */
+    data class Entrada(val almacenId: Int?, val compra: CompraParaRecibir, val recibido: List<Pair<LineaCompra, String>>, val todo: Boolean) : RegistroAlmacen {
         override val tipo get() = TipoRegistro.ENTRADA_COMPRA
     }
     data class IngresoSinCompra(val almacenId: Int?, val origen: OrigenIngreso, val linea: LineaAlmacen, val costoUnitario: String, val detalle: String?) : RegistroAlmacen {
@@ -64,6 +65,8 @@ sealed interface RegistroAlmacen {
 interface RepositorioObra {
     suspend fun almacenes(obraId: Int): List<AlmacenObra>
     suspend fun compras(obraId: Int): List<CompraParaRecibir>
+    /** Lo pedido, recibido y pendiente de una compra según el servidor (necesita señal). */
+    suspend fun estadoRecepcion(obraId: Int, compraId: Int): List<PendienteRecepcion>
     /** Obras a las que se puede trasladar (GET /obras), sin la propia. */
     suspend fun obrasDestino(obraId: Int): List<ObraAsignada>
 }

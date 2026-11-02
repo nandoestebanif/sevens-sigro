@@ -204,7 +204,7 @@ object Asistencia {
  */
 enum class TipoRegistro(val legible: String, val conServicio: Boolean) {
     JORNADA("Asistencia", true),
-    ENTRADA_COMPRA("Entrada de compra", false),
+    ENTRADA_COMPRA("Entrada de compra", true),
     INGRESO_SIN_COMPRA("Ingreso sin compra", true),
     TRASLADO("Traslado", false),
     CONTEO("Conteo físico", false),
@@ -246,6 +246,9 @@ data class CompraParaRecibir(
 data class LineaCompra(val insumoCodigo: String, val descripcion: String, val cantidad: String, val unidad: String, val insumoId: Int? = null)
 
 data class AlmacenObra(val id: Int, val nombre: String)
+
+/** Estado de recepción de una compra según el servidor (GET …/compras/{id}/recepcion): lo pendiente no se calcula aquí. */
+data class PendienteRecepcion(val insumoId: Int, val unidad: String, val pedido: String, val recibido: String, val pendiente: String)
 
 /** Orígenes que acepta POST /almacen/ingresos (`ORIGENES` del servicio almacén). */
 enum class OrigenIngreso(val api: String, val legible: String, val exigeDetalle: Boolean = false) {
