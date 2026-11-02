@@ -292,7 +292,7 @@ fun main(args: Array<String>) {
     capturar(dir, "20-traslado", preparar = { traslado.cargar(1, sesionEjemplo.obras); Thread.sleep(300); traslado.estado.value.destinos.firstOrNull()?.let(traslado::destino); traslado.agregar(insumo("CEMENTO PORTLAND TIPO I")); traslado.cantidad(0, "20") }) {
         PantallaTraslado(1, "Multifamiliar Flores", sesionEjemplo.obras, {}, traslado)
     }
-    val conteo = ConteoViewModel(CatalogoFalso, ObraFalsa, registros)
+    val conteo = ConteoViewModel(CatalogoFalso, ObraFalsa, registros, sinProgramar)
     capturar(dir, "21-conteo", preparar = { conteo.agregar(insumo("CEMENTO PORTLAND TIPO I")); conteo.contado(0, "36"); conteo.motivo(0, pe.sevens.sigro.dominio.MotivoDiferencia.MERMA) }) {
         PantallaConteo(1, {}, conteo)
     }

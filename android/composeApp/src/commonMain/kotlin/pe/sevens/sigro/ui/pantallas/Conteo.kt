@@ -29,6 +29,7 @@ import org.koin.compose.viewmodel.koinViewModel
 import pe.sevens.sigro.dominio.Insumo
 import pe.sevens.sigro.dominio.LineaAlmacen
 import pe.sevens.sigro.dominio.MotivoDiferencia
+import pe.sevens.sigro.dominio.ProgramadorSincronizacion
 import pe.sevens.sigro.dominio.RegistroAlmacen
 import pe.sevens.sigro.dominio.RepositorioCatalogo
 import pe.sevens.sigro.dominio.RepositorioObra
@@ -37,7 +38,6 @@ import pe.sevens.sigro.dominio.ValidarAlmacen
 import pe.sevens.sigro.plataforma.Plataforma
 import pe.sevens.sigro.ui.componentes.AvisoNaranja
 import pe.sevens.sigro.ui.componentes.AvisoRojo
-import pe.sevens.sigro.ui.componentes.AvisoSinServicioAlmacen
 import pe.sevens.sigro.ui.componentes.BotonNegro
 import pe.sevens.sigro.ui.componentes.CampoVidrio
 import pe.sevens.sigro.ui.componentes.Opciones
@@ -49,8 +49,8 @@ import pe.sevens.sigro.ui.tema.Paleta
 /*
  * 2.8 · Conteo físico (lienzo Conteo.dc.html, HU-46). El saldo teórico lo pone el servidor y la
  * diferencia también: la app solo anota lo contado (cero es válido) y, por si hay diferencia, su motivo.
- * Cada diferencia genera un ajuste valorizado al costo promedio vigente, en el servidor. Se guarda en el
- * celular y se envía cuando exista el servicio almacén.
+ * Va por la cola sin señal: abrir, contar y confirmar en el servicio almacén. Una diferencia sin motivo o
+ * un saldo que cambió desde el conteo vuelven como rechazo con su motivo en «Mis registros».
  */
 
 data class LineaConteo(val insumo: Insumo, val contado: String = "", val motivo: MotivoDiferencia? = null)
@@ -74,6 +74,7 @@ class ConteoViewModel(
     catalogo: RepositorioCatalogo,
     private val obra: RepositorioObra,
     private val registros: RepositorioRegistros,
+    private val programador: ProgramadorSincronizacion,
 ) : ViewModel() {
     val buscador = BuscadorInsumos(catalogo, viewModelScope)
     private val _e = MutableStateFlow(EstadoConteo(fecha = Plataforma.fechaIso(Plataforma.ahoraMs())))
@@ -103,6 +104,7 @@ class ConteoViewModel(
         _e.update { it.copy(guardando = true) }
         viewModelScope.launch {
             registros.registrarAlmacen(obraId, RegistroAlmacen.Conteo(s.almacenId, s.fecha, s.lineas.map { LineaAlmacen(it.insumo, it.contado) to it.motivo }))
+            programador.programar()
             _e.update { it.copy(guardando = false, guardado = true) }
         }
     }
@@ -120,11 +122,10 @@ fun PantallaConteo(obraId: Int, alVolver: () -> Unit, vm: ConteoViewModel = koin
         if (e.guardado) {
             GuardadoEnCelular(
                 "Conteo guardado", "El conteo de ${e.lineas.size} ${if (e.lineas.size == 1) "insumo" else "insumos"} quedó en el celular con su código único.",
-                "Registrar otro conteo", vm::otro, alVolver,
+                "Registrar otro conteo", vm::otro, alVolver, conServicio = true,
             )
             return@PantallaVidrio
         }
-        AvisoSinServicioAlmacen()
         FormularioAlmacen {
             PasoAlmacen("1", "¿Qué contaste?")
             e.lineas.forEachIndexed { i, l ->
@@ -138,7 +139,7 @@ fun PantallaConteo(obraId: Int, alVolver: () -> Unit, vm: ConteoViewModel = koin
                         IconButton(onClick = { vm.quitar(i) }) { Icon(Icons.Filled.Close, contentDescription = "Quitar ${l.insumo.descripcion}", tint = Paleta.Texto3) }
                     }
                     CampoVidrio(l.contado, { vm.contado(i, it) }, "Contado", teclado = KeyboardType.Decimal, sufijo = l.insumo.unidad, error = e.errores["$i"])
-                    Text("Motivo si hay diferencia", fontSize = 13.sp, color = Paleta.Texto3)
+                    Text("Motivo si hay diferencia (el servidor lo exige si el saldo no cuadra)", fontSize = 13.sp, color = Paleta.Texto3)
                     Opciones(MotivoDiferencia.entries, l.motivo, { it.legible }, { vm.motivo(i, it) })
                 }
             }
