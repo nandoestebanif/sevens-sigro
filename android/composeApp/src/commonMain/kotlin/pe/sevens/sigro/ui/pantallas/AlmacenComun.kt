@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -161,7 +160,3 @@ fun FormularioAlmacen(contenido: @Composable ColumnScope.() -> Unit) {
         content = contenido,
     )
 }
-
-/** Espacio vertical pequeño, para cuando un Spacer no basta en una fila. */
-@Composable
-fun Hueco() = Box(Modifier.height(4.dp))

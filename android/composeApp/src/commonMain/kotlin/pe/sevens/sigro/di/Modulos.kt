@@ -24,6 +24,7 @@ import pe.sevens.sigro.dominio.RepositorioSalidas
 import pe.sevens.sigro.dominio.RepositorioSesion
 import pe.sevens.sigro.ui.pantallas.AsistenciaViewModel
 import pe.sevens.sigro.ui.pantallas.CatalogoViewModel
+import pe.sevens.sigro.ui.pantallas.EntradaViewModel
 import pe.sevens.sigro.ui.pantallas.StockViewModel
 import pe.sevens.sigro.ui.pantallas.TrabajadorNuevoViewModel
 import pe.sevens.sigro.ui.pantallas.TrabajadoresViewModel
@@ -80,6 +81,7 @@ val moduloPresentacion = module {
     viewModel { TrabajadorNuevoViewModel(get()) }
     viewModel { AsistenciaViewModel(get(), get(), get()) }
     viewModel { StockViewModel(get(), get()) }
+    viewModel { EntradaViewModel(get(), get()) }
 }
 
 fun modulosSigro(): List<Module> = listOf(moduloPlataforma, moduloDatos, moduloPresentacion)
