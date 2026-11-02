@@ -16,6 +16,13 @@
 | **tareo** | `uvicorn app.servicios.tareo:app` | `tareo` · `sigro_svc_tareo` | `/obras/{id}/trabajadores · jornadas · horas-acumuladas` |
 | **relevo** | `python -m app.relay` | `outbox` · `sigro_svc_relevo` | — (entrega eventos a notificaciones) |
 
+**Salud del conjunto · `GET /salud/servicios` (gateway, sin token).** Pide **en paralelo** el `/salud` de obras, catálogo,
+compras, tareo e integraciones (y de almacén y costo si tienen `SIGRO_URL_*`), con una espera máxima por servicio de
+`SIGRO_SALUD_ESPERA` segundos (8 por defecto). Responde `200` si todos están listos y `503` si falta alguno, con
+`{"listo": bool, "servicios": [{"servicio", "listo", "estado": "ok|no_responde|no_configurado|error_<código>", "ms"}]}`.
+La web lo llama al abrirse cada 2 s: en Render una sola llamada despierta a todos a la vez en vez de en cadena.
+`/salud` (solo el gateway) se mantiene igual para el health check de Render.
+
 **Cómo se hablan.** API interna `/interno/...` (no sale por el gateway, exige `X-Servicio-Token`):
 
 | Quién pregunta | A quién | Para qué |
