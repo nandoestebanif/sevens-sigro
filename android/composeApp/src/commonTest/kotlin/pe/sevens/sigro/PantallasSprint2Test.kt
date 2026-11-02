@@ -12,6 +12,7 @@ import pe.sevens.sigro.dominio.FichaInsumo
 import pe.sevens.sigro.ui.pantallas.EstadoCatalogo
 import pe.sevens.sigro.ui.pantallas.sinCerosDeMas
 import pe.sevens.sigro.ui.pantallas.textoFactor
+import pe.sevens.sigro.ui.pantallas.saldoParaMostrar
 import pe.sevens.sigro.ui.pantallas.CelularEnObra
 import pe.sevens.sigro.ui.pantallas.EstadoPantallaDispositivo
 import pe.sevens.sigro.ui.pantallas.celularEnObra
@@ -76,5 +77,11 @@ class PantallasSprint2Test {
     fun resumenDeLaBusquedaDelCatalogo() {
         assertEquals("Sin coincidencias", EstadoCatalogo(q = "zzz").resumen)
         assertTrue(EstadoCatalogo(q = "fierro", total = 90, resultados = List(40) { FichaInsumo(it, "$it", "X", "u") }).resumen.contains("afina"))
+    }
+
+    @Test
+    fun stockNoSeCalculaEnElCelular() {
+        assertEquals("[lo calcula el servidor]", saldoParaMostrar(null, "bolsas"), "regla 2: sin saldo del servidor no hay número")
+        assertEquals("38 bolsas", saldoParaMostrar("38", "bolsas"))
     }
 }
