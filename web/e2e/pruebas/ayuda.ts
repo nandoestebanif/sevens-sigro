@@ -21,5 +21,5 @@ export async function entrar(page: Page, usuario = USUARIO, clave = CLAVE) {
 }
 
 export async function irA(page: Page, seccion: string | RegExp) {
-  await page.getByRole('navigation', { name: 'Secciones' }).getByRole('link', { name: seccion }).click()
+  await page.getByRole('navigation', { name: 'Secciones' }).getByRole('link', { name: seccion, exact: true }).click()
 }

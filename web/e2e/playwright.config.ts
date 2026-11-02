@@ -3,6 +3,7 @@
      SIGRO_E2E_USUARIO, SIGRO_E2E_CLAVE   administrador de la obra (el de `python -m app.cli primer-admin`)
      SIGRO_E2E_API                        URL del gateway (por defecto http://localhost:8000)
      SIGRO_E2E_PUERTO                     puerto del servidor de desarrollo de la web (por defecto 5174)
+     SIGRO_E2E_WEB                        carpeta de la web a levantar (por defecto ..; sirve para probar la rama de un PR)
      FACTILIZA_TOKEN                      solo indica que Integraciones puede consultar SUNAT; sin él, esa prueba se omite
    La web se levanta sola (vite) con VITE_API_URL apuntando al gateway. El gateway debe permitir ese origen
    (SIGRO_CORS=http://localhost:5174). Guía completa: docs/pruebas/plan-de-pruebas.md */
@@ -29,7 +30,7 @@ export default defineConfig({
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
   webServer: {
     command: `npm run dev -- --port ${puerto} --strictPort`,
-    cwd: '..',
+    cwd: process.env.SIGRO_E2E_WEB ?? '..',   // otra copia de la web (p. ej. la rama de un PR) si se quiere probar esa
     url: `http://localhost:${puerto}`,
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
