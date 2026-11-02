@@ -86,7 +86,12 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
     buildTypes {
-        getByName("release") { isMinifyEnabled = false }
+        getByName("release") {
+            // R8: quita el código y los recursos que no se usan (Material Icons Extended pesa varios MB).
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+        }
     }
     lint {
         // El detector de LiveData de AGP 8.7 se cae con Kotlin 2.1 (IncompatibleClassChangeError) y tumba
