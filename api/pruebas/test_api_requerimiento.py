@@ -198,3 +198,50 @@ def test_parametros_permisos_y_libro_inmutable(mundo, eq):
     for sql in ("UPDATE compras.parametro_reposicion SET stock_seguridad = 1", "DELETE FROM compras.parametro_reposicion"):
         with pytest.raises(psycopg.errors.Error):
             mundo.f.q1(sql + " RETURNING 1")
+
+
+# ═══════════════════════════════════ HU-23 avance de compra y consumo
+def test_avance_en_unidad_de_compra_con_porcentaje_sobre_el_requerimiento(mundo, eq):
+    """Acero fy=4200: 36 357 kg en el S10, se compra por varilla de 7.12 kg (factor). 1 000 varillas = 7 120 kg."""
+    mundo.f.q1("UPDATE catalogo.insumo SET factor_conversion = 7.12 WHERE id = %s RETURNING id", (eq["fierro"],))
+    importar(mundo, eq, [fila("0221000000"), fila("0203020004", "36357", "4.54")])
+    comprar(mundo, eq, eq["cem"], "100")
+    comprar(mundo, eq, eq["cem"], "50", anular=True)                 # anulada: no cuenta (D-R2)
+    comprar(mundo, eq, eq["fierro"], "1000", unidad="var")
+    r = get(mundo, f"/obras/{eq['proyecto']}/avance", eq["residente"])
+    assert r.status_code == 200, r.text
+    d = r.json()
+    assert d["unidad"] == "unidad_compra" and d["base_porcentaje"] == "requerimiento_total"
+    assert [x["insumo_codigo"] for x in d["filas"]] == ["0203020004", "0221000000"]      # ordenadas por código
+    por = {x["insumo_codigo"]: x for x in d["filas"]}
+    c = por["0221000000"]
+    assert (c["requerido"], c["comprado"], c["saldo_por_comprar"], c["pct_comprado"]) == ("400.0000", "100.0000", "300.0000", "25.00")
+    a = por["0203020004"]
+    # 36 357 kg / 7.12 kg por varilla = 5 106.3202 varillas; 1 000 compradas = 19.58 %
+    assert a["requerido"] == "5106.3202" and a["comprado"] == "1000.0000" and a["pct_comprado"] == "19.58"
+
+
+def test_avance_declara_lo_que_depende_de_almacen_en_vez_de_inventarlo(mundo, eq):
+    importar(mundo, eq, [fila("0221000000")])
+    d = get(mundo, f"/obras/{eq['proyecto']}/avance", eq["gerente"]).json()
+    assert d["pendiente"] and "almacén" in d["pendiente"][0]
+    f0 = d["filas"][0]
+    assert f0["recibido"] is None and f0["consumido"] is None and f0["pct_recibido"] is None and f0["pct_consumido"] is None
+
+
+def test_avance_lo_rechaza_el_servidor_sin_rol_o_en_otra_obra(mundo, eq):
+    importar(mundo, eq, [fila("0221000000")])
+    ruta = f"/obras/{eq['proyecto']}/avance"
+    assert get(mundo, ruta, eq["almacenero"]).status_code == 403          # el almacenero no ve el avance de compra
+    assert get(mundo, ruta, eq["ssoma"]).status_code == 403
+    otra = mundo.f.obra_completa()
+    assert get(mundo, ruta, otra["residente"]).status_code == 403          # regla 9: residente de OTRA obra
+    assert mundo.http.get(f"{U}{ruta}").status_code == 401
+
+
+def test_porcentaje_y_conversion_sin_base():
+    from decimal import Decimal as D
+    from app.modulos.compras.requerimiento import a_unidad_compra, porcentaje
+    assert porcentaje(D("1"), D("3")) == D("33.33") and porcentaje(D("2"), D("3")) == D("66.67")
+    assert porcentaje(D("5"), D("0")) == D("0.00") and porcentaje(None, D("10")) is None
+    assert a_unidad_compra(D("36357"), D("7.12")) == D("5106.3202")

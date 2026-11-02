@@ -155,6 +155,9 @@ cp .env.example .env            # cambia TODOS los valores
 docker compose up --build       # db + migraciones + gateway + obras + catalogo + compras + tareo + relevo + notificaciones + integraciones
 docker compose run --rm -e SIGRO_ADMIN_CLAVE='tu-clave-larga' obras python -m app.cli primer-admin \
     --usuario adiel --nombre "Víctor Adiel Luján" --obra "Multifamiliar Flores" --inicio 2026-10-19 --fin 2027-10-17
+# usuarios de prueba asignados a la obra con su rol (idempotente: repetirlo no duplica e informa lo que ya existía;
+# la clave solo por variable de entorno, nunca como argumento; un usuario existente no cambia su clave):
+docker compose run --rm -e SIGRO_USUARIO_CLAVE='otra-clave-larga' obras python -m app.cli crear-usuario     --usuario henry --nombre "Henry Ticona" --rol residente --obra "Multifamiliar Flores"
 # opcional: proveedores reales del cliente (idempotente; --dry-run para solo contar). Las semillas solo están en la
 # imagen del migrador (las de los servicios no las llevan):
 docker compose run --rm migrar python -m semillas.cargar_proveedores RUTA/proveedores-cliente.json --dry-run
@@ -196,6 +199,7 @@ Argon2id, bloqueo a los 5 intentos (15 min), misma respuesta para usuario inexis
 | `POST /catalogo/insumos/importar-s10` | residente, administrador (aplica lo que leyó Integraciones; repetirlo no duplica) |
 | `POST /obras/{id}/requerimiento/importar`, `GET …/requerimiento`, `POST …/{id}/ajustar`, `GET …/{id}/ajustes` | importar y ajustar: residente, administrador (ajuste con motivo) · ver: + gerente |
 | `GET /obras/{id}/saldo-por-comprar?solo_pendientes=` | residente, administrador, gerente |
+| `GET /obras/{id}/avance?q=` (HU-23) | `avance.consultar` → residente, administrador, gerente. Requerido, comprado, recibido, consumido y saldo por comprar en **unidad de compra**, % sobre el requerimiento total. Recibido y consumido son de almacén (0010): mientras no exista, llegan `null` y `pendiente` lo dice |
 | `POST·GET /obras/{id}/parametros-reposicion`, `GET …/{insumo_id}/historial` | registrar: residente, administrador · ver: + gerente (cada cambio es una vigencia nueva) |
 | `GET /notificaciones`, `POST /notificaciones/{id}/leida` | autenticado (siempre con SU usuario del token) |
 
@@ -217,6 +221,7 @@ Errores: `{"codigo": "...", "mensaje": "..."}`, igual que `ErrorApi` en `web/src
 | D-R1 | `factor_conversion` = unidades del S10 por unidad de compra (ej. 7.12 kg por varilla); el requerimiento está en unidad del S10 | Sin esto no se puede restar lo comprado de lo planificado |
 | D-R2 | «Comprado» cuenta solo compras `registrada`; las anuladas no restan | Coherente con D-C2 |
 | D-R3 | Importar el requerimiento nunca pisa: si ya existe con otra cantidad/precio avisa; se corrige con ajuste (motivo + autor, libro) | Trazabilidad del presupuesto |
+| D-A3 | `python -m app.cli crear-usuario` (usuarios de prueba) crea el usuario si falta y su asignación vigente; si ya tiene otro rol en esa obra no lo pisa. La asignación la firma un administrador vigente de la obra (o `--asignado-por`) | Preparar el ambiente de pruebas sin abrir la base; propuesto por Claude Code el 01/11, por ratificar |
 | D-N1 | Los avisos los resuelve la API (destinatarios) y nunca incluyen a quien hizo la acción | Nadie necesita que le avisen de lo que acaba de hacer |
 
 ## Qué NO está hecho

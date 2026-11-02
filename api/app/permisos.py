@@ -43,6 +43,7 @@ ACCIONES: dict[str, frozenset[str]] = {
     "requerimiento.consultar": frozenset({RESIDENTE, ADMIN, GERENTE}),
     "reposicion.registrar": frozenset({RESIDENTE, ADMIN}),
     "reposicion.consultar": frozenset({RESIDENTE, ADMIN, GERENTE}),
+    "avance.consultar": frozenset({RESIDENTE, ADMIN, GERENTE}),       # HU-23 (como «sugerencia de compra» de la matriz)
     # --- catálogo de insumos (HU-07, HU-08, HU-17)
     "insumo.consultar": TODOS,
     "insumo.registrar": frozenset({ALMACENERO, RESIDENTE, ADMIN}),      # el almacenero no espera: lo nombra y el residente lo verifica

@@ -11,7 +11,7 @@ _OBRA = r"^/api/v1/obras/\d+/"
 
 # (patrón, servicio) — se evalúan en orden; la primera que calza gana.
 TABLA: list[tuple[re.Pattern[str], str]] = [
-    (re.compile(_OBRA + r"(compras|solicitudes|requerimiento|saldo-por-comprar|parametros-reposicion)(/|$)"), "compras"),
+    (re.compile(_OBRA + r"(compras|solicitudes|requerimiento|saldo-por-comprar|parametros-reposicion|avance)(/|$)"), "compras"),
     (re.compile(_OBRA + r"(trabajadores|jornadas|horas-acumuladas)(/|$)"), "tareo"),
     (re.compile(r"^/api/v1/proveedores(/|$)"), "compras"),
     (re.compile(r"^/api/v1/catalogo(/|$)"), "catalogo"),
