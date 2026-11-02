@@ -20,3 +20,6 @@ actual fun ManejarAtras(activo: Boolean, alVolver: () -> Unit) {
 
 @Composable
 actual fun reducirMovimiento(): Boolean = false
+
+@Composable
+actual fun vidrioSinDesenfoque(): Boolean = false

@@ -1,8 +1,10 @@
 package pe.sevens.sigro.plataforma
 
+import android.app.ActivityManager
 import androidx.activity.compose.BackHandler
 import android.provider.Settings
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -25,4 +27,11 @@ actual fun ManejarAtras(activo: Boolean, alVolver: () -> Unit) = BackHandler(ena
 actual fun reducirMovimiento(): Boolean {
     val resolver = LocalContext.current.contentResolver
     return Settings.Global.getFloat(resolver, Settings.Global.ANIMATOR_DURATION_SCALE, 1f) == 0f
+}
+
+@Composable
+actual fun vidrioSinDesenfoque(): Boolean {
+    val ctx = LocalContext.current
+    val pocaMemoria = remember(ctx) { ctx.getSystemService(ActivityManager::class.java)?.isLowRamDevice == true }
+    return pocaMemoria || reducirMovimiento()
 }

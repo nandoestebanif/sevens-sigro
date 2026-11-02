@@ -60,13 +60,15 @@ import dev.chrisbanes.haze.HazeTint
 import dev.chrisbanes.haze.hazeEffect
 import dev.chrisbanes.haze.hazeSource
 import dev.chrisbanes.haze.rememberHazeState
+import pe.sevens.sigro.plataforma.vidrioSinDesenfoque
 import pe.sevens.sigro.ui.tema.Paleta
 import pe.sevens.sigro.ui.tema.TemaSigro
 
 /*
  * Estilo vidrio (diseno/LEEME.md): tarjetas translúcidas sobre un fondo de plano distinto por pantalla.
  * El desenfoque real lo hace Haze con lo que está detrás; en Android < 12 Haze no puede desenfocar
- * y pinta el blanco de respaldo, más opaco para que el texto se siga leyendo.
+ * y pinta el blanco de respaldo, más opaco para que el texto se siga leyendo. El mismo respaldo se usa
+ * en gama baja y con «reducir movimiento» (vidrioSinDesenfoque).
  */
 
 /** El fondo de plano de la pantalla: lo que el vidrio desenfoca. Null fuera de [FondoPlano]. */
@@ -94,11 +96,12 @@ fun FondoPlano(
     modifier: Modifier = Modifier,
     contenido: @Composable BoxScope.() -> Unit,
 ) {
-    val haze = rememberHazeState()
+    // Sin desenfoque no hay fuente de Haze: vidrio() ve LocalHaze = null y pinta el blanco de respaldo.
+    val haze = if (vidrioSinDesenfoque()) null else rememberHazeState()
     val medidor = rememberTextMeasurer()
     TemaSigro(oscuro = false) {
         Box(modifier.fillMaxSize().background(Paleta.FondoBase)) {
-            Canvas(Modifier.fillMaxSize().hazeSource(haze)) { plano(medidor) }
+            Canvas(Modifier.fillMaxSize().then(if (haze != null) Modifier.hazeSource(haze) else Modifier)) { plano(medidor) }
             CompositionLocalProvider(LocalHaze provides haze) { contenido() }
         }
     }

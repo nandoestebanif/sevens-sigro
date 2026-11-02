@@ -28,3 +28,6 @@ actual fun ManejarAtras(activo: Boolean, alVolver: () -> Unit) {
 
 @Composable
 actual fun reducirMovimiento(): Boolean = UIAccessibilityIsReduceMotionEnabled()
+
+@Composable
+actual fun vidrioSinDesenfoque(): Boolean = reducirMovimiento()
