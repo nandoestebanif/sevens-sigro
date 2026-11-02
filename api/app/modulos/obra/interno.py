@@ -24,6 +24,7 @@ class AutorizarIn(BaseModel):
     usuario_id: int
     obra_id: int | None = None
     roles: list[str] | None = None     # None: solo comprobar que la persona sigue activa
+    dispositivo: str | None = None     # regla 5 (0010, D3): identificador del celular; debe estar ACTIVO para esa persona en esa obra
 
 
 class AutorizarOut(BaseModel):
@@ -31,6 +32,7 @@ class AutorizarOut(BaseModel):
     nombre: str
     obra_id: int | None = None
     rol: str | None = None
+    dispositivo_id: int | None = None
 
 
 @interno.post("/autorizar", response_model=AutorizarOut)
@@ -47,11 +49,29 @@ def autorizar(d: AutorizarIn, s: Session = Depends(obtener_sesion, scope="functi
         rol = rol_en_obra(s, u["id"], d.obra_id)
         if rol is None or rol not in roles:
             raise sin_permiso
-        return AutorizarOut(usuario_id=u["id"], nombre=u["nombre"], obra_id=d.obra_id, rol=rol)
+        disp = None
+        if d.dispositivo is not None:
+            disp = fila(s, "SELECT id FROM obra.dispositivo WHERE proyecto_id = :p AND usuario_id = :u "
+                           "AND identificador = :i AND estado = 'activo'", p=d.obra_id, u=u["id"], i=d.dispositivo.strip())
+            if disp is None:
+                raise ErrorSigro(403, "dispositivo_no_autorizado",
+                                 "Este celular no está autorizado para registrar en esta obra; pide su autorización al administrador.")
+        return AutorizarOut(usuario_id=u["id"], nombre=u["nombre"], obra_id=d.obra_id, rol=rol, dispositivo_id=disp and disp["id"])
     r = rol_en_alguna_obra(s, u["id"], roles)
     if r is None:
         raise sin_permiso
     return AutorizarOut(usuario_id=u["id"], nombre=u["nombre"], obra_id=r[0], rol=r[1])
+
+
+@interno.get("/obras")
+def buscar_obras(nombre: str = Query(..., min_length=1, max_length=200), s: Session = Depends(obtener_sesion, scope="function")):
+    """Obras con ese nombre (sin distinguir mayúsculas, tildes ni espacios de más). HU-41: «saldo de otra obra» solo vale
+    si esa obra NO está en el sistema; si está, se usa el traslado (HU-42)."""
+    return filas(
+        s, "SELECT id, nombre, estado FROM obra.proyecto "
+           "WHERE lower(translate(regexp_replace(btrim(nombre), '[[:space:]]+', ' ', 'g'), 'ÁÉÍÓÚÜÑáéíóúüñ', 'AEIOUUNaeiouun')) "
+           "    = lower(translate(regexp_replace(btrim(:n), '[[:space:]]+', ' ', 'g'), 'ÁÉÍÓÚÜÑáéíóúüñ', 'AEIOUUNaeiouun')) ORDER BY id",
+        n=nombre)
 
 
 @interno.get("/obras/{obra_id}")
@@ -75,6 +95,12 @@ def destinatarios(
 def periodos(obra_id: int, s: Session = Depends(obtener_sesion, scope="function")):
     return filas(s, "SELECT id, numero, fecha_inicio, fecha_fin, estado FROM obra.periodo WHERE proyecto_id = :p ORDER BY numero",
                  p=obra_id)
+
+
+@interno.get("/obras/{obra_id}/almacenes")
+def almacenes(obra_id: int, s: Session = Depends(obtener_sesion, scope="function")):
+    """Para la réplica local de almacén (almacen_ref): los almacenes de la obra con su tipo y estado."""
+    return filas(s, "SELECT id, proyecto_id, nombre, tipo, estado FROM obra.almacen WHERE proyecto_id = :p ORDER BY id", p=obra_id)
 
 
 routers = [interno]

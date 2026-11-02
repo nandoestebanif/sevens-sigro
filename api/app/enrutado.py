@@ -1,7 +1,7 @@
 """Tabla de enrutado del gateway: qué microservicio atiende cada ruta pública de /api/v1.
 
 Una sola fuente de verdad: la usan el gateway en producción y las pruebas. Agregar un servicio
-(almacén, costo) es agregar su línea aquí.
+es agregar su línea aquí (almacén y costo se agregaron con la migración 0010).
 """
 from __future__ import annotations
 
@@ -13,6 +13,8 @@ _OBRA = r"^/api/v1/obras/\d+/"
 TABLA: list[tuple[re.Pattern[str], str]] = [
     (re.compile(_OBRA + r"(compras|solicitudes|requerimiento|saldo-por-comprar|parametros-reposicion)(/|$)"), "compras"),
     (re.compile(_OBRA + r"(trabajadores|jornadas|horas-acumuladas)(/|$)"), "tareo"),
+    (re.compile(_OBRA + r"almacen(/|$)"), "almacen"),          # 0010 · ojo: /almacenes (singular ≠ plural) es de obras
+    (re.compile(_OBRA + r"costo(/|$)"), "costo"),
     (re.compile(r"^/api/v1/proveedores(/|$)"), "compras"),
     (re.compile(r"^/api/v1/catalogo(/|$)"), "catalogo"),
     (re.compile(r"^/api/v1/(auth|usuarios|obras|notificaciones)(/|$)"), "obras"),

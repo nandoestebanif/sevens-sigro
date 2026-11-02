@@ -28,8 +28,11 @@ DUENOS = {
     "catalogo": ("catalogo", {"catalogo"}),
     "compras": ("compras", {"compras"}),
     "tareo": ("tareo", {"tareo"}),
+    "almacen": ("almacen", {"almacen"}),
+    "costo": ("costo", {"costo"}),
 }
-ESQUEMAS = {"obra": "obra.usuario", "catalogo": "catalogo.insumo", "compras": "compras.proveedor", "tareo": "tareo.trabajador"}
+ESQUEMAS = {"obra": "obra.usuario", "catalogo": "catalogo.insumo", "compras": "compras.proveedor", "tareo": "tareo.trabajador",
+            "almacen": "almacen.movimiento", "costo": "costo.hecho"}
 
 
 # ---------------------------------------------------------------- 1. datos propios
@@ -249,7 +252,7 @@ def test_el_gateway_pide_gzip_y_entrega_la_respuesta_legible_aunque_el_navegador
 
 
 # ---------------------------------------------------------------- la imagen de cada servicio arranca solo con su código
-@pytest.mark.parametrize("servicio", ["obras", "catalogo", "compras", "tareo", "gateway"])
+@pytest.mark.parametrize("servicio", ["obras", "catalogo", "compras", "tareo", "almacen", "costo", "gateway"])
 def test_cada_imagen_arranca_solo_con_su_codigo(servicio, tmp_path):
     """Simula el Dockerfile: copia el código, poda lo ajeno e importa la app. Si dependiera de otro servicio, falla."""
     import shutil
