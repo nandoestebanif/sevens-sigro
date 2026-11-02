@@ -54,6 +54,12 @@ import pe.sevens.sigro.ui.pantallas.AsistenciaViewModel
 import pe.sevens.sigro.ui.pantallas.PantallaTrabajadores
 import pe.sevens.sigro.ui.pantallas.PantallaTrabajadorNuevo
 import pe.sevens.sigro.ui.pantallas.PantallaAsistencia
+import pe.sevens.sigro.ui.pantallas.PantallaStock
+import pe.sevens.sigro.ui.pantallas.StockViewModel
+import pe.sevens.sigro.dominio.RepositorioObra
+import pe.sevens.sigro.dominio.AlmacenObra
+import pe.sevens.sigro.dominio.CompraParaRecibir
+import pe.sevens.sigro.dominio.LineaCompra
 import pe.sevens.sigro.ui.pantallas.PantallaDispositivo
 import pe.sevens.sigro.ui.pantallas.PantallaEntrar
 import pe.sevens.sigro.ui.pantallas.PantallaInicio
@@ -173,6 +179,18 @@ private object TrabajadoresFalsos : RepositorioTrabajadores {
     override suspend fun registrar(obraId: Int, nuevo: NuevoTrabajador) = lista.value.first()
 }
 
+/** Lecturas de obra de ejemplo: el proveedor y la otra obra son [marcador]; los insumos, del catálogo real. */
+private object ObraFalsa : RepositorioObra {
+    override suspend fun almacenes(obraId: Int) = listOf(AlmacenObra(1, "Almacén principal"))
+    override suspend fun compras(obraId: Int) = listOf(
+        CompraParaRecibir(
+            10, "[Proveedor]", "Factura [número]", "2026-10-27",
+            listOf("CEMENTO PORTLAND TIPO I", "ARENA GRUESA", "CLAVOS").map { insumo(it) }.map { LineaCompra(it.codigo, it.descripcion, "10", it.unidad) },
+        ),
+    )
+    override suspend fun obrasDestino(obraId: Int) = listOf(ObraAsignada(2, "[Otra obra registrada en SIGRO]", ""))
+}
+
 private val sinProgramar = object : ProgramadorSincronizacion { override fun programar() {} }
 
 private fun capturar(dir: File, nombre: String, oscuro: Boolean = false, ms: Int = 1500, preparar: () -> Unit = {}, contenido: @Composable () -> Unit) {
@@ -249,5 +267,7 @@ fun main(args: Array<String>) {
     capturar(dir, "16-asistencia", preparar = { asis.cargar(1); Thread.sleep(300); asis.extra(1, 2); asis.estado(4, pe.sevens.sigro.dominio.EstadoAsistencia.AUSENTE) }) {
         PantallaAsistencia(1, {}, {}, asis)
     }
+    val stock = StockViewModel(CatalogoFalso, ObraFalsa)
+    capturar(dir, "17-stock", preparar = { stock.cargar(1); stock.buscador.buscar("cemento") }) { PantallaStock(1, {}, stock) }
     kotlin.system.exitProcess(0)
 }

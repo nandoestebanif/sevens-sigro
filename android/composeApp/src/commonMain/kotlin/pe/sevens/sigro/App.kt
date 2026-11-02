@@ -25,6 +25,7 @@ import pe.sevens.sigro.ui.pantallas.Destino
 import pe.sevens.sigro.ui.pantallas.EstadoRaiz
 import pe.sevens.sigro.ui.pantallas.PantallaAsistencia
 import pe.sevens.sigro.ui.pantallas.PantallaCatalogo
+import pe.sevens.sigro.ui.pantallas.PantallaStock
 import pe.sevens.sigro.ui.pantallas.PantallaTrabajadorNuevo
 import pe.sevens.sigro.ui.pantallas.PantallaTrabajadores
 import pe.sevens.sigro.ui.pantallas.PantallaDispositivo
@@ -97,6 +98,7 @@ private fun Navegacion(e: EstadoRaiz.Dentro) {
             Destino.Trabajadores -> PantallaTrabajadores(e.obra.id, e.obra.nombre, alVolver = volver, irA = irA)
             Destino.TrabajadorNuevo -> PantallaTrabajadorNuevo(e.obra.id, alVolver = volver)
             Destino.Asistencia -> PantallaAsistencia(e.obra.id, alVolver = volver, alRegistros = { irA(Destino.Pendientes) })
+            Destino.Stock -> PantallaStock(e.obra.id, alVolver = volver)
             else -> PantallaInicio(e.sesion, e.obra, irA = irA) // pantallas del Sprint 2 en construcción
         }
     }
