@@ -58,6 +58,8 @@ import pe.sevens.sigro.ui.pantallas.PantallaStock
 import pe.sevens.sigro.ui.pantallas.StockViewModel
 import pe.sevens.sigro.ui.pantallas.EntradaViewModel
 import pe.sevens.sigro.ui.pantallas.PantallaEntrada
+import pe.sevens.sigro.ui.pantallas.TrasladoViewModel
+import pe.sevens.sigro.ui.pantallas.PantallaTraslado
 import pe.sevens.sigro.ui.pantallas.IngresoSinCompraViewModel
 import pe.sevens.sigro.ui.pantallas.PantallaIngresoSinCompra
 import pe.sevens.sigro.dominio.RepositorioObra
@@ -280,6 +282,10 @@ fun main(args: Array<String>) {
     val ingreso = IngresoSinCompraViewModel(CatalogoFalso, ObraFalsa, registros)
     capturar(dir, "19-ingreso-sin-compra", preparar = { ingreso.origen(pe.sevens.sigro.dominio.OrigenIngreso.OTRA_OBRA); ingreso.elegir(insumo("ARENA GRUESA")); ingreso.cantidad("1,5"); ingreso.guardar(1) }) {
         PantallaIngresoSinCompra(1, {}, ingreso)
+    }
+    val traslado = TrasladoViewModel(CatalogoFalso, ObraFalsa, registros)
+    capturar(dir, "20-traslado", preparar = { traslado.cargar(1, sesionEjemplo.obras); Thread.sleep(300); traslado.estado.value.destinos.firstOrNull()?.let(traslado::destino); traslado.agregar(insumo("CEMENTO PORTLAND TIPO I")); traslado.cantidad(0, "20") }) {
+        PantallaTraslado(1, "Multifamiliar Flores", sesionEjemplo.obras, {}, traslado)
     }
     kotlin.system.exitProcess(0)
 }

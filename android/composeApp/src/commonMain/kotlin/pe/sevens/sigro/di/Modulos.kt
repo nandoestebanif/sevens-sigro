@@ -27,6 +27,7 @@ import pe.sevens.sigro.ui.pantallas.CatalogoViewModel
 import pe.sevens.sigro.ui.pantallas.EntradaViewModel
 import pe.sevens.sigro.ui.pantallas.IngresoSinCompraViewModel
 import pe.sevens.sigro.ui.pantallas.StockViewModel
+import pe.sevens.sigro.ui.pantallas.TrasladoViewModel
 import pe.sevens.sigro.ui.pantallas.TrabajadorNuevoViewModel
 import pe.sevens.sigro.ui.pantallas.TrabajadoresViewModel
 import pe.sevens.sigro.ui.pantallas.DispositivoViewModel
@@ -84,6 +85,7 @@ val moduloPresentacion = module {
     viewModel { StockViewModel(get(), get()) }
     viewModel { EntradaViewModel(get(), get()) }
     viewModel { IngresoSinCompraViewModel(get(), get(), get()) }
+    viewModel { TrasladoViewModel(get(), get(), get()) }
 }
 
 fun modulosSigro(): List<Module> = listOf(moduloPlataforma, moduloDatos, moduloPresentacion)
