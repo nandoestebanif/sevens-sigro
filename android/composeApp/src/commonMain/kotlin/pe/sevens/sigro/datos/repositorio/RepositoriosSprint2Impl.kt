@@ -20,7 +20,12 @@ import pe.sevens.sigro.dominio.FichaInsumo
 import pe.sevens.sigro.dominio.LineaCompra
 import pe.sevens.sigro.dominio.NuevoInsumo
 import pe.sevens.sigro.dominio.NuevoTrabajador
+import pe.sevens.sigro.datos.remoto.StockDto
+import pe.sevens.sigro.datos.remoto.jsonSigro
+import pe.sevens.sigro.dominio.FilaStock
 import pe.sevens.sigro.dominio.ObraAsignada
+import pe.sevens.sigro.dominio.StockServidor
+import pe.sevens.sigro.plataforma.Plataforma
 import pe.sevens.sigro.dominio.PendienteRecepcion
 import pe.sevens.sigro.dominio.RepositorioInsumos
 import pe.sevens.sigro.dominio.RepositorioObra
@@ -105,9 +110,36 @@ class RepositorioTrabajadoresImpl(
     )
 }
 
-/** Lecturas que las pantallas de almacén necesitan (con señal). */
-class RepositorioObraImpl(private val api: ApiSigro, ajustes: AjusteDao) : RepositorioObra {
+/** Lecturas que las pantallas de almacén necesitan (con señal; el stock, además, el último recibido). */
+class RepositorioObraImpl(
+    private val api: ApiSigro,
+    ajustes: AjusteDao,
+    private val reloj: () -> Long = Plataforma::ahoraMs,
+) : RepositorioObra {
     private val cred = Credenciales(ajustes)
+
+    override suspend fun stock(obraId: Int, almacenId: Int?): StockServidor {
+        val (s, t) = cred.exigir()
+        val clave = "stock:$obraId:${almacenId ?: "obra"}"
+        return try {
+            val texto = api.stockTexto(s, t, obraId, almacenId)
+            val ahora = reloj()
+            cred.guardar(clave, "$ahora|$texto")
+            aStock(texto, almacenId, ahora, desdeCelular = false)
+        } catch (e: ErrorSigro) {
+            if (!e.esTransitorio) throw e
+            val guardado = cred.leer(clave) ?: throw e
+            aStock(guardado.substringAfter('|'), almacenId, guardado.substringBefore('|').toLongOrNull() ?: 0L, desdeCelular = true)
+        }
+    }
+
+    private fun aStock(texto: String, almacenId: Int?, recibidoMs: Long, desdeCelular: Boolean): StockServidor {
+        val d = jsonSigro.decodeFromString(StockDto.serializer(), texto)
+        val filas = (if (almacenId == null) d.consolidado else d.porAlmacen).map {
+            FilaStock(it.insumoId, it.insumoCodigo, it.descripcion, it.unidad, it.cantidad, it.ultimoMovimientoEn, it.bajoPuntoReposicion)
+        }
+        return StockServidor(filas, d.corte, recibidoMs, desdeCelular)
+    }
 
     override suspend fun almacenes(obraId: Int): List<AlmacenObra> {
         val (s, t) = cred.exigir()

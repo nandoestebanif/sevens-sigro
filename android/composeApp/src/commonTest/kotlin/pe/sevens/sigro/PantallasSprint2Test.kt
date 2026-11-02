@@ -91,7 +91,7 @@ class PantallasSprint2Test {
     @Test
     fun stockNoSeCalculaEnElCelular() {
         assertEquals("[lo calcula el servidor]", saldoParaMostrar(null, "bolsas"), "regla 2: sin saldo del servidor no hay número")
-        assertEquals("38 bolsas", saldoParaMostrar("38", "bolsas"))
+        assertEquals("38 bolsas", saldoParaMostrar("38.0000", "bolsas"))
     }
 
     @Test
@@ -160,5 +160,17 @@ class PantallasSprint2Test {
         val cemento = Insumo(1151, "1151", "CEMENTO PORTLAND TIPO I - 42.5 KG", "bolsas")
         val e = validarTraslado(ObraAsignada(2, "Otra", ""), listOf(LineaAlmacen(cemento, "20")), null, "")
         assertEquals(setOf("almacenDestino", "motivo"), e.keys)
+    }
+
+    @Test
+    fun stockSoloFiltraLoQueMandoElServidor() {
+        val filas = listOf(
+            pe.sevens.sigro.dominio.FilaStock(1, "1151", "CEMENTO PORTLAND TIPO I - 42.5 KG", "bolsas", "38", "2026-11-01T16:35", false),
+            pe.sevens.sigro.dominio.FilaStock(2, "423", "ARENA GRUESA", "m3", "4.5", "2026-11-01T16:35", true),
+        )
+        val f = pe.sevens.sigro.ui.pantallas.filtrarStock(filas, "arena")
+        assertEquals(listOf("4.5"), f.map { it.cantidad }, "la cantidad es la del servidor, sin tocar")
+        val s = pe.sevens.sigro.dominio.StockServidor(filas, null, 1_000L, desdeCelular = true)
+        assertTrue(pe.sevens.sigro.ui.pantallas.origenDelStock(s) { "01/11 16:40" }.contains("último saldo recibido el 01/11 16:40"))
     }
 }

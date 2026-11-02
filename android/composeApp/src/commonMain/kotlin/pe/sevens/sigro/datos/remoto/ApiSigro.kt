@@ -98,6 +98,21 @@ import pe.sevens.sigro.dominio.ErrorSigro
     val recibido: String,
     val pendiente: String,
 )
+@Serializable data class StockFilaDto(
+    @SerialName("insumo_id") val insumoId: Int,
+    @SerialName("insumo_codigo") val insumoCodigo: String,
+    val descripcion: String,
+    val unidad: String,
+    val cantidad: String,
+    @SerialName("ultimo_movimiento_en") val ultimoMovimientoEn: String,
+    @SerialName("bajo_punto_reposicion") val bajoPuntoReposicion: Boolean? = null,
+)
+@Serializable data class StockDto(
+    val criterio: String = "",
+    val corte: String? = null,
+    @SerialName("por_almacen") val porAlmacen: List<StockFilaDto> = emptyList(),
+    val consolidado: List<StockFilaDto> = emptyList(),
+)
 @Serializable data class CompraDto(
     val id: Int,
     @SerialName("proveedor_razon_social") val proveedor: String,
@@ -180,6 +195,12 @@ class ApiSigro(private val http: HttpClient, private val json: Json) {
         llamar {
             http.get(url(servidor, "/obras/$obraId/compras")) { bearerAuth(token); parameter("estado", "registrada") }
         }
+
+    /** Texto tal cual: el repositorio lo guarda para mostrarlo sin señal con su hora. */
+    suspend fun stockTexto(servidor: String, token: String, obraId: Int, almacenId: Int?): String =
+        llamar<JsonObject> {
+            http.get(url(servidor, "/obras/$obraId/almacen/stock")) { bearerAuth(token); if (almacenId != null) parameter("almacen_id", almacenId) }
+        }.toString()
 
     suspend fun estadoRecepcion(servidor: String, token: String, obraId: Int, compraId: Int): List<RecepcionLineaDto> =
         llamar { http.get(url(servidor, "/obras/$obraId/almacen/compras/$compraId/recepcion")) { bearerAuth(token) } }

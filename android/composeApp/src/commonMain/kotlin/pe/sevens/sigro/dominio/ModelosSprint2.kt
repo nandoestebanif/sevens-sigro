@@ -247,6 +247,23 @@ data class LineaCompra(val insumoCodigo: String, val descripcion: String, val ca
 
 data class AlmacenObra(val id: Int, val nombre: String)
 
+/** Una fila del stock tal como la devuelve el servidor (GET /almacen/stock). La app no la calcula (regla 2). */
+data class FilaStock(
+    val insumoId: Int,
+    val codigo: String,
+    val descripcion: String,
+    val unidad: String,
+    val cantidad: String,
+    val ultimoMovimientoEn: String,
+    val bajoPuntoReposicion: Boolean?,
+)
+
+/**
+ * Stock del servidor con su momento. `desdeCelular`: sin señal, es el último que se recibió (con su hora
+ * de llegada); nunca un saldo armado con las salidas guardadas en el celular.
+ */
+data class StockServidor(val filas: List<FilaStock>, val corte: String?, val recibidoMs: Long, val desdeCelular: Boolean)
+
 /** Estado de recepción de una compra según el servidor (GET …/compras/{id}/recepcion): lo pendiente no se calcula aquí. */
 data class PendienteRecepcion(val insumoId: Int, val unidad: String, val pedido: String, val recibido: String, val pendiente: String)
 

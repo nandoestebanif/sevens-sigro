@@ -22,6 +22,7 @@ import pe.sevens.sigro.datos.local.RegistroLocalEntity
 import pe.sevens.sigro.datos.remoto.ApiSigro
 import pe.sevens.sigro.datos.remoto.crearClienteHttp
 import pe.sevens.sigro.datos.remoto.jsonSigro
+import pe.sevens.sigro.datos.repositorio.RepositorioObraImpl
 import pe.sevens.sigro.datos.repositorio.RepositorioRegistrosImpl
 import pe.sevens.sigro.dominio.CompraParaRecibir
 import pe.sevens.sigro.dominio.EstadoAsistencia
@@ -322,5 +323,24 @@ class ColaRegistrosTest {
         c.repo.sincronizar()
         assertEquals("RECHAZADO", c.filas.una(r.uuidCliente).estado)
         assertTrue(c.filas.una(r.uuidCliente).motivoRechazo!!.contains("exige un motivo"))
+    }
+
+    // ── Stock: el del servidor; sin señal, el último recibido con su hora ────────────────
+
+    @Test
+    fun stockSinSenalMuestraElUltimoRecibidoConSuHora() = runTest {
+        val json = """{"criterio":"x","corte":"2026-11-01T16:35:00","por_almacen":[{"almacen_id":3,"almacen":"Principal","insumo_id":1151,"insumo_codigo":"1151","descripcion":"CEMENTO","unidad":"bolsas","cantidad":"38.0000","costo_promedio":"22","valor":"836","ultimo_movimiento_en":"2026-11-01T16:35:00"}],"consolidado":[]}"""
+        var conSenal = true
+        val ajustes = AjustesFalsos()
+        val motor = MockEngine { if (conSenal) respond(json, HttpStatusCode.OK, headersOf(HttpHeaders.ContentType, "application/json")) else throw RuntimeException("sin señal") }
+        val repo = RepositorioObraImpl(ApiSigro(crearClienteHttp(motor), jsonSigro), ajustes) { 7_000L }
+        val a = repo.stock(1, 3)
+        assertEquals("38.0000", a.filas.single().cantidad)
+        assertEquals(false, a.desdeCelular)
+        conSenal = false
+        val b = repo.stock(1, 3)
+        assertEquals(true, b.desdeCelular, "sin señal: lo último que mandó el servidor, marcado")
+        assertEquals(7_000L, b.recibidoMs)
+        assertEquals("38.0000", b.filas.single().cantidad, "regla 2: el número es del servidor, no de la app")
     }
 }

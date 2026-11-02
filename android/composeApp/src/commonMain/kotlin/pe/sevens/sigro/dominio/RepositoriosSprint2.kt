@@ -70,6 +70,11 @@ interface RepositorioObra {
     suspend fun compras(obraId: Int): List<CompraParaRecibir>
     /** Lo pedido, recibido y pendiente de una compra según el servidor (necesita señal). */
     suspend fun estadoRecepcion(obraId: Int, compraId: Int): List<PendienteRecepcion>
+    /**
+     * HU-43: saldo del servidor (GET /almacen/stock). `almacenId` null = toda la obra (consolidado).
+     * Sin señal devuelve el último recibido, marcado; si nunca se recibió, lanza el error.
+     */
+    suspend fun stock(obraId: Int, almacenId: Int?): StockServidor
     /** Obras a las que se puede trasladar (GET /obras), sin la propia. */
     suspend fun obrasDestino(obraId: Int): List<ObraAsignada>
 }
