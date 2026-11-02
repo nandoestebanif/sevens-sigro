@@ -19,3 +19,8 @@
 # El constructor de la base (expect/actual de Room KMP) se busca por nombre en Android.
 -keep class * extends androidx.room.RoomDatabase { <init>(); }
 -keep class pe.sevens.sigro.datos.local.ConstructorBaseDatos { *; }
+
+# Perfil de arranque (src/androidMain/baselineProfiles): sus reglas usan comodines por paquete
+# (pe/sevens/sigro/**) y se aplican después de R8. Si R8 mudara las clases de la app a otro paquete,
+# el perfil no las encontraría: se conservan los nombres de paquete (las clases igual se acortan).
+-keeppackagenames pe.sevens.sigro.**

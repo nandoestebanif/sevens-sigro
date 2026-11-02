@@ -93,6 +93,9 @@ android {
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
     }
+    // Perfil de arranque escrito a mano (src/androidMain/baselineProfiles): con KMP, AGP no mira esa
+    // carpeta por su cuenta.
+    sourceSets["main"].baselineProfiles.srcDir("src/androidMain/baselineProfiles")
     lint {
         // El detector de LiveData de AGP 8.7 se cae con Kotlin 2.1 (IncompatibleClassChangeError) y tumba
         // lintVitalAnalyzeRelease, o sea assembleRelease. La app no usa LiveData: se apaga solo esa regla.
