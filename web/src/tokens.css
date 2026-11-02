@@ -421,3 +421,58 @@ body { transition: background-color 0.25s ease-out, color 0.25s ease-out; }
 
 /* chips de «qué es real y qué es de ejemplo»: en angosto el texto largo baja de línea */
 .fila-chips > span { white-space: normal !important; }
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Arranque y entrada a la obra · capa de vidrio con «el plano se dibuja»
+   (ui/Arranque.tsx, ui/PlanoQueSeDibuja.tsx). Mismo vidrio fuerte del lienzo.
+   ───────────────────────────────────────────────────────────────────────── */
+.raiz-contenido { height: 100%; }
+
+.capa-plano {
+  position: fixed; inset: 0; z-index: 100;
+  display: flex; align-items: center; justify-content: center; padding: 24px;
+  background: var(--vidrio-fuerte);
+  -webkit-backdrop-filter: var(--desenfoque-fuerte);
+  backdrop-filter: var(--desenfoque-fuerte);
+  outline: none;
+  animation: velo-entra 0.2s ease-out both;
+  transition: opacity 0.35s var(--paso), transform 0.35s var(--paso);
+}
+/* sale como en la app: se desvanece y crece un poco */
+.capa-plano.saliendo { opacity: 0; transform: scale(1.06); pointer-events: none; }
+.capa-plano-centro { display: flex; flex-direction: column; align-items: center; gap: 18px; max-width: 420px; }
+.capa-plano-titulo { margin: 0; font-size: 20px; font-weight: 800; letter-spacing: -0.02em; color: var(--tinta); }
+.capa-plano-detalle { margin: 0; font-size: 15px; line-height: 1.45; color: var(--tinta-2); max-width: 340px; }
+
+.plano-dibuja { position: relative; display: flex; flex-direction: column; align-items: center; }
+.plano-trazo {
+  stroke-dasharray: 1; stroke-dashoffset: 1;
+  animation-name: plano-trazo; animation-timing-function: cubic-bezier(0.45, 0, 0.2, 1); animation-fill-mode: forwards;
+}
+@keyframes plano-trazo { to { stroke-dashoffset: 0; } }
+.plano-cota { opacity: 0; transition: opacity 0.3s ease-out; }
+.plano-cota.visible { opacity: 1; }
+.plano-logo {
+  width: 190px; height: 78px; object-fit: contain; margin-bottom: 4px;
+  opacity: 0; transform: translateY(6px) scale(0.94);
+  transition: opacity 0.4s ease-out, transform 0.5s cubic-bezier(0.2, 0.9, 0.3, 1.1);
+}
+.plano-logo.visible { opacity: 1; transform: none; }
+
+.capa-plano-barra {
+  width: 240px; height: 8px; border-radius: 999px; overflow: hidden;
+  background: var(--linea); border: 1px solid var(--vidrio-borde);
+}
+.capa-plano-barra > span { display: block; height: 100%; background: var(--accion); border-radius: inherit; }
+
+/* entrar: la tarjeta de Ingresar se desvanece antes de la capa de la obra */
+.entrar-sale .entrar-formulario { opacity: 0; transform: translateY(8px) scale(0.98); }
+.entrar-formulario { transition: opacity 0.3s var(--paso), transform 0.3s var(--paso); }
+
+/* el menú lateral y el panel entran con un fundido de 350 ms, recién con la obra lista */
+.armazon-espera { opacity: 0; }
+.armazon-entra { animation: velo-entra 0.35s var(--paso) both; }
+
+@media (prefers-reduced-motion: reduce) {
+  .capa-plano, .entrar-formulario { transition-duration: 0.01ms !important; }
+}

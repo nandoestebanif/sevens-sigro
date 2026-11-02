@@ -1,9 +1,13 @@
 /* SIGRO · armazón de la web de oficina: menú lateral de vidrio (lienzo «SIGRO Oficina · Web»), obra activa y rutas. */
-import { Component, useEffect, useState, type ReactNode } from 'react'
+import { Component, useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { HashRouter, NavLink, Navigate, Route, Routes } from 'react-router-dom'
 import { api } from './api/cliente'
 import { cerrarSesion, sesionActual, usaApiReal } from './api/http'
+import { ElegirObra } from './paginas/ElegirObra'
 import { Entrar } from './paginas/Entrar'
+import { Arranque, CapaPlano, useInerte } from './ui/Arranque'
+import { pideMenosMovimiento } from './ui/PlanoQueSeDibuja'
+import { Fondo } from './ui/vidrio'
 import type { Obra, ObraActiva } from './api/tipos'
 import logo from './assets/sevens-logo.png'
 import logoBlanco from './assets/sevens-logo-blanco.png'
@@ -225,23 +229,71 @@ function PanelAccesibilidad() {
   )
 }
 
-/** HT-04: con la API real primero se entra; con el cliente simulado no hace falta */
+/** HT-04: con la API real primero se entra; con el cliente simulado no hace falta.
+    Arranque bloquea la web hasta que el servidor responda (Render duerme los servicios). */
 export default function App() {
-  const [sesion, setSesion] = useState(() => sesionActual())
-  useEffect(() => {
-    const cambio = () => setSesion(sesionActual())
-    window.addEventListener('sigro-sesion', cambio)
-    return () => window.removeEventListener('sigro-sesion', cambio)
-  }, [])
-  if (usaApiReal && !sesion) return <Entrar />
-  return <Sistema />
+  return (
+    <Arranque>
+      <Entrada />
+    </Arranque>
+  )
 }
 
-function Sistema() {
+/** Al entrar: la tarjeta de Ingresar se desvanece; si hay varias obras, se elige una; luego «Preparando tu obra»
+    hasta que la obra activa y el panel tengan sus datos, y recién entonces aparece el armazón. */
+function Entrada() {
+  const [sesion, setSesion] = useState(() => sesionActual())
+  const previa = useRef(sesion)
+  const [saliendo, setSaliendo] = useState(false)
+  const [paso, setPaso] = useState<'elegir' | 'preparando' | null>(null)
+  const [nombreObra, setNombreObra] = useState('')
+  useEffect(() => {
+    let espera: ReturnType<typeof setTimeout> | undefined
+    const cambio = () => {
+      const nueva = sesionActual()
+      const recienEntro = !previa.current && nueva !== null
+      previa.current = nueva
+      if (!recienEntro) { setSesion(nueva); if (!nueva) setPaso(null); return }
+      const seguir = () => {
+        window.location.hash = '#/tablero' // al entrar se llega al panel de gasto en recursos
+        if (nueva.obras.length > 1) setPaso('elegir')
+        else { setNombreObra(nueva.obras[0]?.nombre ?? ''); setPaso('preparando') }
+        setSaliendo(false)
+        setSesion(nueva)
+      }
+      if (pideMenosMovimiento()) seguir()
+      else { setSaliendo(true); espera = setTimeout(seguir, 320) }
+    }
+    window.addEventListener('sigro-sesion', cambio)
+    return () => { window.removeEventListener('sigro-sesion', cambio); clearTimeout(espera) }
+  }, [])
+  const terminar = useCallback(() => setPaso(null), [])
+
+  if (usaApiReal && !sesion) return <Entrar saliendo={saliendo} />
+  if (paso === 'elegir' && sesion) {
+    return (
+      <ElegirObra
+        nombre={sesion.usuario.nombre.trim().split(/\s+/)[0]}
+        obras={sesion.obras.map((o) => ({ id: String(o.id), nombre: o.nombre, rol: ROLES[o.rol] ?? o.rol }))}
+        alElegir={async (o) => { await api.elegirObra(o.id); setNombreObra(o.nombre); setPaso('preparando') }}
+      />
+    )
+  }
+  return <Sistema preparando={paso === 'preparando'} nombreObra={nombreObra} alTerminar={terminar} />
+}
+
+const SIN_PANEL_MS = 15000 // si el panel no avisa, la entrada no se queda esperando
+
+function Sistema({ preparando = false, nombreObra = '', alTerminar }: {
+  preparando?: boolean
+  nombreObra?: string
+  alTerminar?: () => void
+}) {
   const [obra, setObra] = useState<ObraActiva | null>(null)
+  const [obraFallo, setObraFallo] = useState(false)
   const [obras, setObras] = useState<Obra[]>([])
   useEffect(() => {
-    api.obraActiva().then(setObra)
+    api.obraActiva().then(setObra, () => setObraFallo(true))
     api.listarObras().then(setObras)
     // la pantalla «Crear la obra» avisa cuando hay una nueva, para que el
     // selector de obra activa la ofrezca sin recargar
@@ -249,6 +301,28 @@ function Sistema() {
     window.addEventListener('sigro-obras', refrescar)
     return () => window.removeEventListener('sigro-obras', refrescar)
   }, [])
+
+  // entrada a la obra: el plano termina de dibujarse, y la obra activa y el panel ya cargaron
+  const [dibujado, setDibujado] = useState(false)
+  const [panelListo, setPanelListo] = useState(false)
+  const [mostrando, setMostrando] = useState(false)
+  useEffect(() => {
+    if (!preparando) return
+    const listo = () => setPanelListo(true)
+    window.addEventListener('sigro-panel-listo', listo)
+    const tope = setTimeout(listo, SIN_PANEL_MS)
+    return () => { window.removeEventListener('sigro-panel-listo', listo); clearTimeout(tope) }
+  }, [preparando])
+  const todoListo = preparando && dibujado && panelListo && (obra !== null || obraFallo)
+  useEffect(() => {
+    if (!todoListo) return
+    setMostrando(true)                                   // la capa sale y el armazón funde (350 ms)
+    const t = setTimeout(() => alTerminar?.(), 350)
+    return () => clearTimeout(t)
+  }, [todoListo, alTerminar])
+  const marco = useRef<HTMLDivElement>(null)
+  useInerte(marco, preparando && !mostrando)
+  const claseArmazon = !preparando ? 'armazon' : mostrando ? 'armazon armazon-entra' : 'armazon armazon-espera'
 
   // regla 9: al cambiar de obra, lo de empresa queda y lo de obra cambia.
   // La clave en el contenedor remonta las pantallas para que vuelvan a consultar.
@@ -262,7 +336,20 @@ function Sistema() {
 
   return (
     <HashRouter>
-      <div className="armazon">
+      {preparando && (
+        <>
+          {/* el mismo plano de Entrar sigue detrás del vidrio: la entrada es continua, no un salto a blanco */}
+          {!mostrando && <Fondo dibujo="entrar" />}
+          <CapaPlano
+            etiqueta="Preparando tu obra"
+            titulo={`Preparando tu obra · ${obra?.nombre ?? nombreObra}`}
+            progreso={(dibujado ? 0.34 : 0) + (obra || obraFallo ? 0.33 : 0) + (panelListo ? 0.33 : 0)}
+            saliendo={mostrando}
+            alDibujarse={() => setDibujado(true)}
+          />
+        </>
+      )}
+      <div ref={marco} className={claseArmazon}>
         <aside aria-label="Menú principal" className="vidrio-fuerte menu-lateral">
           <NavLink to="/tablero" aria-label="SIGRO · inicio" style={{ display: 'flex', justifyContent: 'center', padding: '2px 0 4px' }}>
             <img src={logo} alt="SEVEN'S Ingenieros SAC" className="solo-claro" style={{ height: 58, width: 'auto' }} />
