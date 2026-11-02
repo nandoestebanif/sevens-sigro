@@ -141,3 +141,12 @@ tasks.register<JavaExec>("capturas") {
     maxHeapSize = "768m"
     args(layout.buildDirectory.dir("capturas").get().asFile.absolutePath)
 }
+
+// Informe del compilador de Compose (estabilidad y funciones que se saltan), para docs/rendimiento-app.md:
+// ./gradlew :composeApp:compileReleaseKotlinAndroid -Psigro.metricasCompose --rerun-tasks → build/compose-metricas
+if (providers.gradleProperty("sigro.metricasCompose").isPresent) {
+    composeCompiler {
+        reportsDestination = layout.buildDirectory.dir("compose-metricas")
+        metricsDestination = layout.buildDirectory.dir("compose-metricas")
+    }
+}
