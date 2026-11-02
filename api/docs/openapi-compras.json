@@ -1069,6 +1069,72 @@
     }
    }
   },
+  "/api/v1/obras/{obra_id}/avance": {
+   "get": {
+    "tags": [
+     "compras · requerimiento y reposición"
+    ],
+    "summary": "Avance",
+    "description": "HU-23: requerido, comprado, recibido, consumido y saldo por comprar de cada insumo del requerimiento, en unidad de\ncompra, con su porcentaje sobre el requerimiento total. Lo que depende de almacén se declara en `pendiente`.",
+    "operationId": "avance_api_v1_obras__obra_id__avance_get",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "obra_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "minimum": 1,
+       "title": "Obra Id"
+      }
+     },
+     {
+      "name": "q",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string",
+         "maxLength": 100
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Q"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/AvanceOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
   "/api/v1/obras/{obra_id}/parametros-reposicion": {
    "post": {
     "tags": [
@@ -1328,6 +1394,146 @@
      "motivo"
     ],
     "title": "AnularIn"
+   },
+   "AvanceFilaOut": {
+    "properties": {
+     "insumo_id": {
+      "type": "integer",
+      "title": "Insumo Id"
+     },
+     "insumo_codigo": {
+      "type": "string",
+      "title": "Insumo Codigo"
+     },
+     "descripcion": {
+      "type": "string",
+      "title": "Descripcion"
+     },
+     "unidad_compra": {
+      "type": "string",
+      "title": "Unidad Compra"
+     },
+     "requerido": {
+      "type": "string",
+      "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+      "title": "Requerido"
+     },
+     "comprado": {
+      "type": "string",
+      "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+      "title": "Comprado"
+     },
+     "recibido": {
+      "anyOf": [
+       {
+        "type": "string",
+        "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Recibido"
+     },
+     "consumido": {
+      "anyOf": [
+       {
+        "type": "string",
+        "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Consumido"
+     },
+     "saldo_por_comprar": {
+      "type": "string",
+      "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+      "title": "Saldo Por Comprar"
+     },
+     "pct_comprado": {
+      "type": "string",
+      "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+      "title": "Pct Comprado"
+     },
+     "pct_recibido": {
+      "anyOf": [
+       {
+        "type": "string",
+        "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Pct Recibido"
+     },
+     "pct_consumido": {
+      "anyOf": [
+       {
+        "type": "string",
+        "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Pct Consumido"
+     }
+    },
+    "type": "object",
+    "required": [
+     "insumo_id",
+     "insumo_codigo",
+     "descripcion",
+     "unidad_compra",
+     "requerido",
+     "comprado",
+     "recibido",
+     "consumido",
+     "saldo_por_comprar",
+     "pct_comprado",
+     "pct_recibido",
+     "pct_consumido"
+    ],
+    "title": "AvanceFilaOut"
+   },
+   "AvanceOut": {
+    "properties": {
+     "unidad": {
+      "type": "string",
+      "const": "unidad_compra",
+      "title": "Unidad",
+      "default": "unidad_compra"
+     },
+     "base_porcentaje": {
+      "type": "string",
+      "const": "requerimiento_total",
+      "title": "Base Porcentaje",
+      "default": "requerimiento_total"
+     },
+     "pendiente": {
+      "items": {
+       "type": "string"
+      },
+      "type": "array",
+      "title": "Pendiente"
+     },
+     "filas": {
+      "items": {
+       "$ref": "#/components/schemas/AvanceFilaOut"
+      },
+      "type": "array",
+      "title": "Filas"
+     }
+    },
+    "type": "object",
+    "required": [
+     "pendiente",
+     "filas"
+    ],
+    "title": "AvanceOut"
    },
    "CompraIn": {
     "properties": {
