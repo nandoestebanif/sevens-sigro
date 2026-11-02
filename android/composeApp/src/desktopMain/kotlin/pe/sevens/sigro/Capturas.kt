@@ -58,6 +58,8 @@ import pe.sevens.sigro.ui.pantallas.PantallaStock
 import pe.sevens.sigro.ui.pantallas.StockViewModel
 import pe.sevens.sigro.ui.pantallas.EntradaViewModel
 import pe.sevens.sigro.ui.pantallas.PantallaEntrada
+import pe.sevens.sigro.ui.pantallas.CierreViewModel
+import pe.sevens.sigro.ui.pantallas.PantallaCierre
 import pe.sevens.sigro.ui.pantallas.ConteoViewModel
 import pe.sevens.sigro.ui.pantallas.PantallaConteo
 import pe.sevens.sigro.ui.pantallas.TrasladoViewModel
@@ -293,5 +295,6 @@ fun main(args: Array<String>) {
     capturar(dir, "21-conteo", preparar = { conteo.agregar(insumo("CEMENTO PORTLAND TIPO I")); conteo.contado(0, "36"); conteo.motivo(0, pe.sevens.sigro.dominio.MotivoDiferencia.MERMA) }) {
         PantallaConteo(1, {}, conteo)
     }
+    capturar(dir, "22-cierre") { PantallaCierre(1, "Multifamiliar Flores", {}, CierreViewModel(ObraFalsa, registros)) }
     kotlin.system.exitProcess(0)
 }

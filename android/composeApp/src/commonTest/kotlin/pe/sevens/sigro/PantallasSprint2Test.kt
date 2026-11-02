@@ -18,6 +18,7 @@ import pe.sevens.sigro.ui.pantallas.validarIngreso
 import pe.sevens.sigro.ui.pantallas.validarTraslado
 import pe.sevens.sigro.ui.pantallas.validarConteo
 import pe.sevens.sigro.ui.pantallas.LineaConteo
+import pe.sevens.sigro.ui.pantallas.EstadoCierre
 import pe.sevens.sigro.dominio.LineaAlmacen
 import pe.sevens.sigro.dominio.CompraParaRecibir
 import pe.sevens.sigro.dominio.LineaCompra
@@ -126,5 +127,11 @@ class PantallasSprint2Test {
         assertTrue(validarConteo(listOf(LineaConteo(arena, "0"))).isEmpty(), "contar cero es válido")
         assertEquals(setOf("0"), validarConteo(listOf(LineaConteo(arena, ""))).keys)
         assertEquals(setOf("lineas"), validarConteo(emptyList()).keys)
+    }
+
+    @Test
+    fun cierreExigeConfirmarLosSaldos() {
+        assertFalse(EstadoCierre("2026-11-01").puedeGuardar)
+        assertTrue(EstadoCierre("2026-11-01", confirmo = true).puedeGuardar)
     }
 }
