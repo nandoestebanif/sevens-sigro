@@ -205,7 +205,7 @@ object Asistencia {
 enum class TipoRegistro(val legible: String, val conServicio: Boolean) {
     JORNADA("Asistencia", true),
     ENTRADA_COMPRA("Entrada de compra", false),
-    INGRESO_SIN_COMPRA("Ingreso sin compra", false),
+    INGRESO_SIN_COMPRA("Ingreso sin compra", true),
     TRASLADO("Traslado", false),
     CONTEO("Conteo físico", false),
     CIERRE("Cierre de obra", false),
@@ -242,16 +242,18 @@ data class CompraParaRecibir(
     val lineas: List<LineaCompra>,
 )
 
-data class LineaCompra(val insumoCodigo: String, val descripcion: String, val cantidad: String, val unidad: String)
+/** `insumoId` se resuelve con el catálogo del celular por el código (la recepción lo pide por id). */
+data class LineaCompra(val insumoCodigo: String, val descripcion: String, val cantidad: String, val unidad: String, val insumoId: Int? = null)
 
 data class AlmacenObra(val id: Int, val nombre: String)
 
-enum class OrigenIngreso(val api: String, val legible: String) {
-    DEVOLUCION("devolucion", "Devolución de cuadrilla"),
-    OTRA_OBRA("otra_obra", "Saldo de otra obra"),
+/** Orígenes que acepta POST /almacen/ingresos (`ORIGENES` del servicio almacén). */
+enum class OrigenIngreso(val api: String, val legible: String, val exigeDetalle: Boolean = false) {
+    DEVOLUCION("devolucion_cuadrilla", "Devolución de cuadrilla"),
+    OTRA_OBRA("saldo_otra_obra", "Saldo de otra obra", exigeDetalle = true),
     PRESTAMO("prestamo", "Préstamo"),
     SOBRANTE("sobrante", "Sobrante"),
-    OTRO("otro", "Otro"),
+    OTRO("otro", "Otro", exigeDetalle = true),
 }
 
 enum class MotivoDiferencia(val legible: String) { MERMA("Merma"), ERROR("Error de registro"), PERDIDA("Pérdida"), OTRO("Otro") }

@@ -151,20 +151,65 @@ class ColaRegistrosTest {
     }
 
     @Test
-    fun almacenSeGuardaConSuNotaYNoSeEnvia() = runTest {
+    fun cierreSeGuardaConSuNotaYNoSeEnvia() = runTest {
         val c = Cola { HttpStatusCode.Created to "{}" }
-        val r = c.repo.registrarAlmacen(
-            1, RegistroAlmacen.IngresoSinCompra(3, OrigenIngreso.DEVOLUCION, LineaAlmacen(arena, "1,5"), "60", null),
-        )
-        assertEquals(TipoRegistro.INGRESO_SIN_COMPRA, r.tipo)
+        val r = c.repo.registrarAlmacen(1, RegistroAlmacen.Cierre(3, "2026-11-01", null))
+        assertEquals(TipoRegistro.CIERRE, r.tipo)
         assertEquals(NOTA_SIN_SERVICIO_ALMACEN, r.nota)
         assertEquals(EstadoEnvio.PENDIENTE, r.estado)
         val s = c.repo.sincronizar()
-        assertTrue(c.cuerpos.isEmpty(), "no hay servicio almacén todavía: no se envía")
+        assertTrue(c.cuerpos.isEmpty(), "HU-47 aún no tiene servicio: no se envía")
         assertEquals(0, s.siguenPendientes, "no cuenta como pendiente: el trabajo de fondo no reintenta en vano")
         assertEquals(0, c.repo.pendientes.first())
-        val cuerpo = jsonSigro.parseToJsonElement(c.filas.una(r.uuidCliente).cuerpo).jsonObject
-        assertEquals(r.uuidCliente, cuerpo["uuid_cliente"]!!.jsonPrimitive.content)
-        assertEquals("1.5", cuerpo["cantidad"]!!.jsonPrimitive.content)
     }
+
+    // ── Servicio almacén (PR #19): ingreso sin compra ─────────────────────────────────────
+
+    private suspend fun Cola.ingreso() = repo.registrarAlmacen(
+        1, RegistroAlmacen.IngresoSinCompra(3, OrigenIngreso.DEVOLUCION, LineaAlmacen(arena, "1,5"), "60", null),
+    )
+
+    @Test
+    fun ingresoViajaConSuContratoYElCelular() = runTest {
+        val c = Cola { HttpStatusCode.Created to "{}" }
+        val r = c.ingreso()
+        assertEquals(null, r.nota, "con servicio no lleva la nota de «sin servicio»")
+        assertEquals(1, c.repo.sincronizar().enviados)
+        assertEquals("/api/v1/obras/1/almacen/ingresos", c.rutas.single())
+        val cuerpo = jsonSigro.parseToJsonElement(c.cuerpos.single()).jsonObject
+        assertEquals(r.uuidCliente, cuerpo["uuid_cliente"]!!.jsonPrimitive.content)
+        assertEquals("devolucion_cuadrilla", cuerpo["origen"]!!.jsonPrimitive.content)
+        assertEquals("1.5", cuerpo["cantidad"]!!.jsonPrimitive.content)
+        assertTrue(cuerpo["dispositivo"]!!.jsonPrimitive.content.startsWith("sigro-"), "regla 5: el celular viaja en el cuerpo")
+        assertEquals("ENVIADO", c.filas.una(r.uuidCliente).estado)
+    }
+
+    @Test
+    fun reenvioQueDevuelve200CuentaComoEnviado() = runTest {
+        val c = Cola { HttpStatusCode.OK to """{"id": 9, "uuid_cliente": "x"}""" }
+        val r = c.ingreso()
+        c.repo.sincronizar()
+        assertEquals("ENVIADO", c.filas.una(r.uuidCliente).estado, "regla 3: 200 con el original no es error")
+    }
+
+    private fun rechazoCon(status: HttpStatusCode, codigo: String, mensaje: String) = runTest {
+        val c = Cola { status to """{"codigo":"$codigo","mensaje":"$mensaje"}""" }
+        val r = c.ingreso()
+        assertEquals(1, c.repo.sincronizar().rechazados, codigo)
+        val f = c.filas.una(r.uuidCliente)
+        assertEquals("RECHAZADO", f.estado, codigo)
+        assertEquals(mensaje, f.motivoRechazo, codigo)
+    }
+
+    @Test fun celularNoAutorizadoQuedaRechazadoConSuMotivo() =
+        rechazoCon(HttpStatusCode.Forbidden, "dispositivo_no_autorizado", "Este registro solo se acepta desde un celular autorizado.")
+
+    @Test fun periodoCerradoQuedaRechazado() =
+        rechazoCon(HttpStatusCode.Conflict, "periodo_cerrado", "El periodo de esa fecha está cerrado.")
+
+    @Test fun saldoDeOtraObraRegistradaPideTraslado() =
+        rechazoCon(HttpStatusCode.UnprocessableEntity, "usar_traslado", "La obra está registrada en SIGRO: registra un traslado.")
+
+    @Test fun uuidReutilizadoEsUnConflictoNoUnReenvio() =
+        rechazoCon(HttpStatusCode.Conflict, "uuid_reutilizado", "Ese identificador ya se usó para otro movimiento.")
 }

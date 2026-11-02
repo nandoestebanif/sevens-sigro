@@ -283,7 +283,7 @@ fun main(args: Array<String>) {
     capturar(dir, "18-entrada", preparar = { entrada.cargar(1); Thread.sleep(300); entrada.estado.value.compras.firstOrNull()?.let(entrada::elegir); entrada.alternarModo(); entrada.recibido(0, "6") }) {
         PantallaEntrada(1, {}, entrada)
     }
-    val ingreso = IngresoSinCompraViewModel(CatalogoFalso, ObraFalsa, registros)
+    val ingreso = IngresoSinCompraViewModel(CatalogoFalso, ObraFalsa, registros, sinProgramar)
     capturar(dir, "19-ingreso-sin-compra", preparar = { ingreso.origen(pe.sevens.sigro.dominio.OrigenIngreso.OTRA_OBRA); ingreso.elegir(insumo("ARENA GRUESA")); ingreso.cantidad("1,5"); ingreso.guardar(1) }) {
         PantallaIngresoSinCompra(1, {}, ingreso)
     }
