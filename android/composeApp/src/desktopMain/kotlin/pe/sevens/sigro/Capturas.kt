@@ -58,6 +58,8 @@ import pe.sevens.sigro.ui.pantallas.PantallaStock
 import pe.sevens.sigro.ui.pantallas.StockViewModel
 import pe.sevens.sigro.ui.pantallas.EntradaViewModel
 import pe.sevens.sigro.ui.pantallas.PantallaEntrada
+import pe.sevens.sigro.ui.pantallas.IngresoSinCompraViewModel
+import pe.sevens.sigro.ui.pantallas.PantallaIngresoSinCompra
 import pe.sevens.sigro.dominio.RepositorioObra
 import pe.sevens.sigro.dominio.AlmacenObra
 import pe.sevens.sigro.dominio.CompraParaRecibir
@@ -274,6 +276,10 @@ fun main(args: Array<String>) {
     val entrada = EntradaViewModel(ObraFalsa, registros)
     capturar(dir, "18-entrada", preparar = { entrada.cargar(1); Thread.sleep(300); entrada.estado.value.compras.firstOrNull()?.let(entrada::elegir); entrada.alternarModo(); entrada.recibido(0, "6") }) {
         PantallaEntrada(1, {}, entrada)
+    }
+    val ingreso = IngresoSinCompraViewModel(CatalogoFalso, ObraFalsa, registros)
+    capturar(dir, "19-ingreso-sin-compra", preparar = { ingreso.origen(pe.sevens.sigro.dominio.OrigenIngreso.OTRA_OBRA); ingreso.elegir(insumo("ARENA GRUESA")); ingreso.cantidad("1,5"); ingreso.guardar(1) }) {
+        PantallaIngresoSinCompra(1, {}, ingreso)
     }
     kotlin.system.exitProcess(0)
 }
