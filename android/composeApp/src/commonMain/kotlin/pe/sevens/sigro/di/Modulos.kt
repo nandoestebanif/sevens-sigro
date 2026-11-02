@@ -22,7 +22,10 @@ import pe.sevens.sigro.dominio.RepositorioRegistros
 import pe.sevens.sigro.dominio.RepositorioTrabajadores
 import pe.sevens.sigro.dominio.RepositorioSalidas
 import pe.sevens.sigro.dominio.RepositorioSesion
+import pe.sevens.sigro.ui.pantallas.AsistenciaViewModel
 import pe.sevens.sigro.ui.pantallas.CatalogoViewModel
+import pe.sevens.sigro.ui.pantallas.TrabajadorNuevoViewModel
+import pe.sevens.sigro.ui.pantallas.TrabajadoresViewModel
 import pe.sevens.sigro.ui.pantallas.DispositivoViewModel
 import pe.sevens.sigro.ui.pantallas.InsumoNuevoViewModel
 import pe.sevens.sigro.ui.pantallas.EntrarViewModel
@@ -72,6 +75,9 @@ val moduloPresentacion = module {
     viewModel { ObrasViewModel(get(), get(), get()) }
     viewModel { CatalogoViewModel(get()) }
     viewModel { InsumoNuevoViewModel(get()) }
+    viewModel { TrabajadoresViewModel(get(), get()) }
+    viewModel { TrabajadorNuevoViewModel(get()) }
+    viewModel { AsistenciaViewModel(get(), get(), get()) }
 }
 
 fun modulosSigro(): List<Module> = listOf(moduloPlataforma, moduloDatos, moduloPresentacion)
