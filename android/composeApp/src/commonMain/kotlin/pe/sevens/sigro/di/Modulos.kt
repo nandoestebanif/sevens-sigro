@@ -87,7 +87,7 @@ val moduloPresentacion = module {
     viewModel { StockViewModel(get(), get()) }
     viewModel { EntradaViewModel(get(), get(), get(), get()) }
     viewModel { IngresoSinCompraViewModel(get(), get(), get(), get()) }
-    viewModel { TrasladoViewModel(get(), get(), get()) }
+    viewModel { TrasladoViewModel(get(), get(), get(), get()) }
     viewModel { ConteoViewModel(get(), get(), get()) }
     viewModel { CierreViewModel(get(), get()) }
 }

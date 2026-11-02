@@ -288,7 +288,7 @@ fun main(args: Array<String>) {
     capturar(dir, "19-ingreso-sin-compra", preparar = { ingreso.origen(pe.sevens.sigro.dominio.OrigenIngreso.OTRA_OBRA); ingreso.elegir(insumo("ARENA GRUESA")); ingreso.cantidad("1,5"); ingreso.guardar(1) }) {
         PantallaIngresoSinCompra(1, {}, ingreso)
     }
-    val traslado = TrasladoViewModel(CatalogoFalso, ObraFalsa, registros)
+    val traslado = TrasladoViewModel(CatalogoFalso, ObraFalsa, registros, sinProgramar)
     capturar(dir, "20-traslado", preparar = { traslado.cargar(1, sesionEjemplo.obras); Thread.sleep(300); traslado.estado.value.destinos.firstOrNull()?.let(traslado::destino); traslado.agregar(insumo("CEMENTO PORTLAND TIPO I")); traslado.cantidad(0, "20") }) {
         PantallaTraslado(1, "Multifamiliar Flores", sesionEjemplo.obras, {}, traslado)
     }

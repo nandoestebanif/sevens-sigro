@@ -244,4 +244,19 @@ class ColaRegistrosTest {
         assertEquals("1151", l["insumo_id"]!!.jsonPrimitive.content)
         assertEquals("60", l["cantidad"]!!.jsonPrimitive.content)
     }
+
+    // ── Traslado → POST /almacen/traslados ─────────────────────────────────────────────────
+
+    @Test
+    fun trasladoViajaConAlmacenDestinoYMotivo() = runTest {
+        val c = Cola { HttpStatusCode.Created to "{}" }
+        c.repo.registrarAlmacen(1, RegistroAlmacen.Traslado(3, 2, "Otra obra", 7, "Falta cemento allá", listOf(LineaAlmacen(arena, "2"))))
+        c.repo.sincronizar()
+        assertEquals("/api/v1/obras/1/almacen/traslados", c.rutas.single())
+        val cuerpo = jsonSigro.parseToJsonElement(c.cuerpos.single()).jsonObject
+        assertEquals("7", cuerpo["destino_almacen_id"]!!.jsonPrimitive.content)
+        assertEquals("2", cuerpo["destino_obra_id"]!!.jsonPrimitive.content)
+        assertEquals("Falta cemento allá", cuerpo["motivo"]!!.jsonPrimitive.content)
+        assertEquals("423", cuerpo["lineas"]!!.jsonArray.single().jsonObject["insumo_id"]!!.jsonPrimitive.content)
+    }
 }
