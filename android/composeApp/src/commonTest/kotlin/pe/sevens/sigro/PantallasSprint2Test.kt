@@ -8,6 +8,10 @@ import pe.sevens.sigro.dominio.RegistroLocal
 import pe.sevens.sigro.dominio.SalidaRegistrada
 import pe.sevens.sigro.dominio.TipoRegistro
 import pe.sevens.sigro.ui.pantallas.unirRegistros
+import pe.sevens.sigro.dominio.FichaInsumo
+import pe.sevens.sigro.ui.pantallas.EstadoCatalogo
+import pe.sevens.sigro.ui.pantallas.sinCerosDeMas
+import pe.sevens.sigro.ui.pantallas.textoFactor
 import pe.sevens.sigro.ui.pantallas.CelularEnObra
 import pe.sevens.sigro.ui.pantallas.EstadoPantallaDispositivo
 import pe.sevens.sigro.ui.pantallas.celularEnObra
@@ -57,5 +61,20 @@ class PantallasSprint2Test {
         assertTrue(p(null)); assertTrue(p("revocado"))
         assertFalse(p("pendiente")); assertFalse(p("autorizado"))
         assertFalse(EstadoPantallaDispositivo().puedePedir, "mientras consulta no se ofrece el botón")
+    }
+
+    @Test
+    fun fichaMuestraElFactorSoloSiHayUnoDeclarado() {
+        val acero = FichaInsumo(1, "1147", "FIERRO CORRUGADO DE 1/2\" x 9m", "unidades", "kg", "8.9400", "material", true, true)
+        assertEquals("1 unidades = 8.94 kg", textoFactor(acero))
+        assertTrue(textoFactor(acero.copy(factorConversion = "1", unidadS10 = "unidades"))!!.startsWith("Sin factor"), "HU-17: sin factor, misma unidad")
+        assertEquals(null, textoFactor(acero.copy(factorConversion = null)), "sin señal no se inventa")
+        assertEquals("10", sinCerosDeMas("10"))
+    }
+
+    @Test
+    fun resumenDeLaBusquedaDelCatalogo() {
+        assertEquals("Sin coincidencias", EstadoCatalogo(q = "zzz").resumen)
+        assertTrue(EstadoCatalogo(q = "fierro", total = 90, resultados = List(40) { FichaInsumo(it, "$it", "X", "u") }).resumen.contains("afina"))
     }
 }

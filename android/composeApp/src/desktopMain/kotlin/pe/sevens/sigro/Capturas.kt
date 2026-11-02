@@ -35,6 +35,16 @@ import pe.sevens.sigro.ui.pantallas.DispositivoViewModel
 import pe.sevens.sigro.ui.pantallas.EntrarViewModel
 import pe.sevens.sigro.ui.pantallas.InicioViewModel
 import pe.sevens.sigro.ui.pantallas.ObrasViewModel
+import pe.sevens.sigro.ui.pantallas.CatalogoViewModel
+import pe.sevens.sigro.ui.pantallas.InsumoNuevoViewModel
+import pe.sevens.sigro.ui.pantallas.PantallaCatalogo
+import pe.sevens.sigro.ui.pantallas.PantallaFichaInsumo
+import pe.sevens.sigro.ui.pantallas.PantallaInsumoNuevo
+import pe.sevens.sigro.dominio.RepositorioInsumos
+import pe.sevens.sigro.dominio.BusquedaInsumos
+import pe.sevens.sigro.dominio.FichaInsumo
+import pe.sevens.sigro.dominio.NuevoInsumo
+import pe.sevens.sigro.dominio.CatalogoTexto
 import pe.sevens.sigro.ui.pantallas.PantallaDispositivo
 import pe.sevens.sigro.ui.pantallas.PantallaEntrar
 import pe.sevens.sigro.ui.pantallas.PantallaInicio
@@ -135,6 +145,13 @@ private class RegistrosFalsos : RepositorioRegistros {
     override suspend fun sincronizar() = ResultadoSincronizacion(0, 0, 1)
 }
 
+/** Catálogo real del cliente como si viniera del servidor. El factor del acero es un [marcador] del ejemplo. */
+private object InsumosFalsos : RepositorioInsumos {
+    private val todos = catalogo.map { FichaInsumo(it.id, it.codigo, it.descripcion, it.unidad, it.unidad, "1", "material", true, true) }
+    override suspend fun buscar(texto: String) = BusquedaInsumos(todos.filter { CatalogoTexto.coincide(it, texto) }, desdeCelular = false)
+    override suspend fun registrar(nuevo: NuevoInsumo) = FichaInsumo(9999, "9999", nuevo.descripcion, nuevo.unidad)
+}
+
 private val sinProgramar = object : ProgramadorSincronizacion { override fun programar() {} }
 
 private fun capturar(dir: File, nombre: String, oscuro: Boolean = false, ms: Int = 1500, preparar: () -> Unit = {}, contenido: @Composable () -> Unit) {
@@ -194,5 +211,13 @@ fun main(args: Array<String>) {
     capturar(dir, "09-mis-registros-oscuro", oscuro = true) { PantallaPendientes(1, {}, PendientesViewModel(salidas, registros)) }
 
     capturar(dir, "10-mi-celular") { PantallaDispositivo(1, {}, "Multifamiliar Flores", DispositivoViewModel(DispositivoFalso)) }
+    val cat = CatalogoViewModel(InsumosFalsos)
+    capturar(dir, "11-catalogo-buscar", preparar = { cat.buscar("fierro corrugado") }) { PantallaCatalogo({}, {}, {}, cat) }
+    val fierro = catalogo.firstOrNull { it.descripcion.startsWith("FIERRO CORRUGADO") } ?: insumo("FIERRO")
+    capturar(dir, "12-catalogo-ficha") {
+        PantallaFichaInsumo(FichaInsumo(fierro.id, fierro.codigo, fierro.descripcion, "unidades", "kg", "1", "material", true, false), {}, {})
+    }
+    val nuevo = InsumoNuevoViewModel(InsumosFalsos)
+    capturar(dir, "13-catalogo-nuevo", ms = 2500, preparar = { nuevo.material("Fierro corrugado"); nuevo.medida("1/2"); nuevo.unidad("unidades") }) { PantallaInsumoNuevo({}, {}, nuevo) }
     kotlin.system.exitProcess(0)
 }

@@ -23,7 +23,10 @@ import org.koin.compose.viewmodel.koinViewModel
 import pe.sevens.sigro.plataforma.ManejarAtras
 import pe.sevens.sigro.ui.pantallas.Destino
 import pe.sevens.sigro.ui.pantallas.EstadoRaiz
+import pe.sevens.sigro.ui.pantallas.PantallaCatalogo
 import pe.sevens.sigro.ui.pantallas.PantallaDispositivo
+import pe.sevens.sigro.ui.pantallas.PantallaFichaInsumo
+import pe.sevens.sigro.ui.pantallas.PantallaInsumoNuevo
 import pe.sevens.sigro.ui.pantallas.PantallaEntrar
 import pe.sevens.sigro.ui.pantallas.PantallaInicio
 import pe.sevens.sigro.ui.pantallas.PantallaObras
@@ -85,6 +88,9 @@ private fun Navegacion(e: EstadoRaiz.Dentro) {
             Destino.Salida -> PantallaSalida(e.obra.id, alVolver = volver)
             Destino.Pendientes -> PantallaPendientes(e.obra.id, alVolver = volver)
             Destino.Dispositivo -> PantallaDispositivo(e.obra.id, alVolver = volver, obraNombre = e.obra.nombre)
+            Destino.Catalogo -> PantallaCatalogo(alVolver = volver, alAbrir = { irA(Destino.Ficha(it)) }, alNuevo = { irA(Destino.InsumoNuevo) })
+            is Destino.Ficha -> PantallaFichaInsumo(d.insumo, alVolver = volver, alVerStock = { irA(Destino.Stock) })
+            Destino.InsumoNuevo -> PantallaInsumoNuevo(alVolver = volver, alAbrir = { volver(); irA(Destino.Ficha(it)) })
             else -> PantallaInicio(e.sesion, e.obra, irA = irA) // pantallas del Sprint 2 en construcción
         }
     }
