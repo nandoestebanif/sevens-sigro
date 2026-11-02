@@ -1217,6 +1217,65 @@
     }
    }
   },
+  "/interno/obras": {
+   "get": {
+    "tags": [
+     "interno"
+    ],
+    "summary": "Buscar Obras",
+    "description": "Obras con ese nombre (sin distinguir mayúsculas, tildes ni espacios de más). HU-41: «saldo de otra obra» solo vale\nsi esa obra NO está en el sistema; si está, se usa el traslado (HU-42).",
+    "operationId": "buscar_obras_interno_obras_get",
+    "parameters": [
+     {
+      "name": "nombre",
+      "in": "query",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "minLength": 1,
+       "maxLength": 200,
+       "title": "Nombre"
+      }
+     },
+     {
+      "name": "x-servicio-token",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "X-Servicio-Token"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
   "/interno/obras/{obra_id}": {
    "get": {
     "tags": [
@@ -1369,6 +1428,63 @@
     ],
     "summary": "Periodos",
     "operationId": "periodos_interno_obras__obra_id__periodos_get",
+    "parameters": [
+     {
+      "name": "obra_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Obra Id"
+      }
+     },
+     {
+      "name": "x-servicio-token",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "X-Servicio-Token"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/interno/obras/{obra_id}/almacenes": {
+   "get": {
+    "tags": [
+     "interno"
+    ],
+    "summary": "Almacenes",
+    "description": "Para la réplica local de almacén (almacen_ref): los almacenes de la obra con su tipo y estado.",
+    "operationId": "almacenes_interno_obras__obra_id__almacenes_get",
     "parameters": [
      {
       "name": "obra_id",
@@ -1612,6 +1728,17 @@
        }
       ],
       "title": "Roles"
+     },
+     "dispositivo": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Dispositivo"
      }
     },
     "type": "object",
@@ -1651,6 +1778,17 @@
        }
       ],
       "title": "Rol"
+     },
+     "dispositivo_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Dispositivo Id"
      }
     },
     "type": "object",

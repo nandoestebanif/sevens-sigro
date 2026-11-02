@@ -24,6 +24,10 @@ envVarGroups:
         value: https://sigro-compras.onrender.com
       - key: SIGRO_URL_TAREO
         value: https://sigro-tareo.onrender.com
+      - key: SIGRO_URL_ALMACEN
+        value: https://sigro-almacen.onrender.com
+      - key: SIGRO_URL_COSTO
+        value: https://sigro-costo.onrender.com
       - key: SIGRO_INTEGRACIONES_URL
         value: https://sigro-integraciones.onrender.com
 
@@ -107,6 +111,38 @@ services:
         sync: false
 
   - type: web
+    name: sigro-almacen
+    runtime: docker
+    plan: free
+    dockerContext: ./api
+    dockerfilePath: ./api/Dockerfile
+    healthCheckPath: /salud
+    envVars:
+      - fromGroup: sigro-comun
+      - key: SERVICIO
+        value: almacen
+      - key: SIGRO_SERVICIO
+        value: almacen
+      - key: SIGRO_APP_DATABASE_URL   # postgresql+psycopg://sigro_almacen:<clave>@<host-neon-pooler>/neondb?sslmode=require (migración 0010)
+        sync: false
+
+  - type: web
+    name: sigro-costo
+    runtime: docker
+    plan: free
+    dockerContext: ./api
+    dockerfilePath: ./api/Dockerfile
+    healthCheckPath: /salud
+    envVars:
+      - fromGroup: sigro-comun
+      - key: SERVICIO
+        value: costo
+      - key: SIGRO_SERVICIO
+        value: costo
+      - key: SIGRO_APP_DATABASE_URL   # postgresql+psycopg://sigro_costo:<clave>@<host-neon-pooler>/neondb?sslmode=require (migración 0010)
+        sync: false
+
+  - type: web
     name: sigro-integraciones
     runtime: docker
     plan: free
@@ -135,3 +171,5 @@ services:
 
 # Fuera del plan gratuito (se agregan cuando haga falta):
 #   relevo y notificaciones: los avisos se acumulan en outbox.evento y no se pierden; se entregan cuando se despliegue el relevo.
+#   Ojo (0010): el relevo también lleva a costo los eventos de integración de almacén. Sin relevo, el stock y el kárdex
+#   funcionan (son de almacén) pero GET /costo/gasto muestra recibido/consumido/en stock en cero hasta que se despliegue.
