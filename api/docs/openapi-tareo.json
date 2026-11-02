@@ -491,6 +491,63 @@
      }
     }
    }
+  },
+  "/interno/obras/{obra_id}/horas": {
+   "get": {
+    "tags": [
+     "interno"
+    ],
+    "summary": "Horas",
+    "description": "Horas de las jornadas vigentes de la obra, con las extra aparte, y la fecha de la última jornada (corte).",
+    "operationId": "horas_interno_obras__obra_id__horas_get",
+    "parameters": [
+     {
+      "name": "obra_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Obra Id"
+      }
+     },
+     {
+      "name": "x-servicio-token",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "X-Servicio-Token"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
   }
  },
  "components": {
