@@ -53,6 +53,7 @@ import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import dev.chrisbanes.haze.HazeInputScale
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.HazeStyle
 import dev.chrisbanes.haze.HazeTint
@@ -111,7 +112,9 @@ fun Modifier.vidrio(forma: Shape, fuerte: Boolean = false, sombra: Dp = 10.dp): 
         .shadow(sombra, forma, ambientColor = Paleta.Tinta.copy(alpha = 0.10f), spotColor = Paleta.Tinta.copy(alpha = 0.16f))
         .clip(forma)
     val relleno = if (haze != null) {
-        recorte.hazeEffect(haze, if (fuerte) EstiloVidrioFuerte else EstiloVidrio)
+        // inputScale Auto: Haze desenfoca una copia a 1/3 de resolución y la estira. Con 18–22 dp de
+        // desenfoque no se distingue a la vista y cada tarjeta procesa ~9 veces menos píxeles por cuadro.
+        recorte.hazeEffect(haze, if (fuerte) EstiloVidrioFuerte else EstiloVidrio) { inputScale = HazeInputScale.Auto }
     } else {
         recorte.background(Color.White.copy(alpha = if (fuerte) 0.9f else 0.82f))
     }
