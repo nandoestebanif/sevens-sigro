@@ -201,9 +201,11 @@ class RepositorioRegistrosImpl(
                     put("origen", r.origen.api)
                     put("origen_detalle", r.detalle)
                 }
-                is RegistroAlmacen.Traslado -> {
-                    put("almacen_id", r.almacenId)
-                    put("obra_destino_id", r.obraDestinoId)
+                is RegistroAlmacen.Traslado -> { // TrasladoIn: el costo lo pone el servidor y viaja con el material
+                    put("origen_almacen_id", r.almacenId)
+                    put("destino_obra_id", r.obraDestinoId)
+                    put("destino_almacen_id", r.destinoAlmacenId)
+                    put("motivo", r.motivo)
                     putJsonArray("lineas") {
                         r.lineas.forEach { addJsonObject { put("insumo_id", it.insumo.id); put("cantidad", cant(it.cantidad)) } }
                     }

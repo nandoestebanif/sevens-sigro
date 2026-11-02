@@ -154,4 +154,11 @@ class PantallasSprint2Test {
         assertTrue(validarRecepcion(c, mapOf(1 to "2"), pend).containsKey(1), "sin id del catálogo no se puede enviar por línea")
         assertTrue(validarRecepcion(c, emptyMap(), pend, todo = true).isEmpty(), "«llegó todo» viaja sin líneas")
     }
+
+    @Test
+    fun trasladoExigeAlmacenDestinoYMotivo() {
+        val cemento = Insumo(1151, "1151", "CEMENTO PORTLAND TIPO I - 42.5 KG", "bolsas")
+        val e = validarTraslado(ObraAsignada(2, "Otra", ""), listOf(LineaAlmacen(cemento, "20")), null, "")
+        assertEquals(setOf("almacenDestino", "motivo"), e.keys)
+    }
 }

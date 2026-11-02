@@ -50,7 +50,10 @@ sealed interface RegistroAlmacen {
     data class IngresoSinCompra(val almacenId: Int?, val origen: OrigenIngreso, val linea: LineaAlmacen, val costoUnitario: String, val detalle: String?) : RegistroAlmacen {
         override val tipo get() = TipoRegistro.INGRESO_SIN_COMPRA
     }
-    data class Traslado(val almacenId: Int?, val obraDestinoId: Int, val obraDestino: String, val lineas: List<LineaAlmacen>) : RegistroAlmacen {
+    data class Traslado(
+        val almacenId: Int?, val obraDestinoId: Int, val obraDestino: String, val destinoAlmacenId: Int, val motivo: String,
+        val lineas: List<LineaAlmacen>,
+    ) : RegistroAlmacen {
         override val tipo get() = TipoRegistro.TRASLADO
     }
     data class Conteo(val almacenId: Int?, val fecha: String, val lineas: List<Pair<LineaAlmacen, MotivoDiferencia?>>) : RegistroAlmacen {

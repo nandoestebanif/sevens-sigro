@@ -206,7 +206,7 @@ enum class TipoRegistro(val legible: String, val conServicio: Boolean) {
     JORNADA("Asistencia", true),
     ENTRADA_COMPRA("Entrada de compra", true),
     INGRESO_SIN_COMPRA("Ingreso sin compra", true),
-    TRASLADO("Traslado", false),
+    TRASLADO("Traslado", true),
     CONTEO("Conteo físico", false),
     CIERRE("Cierre de obra", false),
 }
