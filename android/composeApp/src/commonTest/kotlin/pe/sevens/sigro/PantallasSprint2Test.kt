@@ -16,6 +16,8 @@ import pe.sevens.sigro.ui.pantallas.saldoParaMostrar
 import pe.sevens.sigro.ui.pantallas.validarRecepcion
 import pe.sevens.sigro.ui.pantallas.validarIngreso
 import pe.sevens.sigro.ui.pantallas.validarTraslado
+import pe.sevens.sigro.ui.pantallas.validarConteo
+import pe.sevens.sigro.ui.pantallas.LineaConteo
 import pe.sevens.sigro.dominio.LineaAlmacen
 import pe.sevens.sigro.dominio.CompraParaRecibir
 import pe.sevens.sigro.dominio.LineaCompra
@@ -116,5 +118,13 @@ class PantallasSprint2Test {
         assertEquals(setOf("destino", "lineas"), validarTraslado(null, emptyList()).keys)
         assertEquals(setOf("0"), validarTraslado(ObraAsignada(2, "Otra", ""), listOf(LineaAlmacen(cemento, "0"))).keys)
         assertTrue(validarTraslado(ObraAsignada(2, "Otra", ""), listOf(LineaAlmacen(cemento, "20"))).isEmpty())
+    }
+
+    @Test
+    fun conteoAdmiteCeroYExigeAlgoContado() {
+        val arena = Insumo(423, "423", "ARENA GRUESA", "metro cúbico")
+        assertTrue(validarConteo(listOf(LineaConteo(arena, "0"))).isEmpty(), "contar cero es válido")
+        assertEquals(setOf("0"), validarConteo(listOf(LineaConteo(arena, ""))).keys)
+        assertEquals(setOf("lineas"), validarConteo(emptyList()).keys)
     }
 }

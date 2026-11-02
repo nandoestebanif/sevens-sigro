@@ -58,6 +58,8 @@ import pe.sevens.sigro.ui.pantallas.PantallaStock
 import pe.sevens.sigro.ui.pantallas.StockViewModel
 import pe.sevens.sigro.ui.pantallas.EntradaViewModel
 import pe.sevens.sigro.ui.pantallas.PantallaEntrada
+import pe.sevens.sigro.ui.pantallas.ConteoViewModel
+import pe.sevens.sigro.ui.pantallas.PantallaConteo
 import pe.sevens.sigro.ui.pantallas.TrasladoViewModel
 import pe.sevens.sigro.ui.pantallas.PantallaTraslado
 import pe.sevens.sigro.ui.pantallas.IngresoSinCompraViewModel
@@ -286,6 +288,10 @@ fun main(args: Array<String>) {
     val traslado = TrasladoViewModel(CatalogoFalso, ObraFalsa, registros)
     capturar(dir, "20-traslado", preparar = { traslado.cargar(1, sesionEjemplo.obras); Thread.sleep(300); traslado.estado.value.destinos.firstOrNull()?.let(traslado::destino); traslado.agregar(insumo("CEMENTO PORTLAND TIPO I")); traslado.cantidad(0, "20") }) {
         PantallaTraslado(1, "Multifamiliar Flores", sesionEjemplo.obras, {}, traslado)
+    }
+    val conteo = ConteoViewModel(CatalogoFalso, ObraFalsa, registros)
+    capturar(dir, "21-conteo", preparar = { conteo.agregar(insumo("CEMENTO PORTLAND TIPO I")); conteo.contado(0, "36"); conteo.motivo(0, pe.sevens.sigro.dominio.MotivoDiferencia.MERMA) }) {
+        PantallaConteo(1, {}, conteo)
     }
     kotlin.system.exitProcess(0)
 }
