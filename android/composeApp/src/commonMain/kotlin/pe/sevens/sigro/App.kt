@@ -31,6 +31,7 @@ import pe.sevens.sigro.ui.pantallas.PantallaStock
 import pe.sevens.sigro.ui.pantallas.PantallaTraslado
 import pe.sevens.sigro.ui.pantallas.PantallaTrabajadorNuevo
 import pe.sevens.sigro.ui.pantallas.PantallaTrabajadores
+import pe.sevens.sigro.ui.pantallas.PantallaCierre
 import pe.sevens.sigro.ui.pantallas.PantallaConteo
 import pe.sevens.sigro.ui.pantallas.PantallaDispositivo
 import pe.sevens.sigro.ui.pantallas.PantallaFichaInsumo
@@ -107,7 +108,7 @@ private fun Navegacion(e: EstadoRaiz.Dentro) {
             Destino.IngresoSinCompra -> PantallaIngresoSinCompra(e.obra.id, alVolver = volver)
             Destino.Traslado -> PantallaTraslado(e.obra.id, e.obra.nombre, e.sesion.obras, alVolver = volver)
             Destino.Conteo -> PantallaConteo(e.obra.id, alVolver = volver)
-            else -> PantallaInicio(e.sesion, e.obra, irA = irA) // pantallas del Sprint 2 en construcción
+            Destino.Cierre -> PantallaCierre(e.obra.id, e.obra.nombre, alVolver = volver)
         }
     }
 }
