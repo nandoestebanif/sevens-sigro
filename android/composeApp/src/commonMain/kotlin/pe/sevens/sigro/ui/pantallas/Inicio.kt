@@ -259,8 +259,8 @@ fun PantallaInicio(
 
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Acceso(Icons.Filled.ArrowUpward, "Salida", principal = true) { irA(Destino.Salida) }
-                Acceso(Icons.Filled.ArrowDownward, "Entrada", habilitado = false) {}
-                Acceso(Icons.Filled.ViewInAr, "Stock", habilitado = false) {}
+                Acceso(Icons.Filled.ArrowDownward, "Entrada") { irA(Destino.Entrada) }
+                Acceso(Icons.Filled.ViewInAr, "Stock") { irA(Destino.Stock) }
                 Acceso(Icons.Filled.MoreHoriz, "Más") { conMas = true }
             }
 
@@ -306,6 +306,7 @@ fun PantallaInicio(
         BarraInferior(
             pendientes,
             alRegistros = { irA(Destino.Pendientes) },
+            alStock = { irA(Destino.Stock) },
             alPerfil = { vm.cambiarDeObra() },
             modifier = Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(start = 12.dp, end = 12.dp, bottom = 16.dp),
         )
@@ -323,6 +324,7 @@ fun PantallaInicio(
         ) {
             HojaMas(
                 e,
+                irA = { conMas = false; irA(it) },
                 alCelular = { conMas = false; irA(Destino.Dispositivo) },
                 alActualizar = { vm.actualizarCatalogo() },
                 alSalir = { conMas = false; vm.salir() },
@@ -422,14 +424,14 @@ private fun FilaRegistro(s: SalidaRegistrada, alPulsar: () -> Unit) {
 private data class Cuatro(val icono: ImageVector, val color: Color, val fondo: Color, val palabra: String)
 
 @Composable
-private fun BarraInferior(pendientes: Int, alRegistros: () -> Unit, alPerfil: () -> Unit, modifier: Modifier) {
+private fun BarraInferior(pendientes: Int, alRegistros: () -> Unit, alStock: () -> Unit, alPerfil: () -> Unit, modifier: Modifier) {
     Row(
         modifier.fillMaxWidth().height(76.dp).vidrio(RoundedCornerShape(38.dp), fuerte = true, sombra = 16.dp).padding(horizontal = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         ItemBarra(Icons.Filled.Home, "Inicio", activo = true) {}
         ItemBarra(Icons.AutoMirrored.Filled.FormatListBulleted, "Registros", insignia = pendientes, alPulsar = alRegistros)
-        ItemBarra(Icons.Filled.ViewInAr, "Stock", habilitado = false) {}
+        ItemBarra(Icons.Filled.ViewInAr, "Stock", alPulsar = alStock)
         ItemBarra(Icons.Filled.Engineering, "Perfil", alPulsar = alPerfil)
     }
 }
@@ -475,7 +477,7 @@ private fun RowScope.ItemBarra(
 
 /** Hoja «Más»: las demás operaciones del almacén. Las que aún no existen se ven, pero dicen «Pronto». */
 @Composable
-private fun HojaMas(e: EstadoInicio, alCelular: () -> Unit, alActualizar: () -> Unit, alSalir: () -> Unit, alCerrar: () -> Unit) {
+private fun HojaMas(e: EstadoInicio, irA: (Destino) -> Unit, alCelular: () -> Unit, alActualizar: () -> Unit, alSalir: () -> Unit, alCerrar: () -> Unit) {
     Column(
         Modifier.fillMaxWidth().navigationBarsPadding().padding(10.dp)
             .vidrio(RoundedCornerShape(32.dp), fuerte = true, sombra = 24.dp)
@@ -491,12 +493,12 @@ private fun HojaMas(e: EstadoInicio, alCelular: () -> Unit, alActualizar: () -> 
             }
         }
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            OpcionMas(Icons.Filled.MoveDown, "Ingreso sin compra")
-            OpcionMas(Icons.Filled.SwapHoriz, "Traslado entre obras")
+            OpcionMas(Icons.Filled.MoveDown, "Ingreso sin compra") { irA(Destino.IngresoSinCompra) }
+            OpcionMas(Icons.Filled.SwapHoriz, "Traslado entre obras") { irA(Destino.Traslado) }
         }
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            OpcionMas(Icons.Filled.FactCheck, "Conteo físico")
-            OpcionMas(Icons.Filled.Lock, "Cerrar obra")
+            OpcionMas(Icons.Filled.FactCheck, "Conteo físico") { irA(Destino.Conteo) }
+            OpcionMas(Icons.Filled.Lock, "Cerrar obra") { irA(Destino.Cierre) }
         }
         Row(
             Modifier.fillMaxWidth().background(Color.White, RoundedCornerShape(20.dp)).clickable(onClick = alCelular)
@@ -509,9 +511,9 @@ private fun HojaMas(e: EstadoInicio, alCelular: () -> Unit, alActualizar: () -> 
         }
         Text("OTROS RECURSOS", fontSize = 13.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.04.em, color = Paleta.Texto3)
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            OpcionMas(Icons.Filled.Search, "Catálogo", centrada = true)
-            OpcionMas(Icons.Filled.Build, "Herramientas", centrada = true)
-            OpcionMas(Icons.Filled.Groups, "Personal", centrada = true)
+            OpcionMas(Icons.Filled.Search, "Catálogo", centrada = true) { irA(Destino.Catalogo) }
+            OpcionMas(Icons.Filled.Build, "Herramientas", centrada = true, alPulsar = null)
+            OpcionMas(Icons.Filled.Groups, "Personal", centrada = true) { irA(Destino.Trabajadores) }
         }
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
@@ -534,16 +536,19 @@ private fun HojaMas(e: EstadoInicio, alCelular: () -> Unit, alActualizar: () -> 
 }
 
 @Composable
-private fun RowScope.OpcionMas(icono: ImageVector, texto: String, centrada: Boolean = false) {
+private fun RowScope.OpcionMas(icono: ImageVector, texto: String, centrada: Boolean = false, alPulsar: (() -> Unit)?) {
+    val pronto = alPulsar == null
     Column(
-        Modifier.weight(1f).alpha(0.55f).background(Color.White, RoundedCornerShape(20.dp))
+        Modifier.weight(1f).alpha(if (pronto) 0.55f else 1f).background(Color.White, RoundedCornerShape(20.dp))
+            .clickable(enabled = !pronto, role = Role.Button) { alPulsar?.invoke() }
+            .heightIn(min = 44.dp)
             .padding(horizontal = if (centrada) 8.dp else 14.dp, vertical = if (centrada) 12.dp else 14.dp)
-            .semantics(mergeDescendants = true) { contentDescription = "$texto, próximamente" },
+            .semantics(mergeDescendants = true) { if (pronto) contentDescription = "$texto, próximamente" },
         horizontalAlignment = if (centrada) Alignment.CenterHorizontally else Alignment.Start,
         verticalArrangement = Arrangement.spacedBy(if (centrada) 6.dp else 8.dp),
     ) {
         Icon(icono, contentDescription = null, tint = Paleta.Naranja, modifier = Modifier.size(24.dp))
         Text(texto, fontSize = if (centrada) 13.sp else 14.sp, fontWeight = FontWeight.Bold, color = Paleta.Tinta)
-        Text("Pronto", fontSize = 12.sp, color = Paleta.Texto3)
+        if (pronto) Text("Pronto", fontSize = 12.sp, color = Paleta.Texto3)
     }
 }
