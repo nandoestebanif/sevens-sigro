@@ -14,6 +14,7 @@ import pe.sevens.sigro.ui.pantallas.sinCerosDeMas
 import pe.sevens.sigro.ui.pantallas.textoFactor
 import pe.sevens.sigro.ui.pantallas.saldoParaMostrar
 import pe.sevens.sigro.ui.pantallas.validarRecepcion
+import pe.sevens.sigro.ui.pantallas.validarIngreso
 import pe.sevens.sigro.dominio.CompraParaRecibir
 import pe.sevens.sigro.dominio.LineaCompra
 import pe.sevens.sigro.ui.pantallas.CelularEnObra
@@ -97,5 +98,13 @@ class PantallasSprint2Test {
         assertTrue(validarRecepcion(c, mapOf(0 to "60", 1 to "0")).isEmpty(), "una parte puede llegar después")
         assertTrue(validarRecepcion(c, mapOf(0 to "101", 1 to "6")).containsKey(0), "HU-35: no más de lo comprado")
         assertTrue(validarRecepcion(c, mapOf(0 to "0", 1 to "0")).containsKey(-1), "al menos una cantidad")
+    }
+
+    @Test
+    fun ingresoSinCompraExigeCosto() {
+        val arena = Insumo(423, "423", "ARENA GRUESA", "metro cúbico")
+        assertEquals(setOf("costo"), validarIngreso(arena, "1,5", "").keys, "HU-41: sin costo no se valoriza")
+        assertTrue(validarIngreso(arena, "1,5", "60").isEmpty())
+        assertEquals(setOf("insumo", "cantidad", "costo"), validarIngreso(null, "", "").keys)
     }
 }
