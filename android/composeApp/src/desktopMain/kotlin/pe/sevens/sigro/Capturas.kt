@@ -56,6 +56,8 @@ import pe.sevens.sigro.ui.pantallas.PantallaTrabajadorNuevo
 import pe.sevens.sigro.ui.pantallas.PantallaAsistencia
 import pe.sevens.sigro.ui.pantallas.PantallaStock
 import pe.sevens.sigro.ui.pantallas.StockViewModel
+import pe.sevens.sigro.ui.pantallas.EntradaViewModel
+import pe.sevens.sigro.ui.pantallas.PantallaEntrada
 import pe.sevens.sigro.dominio.RepositorioObra
 import pe.sevens.sigro.dominio.AlmacenObra
 import pe.sevens.sigro.dominio.CompraParaRecibir
@@ -269,5 +271,9 @@ fun main(args: Array<String>) {
     }
     val stock = StockViewModel(CatalogoFalso, ObraFalsa)
     capturar(dir, "17-stock", preparar = { stock.cargar(1); stock.buscador.buscar("cemento") }) { PantallaStock(1, {}, stock) }
+    val entrada = EntradaViewModel(ObraFalsa, registros)
+    capturar(dir, "18-entrada", preparar = { entrada.cargar(1); Thread.sleep(300); entrada.estado.value.compras.firstOrNull()?.let(entrada::elegir); entrada.alternarModo(); entrada.recibido(0, "6") }) {
+        PantallaEntrada(1, {}, entrada)
+    }
     kotlin.system.exitProcess(0)
 }

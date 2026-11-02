@@ -13,6 +13,9 @@ import pe.sevens.sigro.ui.pantallas.EstadoCatalogo
 import pe.sevens.sigro.ui.pantallas.sinCerosDeMas
 import pe.sevens.sigro.ui.pantallas.textoFactor
 import pe.sevens.sigro.ui.pantallas.saldoParaMostrar
+import pe.sevens.sigro.ui.pantallas.validarRecepcion
+import pe.sevens.sigro.dominio.CompraParaRecibir
+import pe.sevens.sigro.dominio.LineaCompra
 import pe.sevens.sigro.ui.pantallas.CelularEnObra
 import pe.sevens.sigro.ui.pantallas.EstadoPantallaDispositivo
 import pe.sevens.sigro.ui.pantallas.celularEnObra
@@ -83,5 +86,16 @@ class PantallasSprint2Test {
     fun stockNoSeCalculaEnElCelular() {
         assertEquals("[lo calcula el servidor]", saldoParaMostrar(null, "bolsas"), "regla 2: sin saldo del servidor no hay número")
         assertEquals("38 bolsas", saldoParaMostrar("38", "bolsas"))
+    }
+
+    @Test
+    fun entradaNoRecibeMasDeLoComprado() {
+        val c = CompraParaRecibir(1, "[Proveedor]", "Factura [número]", "2026-10-27", listOf(
+            LineaCompra("1151", "CEMENTO PORTLAND TIPO I - 42.5 KG", "100", "bolsas"),
+            LineaCompra("423", "ARENA GRUESA", "6", "metro cúbico"),
+        ))
+        assertTrue(validarRecepcion(c, mapOf(0 to "60", 1 to "0")).isEmpty(), "una parte puede llegar después")
+        assertTrue(validarRecepcion(c, mapOf(0 to "101", 1 to "6")).containsKey(0), "HU-35: no más de lo comprado")
+        assertTrue(validarRecepcion(c, mapOf(0 to "0", 1 to "0")).containsKey(-1), "al menos una cantidad")
     }
 }
