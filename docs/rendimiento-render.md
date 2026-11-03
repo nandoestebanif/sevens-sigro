@@ -44,7 +44,7 @@ Desde Lima; Cloudflare atendió en **SCL** (Santiago) en todas las peticiones. S
 | `GET /salud` (obras, directo) | 5 | **0,35 s** | 0,34–0,36 s | cliente → Cloudflare → obras; **no toca la base** |
 | `GET /api/v1/obras` con sesión (obras, directo) | 7 | **0,75 s** | 0,72–1,18 s | cliente → Cloudflare → obras → Neon |
 | `GET /api/v1/obras` con sesión, por el gateway | — | *no medido* | — | ver nota |
-| `GET /api/v1/obras` en frío | — | *pendiente* | — | despertar gateway + obras |
+| `GET /api/v1/obras` con sesión, en frío (obras, directo) | 1 | **25,2 s** | — | despertar obras (Render) + Neon → consulta |
 
 **Nota sobre la medición con sesión (02/11/2026, 22:54, `main` = `9570173`).** Cloudflare respondió **429** a
 la IP del autor en `sigro-gateway.onrender.com`, así que **el gateway no se pudo medir desde esa red** y la ruta
@@ -55,6 +55,14 @@ comparar con la entrada por el gateway, súmese el salto gateway → obras medid
 **1 obra**, es decir, 4 + 2 × 1 = **6 viajes a Neon** por petición. Las 7 respuestas fueron 200, todas en SCL.
 Salida cruda (sin token: solo tiempos y CF-Ray): `api/docs/rendimiento/antes-2026-11-02-obras-directo.txt` y
 `api/docs/rendimiento/antes-2026-11-02-gateway-sin-sesion.txt`.
+
+**En frío (02/11/2026, 23:19).** También directo contra obras, por el mismo 429 del gateway: 16 min sin ninguna
+petición nuestra (de 23:03:12 a 23:19) y luego **una sola** `GET /api/v1/obras` con sesión → 200 en
+**25,2 s** de primer byte (SCL; DNS + TCP + TLS ~0,13 s como siempre). Casi todo es el despertar del servicio
+gratuito de Render; incluye además reanudar el cómputo de Neon (se suspende a los 5 min) y abrir la primera
+conexión. Sin `Server-Timing` no se puede separar una parte de la otra. No se controla que otra persona del equipo
+no haya usado el ambiente en esos 16 min, pero 25 s solo se explican con el servicio dormido. Por el gateway habría
+que sumar su propio despertar si también dormía. Salida cruda: `api/docs/rendimiento/antes-2026-11-02-obras-frio.txt`.
 
 Lectura de lo medido:
 
