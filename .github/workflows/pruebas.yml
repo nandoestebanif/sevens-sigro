@@ -81,7 +81,8 @@ jobs:
       - name: Claves de un solo uso (enmascaradas)
         run: |
           for s in OBRAS CATALOGO COMPRAS TAREO ALMACEN COSTO RELEVO ADMIN JWT SERVICIO; do
-            v=$(openssl rand -hex 24); echo "::add-mask::$v"; echo "CLAVE_$s=$v" >> "$GITHUB_ENV"
+            v=$(openssl rand -hex 24)Aa9    # la del administrador exige mayúsculas, minúsculas y número
+            echo "::add-mask::$v"; echo "CLAVE_$s=$v" >> "$GITHUB_ENV"
           done
       - name: Migrar, un usuario por servicio y datos reales del cliente
         working-directory: api
