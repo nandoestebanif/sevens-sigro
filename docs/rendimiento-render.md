@@ -149,6 +149,42 @@ sigue bloqueado, solo así).
 | `GET /api/v1/obras` con sesión, despierto | | | | | |
 | `GET /api/v1/obras` con sesión, en frío | | | | | |
 
+### Un nodo (ADR-10, rama `deploy-un-nodo`)
+
+Misma ruta y mismo script (`medir_render.sh`, una petición cada 5 s), con `SIGRO_BASE` apuntando al gateway del
+**nodo único**: el supervisor y los diez procesos (`infra/un_nodo/supervisor.py`), cada servicio con su usuario de
+base. **Medido en local (03/11/2026, 11:20, Windows 11, PostgreSQL 16.15 local, datos reales del cliente), no en
+Render**: no hay Cloudflare entre el navegador y el gateway ni red hasta Neon, así que estas cifras aíslan lo que
+cuesta el gateway y el salto entre procesos por `127.0.0.1`; no reemplazan la medición en Render, que queda pendiente
+de crear `sigro-api` (fila de abajo). Docker no arrancó en la máquina del autor (falta *Virtual Machine Platform*):
+el contenedor se construyó y probó en CI (job `un-nodo`, Linux, `--memory 512m` como Render): los diez procesos
+vivos en **366 MiB de 512** con la precarga + `fork()` del supervisor (ADR-10, «Memoria»), y la prueba de humo en verde
+(en esa corrida, por el gateway: `GET /api/v1/obras` 22 ms, catálogo con 2 243 insumos 94 ms, salida de almacén 28 ms;
+una petición de cada una, no la cadencia del script).
+
+| Ruta | n | Primer byte (mediana) | Rango | `gw-up` (mediana) | `obras-db` (consultas) | `obras-db-con` |
+|---|---|---|---|---|---|---|
+| `GET /api/v1/obras` con sesión, despierto · un nodo **local** | 7 | **0,022 s** | 0,020–0,023 s | 18,6 ms | 2,2 ms (2) | 0 |
+| `GET /api/v1/obras` con sesión, en frío · un nodo **local** | 1 | **0,072 s** | — | 68,3 ms | 7,7 ms (2) | 0 |
+| arranque en frío del nodo (`/salud/servicios` → 200, los 7 servicios) · **local** | 1 | **10,2 s** | — | — | — | — |
+| `GET /api/v1/obras` con sesión, despierto · `sigro-api` en **Render** | | *pendiente* | | | | |
+| `GET /api/v1/obras` con sesión, en frío · `sigro-api` en **Render** | | *pendiente* | | | | |
+
+Lectura:
+
+- **El salto gateway → obras por `127.0.0.1` cuesta ~11 ms** (`gw-up` 18,6 − `obras` 7,7). Antes, por
+  `https://sigro-obras.onrender.com`, eran **~60 ms** y, sobre todo, pasaba por Cloudflare, que respondía 429.
+- «En frío» local = la primera `GET /api/v1/obras` tras arrancar el nodo. El login previo ya había abierto la conexión
+  de obras (`obras-db-con` 0); los 68 ms son la primera ejecución de la ruta en ese proceso. En Render el frío lo
+  domina el despertar del servicio (25,2 s medidos el 02/11 para obras sola): con un nodo se despierta **una** vez
+  para todo el sistema en lugar de una por servicio.
+- El arranque de los diez procesos (10,2 s en local) se suma al despertar de Render; con 0,1 CPU en el plan gratuito
+  será más lento. Esa cifra es la que debe medirse primero en `sigro-api`.
+
+Salida cruda: `api/docs/rendimiento/un-nodo-2026-11-03-local-frio.txt`, `…-local-despierto.txt` y la prueba de
+humo `…-local-humo.txt` (login, catálogo con 2 243 insumos, 626 proveedores, ingreso y salida de almacén con el costo
+congelado, reenvío idempotente y 403 de un rol sin permiso, todo por el gateway).
+
 Pruebas sin base que sostienen los cambios: `api/pruebas/test_medicion.py` (cabecera, conteo de consultas y de
 conexiones con SQLite, ray reenviado y no falsificable desde afuera, pool y `-pooler`) y
 `api/pruebas/test_gateway_salud.py` (despertar en paralelo).
