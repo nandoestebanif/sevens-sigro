@@ -72,7 +72,8 @@ Detrás hay un servicio por dominio, cada uno con su proceso, su imagen Docker, 
 | **catalogo** | código único de insumo, factor de conversión, importación del S10 | `catalogo` |
 | **compras** | proveedores, compras, solicitudes, requerimiento, reposición | `compras` |
 | **tareo** | trabajadores y asistencia | `tareo` |
-| **almacen**, **costo** | movimientos, saldo, kárdex, costo promedio (por construir con el mismo patrón) | `almacen`, `costo` |
+| **almacen** | libro de movimientos (salidas, ingresos, recepciones, traslados, reversos, conteos), saldo y kárdex derivados, costo promedio ponderado **por almacén** congelado en cada salida (migración 0010) | `almacen` |
+| **costo** | gasto en recursos de la obra: modelo de lectura que recibe por eventos (outbox, destino `integracion`) los hechos valorizados de almacén (0010) | `costo` |
 | **integraciones** · **notificaciones** · **relevo** | S10/SUNAT/RENIEC · avisos · entrega del outbox | — · propia · `outbox` |
 
 Reglas: **nadie lee la base de otro servicio** (la base lo impide por permisos); lo ajeno se pide por la API

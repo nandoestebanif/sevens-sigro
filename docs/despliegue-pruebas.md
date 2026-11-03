@@ -16,7 +16,7 @@ emulador o del celular tenga a qué servidor conectarse. Responsable: Fernando. 
 # 1) Migrar y crear un usuario por servicio en Neon (desde la carpeta del repo)
 export SIGRO_DATABASE_URL="postgresql+psycopg://<dueño>@<host-neon>/neondb?sslmode=require"
 export SIGRO_OWNER_DSN="postgresql://<dueño>@<host-neon>/neondb?sslmode=require"
-export SIGRO_CLAVE_OBRAS=... SIGRO_CLAVE_CATALOGO=... SIGRO_CLAVE_COMPRAS=... SIGRO_CLAVE_TAREO=... SIGRO_CLAVE_RELEVO=...
+export SIGRO_CLAVE_OBRAS=... SIGRO_CLAVE_CATALOGO=... SIGRO_CLAVE_COMPRAS=... SIGRO_CLAVE_TAREO=... SIGRO_CLAVE_ALMACEN=... SIGRO_CLAVE_COSTO=... SIGRO_CLAVE_RELEVO=...
 cd api && sh ../infra/migrar.sh
 
 # 2) Datos reales de prueba (HT-07) y primer administrador
