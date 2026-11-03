@@ -1,152 +1,132 @@
 # Víctor Adiel Luján · Product Owner · Backend
 
-## 28/10 · La API pasó a microservicios (acordado contigo)
+**Sprint 2: 29/10 al 11/11/2026.** El Sprint 1 cerró el 28/10.
 
-Rama `arq-microservicios` (sale de `ht-05-app-base`). Lo que cambia para ti, sin perder nada de lo tuyo:
-
-- `api/app/main.py` ya no existe. Hay cinco apps: `app/servicios/{gateway,obras,catalogo,compras,tareo}.py`.
-  Tus módulos (`app/modulos/*`) siguen iguales salvo que **ya no hacen JOIN a otros esquemas**: compras pide los
-  insumos al catálogo (`catalogo_cliente.py`) y tareo pide los periodos a obras; el control de acceso de los
-  servicios que no son obras pregunta a `POST /interno/autorizar`.
-- **Migración 0009** (revísala tú, que eres el dueño de las migraciones): un rol por servicio con los mismos
-  privilegios que `sigro_app` tenía sobre su esquema, y tres disparadores que validan contra la obra en SECURITY DEFINER.
-- Tus **678 pruebas siguen en verde** corriendo con los servicios separados, cada uno con su usuario de base, más
-  29 nuevas en `pruebas/test_microservicios.py` (707 en total).
-- `docker-compose.yml` ahora levanta gateway, obras, catalogo, compras, tareo, relevo, notificaciones e
-  integraciones; `infra/migrar.sh` crea un usuario de base por servicio. Las claves nuevas están en `.env.example`.
-- Para almacén y costo: mismo patrón (carpeta en `app/modulos/`, entrada en `app/servicios/`, línea en
-  `app/enrutado.py`, rol en una migración). El detalle está en el ADR-09 de `docs/decisiones-arquitectura.md`.
-- Pendiente fase 2 (Sprint 2): réplicas locales por eventos para quitar las claves foráneas que cruzan esquemas.
-
-
-**Reparto del 22/10:** eres el Product Owner y llevas **todo el backend** (incluidos almacén y costo, que antes eran de Henry) y las migraciones: solo tú las creas. Tu carpeta es `api/`.
+**Tu área:** **Product Owner** y **todo el backend** (`api/`: obras, catálogo, compras, tareo, almacén, costo y el gateway). Eres el único que crea migraciones.
 
 ## Lo primero
 
-1. **Como PO, hoy:** recortar el alcance del Sprint 1 con el equipo manteniendo el objetivo (la carga no cabe al 27/10) y decidir HU-45 vs la matriz (¿el residente autoriza el reverso?).
-2. **T-235 · HT-02** (CI en cada PR) y **HT-07** (cargar proveedores, catálogo y la obra Multifamiliar Flores en la base de pruebas).
-3. El corazón del almacén: `movimiento` append-only con trigger sin UPDATE/DELETE, idempotencia por `uuid_cliente` (HU-38), salida con costo congelado (HU-40), recepción que genera el ingreso (HU-35), saldo derivado (HU-43), reverso (HU-45) y costo promedio sin IGV de factura (HU-55, NIC 2).
+1. **Como PO:** acepta desde la interfaz las HU que vuelven del Sprint 1 a medida que pasen sus pruebas. 39 de tus tareas pendientes son de «Aceptación»: sin tu aceptación ninguna HU llega a Done.
+2. **Revisa los PR de `api/`** (abajo). El #19 (migración 0010, almacén y costo) ya se fusionó.
+3. **Backend del Sprint 2:** tus HU de abajo, empezando por las que desbloquean a la app y a la web (traslados HU-42, conteo físico HU-46 en el servidor, cierre de obra HU-47).
 
-## Tus tareas del Sprint 1 · 106 tareas · 117 h pendientes
+## Los PR que te toca revisar
 
-| ID | HU | Fase | Tarea | h | Estado | Límite | Depende de |
-|---|---|---|---|--:|---|---|---|
-| T-003 | HU-01 | Base de datos | Implementar las tablas asociadas a HU-01: proyecto, proyecto_plazo_historial | 1 | Done | 24/10 | — |
-| T-004 | HU-01 | Backend | Programar el back-end de HU-01 (entidad, repositorio, servicio y controlador): el endpoint para crear la obra, validando nombre y plazo obligatorios, fin ≥ inicio y estado inicial «en ejecución» | 2 | Done | 25/10 | — |
-| T-005 | HU-01 | Triggers y funciones | Implementar el CHECK de fecha de fin ≥ inicio en proyecto (HU-01) | 1 | To Do | 25/10 | T-003 |
-| T-009 | HU-01 | Aceptación | Aceptar HU-01 como Product Owner desde la interfaz y moverla a Done | 0.5 | To Do | 27/10 | T-008 |
-| T-012 | HU-03 | Base de datos | Implementar las tablas asociadas a HU-03: periodo | 1 | Done | 24/10 | — |
-| T-013 | HU-03 | Backend | Programar el back-end de HU-03 (entidad, repositorio, servicio y controlador): la generación automática de semanas al crear la obra y al ampliar el plazo, con sus pruebas | 2 | Done | 25/10 | — |
-| T-017 | HU-03 | Aceptación | Aceptar HU-03 como Product Owner desde la interfaz y moverla a Done | 0.5 | To Do | 27/10 | T-016 |
-| T-020 | HU-07 | Base de datos | Implementar las tablas asociadas a HU-07: insumo (crear/actualizar por código) | 1 | To Do | 24/10 | T-019 |
-| T-021 | HU-07 | Backend | Programar el back-end de HU-07 (entidad, repositorio, servicio y controlador): el endpoint que aplica la importación: crear o actualizar insumos por código sin tocar saldos | 4 | To Do | 25/10 | T-020 |
-| T-022 | HU-07 | Backend | Configurar la llamada de la API a Integraciones con el token de servicio en docker compose | 4 | To Do | 25/10 | T-020 |
-| T-026 | HU-07 | Aceptación | Aceptar HU-07 como Product Owner desde la interfaz y moverla a Done | 0.5 | To Do | 27/10 | T-025 |
-| T-029 | HU-08 | Base de datos | Implementar las tablas asociadas a HU-08: insumo, insumo_nombre_comercial | 1 | To Do | 24/10 | T-028 |
-| T-030 | HU-08 | Backend | Programar el back-end de HU-08 (entidad, repositorio, servicio y controlador): el endpoint del catálogo: generar código único, rechazar duplicados y marcar «por verificar» | 3 | To Do | 25/10 | T-029 |
-| T-034 | HU-08 | Aceptación | Aceptar HU-08 como Product Owner desde la interfaz y moverla a Done | 0.5 | To Do | 27/10 | T-033 |
-| T-037 | HU-12 | Base de datos | Implementar las tablas asociadas a HU-12: usuario (hash de la clave, intentos, estado) | 1 | Done | 24/10 | — |
-| T-038 | HU-12 | Backend | Programar el back-end de HU-12 (entidad, repositorio, servicio y controlador): el login con Argon2id, sesión que caduca y se renueva, y bloqueo por intentos fallidos | 3 | Done | 25/10 | — |
-| T-042 | HU-12 | Aceptación | Aceptar HU-12 como Product Owner desde la interfaz y moverla a Done | 0.5 | To Do | 27/10 | T-041 |
-| T-045 | HU-13 | Base de datos | Implementar las tablas asociadas a HU-13: asignacion (el rol vive aquí, por obra) | 1 | Done | 24/10 | — |
-| T-046 | HU-13 | Backend | Programar el back-end de HU-13 (entidad, repositorio, servicio y controlador): los roles y verificar sus permisos en el servidor | 4 | Done | 25/10 | — |
-| T-049 | HU-13 | Aceptación | Aceptar HU-13 como Product Owner desde la interfaz y moverla a Done | 0.5 | To Do | 27/10 | T-048 |
-| T-052 | HU-14 | Base de datos | Implementar las tablas asociadas a HU-14: asignacion | 1 | Done | 24/10 | — |
-| T-053 | HU-14 | Backend | Programar el back-end de HU-14 (entidad, repositorio, servicio y controlador): el endpoint para asignar usuarios a obras | 2 | Done | 25/10 | — |
-| T-056 | HU-14 | Aceptación | Aceptar HU-14 como Product Owner desde la interfaz y moverla a Done | 0.5 | To Do | 27/10 | T-055 |
-| T-059 | HU-15 | Base de datos | Implementar las tablas asociadas a HU-15: dispositivo (máximo dos activos por obra) | 1 | Done | 24/10 | — |
-| T-060 | HU-15 | Backend | Programar el back-end de HU-15 (entidad, repositorio, servicio y controlador): el registro de dispositivos autorizados por obra (máximo dos) y el rechazo del no autorizado | 3 | Done | 25/10 | — |
-| T-064 | HU-15 | Aceptación | Aceptar HU-15 como Product Owner desde la interfaz y moverla a Done | 0.5 | To Do | 27/10 | T-063 |
-| T-067 | HU-16 | Base de datos | Implementar las tablas asociadas a HU-16: partida, partida_recurso | 1 | To Do | 24/10 | T-066 |
-| T-068 | HU-16 | Backend | Crear la tabla partida–recurso y programar el endpoint que la guarda | 5 | To Do | 25/10 | T-067 |
-| T-072 | HU-16 | Aceptación | Aceptar HU-16 como Product Owner desde la interfaz y moverla a Done | 0.5 | To Do | 27/10 | T-071 |
-| T-075 | HU-17 | Base de datos | Implementar las tablas asociadas a HU-17: insumo.factor_conversion con su histórico | 1 | To Do | 24/10 | T-074 |
-| T-076 | HU-17 | Backend | Programar el back-end de HU-17 (entidad, repositorio, servicio y controlador): el registro del factor de conversión con su fecha y su usuario | 2 | To Do | 25/10 | T-075 |
-| T-079 | HU-17 | Aceptación | Aceptar HU-17 como Product Owner desde la interfaz y moverla a Done | 0.5 | To Do | 27/10 | T-078 |
-| T-082 | HU-19 | Base de datos | Implementar las tablas asociadas a HU-19: requerimiento (cantidad y costo planificados, ajuste con motivo) | 1 | To Do | 24/10 | T-081 |
-| T-083 | HU-19 | Backend | Programar el back-end de HU-19 (entidad, repositorio, servicio y controlador): el guardado del requerimiento total y de sus ajustes con motivo | 3 | To Do | 25/10 | T-082 |
-| T-087 | HU-19 | Aceptación | Aceptar HU-19 como Product Owner desde la interfaz y moverla a Done | 0.5 | To Do | 27/10 | T-086 |
-| T-090 | HU-23 | Base de datos | Implementar las tablas asociadas a HU-23: vista de avance sobre requerimiento, compra_detalle y movimiento | 1 | To Do | 24/10 | T-089 |
-| T-091 | HU-23 | Backend | Programar el back-end de HU-23 (entidad, repositorio, servicio y controlador): la consulta de avance: requerido, comprado, recibido y consumido por insumo | 3 | To Do | 25/10 | T-090 |
-| T-095 | HU-23 | Aceptación | Aceptar HU-23 como Product Owner desde la interfaz y moverla a Done | 0.5 | To Do | 27/10 | T-094 |
-| T-098 | HU-24 | Base de datos | Implementar las tablas asociadas a HU-24: vista de saldo por comprar (requerido − comprado) | 1 | To Do | 24/10 | T-097 |
-| T-099 | HU-24 | Backend | Programar el back-end de HU-24 (entidad, repositorio, servicio y controlador): la consulta de lo que falta comprar por insumo | 2 | To Do | 25/10 | T-098 |
-| T-103 | HU-24 | Aceptación | Aceptar HU-24 como Product Owner desde la interfaz y moverla a Done | 0.5 | To Do | 27/10 | T-102 |
-| T-106 | HU-25 | Base de datos | Implementar las tablas asociadas a HU-25: parametro_reposicion (con vigencias, nunca se pisa) | 1 | To Do | 24/10 | T-105 |
-| T-107 | HU-25 | Backend | Programar el back-end de HU-25 (entidad, repositorio, servicio y controlador): el registro del stock de seguridad y del punto de reposición, con histórico | 4 | To Do | 25/10 | T-106 |
-| T-110 | HU-25 | Aceptación | Aceptar HU-25 como Product Owner desde la interfaz y moverla a Done | 0.5 | To Do | 27/10 | T-109 |
-| T-113 | HU-26 | Base de datos | Implementar las tablas asociadas a HU-26: alerta_reposicion y outbox de Notificaciones | 1 | To Do | 24/10 | T-112 |
-| T-114 | HU-26 | Backend | Programar el back-end de HU-26 (entidad, repositorio, servicio y controlador): el motor de alertas: una por insumo y marcada como atendida al comprar | 2 | To Do | 25/10 | T-113 |
-| T-115 | HU-26 | Integración | Publicar la alerta en el microservicio de Notificaciones (outbox) para avisar al residente | 2 | To Do | 25/10 | T-112 |
-| T-119 | HU-26 | Aceptación | Aceptar HU-26 como Product Owner desde la interfaz y moverla a Done | 0.5 | To Do | 27/10 | T-118 |
-| T-122 | HU-27 | Base de datos | Implementar las tablas asociadas a HU-27: vista de sugerencia de compra | 1 | To Do | 24/10 | T-121 |
-| T-123 | HU-27 | Backend | Programar el back-end de HU-27 (entidad, repositorio, servicio y controlador): el cálculo de la sugerencia de compra con su criterio | 3 | To Do | 25/10 | T-122 |
-| T-127 | HU-27 | Aceptación | Aceptar HU-27 como Product Owner desde la interfaz y moverla a Done | 0.5 | To Do | 27/10 | T-126 |
-| T-130 | HU-29 | Base de datos | Implementar las tablas asociadas a HU-29: proveedor (RUC o DNI único) | 1 | Done | 24/10 | — |
-| T-131 | HU-29 | Backend | Programar el back-end de HU-29 (entidad, repositorio, servicio y controlador): la búsqueda de proveedores por razón social o RUC | 2 | Done | 25/10 | — |
-| T-135 | HU-29 | Aceptación | Aceptar HU-29 como Product Owner desde la interfaz y moverla a Done | 0.5 | To Do | 27/10 | T-134 |
-| T-138 | HU-30 | Base de datos | Implementar las tablas asociadas a HU-30: proveedor | 1 | Done | 24/10 | — |
-| T-139 | HU-30 | Backend | Programar el back-end de HU-30 (entidad, repositorio, servicio y controlador): el alta de proveedor rechazando RUC o DNI repetidos | 2 | Done | 25/10 | — |
-| T-143 | HU-30 | Aceptación | Aceptar HU-30 como Product Owner desde la interfaz y moverla a Done | 0.5 | To Do | 27/10 | T-142 |
-| T-146 | HU-32 | Base de datos | Implementar las tablas asociadas a HU-32: compra, compra_detalle | 1 | Done | 24/10 | — |
-| T-147 | HU-32 | Backend | Programar el back-end de HU-32 (entidad, repositorio, servicio y controlador): el registro de compra: comprobante único, base, IGV y total, sin mover stock | 5 | Done | 25/10 | — |
-| T-151 | HU-32 | Aceptación | Aceptar HU-32 como Product Owner desde la interfaz y moverla a Done | 0.5 | To Do | 27/10 | T-150 |
-| T-154 | HU-35 | Base de datos | Implementar las tablas asociadas a HU-35: recepcion, recepcion_detalle y su movimiento de ingreso | 1 | To Do | 24/10 | T-153 |
-| T-155 | HU-35 | Backend | Programar el back-end de HU-35 (entidad, repositorio, servicio y controlador): la recepción total o parcial que genera el ingreso al kárdex | 4 | To Do | 25/10 | T-154 |
-| T-160 | HU-35 | Aceptación | Aceptar HU-35 como Product Owner desde la interfaz y moverla a Done | 0.5 | To Do | 27/10 | T-159 |
-| T-166 | HU-37 | Aceptación | Aceptar HU-37 como Product Owner desde la interfaz y moverla a Done | 0.5 | To Do | 27/10 | T-165 |
-| T-169 | HU-38 | Base de datos | Implementar las tablas asociadas a HU-38: movimiento.uuid_cliente UNIQUE | 1 | To Do | 24/10 | T-168 |
-| T-170 | HU-38 | Backend | Programar el back-end de HU-38 (entidad, repositorio, servicio y controlador): la idempotencia por uuid_cliente y devolver el motivo del rechazo | 4 | To Do | 25/10 | T-169 |
-| T-171 | HU-38 | Triggers y funciones | Implementar el índice único de uuid_cliente que vuelve idempotente el reenvío (HU-38) | 1 | To Do | 25/10 | T-169 |
-| T-174 | HU-38 | Aceptación | Aceptar HU-38 como Product Owner desde la interfaz y moverla a Done | 0.5 | To Do | 27/10 | T-173 |
-| T-177 | HU-40 | Base de datos | Implementar las tablas asociadas a HU-40: movimiento (append-only, costo_unitario congelado) | 1 | To Do | 24/10 | T-176 |
-| T-178 | HU-40 | Backend | Programar el back-end de HU-40 (entidad, repositorio, servicio y controlador): la salida: rechazar si supera el saldo y congelar el costo promedio | 7 | To Do | 25/10 | T-177 |
-| T-179 | HU-40 | Triggers y funciones | Implementar el trigger que impide UPDATE y DELETE en movimiento y el que rechaza fechas fuera del plazo (HU-40) | 1 | To Do | 25/10 | T-177 |
-| T-182 | HU-40 | Aceptación | Aceptar HU-40 como Product Owner desde la interfaz y moverla a Done | 0.5 | To Do | 27/10 | T-181 |
-| T-185 | HU-43 | Base de datos | Implementar las tablas asociadas a HU-43: vista de saldo derivada de movimiento | 1 | To Do | 24/10 | T-184 |
-| T-186 | HU-43 | Backend | Programar el back-end de HU-43 (entidad, repositorio, servicio y controlador): el cálculo del stock desde el libro de movimientos, por almacén y consolidado | 2 | To Do | 25/10 | T-185 |
-| T-187 | HU-43 | Triggers y funciones | Implementar la función que calcula el saldo SUM(cantidad × signo) por almacén e insumo (HU-43) | 1 | To Do | 25/10 | T-185 |
-| T-192 | HU-43 | Aceptación | Aceptar HU-43 como Product Owner desde la interfaz y moverla a Done | 0.5 | To Do | 27/10 | T-191 |
-| T-195 | HU-45 | Base de datos | Implementar las tablas asociadas a HU-45: movimiento.movimiento_origen_id (reverso) | 1 | To Do | 24/10 | T-194 |
-| T-196 | HU-45 | Backend | Programar el back-end de HU-45 (entidad, repositorio, servicio y controlador): el reverso que apunta al original, sin UPDATE ni DELETE | 3 | To Do | 25/10 | T-195 |
-| T-200 | HU-45 | Aceptación | Aceptar HU-45 como Product Owner desde la interfaz y moverla a Done | 0.5 | To Do | 27/10 | T-199 |
-| T-203 | HU-55 | Base de datos | Implementar las tablas asociadas a HU-55: costo_promedio por insumo y almacén | 1 | To Do | 24/10 | T-202 |
-| T-204 | HU-55 | Backend | Programar el back-end de HU-55 (entidad, repositorio, servicio y controlador): el costo promedio ponderado congelado en cada salida, sin IGV de factura (NIC 2) | 7 | To Do | 25/10 | T-203 |
-| T-205 | HU-55 | Triggers y funciones | Implementar la función que recalcula el costo promedio ponderado en cada ingreso (HU-55) | 1 | To Do | 25/10 | T-203 |
-| T-208 | HU-55 | Aceptación | Aceptar HU-55 como Product Owner desde la interfaz y moverla a Done | 0.5 | To Do | 27/10 | T-207 |
-| T-211 | HU-57 | Base de datos | Implementar las tablas asociadas a HU-57: vista de desviación contra requerimiento | 1 | To Do | 24/10 | T-210 |
-| T-212 | HU-57 | Backend | Programar el back-end de HU-57 (entidad, repositorio, servicio y controlador): la comparación del consumo contra lo planificado en el S10 | 5 | To Do | 25/10 | T-211 |
-| T-216 | HU-57 | Aceptación | Aceptar HU-57 como Product Owner desde la interfaz y moverla a Done | 0.5 | To Do | 27/10 | T-215 |
-| T-219 | HU-62 | Base de datos | Implementar las tablas asociadas a HU-62: trabajador (único por obra, baja con fecha) | 1 | Done | 24/10 | — |
-| T-220 | HU-62 | Backend | Programar el back-end de HU-62 (entidad, repositorio, servicio y controlador): el registro de trabajadores: único por obra y baja con fecha | 2 | Done | 25/10 | — |
-| T-224 | HU-62 | Aceptación | Aceptar HU-62 como Product Owner desde la interfaz y moverla a Done | 0.5 | To Do | 27/10 | T-223 |
-| T-227 | HU-63 | Base de datos | Implementar las tablas asociadas a HU-63: jornada (UNIQUE trabajador + fecha entre las vigentes) | 1 | Done | 24/10 | — |
-| T-228 | HU-63 | Backend | Programar el back-end de HU-63 (entidad, repositorio, servicio y controlador): la asistencia: una jornada por trabajador y fecha, corrección sin borrar | 4 | Done | 25/10 | — |
-| T-229 | HU-63 | Triggers y funciones | Implementar el índice único parcial (trabajador, fecha) entre las jornadas vigentes (HU-63) | 1 | Done | 25/10 | — |
-| T-232 | HU-63 | Aceptación | Aceptar HU-63 como Product Owner desde la interfaz y moverla a Done | 0.5 | To Do | 27/10 | T-231 |
-| T-234 | HT-01 | Aceptación | Aceptar HT-01 como Product Owner y moverla a Done | 0.5 | To Do | 27/10 | — |
-| T-235 | HT-02 | DevOps | Configurar las pruebas automáticas en cada PR con GitHub Actions | 3 | To Do | 24/10 | — |
-| T-236 | HT-02 | Aceptación | Aceptar HT-02 como Product Owner y moverla a Done | 0.5 | To Do | 27/10 | — |
-| T-239 | HT-03 | Aceptación | Aceptar HT-03 como Product Owner y moverla a Done | 0.5 | To Do | 27/10 | — |
-| T-241 | HT-04 | Aceptación | Aceptar HT-04 como Product Owner y moverla a Done | 0.5 | To Do | 27/10 | — |
-| T-243 | HT-05 | Aceptación | Aceptar HT-05 como Product Owner y moverla a Done | 0.5 | To Do | 27/10 | — |
-| T-244 | HT-06 | Backend | Publicar el OpenAPI de la API en el ambiente de pruebas | 1 | Doing | 25/10 | — |
-| T-246 | HT-06 | Aceptación | Aceptar HT-06 como Product Owner y moverla a Done | 0.5 | To Do | 27/10 | — |
-| T-247 | HT-07 | Backend | Cargar en la base los 626 proveedores y el catálogo de insumos del cliente | 1 | To Do | 25/10 | — |
-| T-248 | HT-07 | Backend | Crear la obra Multifamiliar Flores con su relación de insumos del S10 en la base de pruebas | 1 | To Do | 25/10 | — |
-| T-249 | HT-07 | Aceptación | Aceptar HT-07 como Product Owner y moverla a Done | 0.5 | To Do | 27/10 | — |
-| T-251 | HT-08 | DevOps | Configurar el token de servicio en docker compose y enviarlo desde la API a Integraciones y Notificaciones | 1.5 | To Do | 24/10 | — |
-| T-252 | HT-08 | Aceptación | Aceptar HT-08 como Product Owner y moverla a Done | 0.5 | To Do | 27/10 | — |
+| PR | Qué es | Qué miras |
+|---|---|---|
+| [#17](https://github.com/xteban-sp/sevens-sigro/pull/17) | api: CLI crear-usuario y HU-23 avance de compra y consumo | la lógica y las pruebas de HU-23 |
+| [#18](https://github.com/xteban-sp/sevens-sigro/pull/18) | Rendimiento web y API: N+1, paginación opcional y propuesta de índices | la parte de `api/` y la propuesta de migración 0011 (solo tú la creas) |
+| [#24](https://github.com/xteban-sp/sevens-sigro/pull/24) | perf: Server-Timing, CF-Ray, `GET /obras` en una consulta y pool persistente (borrador) | `docs/rendimiento-render.md` y la decisión sobre el caché del permiso |
+| PR de esta guía | Guías del equipo para el Sprint 2 | que el reparto y las tareas sean los acordados |
 
-**Como PO** aceptas cada HU desde la interfaz con su DoD (tareas «Aceptar … como Product Owner»): es lo único que mueve la velocidad. Tu carga es la más alta del equipo; si no entra, se recorta alcance, no se baja la DoD.
+La parte web del #18 la revisa Henry.
+
+## Tus tareas pendientes según el tablero · 70 tareas · 86 h · 1 en Doing
+
+Son las que quedaron sin terminar en el tablero de cierre del Sprint 1 (`SIGRO - Sprint 1 · Registro del Sprint (cierre).xlsx`, hoja «Tablero») y vuelven al Sprint 2 con su avance.
+
+| ID | HU | Fase | Tarea | h | Estado | Depende de |
+|---|---|---|---|--:|---|---|
+| T-244 | HT-06 | Backend | Publicar el OpenAPI de la API en el ambiente de pruebas | 1 | Doing | — |
+| T-009 | HU-01 | Aceptación | Aceptar HU-01 como Product Owner desde la interfaz y moverla a Done | 0.5 | To Do | T-008 |
+| T-017 | HU-03 | Aceptación | Aceptar HU-03 como Product Owner desde la interfaz y moverla a Done | 0.5 | To Do | T-016 |
+| T-026 | HU-07 | Aceptación | Aceptar HU-07 como Product Owner desde la interfaz y moverla a Done | 0.5 | To Do | T-025 |
+| T-034 | HU-08 | Aceptación | Aceptar HU-08 como Product Owner desde la interfaz y moverla a Done | 0.5 | To Do | T-033 |
+| T-042 | HU-12 | Aceptación | Aceptar HU-12 como Product Owner desde la interfaz y moverla a Done | 0.5 | To Do | T-041 |
+| T-049 | HU-13 | Aceptación | Aceptar HU-13 como Product Owner desde la interfaz y moverla a Done | 0.5 | To Do | T-048 |
+| T-056 | HU-14 | Aceptación | Aceptar HU-14 como Product Owner desde la interfaz y moverla a Done | 0.5 | To Do | T-055 |
+| T-064 | HU-15 | Aceptación | Aceptar HU-15 como Product Owner desde la interfaz y moverla a Done | 0.5 | To Do | T-063 |
+| T-067 | HU-16 | Base de datos | Implementar las tablas asociadas a HU-16: partida, partida_recurso | 1 | To Do | T-066 |
+| T-068 | HU-16 | Backend | Crear la tabla partida–recurso y programar el endpoint que la guarda | 5 | To Do | T-067 |
+| T-072 | HU-16 | Aceptación | Aceptar HU-16 como Product Owner desde la interfaz y moverla a Done | 0.5 | To Do | T-071 |
+| T-079 | HU-17 | Aceptación | Aceptar HU-17 como Product Owner desde la interfaz y moverla a Done | 0.5 | To Do | T-078 |
+| T-087 | HU-19 | Aceptación | Aceptar HU-19 como Product Owner desde la interfaz y moverla a Done | 0.5 | To Do | T-086 |
+| T-090 | HU-23 | Base de datos | Implementar las tablas asociadas a HU-23: vista de avance sobre requerimiento, compra_detalle y movimiento | 1 | To Do | T-089 |
+| T-091 | HU-23 | Backend | Programar el back-end de HU-23 (entidad, repositorio, servicio y controlador): la consulta de avance: requerido, comprado, recibido y consumido por insumo | 3 | To Do | T-090 |
+| T-095 | HU-23 | Aceptación | Aceptar HU-23 como Product Owner desde la interfaz y moverla a Done | 0.5 | To Do | T-094 |
+| T-103 | HU-24 | Aceptación | Aceptar HU-24 como Product Owner desde la interfaz y moverla a Done | 0.5 | To Do | T-102 |
+| T-110 | HU-25 | Aceptación | Aceptar HU-25 como Product Owner desde la interfaz y moverla a Done | 0.5 | To Do | T-109 |
+| T-113 | HU-26 | Base de datos | Implementar las tablas asociadas a HU-26: alerta_reposicion y outbox de Notificaciones | 1 | To Do | T-112 |
+| T-114 | HU-26 | Backend | Programar el back-end de HU-26 (entidad, repositorio, servicio y controlador): el motor de alertas: una por insumo y marcada como atendida al comprar | 2 | To Do | T-113 |
+| T-115 | HU-26 | Integración | Publicar la alerta en el microservicio de Notificaciones (outbox) para avisar al residente | 2 | To Do | T-112 |
+| T-119 | HU-26 | Aceptación | Aceptar HU-26 como Product Owner desde la interfaz y moverla a Done | 0.5 | To Do | T-118 |
+| T-122 | HU-27 | Base de datos | Implementar las tablas asociadas a HU-27: vista de sugerencia de compra | 1 | To Do | T-121 |
+| T-123 | HU-27 | Backend | Programar el back-end de HU-27 (entidad, repositorio, servicio y controlador): el cálculo de la sugerencia de compra con su criterio | 3 | To Do | T-122 |
+| T-127 | HU-27 | Aceptación | Aceptar HU-27 como Product Owner desde la interfaz y moverla a Done | 0.5 | To Do | T-126 |
+| T-135 | HU-29 | Aceptación | Aceptar HU-29 como Product Owner desde la interfaz y moverla a Done | 0.5 | To Do | T-134 |
+| T-143 | HU-30 | Aceptación | Aceptar HU-30 como Product Owner desde la interfaz y moverla a Done | 0.5 | To Do | T-142 |
+| T-151 | HU-32 | Aceptación | Aceptar HU-32 como Product Owner desde la interfaz y moverla a Done | 0.5 | To Do | T-150 |
+| T-154 | HU-35 | Base de datos | Implementar las tablas asociadas a HU-35: recepcion, recepcion_detalle y su movimiento de ingreso | 1 | To Do | T-153 |
+| T-155 | HU-35 | Backend | Programar el back-end de HU-35 (entidad, repositorio, servicio y controlador): la recepción total o parcial que genera el ingreso al kárdex | 4 | To Do | T-154 |
+| T-160 | HU-35 | Aceptación | Aceptar HU-35 como Product Owner desde la interfaz y moverla a Done | 0.5 | To Do | T-159 |
+| T-166 | HU-37 | Aceptación | Aceptar HU-37 como Product Owner desde la interfaz y moverla a Done | 0.5 | To Do | T-165 |
+| T-169 | HU-38 | Base de datos | Implementar las tablas asociadas a HU-38: movimiento.uuid_cliente UNIQUE | 1 | To Do | T-168 |
+| T-170 | HU-38 | Backend | Programar el back-end de HU-38 (entidad, repositorio, servicio y controlador): la idempotencia por uuid_cliente y devolver el motivo del rechazo | 4 | To Do | T-169 |
+| T-171 | HU-38 | Triggers y funciones | Implementar el índice único de uuid_cliente que vuelve idempotente el reenvío (HU-38) | 1 | To Do | T-169 |
+| T-174 | HU-38 | Aceptación | Aceptar HU-38 como Product Owner desde la interfaz y moverla a Done | 0.5 | To Do | T-173 |
+| T-177 | HU-40 | Base de datos | Implementar las tablas asociadas a HU-40: movimiento (append-only, costo_unitario congelado) | 1 | To Do | T-176 |
+| T-178 | HU-40 | Backend | Programar el back-end de HU-40 (entidad, repositorio, servicio y controlador): la salida: rechazar si supera el saldo y congelar el costo promedio | 7 | To Do | T-177 |
+| T-179 | HU-40 | Triggers y funciones | Implementar el trigger que impide UPDATE y DELETE en movimiento y el que rechaza fechas fuera del plazo (HU-40) | 1 | To Do | T-177 |
+| T-182 | HU-40 | Aceptación | Aceptar HU-40 como Product Owner desde la interfaz y moverla a Done | 0.5 | To Do | T-181 |
+| T-185 | HU-43 | Base de datos | Implementar las tablas asociadas a HU-43: vista de saldo derivada de movimiento | 1 | To Do | T-184 |
+| T-186 | HU-43 | Backend | Programar el back-end de HU-43 (entidad, repositorio, servicio y controlador): el cálculo del stock desde el libro de movimientos, por almacén y consolidado | 2 | To Do | T-185 |
+| T-187 | HU-43 | Triggers y funciones | Implementar la función que calcula el saldo SUM(cantidad × signo) por almacén e insumo (HU-43) | 1 | To Do | T-185 |
+| T-192 | HU-43 | Aceptación | Aceptar HU-43 como Product Owner desde la interfaz y moverla a Done | 0.5 | To Do | T-191 |
+| T-195 | HU-45 | Base de datos | Implementar las tablas asociadas a HU-45: movimiento.movimiento_origen_id (reverso) | 1 | To Do | T-194 |
+| T-196 | HU-45 | Backend | Programar el back-end de HU-45 (entidad, repositorio, servicio y controlador): el reverso que apunta al original, sin UPDATE ni DELETE | 3 | To Do | T-195 |
+| T-200 | HU-45 | Aceptación | Aceptar HU-45 como Product Owner desde la interfaz y moverla a Done | 0.5 | To Do | T-199 |
+| T-203 | HU-55 | Base de datos | Implementar las tablas asociadas a HU-55: costo_promedio por insumo y almacén | 1 | To Do | T-202 |
+| T-204 | HU-55 | Backend | Programar el back-end de HU-55 (entidad, repositorio, servicio y controlador): el costo promedio ponderado congelado en cada salida, sin IGV de factura (NIC 2) | 7 | To Do | T-203 |
+| T-205 | HU-55 | Triggers y funciones | Implementar la función que recalcula el costo promedio ponderado en cada ingreso (HU-55) | 1 | To Do | T-203 |
+| T-208 | HU-55 | Aceptación | Aceptar HU-55 como Product Owner desde la interfaz y moverla a Done | 0.5 | To Do | T-207 |
+| T-211 | HU-57 | Base de datos | Implementar las tablas asociadas a HU-57: vista de desviación contra requerimiento | 1 | To Do | T-210 |
+| T-212 | HU-57 | Backend | Programar el back-end de HU-57 (entidad, repositorio, servicio y controlador): la comparación del consumo contra lo planificado en el S10 | 5 | To Do | T-211 |
+| T-216 | HU-57 | Aceptación | Aceptar HU-57 como Product Owner desde la interfaz y moverla a Done | 0.5 | To Do | T-215 |
+| T-224 | HU-62 | Aceptación | Aceptar HU-62 como Product Owner desde la interfaz y moverla a Done | 0.5 | To Do | T-223 |
+| T-232 | HU-63 | Aceptación | Aceptar HU-63 como Product Owner desde la interfaz y moverla a Done | 0.5 | To Do | T-231 |
+| T-234 | HT-01 | Aceptación | Aceptar HT-01 como Product Owner y moverla a Done | 0.5 | To Do | — |
+| T-236 | HT-02 | Aceptación | Aceptar HT-02 como Product Owner y moverla a Done | 0.5 | To Do | — |
+| T-239 | HT-03 | Aceptación | Aceptar HT-03 como Product Owner y moverla a Done | 0.5 | To Do | — |
+| T-241 | HT-04 | Aceptación | Aceptar HT-04 como Product Owner y moverla a Done | 0.5 | To Do | — |
+| T-243 | HT-05 | Aceptación | Aceptar HT-05 como Product Owner y moverla a Done | 0.5 | To Do | — |
+| T-246 | HT-06 | Aceptación | Aceptar HT-06 como Product Owner y moverla a Done | 0.5 | To Do | — |
+| T-248 | HT-07 | Backend | Crear la obra Multifamiliar Flores con su relación de insumos del S10 en la base de pruebas | 1 | To Do | — |
+| T-249 | HT-07 | Aceptación | Aceptar HT-07 como Product Owner y moverla a Done | 0.5 | To Do | — |
+| T-252 | HT-08 | Aceptación | Aceptar HT-08 como Product Owner y moverla a Done | 0.5 | To Do | — |
+| T-264 | HT-09 | Base de datos | Revisar y aprobar la migración 0009: un rol de base por servicio con permisos solo sobre su esquema | 1 | To Do | T-263 |
+| T-265 | HT-09 | Aceptación | Aceptar HT-09 como Product Owner y moverla a Done | 0.5 | To Do | T-263, T-264 |
+| T-267 | HT-10 | Modelado UML | Revisar la propuesta física de almacén y costo (0010) y decidir sus 5 puntos abiertos | 1.5 | To Do | T-266 |
+| T-268 | HT-10 | Aceptación | Aceptar HT-10 como Product Owner y moverla a Done | 0.5 | To Do | T-266, T-267 |
+
+## Tus historias del Sprint 2
+
+**Backend:** HU-02 Ampliar plazo del proyecto · HU-05 Registrar almacenes de la obra · HU-18 Repartir acero por diámetro · HU-20 Registrar requerimiento por fase · HU-21 Avisar exceso del requerimiento · HU-42 Trasladar material entre obras · HU-47 Cerrar obra y transferir saldo · HU-54 Declarar estado de herramientas al cierre · HU-64 Consultar horas acumuladas · HU-04 Definir el día de corte del periodo · HU-09 Registrar nombres comerciales del insumo · HU-10 Buscar insumo · HU-22 Agregar insumo no presupuestado · HU-33 Registrar precio pagado · HU-36 Avisar recepción excedida · HU-66 y HU-67 (solicitud de materiales, ficha CR-04): el servidor y sus permisos.
+
+Los criterios de aceptación están en `docs/historias-sprint-2.md`. El campo «Responsable» de ese archivo es del
+reparto anterior: manda el área de esta guía.
+
+## Los 3 cortes diarios del tablero (resumen)
+
+Regla del docente: el tablero se mueve **como mínimo 3 veces al día**, y cada movimiento lleva **fecha y hora**.
+Se registra en [`docs/scrum/SIGRO - Tablero por cortes horarios.xlsx`](../docs/scrum/SIGRO%20-%20Tablero%20por%20cortes%20horarios.xlsx)
+(hoja «Plantilla Sprint 2», 39 cortes del 30/10 al 11/11).
+
+| Corte | Qué se hace |
+|---|---|
+| **08:00 · Inicio** | Cada integrante pasa a Doing las tareas que hará hoy, **solo si su HU cumple la DoR (L1–L12)**. Máximo **2 tareas en Doing** por persona. |
+| **12:00 · Mediodía** | Lo terminado pasa de Doing a Done, **solo si cumple su criterio**; se anota lo que avanzó. |
+| **18:00 · Cierre** | Se mueve lo terminado en la tarde y se deja listo el día siguiente. |
+| **11/11 · Último día del sprint** | Todas las tareas en Done con el 100 % de la DoD. La HU pasa a Done cuando su tarea «Aceptación» cumple la DoD (T1–T10) y la acepta el PO. |
+
+Fernando no trabaja del viernes en la noche al sábado en la tarde: esos cortes los registra otro integrante.
 
 ## Cómo trabajas (igual para los cuatro)
 
-- Lee primero `CLAUDE.md` (reglas de dominio) y `docs/scrum/tablero-sprint-1.md` (reglas del tablero).
-- Tus tareas están en `docs/scrum/SIGRO - Sprint 1 · Registro del Sprint.xlsx`, hoja «Tablero». Al moverlas:
-  **To Do → Doing** solo si la HU cumple la DoR (L1–L12); **Doing → Done** con su criterio cumplido y la evidencia (PR o enlace).
-  Máximo **2 tareas en Doing**. Anota la fecha.
-- Cada día, en la hoja «Bitácora de trabajo»: una fila por actividad — fecha · hora · qué hiciste · T-xxx.
-- Una rama por tarea o HU (`hu-40-salida-app`), nada directo a `main`, PR pequeño que diga qué HU y qué condiciones finales cubre.
-  Lo aprueba alguien distinto de ti. **Sube tu trabajo aunque esté incompleto**: lo que no está en el repo no existe para la Review.
-- **Lunes 27/10: todo en Done. Martes 28/10: Review.**
+- Lee `CLAUDE.md` (las diez reglas de dominio y la Definición de Terminado) y [`LEEME.md`](LEEME.md) (los 3 cortes diarios).
+- Cada movimiento de tarjeta lleva fecha, **hora**, quién y evidencia (PR, captura o archivo). To Do → Doing exige la DoR;
+  Doing → Done exige el criterio de su fase (hoja «Criterios acordados» del registro del sprint).
+- Una rama por tarea o HU (`hu-46-conteo-fisico`), nada directo a `main`, PR pequeño que diga qué HU y qué condiciones
+  finales cubre. **Lo aprueba alguien distinto del autor.** Una rama que vive más de dos días se parte.
+- **Sube tu trabajo aunque esté incompleto**: lo que no está en el repo no existe para la Review.
+- Solo Adiel crea migraciones: si necesitas una tabla, pídesela.
+- **11/11: todo en Done. Se etiqueta `sprint-2`** y eso es lo que se demuestra.
