@@ -83,6 +83,13 @@ def _url_de(servicio: str) -> str | None:
     return os.environ.get(f"SIGRO_URL_{servicio.upper()}") or None
 
 
+def _segundos_de(retry_after: str | None) -> float:
+    try:
+        return max(0.0, float(retry_after)) if retry_after else 0.0
+    except ValueError:                            # Retry-After también puede venir como fecha: se ignora
+        return 0.0
+
+
 async def _salud_de(servicio: str, base: str | None, espera: float) -> dict:
     global _cliente
     if not base:
@@ -90,23 +97,83 @@ async def _salud_de(servicio: str, base: str | None, espera: float) -> dict:
     if _cliente is None:
         _cliente = httpx.AsyncClient(timeout=httpx.Timeout(30.0, connect=3.0))
     inicio = time.perf_counter()
+    pausa = 0.0
     try:
         # wait_for además del timeout de httpx: el tope vale aunque el servidor acepte la conexión y no conteste
         r = await asyncio.wait_for(_cliente.get(f"{base.rstrip('/')}/salud", timeout=espera), espera)
-        estado = "ok" if r.status_code == 200 else f"error_{r.status_code}"
+        if r.status_code == 429:
+            # Cloudflare (o el servicio) pide frenar: se informa «ocupado» y NO se reintenta; el resultado queda en
+            # memoria al menos lo que diga Retry-After (ver _guardar_salud)
+            estado, pausa = "ocupado", _segundos_de(r.headers.get("retry-after"))
+        else:
+            estado = "ok" if r.status_code == 200 else f"error_{r.status_code}"
     except (httpx.HTTPError, asyncio.TimeoutError):
         estado = "no_responde"                    # todavía despertando, o caído: la web vuelve a preguntar
-    return {"servicio": servicio, "listo": estado == "ok", "estado": estado,
-            "ms": round((time.perf_counter() - inicio) * 1000)}
+    datos = {"servicio": servicio, "listo": estado == "ok", "estado": estado,
+             "ms": round((time.perf_counter() - inicio) * 1000)}
+    if pausa:
+        datos["reintentar_en_s"] = round(pausa)
+    return datos
+
+
+# El resultado se guarda en memoria SIGRO_SALUD_CACHE segundos (30 por defecto) y nunca hay dos consultas a la vez:
+# si una está en curso, las demás peticiones esperan ese mismo resultado. Así, por muchas pestañas o sondeos que
+# lleguen, el gateway hace como mucho una ronda (7 llamadas) cada 30 s. Sin esto, Cloudflare respondía 429 a todo
+# el tráfico del gateway hacia los servicios, no solo a /salud.
+_salud_guardada: tuple[float, dict] | None = None     # (vence_en, cuerpo)
+_salud_en_curso: asyncio.Future | None = None
+_ahora = time.monotonic                               # las pruebas lo reemplazan para adelantar el reloj
+_PAUSA_MAXIMA_S = 300.0                               # un Retry-After exagerado no deja la salud congelada
+
+
+def _olvidar_salud() -> None:
+    global _salud_guardada, _salud_en_curso
+    _salud_guardada, _salud_en_curso = None, None
+
+
+async def _consultar_todos() -> dict:
+    espera = float(os.environ.get("SIGRO_SALUD_ESPERA", "8"))   # corto: la web vuelve a preguntar, no se cuelga aquí
+    nombres = list(_SIEMPRE) + [s for s in _SI_ESTAN if _url_de(s)]
+    servicios = await asyncio.gather(*(_salud_de(s, _url_de(s), espera) for s in nombres))
+    return {"listo": all(s["listo"] for s in servicios), "servicios": list(servicios)}
+
+
+def _guardar_salud(cuerpo: dict) -> None:
+    global _salud_guardada
+    vigencia = float(os.environ.get("SIGRO_SALUD_CACHE", "30"))
+    pausa = max((s.get("reintentar_en_s", 0) for s in cuerpo["servicios"]), default=0)
+    _salud_guardada = (_ahora() + max(vigencia, min(float(pausa), _PAUSA_MAXIMA_S)), cuerpo)
+
+
+async def _ronda() -> dict:
+    cuerpo = await _consultar_todos()
+    _guardar_salud(cuerpo)
+    return cuerpo
+
+
+def _al_terminar_ronda(tarea: asyncio.Task) -> None:
+    global _salud_en_curso
+    if _salud_en_curso is tarea:
+        _salud_en_curso = None
+    if not tarea.cancelled():
+        tarea.exception()                                   # marcada como vista: sin «never retrieved» en el log
+
+
+async def _salud_compartida() -> dict:
+    global _salud_en_curso
+    if _salud_guardada and _ahora() < _salud_guardada[0]:
+        return _salud_guardada[1]
+    tarea = _salud_en_curso
+    if tarea is None or tarea.done() or tarea.get_loop() is not asyncio.get_running_loop():
+        # la ronda es una tarea aparte: si quien la pidió se desconecta, los que esperan igual reciben el resultado
+        tarea = _salud_en_curso = asyncio.ensure_future(_ronda())
+        tarea.add_done_callback(_al_terminar_ronda)
+    return await asyncio.shield(tarea)                      # si otra petición ya está consultando, se espera esa
 
 
 async def salud_servicios(_: Request) -> JSONResponse:
-    espera = float(os.environ.get("SIGRO_SALUD_ESPERA", "8"))   # corto: la web repite cada 2 s, no se cuelga aquí
-    nombres = list(_SIEMPRE) + [s for s in _SI_ESTAN if _url_de(s)]
-    servicios = await asyncio.gather(*(_salud_de(s, _url_de(s), espera) for s in nombres))
-    listo = all(s["listo"] for s in servicios)
-    return JSONResponse({"listo": listo, "servicios": list(servicios)}, status_code=200 if listo else 503,
-                        headers={"Cache-Control": "no-store"})
+    cuerpo = await _salud_compartida()
+    return JSONResponse(cuerpo, status_code=200 if cuerpo["listo"] else 503, headers={"Cache-Control": "no-store"})
 
 
 def crear_app() -> Starlette:
