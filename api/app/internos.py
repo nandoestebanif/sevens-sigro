@@ -12,16 +12,33 @@ from __future__ import annotations
 
 import os
 import secrets
+import threading
+import time
 from typing import Any
 
 import httpx
 from fastapi import Header
 
+from app import medicion
 from app.config import cargar
 from app.errores import ErrorSigro
 
 TIMEOUT = httpx.Timeout(5.0, connect=2.0)
 _clientes_prueba: dict[str, httpx.Client] = {}
+# Un solo cliente por proceso, con keep-alive: antes se abría uno por llamada y cada /interno/autorizar pagaba
+# TCP + TLS de nuevo. httpx.Client es seguro entre hilos (los endpoints síncronos corren en el threadpool).
+_cliente: httpx.Client | None = None
+_candado = threading.Lock()
+
+
+def _cliente_compartido() -> httpx.Client:
+    global _cliente
+    if _cliente is None:
+        with _candado:
+            if _cliente is None:
+                _cliente = httpx.Client(timeout=TIMEOUT, limits=httpx.Limits(max_keepalive_connections=10,
+                                                                             keepalive_expiry=60))
+    return _cliente
 
 
 def registrar_cliente_de_prueba(servicio: str, cliente: httpx.Client | None) -> None:
@@ -37,22 +54,27 @@ def url_de(servicio: str) -> str | None:
 
 def _cabeceras() -> dict[str, str]:
     token = cargar().servicio_token
-    return {"X-Servicio-Token": token} if token else {}
+    c = {"X-Servicio-Token": token} if token else {}
+    if ray := medicion.ray_actual():
+        c[medicion.CABECERA_RAY] = ray      # la misma petición se sigue en el log de ambos servicios
+    return c
 
 
 def llamar(servicio: str, metodo: str, ruta: str, **kw: Any) -> httpx.Response:
     """Llama a la API interna de otro servicio. Errores de red → ErrorSigro 503."""
     cliente = _clientes_prueba.get(servicio)
+    inicio = time.perf_counter()
     try:
         if cliente is not None:
             return cliente.request(metodo, ruta, headers=_cabeceras(), **kw)
         base = url_de(servicio)
         if not base:
             raise ErrorSigro(503, "servicio_no_configurado", f"Falta SIGRO_URL_{servicio.upper()}: no se puede consultar a {servicio}.")
-        with httpx.Client(timeout=TIMEOUT) as c:
-            return c.request(metodo, f"{base.rstrip('/')}{ruta}", headers=_cabeceras(), **kw)
+        return _cliente_compartido().request(metodo, f"{base.rstrip('/')}{ruta}", headers=_cabeceras(), **kw)
     except httpx.HTTPError:
         raise ErrorSigro(503, "servicio_no_disponible", f"El servicio de {servicio} no responde; inténtalo en un momento.")
+    finally:
+        medicion.sumar_interno((time.perf_counter() - inicio) * 1000)
 
 
 def json_de(servicio: str, metodo: str, ruta: str, **kw: Any) -> Any:
