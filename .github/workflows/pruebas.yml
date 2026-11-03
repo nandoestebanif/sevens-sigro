@@ -129,7 +129,7 @@ jobs:
           filas = []
           for pid in filter(str.isdigit, os.listdir('/proc')):
               try:
-                  cmd = open(f'/proc/{pid}/cmdline', 'rb').read().replace(b'\0', b' ').decode().strip()
+                  cmd = open(f'/proc/{pid}/comm').read().strip() + ' · ' + open(f'/proc/{pid}/cmdline', 'rb').read().replace(b'\0', b' ').decode().strip()[:70]
                   rss = next(int(l.split()[1]) for l in open(f'/proc/{pid}/status') if l.startswith('VmRSS'))
                   pss = sum(int(l.split()[1]) for l in open(f'/proc/{pid}/smaps_rollup') if l.startswith('Pss:'))
               except Exception:

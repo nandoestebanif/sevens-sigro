@@ -184,6 +184,11 @@ def _correr_en_hijo(p: Proceso) -> int:
     """Lo que hace el proceso hijo tras fork(): su entorno, su carpeta y su servicio. Nunca vuelve al supervisor."""
     for s in (signal.SIGTERM, signal.SIGINT, signal.SIGCHLD):
         signal.signal(s, signal.SIG_DFL)
+    try:                                                # en `top` y en `ps -o comm` se ve «sigro-obras», no «python»
+        with open("/proc/self/comm", "w") as comm:
+            comm.write(f"sigro-{p.nombre}"[:15])
+    except OSError:
+        pass
     os.environ.clear()
     os.environ.update(p.entorno)
     os.chdir(p.cwd)
