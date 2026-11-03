@@ -12,6 +12,7 @@ from sqlalchemy import text
 
 from app.dependencias import Actor, exigir
 from app.errores import ErrorSigro
+from app.paginacion import Pagina, paginacion
 from app import contexto, internos
 from app.sql import fila, filas
 from app.modulos.tareo import esquemas as e
@@ -37,14 +38,17 @@ def registrar_trabajador(datos: e.TrabajadorIn, a: Actor = Depends(exigir("traba
 
 
 @router.get("/trabajadores", response_model=list[e.TrabajadorOut])
-def listar_trabajadores(solo_activos: bool = Query(False), a: Actor = Depends(exigir("trabajador.consultar"))):
-    return filas(
+def listar_trabajadores(
+    respuesta: Response, solo_activos: bool = Query(False), pagina: Pagina = Depends(paginacion()),
+    a: Actor = Depends(exigir("trabajador.consultar")),
+):
+    return pagina.recortar(filas(
         a.sesion,
         "SELECT id, nombre, tipo_documento, documento, categoria, cuadrilla, fecha_ingreso, fecha_salida "
         "FROM tareo.trabajador WHERE proyecto_id = :p AND (NOT :s OR fecha_salida IS NULL OR fecha_salida >= current_date) "
-        "ORDER BY cuadrilla, nombre",
+        "ORDER BY cuadrilla, nombre, id" + pagina.sql,
         p=a.obra_id, s=solo_activos,
-    )
+    ), respuesta)
 
 
 @router.post("/trabajadores/{trabajador_id}/baja", response_model=e.TrabajadorOut)
@@ -107,18 +111,20 @@ def corregir_jornada(jornada_id: int, datos: e.CorreccionIn, a: Actor = Depends(
 
 @router.get("/jornadas", response_model=list[e.JornadaOut])
 def listar_jornadas(
+    respuesta: Response,
     fecha: date | None = Query(None),
     trabajador_id: int | None = Query(None, ge=1),
+    pagina: Pagina = Depends(paginacion()),
     a: Actor = Depends(exigir("trabajador.consultar")),
 ):
-    """Solo la jornada vigente de cada día (la última de su cadena de correcciones)."""
-    return filas(
+    """Solo la jornada vigente de cada día (la última de su cadena de correcciones). `limite`/`desde` opcionales."""
+    return pagina.recortar(filas(
         a.sesion,
         f"SELECT {_COLS_JORNADA} FROM tareo.jornada_vigente WHERE proyecto_id = :p "
         "AND (CAST(:f AS date) IS NULL OR fecha = :f) AND (CAST(:t AS bigint) IS NULL OR trabajador_id = :t) "
-        "ORDER BY fecha DESC, trabajador_id",
+        "ORDER BY fecha DESC, trabajador_id, id" + pagina.sql,
         p=a.obra_id, f=fecha, t=trabajador_id,
-    )
+    ), respuesta)
 
 
 @router.get("/horas-acumuladas", response_model=list[e.HorasOut])

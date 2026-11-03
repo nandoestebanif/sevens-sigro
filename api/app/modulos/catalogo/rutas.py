@@ -10,12 +10,13 @@ from __future__ import annotations
 import re
 import unicodedata
 
-from fastapi import APIRouter, Depends, File, Query, UploadFile
+from fastapi import APIRouter, Depends, File, Query, Response, UploadFile
 from sqlalchemy import text
 
 from app import integraciones
 from app.dependencias import Actor, exigir_en_alguna_obra
 from app.errores import ErrorSigro
+from app.paginacion import Pagina, paginacion
 from app.modulos.catalogo import esquemas as e
 from app.sql import fila, filas
 
@@ -42,9 +43,11 @@ def _existente(a: Actor, insumo_id: int) -> dict:
 
 @insumos.get("", response_model=list[e.InsumoOut])
 def listar(
+    respuesta: Response,
     q: str | None = Query(None, max_length=100, description="Busca en código y descripción"),
     tipo: e.Tipo | None = None,
     verificado: bool | None = None,
+    pagina: Pagina = Depends(paginacion(maximo=3000)),
     a: Actor = Depends(exigir_en_alguna_obra("insumo.consultar")),
 ):
     cond, p = ["true"], {}
@@ -57,7 +60,10 @@ def listar(
     if verificado is not None:
         cond.append("verificado = :v")
         p["v"] = verificado
-    return filas(a.sesion, f"SELECT {_COLS} FROM catalogo.insumo WHERE {' AND '.join(cond)} ORDER BY codigo LIMIT 3000", **p)
+    # sin `limite`: igual que siempre (hasta 3000, todo el catálogo real cabe); con `limite`: esa página
+    corte = pagina.sql if pagina.limite is not None else " LIMIT 3000"
+    rows = filas(a.sesion, f"SELECT {_COLS} FROM catalogo.insumo WHERE {' AND '.join(cond)} ORDER BY codigo{corte}", **p)
+    return pagina.recortar(rows, respuesta)
 
 
 @insumos.post("", response_model=e.InsumoOut, status_code=201)
@@ -120,27 +126,36 @@ def importar_s10(d: e.ImportarS10In, a: Actor = Depends(exigir_en_alguna_obra("i
     vistos: set[str] = set()
     creados = actualizados = sin_cambios = 0
     avisos: list[str] = []
+    # Una sola lectura de los que ya existen (antes: un SELECT por fila, 284 con la Relación de insumos real)
+    existentes = {r["codigo"]: r for r in filas(
+        a.sesion, "SELECT id, codigo, descripcion, tipo FROM catalogo.insumo WHERE codigo = ANY(:cs)",
+        cs=list({f.codigo for f in d.insumos}))}
+    nuevos: list[dict] = []
+    cambios: list[dict] = []
     for f in d.insumos:
         if f.codigo in vistos:
             avisos.append(f"{f.codigo}: aparece repetido en el archivo; se tomó la primera fila.")
             continue
         vistos.add(f.codigo)
-        ex = fila(a.sesion, "SELECT id, descripcion, tipo FROM catalogo.insumo WHERE codigo = :c", c=f.codigo)
+        ex = existentes.get(f.codigo)
         if ex is None:
-            a.sesion.execute(
-                text("INSERT INTO catalogo.insumo (codigo, descripcion, unidad_s10, unidad_compra, tipo, verificado, creado_por) "
-                     "VALUES (:c, :d, :u, :u, :t, true, :por)"),
-                {"c": f.codigo, "d": f.descripcion, "u": f.unidad, "t": f.tipo, "por": a.usuario_id},
-            )
+            nuevos.append({"c": f.codigo, "d": f.descripcion, "u": f.unidad, "t": f.tipo, "por": a.usuario_id})
             creados += 1
             continue
         if ex["tipo"] != f.tipo:
             avisos.append(f"{f.codigo}: el S10 lo trae como «{f.tipo}» y el catálogo como «{ex['tipo']}»; no se cambió.")
         if ex["descripcion"] != f.descripcion:
-            a.sesion.execute(text("UPDATE catalogo.insumo SET descripcion = :d WHERE id = :i"), {"d": f.descripcion, "i": ex["id"]})
+            cambios.append({"d": f.descripcion, "i": ex["id"]})
             actualizados += 1
         else:
             sin_cambios += 1
+    # executemany: un solo viaje por tipo de sentencia en lugar de uno por fila
+    if nuevos:
+        a.sesion.execute(
+            text("INSERT INTO catalogo.insumo (codigo, descripcion, unidad_s10, unidad_compra, tipo, verificado, creado_por) "
+                 "VALUES (:c, :d, :u, :u, :t, true, :por)"), nuevos)
+    if cambios:
+        a.sesion.execute(text("UPDATE catalogo.insumo SET descripcion = :d WHERE id = :i"), cambios)
     return e.ResultadoImportacionOut(creados=creados, actualizados=actualizados, sin_cambios=sin_cambios, advertencias=avisos)
 
 

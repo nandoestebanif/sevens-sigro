@@ -153,6 +153,11 @@ def importar_requerimiento(d: ImportarRequerimientoIn, a: Actor = Depends(exigir
     del_catalogo = catalogo_cliente.por_codigo(f.insumo_codigo for f in d.filas)
     conocidos = {f.insumo_codigo: del_catalogo[f.insumo_codigo.upper()]["id"] for f in d.filas
                  if f.insumo_codigo.upper() in del_catalogo and del_catalogo[f.insumo_codigo.upper()]["codigo"] == f.insumo_codigo}
+    # Lo ya cargado en la obra, también en UNA lectura (antes: un SELECT por fila, 284 con el S10 real)
+    cargados = {r["insumo_id"]: r for r in filas(
+        a.sesion, "SELECT insumo_id, cantidad_planificada, precio_planificado FROM compras.requerimiento "
+                  "WHERE proyecto_id = :p AND insumo_id = ANY(:ids)", p=a.obra_id, ids=list(set(conocidos.values())))}
+    nuevos: list[dict] = []
     for f in d.filas:
         if f.insumo_codigo in vistos:
             fallidos.append(FallidoOut(insumo_codigo=f.insumo_codigo, motivo="Aparece repetido en el archivo."))
@@ -163,14 +168,9 @@ def importar_requerimiento(d: ImportarRequerimientoIn, a: Actor = Depends(exigir
             fallidos.append(FallidoOut(insumo_codigo=f.insumo_codigo, motivo="El insumo no está en el catálogo."))
             continue
         ins = {"id": ins_id}
-        ex = fila(a.sesion, "SELECT id, cantidad_planificada, precio_planificado FROM compras.requerimiento "
-                            "WHERE proyecto_id = :p AND insumo_id = :i", p=a.obra_id, i=ins["id"])
+        ex = cargados.get(ins["id"])
         if ex is None:
-            a.sesion.execute(
-                text("INSERT INTO compras.requerimiento (proyecto_id, insumo_id, cantidad_planificada, precio_planificado, creado_por) "
-                     "VALUES (:p, :i, :c, :pr, :u)"),
-                {"p": a.obra_id, "i": ins["id"], "c": f.cantidad, "pr": f.precio, "u": a.usuario_id},
-            )
+            nuevos.append({"p": a.obra_id, "i": ins["id"], "c": f.cantidad, "pr": f.precio, "u": a.usuario_id})
             creados += 1
         elif ex["cantidad_planificada"] == f.cantidad.quantize(D4) and ex["precio_planificado"] == f.precio.quantize(D4):
             sin_cambios += 1
@@ -178,6 +178,10 @@ def importar_requerimiento(d: ImportarRequerimientoIn, a: Actor = Depends(exigir
             sin_cambios += 1
             avisos.append(f"{f.insumo_codigo}: ya está cargado con {ex['cantidad_planificada']} a {ex['precio_planificado']}; "
                           f"el archivo trae {f.cantidad} a {f.precio}. No se pisó: corrígelo con un ajuste y su motivo.")
+    if nuevos:      # un solo executemany en lugar de un INSERT por fila
+        a.sesion.execute(
+            text("INSERT INTO compras.requerimiento (proyecto_id, insumo_id, cantidad_planificada, precio_planificado, creado_por) "
+                 "VALUES (:p, :i, :c, :pr, :u)"), nuevos)
     return ResultadoRequerimientoOut(creados=creados, sin_cambios=sin_cambios, fallidos=fallidos, advertencias=avisos)
 
 
