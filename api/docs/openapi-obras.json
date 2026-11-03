@@ -259,7 +259,7 @@
      "obra"
     ],
     "summary": "Listar Obras",
-    "description": "Solo las obras donde la persona está asignada (R9).",
+    "description": "Solo las obras donde la persona está asignada (R9).\n\nUna sola consulta para todas (antes: 1 + 2 por obra). Mismos campos y mismo cálculo que `_obra_out`.",
     "operationId": "listar_obras_api_v1_obras_get",
     "responses": {
      "200": {

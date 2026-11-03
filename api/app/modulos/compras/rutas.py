@@ -10,13 +10,14 @@ from __future__ import annotations
 
 from decimal import ROUND_HALF_UP, Decimal
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Response
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from app import eventos, integraciones
 from app.dependencias import Actor, exigir, exigir_en_alguna_obra
 from app.errores import ErrorSigro
+from app.paginacion import Pagina, paginacion
 from app.modulos.compras import esquemas as e
 from app.modulos.compras import catalogo_cliente
 from app.modulos.compras.dominio import ruc_valido
@@ -59,16 +60,20 @@ def _validar_en_sunat(ruc: str) -> tuple[bool, str | None]:
 
 @proveedores.get("", response_model=list[e.ProveedorOut])
 def listar_proveedores(
+    respuesta: Response,
     q: str = Query("", max_length=80), solo_para_comprar: bool = Query(False),
+    pagina: Pagina = Depends(paginacion()),
     a: Actor = Depends(exigir_en_alguna_obra("proveedor.consultar")),
 ):
-    """HU-29: se busca por razón social o por RUC. Un proveedor de baja no aparece para compras nuevas."""
-    return filas(
+    """HU-29: se busca por razón social o por RUC. Un proveedor de baja no aparece para compras nuevas.
+    `limite`/`desde` son opcionales: sin ellos llegan todos, como siempre."""
+    rows = filas(
         a.sesion,
         _SQL_PROV + "WHERE (:q = '' OR lower(p.razon_social) LIKE '%' || lower(:q) || '%' OR p.ruc LIKE :q || '%') "
-        "AND (NOT :c OR p.estado = 'activo') ORDER BY p.razon_social",
+        "AND (NOT :c OR p.estado = 'activo') ORDER BY p.razon_social, p.id" + pagina.sql,
         q=q.strip(), c=solo_para_comprar,
     )
+    return pagina.recortar(rows, respuesta)
 
 
 @proveedores.post("", response_model=e.ProveedorOut, status_code=201)
@@ -179,30 +184,33 @@ def registrar_compra(datos: e.CompraIn, a: Actor = Depends(exigir("compra.regist
         p=a.obra_id, pv=datos.proveedor_id, t=datos.tipo_comprobante, n=datos.numero_comprobante.upper(), f=datos.fecha,
         m=datos.moneda, b=base, i=igv, tt=total, u=a.usuario_id, sol=datos.solicitud_id,
     )
-    for l, codigo in zip(datos.lineas, codigos):
-        s.execute(
-            text(
-                "INSERT INTO compras.compra_detalle (compra_id, insumo_id, cantidad, unidad, precio_unitario) "
-                "VALUES (:c, :i, :q, :u, :pr)"
-            ),
-            {"c": c["id"], "i": por_codigo[codigo], "q": l.cantidad, "u": l.unidad_compra, "pr": l.precio_unitario},
-        )
+    # todas las líneas en un solo executemany (antes: un INSERT por línea)
+    s.execute(
+        text(
+            "INSERT INTO compras.compra_detalle (compra_id, insumo_id, cantidad, unidad, precio_unitario) "
+            "VALUES (:c, :i, :q, :u, :pr)"
+        ),
+        [{"c": c["id"], "i": por_codigo[codigo], "q": l.cantidad, "u": l.unidad_compra, "pr": l.precio_unitario}
+         for l, codigo in zip(datos.lineas, codigos)],
+    )
     return _compra_out(s, filas(s, _SQL_COMPRA + "WHERE c.id = :i", i=c["id"]))[0]
 
 
 @compras.get("/compras", response_model=list[e.CompraOut])
 def listar_compras(
+    respuesta: Response,
     estado: str | None = Query(None, pattern="^(registrada|anulada)$"),
     proveedor_id: int | None = Query(None, ge=1),
+    pagina: Pagina = Depends(paginacion()),
     a: Actor = Depends(exigir("compra.consultar")),
 ):
     cabeceras = filas(
         a.sesion,
         _SQL_COMPRA + "WHERE c.proyecto_id = :p AND (CAST(:e AS text) IS NULL OR c.estado = :e) "
-        "AND (CAST(:pv AS bigint) IS NULL OR c.proveedor_id = :pv) ORDER BY c.fecha DESC, c.id DESC",
+        "AND (CAST(:pv AS bigint) IS NULL OR c.proveedor_id = :pv) ORDER BY c.fecha DESC, c.id DESC" + pagina.sql,
         p=a.obra_id, e=estado, pv=proveedor_id,
     )
-    return _compra_out(a.sesion, cabeceras)
+    return _compra_out(a.sesion, pagina.recortar(cabeceras, respuesta))
 
 
 @compras.get("/compras/{compra_id}", response_model=e.CompraOut)
@@ -282,15 +290,14 @@ def emitir_solicitud(datos: e.SolicitudIn, a: Actor = Depends(exigir("solicitud.
     if len(set(codigos)) != len(codigos):
         raise ErrorSigro(422, "insumo_repetido", "Un insumo aparece dos veces; suma las cantidades en una sola línea.")
     sol = fila(s, "INSERT INTO compras.solicitud (proyecto_id, emitida_por) VALUES (:p, :u) RETURNING id", p=a.obra_id, u=a.usuario_id)
-    for l in datos.lineas:
-        s.execute(
-            text(
-                "INSERT INTO compras.solicitud_linea (solicitud_id, insumo_id, descripcion_libre, cantidad, unidad_compra) "
-                "VALUES (:s, :i, :d, :q, :u)"
-            ),
-            {"s": sol["id"], "i": por_codigo[l.insumo_codigo.upper()] if l.insumo_codigo else None,
-             "d": l.descripcion_libre, "q": l.cantidad, "u": l.unidad_compra},
-        )
+    s.execute(      # todas las líneas en un solo executemany
+        text(
+            "INSERT INTO compras.solicitud_linea (solicitud_id, insumo_id, descripcion_libre, cantidad, unidad_compra) "
+            "VALUES (:s, :i, :d, :q, :u)"
+        ),
+        [{"s": sol["id"], "i": por_codigo[l.insumo_codigo.upper()] if l.insumo_codigo else None,
+          "d": l.descripcion_libre, "q": l.cantidad, "u": l.unidad_compra} for l in datos.lineas],
+    )
     numero = s.execute(text("SELECT numero FROM compras.solicitud WHERE id = :i"), {"i": sol["id"]}).scalar()
     eventos.publicar(
         s, "solicitud.emitida", a.obra_id, eventos.destinatarios_con_rol(s, a.obra_id, ["administrador"], excepto=a.usuario_id),
@@ -301,8 +308,12 @@ def emitir_solicitud(datos: e.SolicitudIn, a: Actor = Depends(exigir("solicitud.
 
 
 @compras.get("/solicitudes", response_model=list[e.SolicitudOut])
-def listar_solicitudes(a: Actor = Depends(exigir("solicitud.consultar"))):
-    ids = [r["id"] for r in filas(a.sesion, "SELECT id FROM compras.solicitud WHERE proyecto_id = :p", p=a.obra_id)]
+def listar_solicitudes(
+    respuesta: Response, pagina: Pagina = Depends(paginacion()), a: Actor = Depends(exigir("solicitud.consultar")),
+):
+    ids = [r["id"] for r in pagina.recortar(filas(
+        a.sesion, "SELECT id FROM compras.solicitud WHERE proyecto_id = :p ORDER BY numero DESC" + pagina.sql, p=a.obra_id),
+        respuesta)]
     return _solicitud_out(a.sesion, ids)
 
 

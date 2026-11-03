@@ -246,7 +246,7 @@
      "obra"
     ],
     "summary": "Listar Obras",
-    "description": "Solo las obras donde la persona está asignada (R9).",
+    "description": "Solo las obras donde la persona está asignada (R9).\n\nUna sola consulta para todas (antes: 1 + 2 por obra). Mismos campos y mismo cálculo que `_obra_out`.",
     "operationId": "listar_obras_api_v1_obras_get",
     "responses": {
      "200": {
@@ -1230,6 +1230,39 @@
        ],
        "title": "Verificado"
       }
+     },
+     {
+      "name": "limite",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "integer",
+         "maximum": 3000,
+         "minimum": 1
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "Opcional: tamaño de página. Sin él, la lista completa.",
+       "title": "Limite"
+      },
+      "description": "Opcional: tamaño de página. Sin él, la lista completa."
+     },
+     {
+      "name": "desde",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "integer",
+       "minimum": 0,
+       "description": "Opcional: cuántas filas saltar (usa X-Siguiente-Desde de la respuesta anterior).",
+       "default": 0,
+       "title": "Desde"
+      },
+      "description": "Opcional: cuántas filas saltar (usa X-Siguiente-Desde de la respuesta anterior)."
      }
     ],
     "responses": {
@@ -1569,7 +1602,7 @@
      "compras · proveedores"
     ],
     "summary": "Listar Proveedores",
-    "description": "HU-29: se busca por razón social o por RUC. Un proveedor de baja no aparece para compras nuevas.",
+    "description": "HU-29: se busca por razón social o por RUC. Un proveedor de baja no aparece para compras nuevas.\n`limite`/`desde` son opcionales: sin ellos llegan todos, como siempre.",
     "operationId": "listar_proveedores_api_v1_proveedores_get",
     "security": [
      {
@@ -1597,6 +1630,39 @@
        "default": false,
        "title": "Solo Para Comprar"
       }
+     },
+     {
+      "name": "limite",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "integer",
+         "maximum": 500,
+         "minimum": 1
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "Opcional: tamaño de página. Sin él, la lista completa.",
+       "title": "Limite"
+      },
+      "description": "Opcional: tamaño de página. Sin él, la lista completa."
+     },
+     {
+      "name": "desde",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "integer",
+       "minimum": 0,
+       "description": "Opcional: cuántas filas saltar (usa X-Siguiente-Desde de la respuesta anterior).",
+       "default": 0,
+       "title": "Desde"
+      },
+      "description": "Opcional: cuántas filas saltar (usa X-Siguiente-Desde de la respuesta anterior)."
      }
     ],
     "responses": {
@@ -1885,6 +1951,39 @@
        ],
        "title": "Proveedor Id"
       }
+     },
+     {
+      "name": "limite",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "integer",
+         "maximum": 500,
+         "minimum": 1
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "Opcional: tamaño de página. Sin él, la lista completa.",
+       "title": "Limite"
+      },
+      "description": "Opcional: tamaño de página. Sin él, la lista completa."
+     },
+     {
+      "name": "desde",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "integer",
+       "minimum": 0,
+       "description": "Opcional: cuántas filas saltar (usa X-Siguiente-Desde de la respuesta anterior).",
+       "default": 0,
+       "title": "Desde"
+      },
+      "description": "Opcional: cuántas filas saltar (usa X-Siguiente-Desde de la respuesta anterior)."
      }
     ],
     "responses": {
@@ -2123,6 +2222,39 @@
        "minimum": 1,
        "title": "Obra Id"
       }
+     },
+     {
+      "name": "limite",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "integer",
+         "maximum": 500,
+         "minimum": 1
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "Opcional: tamaño de página. Sin él, la lista completa.",
+       "title": "Limite"
+      },
+      "description": "Opcional: tamaño de página. Sin él, la lista completa."
+     },
+     {
+      "name": "desde",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "integer",
+       "minimum": 0,
+       "description": "Opcional: cuántas filas saltar (usa X-Siguiente-Desde de la respuesta anterior).",
+       "default": 0,
+       "title": "Desde"
+      },
+      "description": "Opcional: cuántas filas saltar (usa X-Siguiente-Desde de la respuesta anterior)."
      }
     ],
     "responses": {
@@ -2954,6 +3086,39 @@
        "default": false,
        "title": "Solo Activos"
       }
+     },
+     {
+      "name": "limite",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "integer",
+         "maximum": 500,
+         "minimum": 1
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "Opcional: tamaño de página. Sin él, la lista completa.",
+       "title": "Limite"
+      },
+      "description": "Opcional: tamaño de página. Sin él, la lista completa."
+     },
+     {
+      "name": "desde",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "integer",
+       "minimum": 0,
+       "description": "Opcional: cuántas filas saltar (usa X-Siguiente-Desde de la respuesta anterior).",
+       "default": 0,
+       "title": "Desde"
+      },
+      "description": "Opcional: cuántas filas saltar (usa X-Siguiente-Desde de la respuesta anterior)."
      }
     ],
     "responses": {
@@ -3118,7 +3283,7 @@
      "tareo"
     ],
     "summary": "Listar Jornadas",
-    "description": "Solo la jornada vigente de cada día (la última de su cadena de correcciones).",
+    "description": "Solo la jornada vigente de cada día (la última de su cadena de correcciones). `limite`/`desde` opcionales.",
     "operationId": "listar_jornadas_api_v1_obras__obra_id__jornadas_get",
     "security": [
      {
@@ -3169,6 +3334,39 @@
        ],
        "title": "Trabajador Id"
       }
+     },
+     {
+      "name": "limite",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "integer",
+         "maximum": 500,
+         "minimum": 1
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "Opcional: tamaño de página. Sin él, la lista completa.",
+       "title": "Limite"
+      },
+      "description": "Opcional: tamaño de página. Sin él, la lista completa."
+     },
+     {
+      "name": "desde",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "integer",
+       "minimum": 0,
+       "description": "Opcional: cuántas filas saltar (usa X-Siguiente-Desde de la respuesta anterior).",
+       "default": 0,
+       "title": "Desde"
+      },
+      "description": "Opcional: cuántas filas saltar (usa X-Siguiente-Desde de la respuesta anterior)."
      }
     ],
     "responses": {
