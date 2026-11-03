@@ -333,7 +333,7 @@
 
 **Criterios de aceptación**
 
-- [ ] Cada recepción recalcula el promedio ponderado del insumo en la obra
+- [ ] Cada recepción recalcula el promedio ponderado del insumo en ese almacén (regla 4; decisión D1 de la migración 0010, 01/11/2026)
 - [ ] Cada salida congela el costo unitario vigente en ese instante y no cambia después
 - [ ] El criterio aplicado se declara en el reporte, conforme a la NIC 2
 

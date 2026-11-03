@@ -63,6 +63,20 @@ class Fabrica:
             (proyecto, usuario, ident, activo_por),
         )
 
+    def almacen(self, proyecto: int, nombre: str | None = None, tipo: str = "frente") -> int:
+        return self.q1("INSERT INTO obra.almacen (proyecto_id, nombre, tipo) VALUES (%s, %s, %s) RETURNING id",
+                       (proyecto, nombre or f"Almacén {self.n()}", tipo))
+
+    def celular(self, proyecto: int, usuario: int, por: int, estado: str = "activo") -> str:
+        """Un dispositivo de esa persona en esa obra; devuelve su IDENTIFICADOR (lo que manda la app)."""
+        ident = f"sigro-android-{self.n():06d}-prueba"
+        if estado == "activo":
+            self.c.execute("INSERT INTO obra.dispositivo (proyecto_id, usuario_id, identificador, estado, autorizado_por, fecha_autorizacion) "
+                           "VALUES (%s, %s, %s, 'activo', %s, now())", (proyecto, usuario, ident, por))
+        else:
+            self.c.execute("INSERT INTO obra.dispositivo (proyecto_id, usuario_id, identificador) VALUES (%s, %s, %s)", (proyecto, usuario, ident))
+        return ident
+
     def activar_dispositivo(self, dispositivo: int, por: int) -> None:
         self.c.execute(
             "UPDATE obra.dispositivo SET estado = 'activo', autorizado_por = %s, fecha_autorizacion = now() WHERE id = %s",

@@ -1,0 +1,528 @@
+{
+ "openapi": "3.1.0",
+ "info": {
+  "title": "SIGRO · servicio costo",
+  "description": "Gasto en recursos de la obra (no su costo total).",
+  "version": "0.2.0"
+ },
+ "paths": {
+  "/salud": {
+   "get": {
+    "tags": [
+     "sistema"
+    ],
+    "summary": "Salud",
+    "operationId": "salud_salud_get",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/obras/{obra_id}/costo/gasto": {
+   "get": {
+    "tags": [
+     "costo"
+    ],
+    "summary": "Gasto",
+    "operationId": "gasto_api_v1_obras__obra_id__costo_gasto_get",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "obra_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "minimum": 1,
+       "title": "Obra Id"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/GastoOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/interno/eventos": {
+   "post": {
+    "tags": [
+     "interno"
+    ],
+    "summary": "Recibir",
+    "operationId": "recibir_interno_eventos_post",
+    "parameters": [
+     {
+      "name": "x-servicio-token",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "X-Servicio-Token"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/EventoIn"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  }
+ },
+ "components": {
+  "schemas": {
+   "CifraOut": {
+    "properties": {
+     "clave": {
+      "type": "string",
+      "title": "Clave"
+     },
+     "valor": {
+      "anyOf": [
+       {
+        "type": "string",
+        "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Valor"
+     },
+     "definicion": {
+      "type": "string",
+      "title": "Definicion"
+     },
+     "corte": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Corte"
+     },
+     "nota": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Nota"
+     }
+    },
+    "type": "object",
+    "required": [
+     "clave",
+     "valor",
+     "definicion",
+     "corte"
+    ],
+    "title": "CifraOut"
+   },
+   "DatosIn": {
+    "properties": {
+     "hechos": {
+      "items": {
+       "$ref": "#/components/schemas/HechoIn"
+      },
+      "type": "array",
+      "maxItems": 2000,
+      "title": "Hechos"
+     }
+    },
+    "type": "object",
+    "title": "DatosIn"
+   },
+   "EventoIn": {
+    "properties": {
+     "evento_id": {
+      "type": "integer",
+      "title": "Evento Id"
+     },
+     "tipo": {
+      "type": "string",
+      "title": "Tipo"
+     },
+     "proyecto_id": {
+      "type": "integer",
+      "title": "Proyecto Id"
+     },
+     "creado_en": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Creado En"
+     },
+     "datos": {
+      "$ref": "#/components/schemas/DatosIn"
+     }
+    },
+    "type": "object",
+    "required": [
+     "evento_id",
+     "tipo",
+     "proyecto_id",
+     "datos"
+    ],
+    "title": "EventoIn"
+   },
+   "FamiliaOut": {
+    "properties": {
+     "familia": {
+      "type": "string",
+      "title": "Familia"
+     },
+     "recibido": {
+      "type": "string",
+      "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+      "title": "Recibido"
+     },
+     "consumido": {
+      "type": "string",
+      "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+      "title": "Consumido"
+     },
+     "en_stock": {
+      "type": "string",
+      "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+      "title": "En Stock"
+     },
+     "hasta": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Hasta"
+     }
+    },
+    "type": "object",
+    "required": [
+     "familia",
+     "recibido",
+     "consumido",
+     "en_stock",
+     "hasta"
+    ],
+    "title": "FamiliaOut"
+   },
+   "GastoOut": {
+    "properties": {
+     "declaracion": {
+      "type": "string",
+      "title": "Declaracion"
+     },
+     "criterio": {
+      "type": "string",
+      "title": "Criterio"
+     },
+     "moneda": {
+      "type": "string",
+      "title": "Moneda"
+     },
+     "cifras": {
+      "items": {
+       "$ref": "#/components/schemas/CifraOut"
+      },
+      "type": "array",
+      "title": "Cifras"
+     },
+     "por_familia": {
+      "items": {
+       "$ref": "#/components/schemas/FamiliaOut"
+      },
+      "type": "array",
+      "title": "Por Familia"
+     },
+     "horas_hombre": {
+      "$ref": "#/components/schemas/HorasOut"
+     }
+    },
+    "type": "object",
+    "required": [
+     "declaracion",
+     "criterio",
+     "moneda",
+     "cifras",
+     "por_familia",
+     "horas_hombre"
+    ],
+    "title": "GastoOut"
+   },
+   "HTTPValidationError": {
+    "properties": {
+     "detail": {
+      "items": {
+       "$ref": "#/components/schemas/ValidationError"
+      },
+      "type": "array",
+      "title": "Detail"
+     }
+    },
+    "type": "object",
+    "title": "HTTPValidationError"
+   },
+   "HechoIn": {
+    "properties": {
+     "proyecto_id": {
+      "type": "integer",
+      "title": "Proyecto Id"
+     },
+     "familia": {
+      "type": "string",
+      "enum": [
+       "material",
+       "mano_obra",
+       "equipo"
+      ],
+      "title": "Familia"
+     },
+     "clase": {
+      "type": "string",
+      "enum": [
+       "ingreso",
+       "consumo",
+       "traslado",
+       "ajuste",
+       "compra",
+       "horas"
+      ],
+      "title": "Clase"
+     },
+     "insumo_codigo": {
+      "type": "string",
+      "title": "Insumo Codigo"
+     },
+     "cantidad": {
+      "anyOf": [
+       {
+        "type": "number"
+       },
+       {
+        "type": "string",
+        "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+       }
+      ],
+      "title": "Cantidad"
+     },
+     "unidad": {
+      "type": "string",
+      "title": "Unidad"
+     },
+     "costo_unitario": {
+      "anyOf": [
+       {
+        "type": "number",
+        "minimum": 0.0
+       },
+       {
+        "type": "string",
+        "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+       }
+      ],
+      "title": "Costo Unitario"
+     },
+     "moneda": {
+      "type": "string",
+      "enum": [
+       "PEN",
+       "USD"
+      ],
+      "title": "Moneda",
+      "default": "PEN"
+     },
+     "fecha": {
+      "type": "string",
+      "format": "date",
+      "title": "Fecha"
+     },
+     "referencia": {
+      "type": "string",
+      "title": "Referencia"
+     }
+    },
+    "type": "object",
+    "required": [
+     "proyecto_id",
+     "familia",
+     "clase",
+     "insumo_codigo",
+     "cantidad",
+     "unidad",
+     "costo_unitario",
+     "fecha",
+     "referencia"
+    ],
+    "title": "HechoIn"
+   },
+   "HorasOut": {
+    "properties": {
+     "horas_normales": {
+      "anyOf": [
+       {
+        "type": "string",
+        "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Horas Normales"
+     },
+     "horas_extra": {
+      "anyOf": [
+       {
+        "type": "string",
+        "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Horas Extra"
+     },
+     "corte": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Corte"
+     }
+    },
+    "type": "object",
+    "required": [
+     "horas_normales",
+     "horas_extra",
+     "corte"
+    ],
+    "title": "HorasOut"
+   },
+   "ValidationError": {
+    "properties": {
+     "loc": {
+      "items": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "integer"
+        }
+       ]
+      },
+      "type": "array",
+      "title": "Location"
+     },
+     "msg": {
+      "type": "string",
+      "title": "Message"
+     },
+     "type": {
+      "type": "string",
+      "title": "Error Type"
+     },
+     "input": {
+      "title": "Input"
+     },
+     "ctx": {
+      "type": "object",
+      "title": "Context"
+     }
+    },
+    "type": "object",
+    "required": [
+     "loc",
+     "msg",
+     "type"
+    ],
+    "title": "ValidationError"
+   }
+  },
+  "securitySchemes": {
+   "HTTPBearer": {
+    "type": "http",
+    "scheme": "bearer"
+   }
+  }
+ }
+}

@@ -1,7 +1,7 @@
-# SIGRO · api · microservicios obras, catálogo, compras, tareo y gateway (Adiel)
+# SIGRO · api · microservicios obras, catálogo, compras, tareo, almacén, costo y gateway (Adiel)
 
 > **28/10 · Arquitectura de microservicios (ADR-09).** Esta carpeta ya no es una API única: es el código de
-> **cinco servicios independientes** (cada uno con su app, su imagen Docker, su esquema y su usuario de base).
+> **siete servicios independientes** (cada uno con su app, su imagen Docker, su esquema y su usuario de base).
 > Ver «Microservicios» abajo. Lo que sigue de este archivo (reglas, decisiones, endpoints) no cambia: las rutas
 > públicas son las mismas y la web no se entera.
 
@@ -14,6 +14,8 @@
 | **catalogo** | `uvicorn app.servicios.catalogo:app` | `catalogo` · `sigro_svc_catalogo` | `/catalogo/...` |
 | **compras** | `uvicorn app.servicios.compras:app` | `compras` · `sigro_svc_compras` | `/proveedores`, `/obras/{id}/compras · solicitudes · requerimiento · saldo-por-comprar · parametros-reposicion` |
 | **tareo** | `uvicorn app.servicios.tareo:app` | `tareo` · `sigro_svc_tareo` | `/obras/{id}/trabajadores · jornadas · horas-acumuladas` |
+| **almacen** | `uvicorn app.servicios.almacen:app` | `almacen` · `sigro_svc_almacen` | `/obras/{id}/almacen/...` (salidas, ingresos, recepciones, traslados, reversos, conteos, stock, kárdex) |
+| **costo** | `uvicorn app.servicios.costo:app` | `costo` · `sigro_svc_costo` | `/obras/{id}/costo/gasto` |
 | **relevo** | `python -m app.relay` | `outbox` · `sigro_svc_relevo` | — (entrega eventos a notificaciones) |
 
 **Cómo se hablan.** API interna `/interno/...` (no sale por el gateway, exige `X-Servicio-Token`):
@@ -24,8 +26,13 @@
 | compras | obras `GET /interno/obras/{id}/destinatarios` | a quién avisar de un evento |
 | compras | catálogo `POST /interno/insumos/buscar` | código, descripción, unidades y factor de los insumos |
 | tareo | obras `GET /interno/obras/{id}/periodos` | número de cada periodo |
+| almacen | obras `POST /interno/autorizar` con `dispositivo` · `GET /interno/obras/{id}/almacenes` · `/periodos` · `GET /interno/obras?nombre=` | rol, **celular autorizado** (R5), réplica de almacenes, periodo cerrado (D4), «saldo de otra obra» (D5) |
+| almacen | catálogo `POST /interno/insumos/buscar` · compras `GET /interno/compras/{id}` y `/interno/obras/{id}/parametros-reposicion` | réplica de insumos y factor; lo comprado para la recepción; punto de reposición |
+| costo | compras `GET /interno/obras/{id}/comprado` · tareo `GET /interno/obras/{id}/horas` | «comprado» y horas hombre del gasto |
+| relevo | costo `POST /interno/eventos` | hechos valorizados de almacén (idempotente por `evento_id`) |
+| compras (pendiente) | almacén `GET /interno/obras/{id}/recibido-consumido` | recibido y consumido del avance HU-23 |
 
-Variables: `SIGRO_URL_OBRAS`, `SIGRO_URL_CATALOGO`, `SIGRO_URL_COMPRAS`, `SIGRO_URL_TAREO` (en el gateway y en
+Variables: `SIGRO_URL_OBRAS`, `SIGRO_URL_CATALOGO`, `SIGRO_URL_COMPRAS`, `SIGRO_URL_TAREO`, `SIGRO_URL_ALMACEN`, `SIGRO_URL_COSTO` (en el gateway y en
 los servicios que llaman a otros), `SIGRO_SERVICIO_TOKEN`, y `SIGRO_APP_DATABASE_URL` con **el usuario del servicio**.
 
 **Garantías probadas** (`pruebas/test_microservicios.py`): cada usuario de base solo lee su esquema; el código de
@@ -49,7 +56,7 @@ Contratos: `docs/openapi-<servicio>.json` por servicio y `docs/openapi.json` con
 
 Esquema de PostgreSQL con migraciones Alembic **y la API FastAPI** (autenticación, permisos por rol y obra, endpoints de
 obra/tareo/compras, bandeja de salida), más el microservicio de Notificaciones (`../notificaciones`).
-**654 pruebas** de la API contra PostgreSQL real + 19 del microservicio. No toca `almacen` ni `costo` (Henry) ni `integraciones` (Fernando). El catálogo es de Fernando en su base (0002) y la API de catálogo (alta, factor, importación) la puso Adiel según el tablero (T-021, T-030, T-076).
+**654 pruebas** de la API contra PostgreSQL real + 19 del microservicio. Desde 0010 incluye `almacen` y `costo` (aprobada por Adiel el 01/11/2026, escrita por Claude Code a pedido de Fernando); no toca `integraciones` (Fernando). El catálogo es de Fernando en su base (0002) y la API de catálogo (alta, factor, importación) la puso Adiel según el tablero (T-021, T-030, T-076).
 
 ## Cómo correrlo
 
@@ -83,6 +90,7 @@ Las migraciones corren con el usuario DUEÑO. Cada servicio se conecta con SU us
 | 0006 | **outbox**: bandeja de salida de eventos hacia Notificaciones (inmutable, sin borrado) |
 | 0007 | **histórico del factor de conversión** del insumo (HU-17): libro solo-agregar con quién, cuándo y por qué |
 | 0008 | **requerimiento de obra** (HU-19) con su libro de ajustes, **parámetros de reposición** (HU-25) y la vista `saldo_por_comprar` (HU-24) |
+| 0010 | **almacén y costo** (aprobada por Adiel el 01/11/2026): libro `almacen.movimiento` + recepción, traslado, conteo, réplicas `almacen_ref`/`insumo_ref`; vistas `saldo`, `saldo_obra`, `kardex`, `recibido_por_compra`; `costo.evento_recibido` + `costo.hecho` + vista `gasto_por_obra`; `outbox.evento.destino`; roles `sigro_svc_almacen` y `sigro_svc_costo` |
 | 0009 | **microservicios** (ADR-09): un rol por servicio (`sigro_svc_*`) con permisos solo sobre su esquema; 3 validaciones entre esquemas pasan a `SECURITY DEFINER` |
 
 ## Modelo físico y diagramas (`api/docs/`)
@@ -202,6 +210,14 @@ Argon2id, bloqueo a los 5 intentos (15 min), misma respuesta para usuario inexis
 | `GET /obras/{id}/avance?q=` (HU-23) | `avance.consultar` → residente, administrador, gerente. Requerido, comprado, recibido, consumido y saldo por comprar en **unidad de compra**, % sobre el requerimiento total. Recibido y consumido son de almacén (0010): mientras no exista, llegan `null` y `pendiente` lo dice |
 | `POST·GET /obras/{id}/parametros-reposicion`, `GET …/{insumo_id}/historial` | registrar: residente, administrador · ver: + gerente (cada cambio es una vigencia nueva) |
 | `GET /notificaciones`, `POST /notificaciones/{id}/leida` | autenticado (siempre con SU usuario del token) |
+| `POST /obras/{id}/almacen/salidas` (HU-40) | `salida.registrar` → almacenero, **desde su celular autorizado** (`dispositivo`, R5). Contrato de la app + `almacen_id` (opcional si la obra tiene un solo almacén activo) y `unidad` (S10 o de compra). Reenvío ⇒ 200 con el original |
+| `POST /obras/{id}/almacen/ingresos` (HU-41) | `ingreso.registrar` → almacenero. Origen y costo obligatorios; «saldo de otra obra» solo si esa obra no está en SIGRO |
+| `POST /obras/{id}/almacen/recepciones`, `GET …/compras/{compra_id}/recepcion` (HU-35) | `recepcion.registrar` → almacenero. Sin líneas = total pendiente; nunca más de lo comprado; costo = precio sin IGV / factor |
+| `POST /obras/{id}/almacen/traslados`, `POST …/traslados/{id}/anular` (HU-42) | `traslado.registrar` → almacenero, asignado también en la obra de destino. El costo viaja; anular = dos reversos |
+| `POST /obras/{id}/almacen/movimientos/{mid}/reverso` (HU-45) | `movimiento.revertir` → almacenero, residente. Una sola vez; un reverso no se revierte; un traslado se anula entero |
+| `POST /obras/{id}/almacen/conteos`, `POST …/{cid}/lineas`, `GET …/{cid}`, `POST …/{cid}/confirmar` (HU-46) | `conteo.registrar` → almacenero (ver: todos). Teórico del servidor, motivo por diferencia, ajuste al promedio |
+| `GET /obras/{id}/almacen/stock?almacen_id=`, `GET …/kardex?insumo_id=&almacen_id=` (HU-43, HU-45) | `stock.consultar` → todos |
+| `GET /obras/{id}/costo/gasto` (HU-58) | `costo.consultar` → residente, administrador, gerente |
 
 Errores: `{"codigo": "...", "mensaje": "..."}`, igual que `ErrorApi` en `web/src/api/cliente.ts`. Los campos van en
 `snake_case`; `ClienteSigro` los pasa a `camelCase`.
@@ -224,11 +240,28 @@ Errores: `{"codigo": "...", "mensaje": "..."}`, igual que `ErrorApi` en `web/src
 | D-A3 | `python -m app.cli crear-usuario` (usuarios de prueba) crea el usuario si falta y su asignación vigente; si ya tiene otro rol en esa obra no lo pisa. La asignación la firma un administrador vigente de la obra (o `--asignado-por`) | Preparar el ambiente de pruebas sin abrir la base; propuesto por Claude Code el 01/11, por ratificar |
 | D-N1 | Los avisos los resuelve la API (destinatarios) y nunca incluyen a quien hizo la acción | Nadie necesita que le avisen de lo que acaba de hacer |
 
+## Almacén y costo (migración 0010) · decisiones aprobadas por Adiel el 01/11/2026
+
+| # | Decisión | Cómo quedó |
+|---|---|---|
+| D1 | Promedio por almacén | El disparador de `almacen.movimiento` calcula el promedio del insumo **en ese almacén** bajo `pg_advisory_xact_lock(almacén, insumo)` y lo congela en la salida. HU-55 corregida |
+| D2 | `outbox.evento.destino` | `aviso` → Notificaciones; `integracion` → costo (`POST /interno/eventos`). El CHECK de destinatarios solo aplica a `aviso` |
+| D3 | Dispositivo | `POST /interno/autorizar` con `dispositivo`: 403 `dispositivo_no_autorizado` si no está ACTIVO para esa persona en esa obra. Obligatorio en salidas; en el resto, si viene se valida (NULL = registrado desde la web) |
+| D4 | Periodo cerrado | El periodo lo fija el servidor por el día del hecho (hora del celular si la trae, nunca futura); cerrado ⇒ 409 `periodo_cerrado` salvo reversos |
+| D5 | Saldo de otra obra | Almacén pregunta a obras (`/interno/obras?nombre=`, sin tildes ni mayúsculas); si existe ⇒ 422 `usar_traslado` |
+
+Otras precisiones (por ratificar): los movimientos se cuentan en la **unidad del S10** (la recepción y la salida aceptan
+la unidad de compra y convierten con el factor); el costo de una recepción es el precio de la línea **sin IGV**
+(base imponible / suma de líneas) entre el factor; un conteo no se confirma si el saldo cambió desde que se contó
+(409 `saldo_cambio`); mano de obra y subcontratos no pasan por almacén. Costo depende del **relevo**: sin él (Render
+gratuito) el gasto de almacén queda en cero hasta que se despliegue.
+
 ## Qué NO está hecho
 
-Adjuntos de compra (subida de archivos), recepción de compras y endpoints de `almacen`/`costo` (Henry: HU-35 depende de
-almacén), autorización del gerente para ampliar plazo (D-A2), alerta de reposición HU-26 (el outbox está listo; falta el
-movimiento de Henry que la dispare). HU-12/13/14 (login, roles, asignación) figuran con Henry en `equipo/henry.md`: aquí
+Adjuntos de compra (subida de archivos), HU-36 (aviso de recepción excedida: hoy solo se guarda `motivo_exceso`),
+HU-47 (cierre de obra), HU-56 inventario valorizado como endpoint propio (el stock ya trae valor y promedio), HU-44, y
+valorizar las horas hombre (falta la tarifa, HU-65); el «A» del residente en traslados y reversos, autorización del gerente para ampliar plazo (D-A2), alerta de reposición HU-26 (el movimiento ya existe: falta publicar el aviso cuando una salida
+deja el insumo bajo su punto). HU-12/13/14 (login, roles, asignación) figuran con Henry en `equipo/henry.md`: aquí
 ya están hechas, hay que ponerse de acuerdo en quién las cierra.
 
 ## Datos reales del cliente (catálogo de insumos)
