@@ -41,8 +41,20 @@ Desde Lima; Cloudflare atendió en **SCL** (Santiago) en todas las peticiones. S
 |---|---|---|---|---|
 | `GET /salud` (gateway) | 6 | **0,38 s** | 0,36–0,79 s | cliente → Cloudflare → gateway |
 | `GET /api/v1/obras` sin sesión (401) | 7 | **0,45 s** | 0,42–0,48 s | … → gateway → Cloudflare → obras; **no toca la base** |
-| `GET /api/v1/obras` con sesión | — | *pendiente* | — | … → obras → Neon |
+| `GET /salud` (obras, directo) | 5 | **0,35 s** | 0,34–0,36 s | cliente → Cloudflare → obras; **no toca la base** |
+| `GET /api/v1/obras` con sesión (obras, directo) | 7 | **0,75 s** | 0,72–1,18 s | cliente → Cloudflare → obras → Neon |
+| `GET /api/v1/obras` con sesión, por el gateway | — | *no medido* | — | ver nota |
 | `GET /api/v1/obras` en frío | — | *pendiente* | — | despertar gateway + obras |
+
+**Nota sobre la medición con sesión (02/11/2026, 22:54, `main` = `9570173`).** Cloudflare respondió **429** a
+la IP del autor en `sigro-gateway.onrender.com`, así que **el gateway no se pudo medir desde esa red** y la ruta
+con sesión se midió **directo contra `https://sigro-obras.onrender.com/api/v1/obras`**, con el mismo script y la
+misma cadencia (`SIGRO_BASE=https://sigro-obras.onrender.com`, una petición cada 5 s). Entre `5ec9b89` y
+`9570173` no cambió ningún archivo de la ruta medida (`modulos/obra/rutas.py`, `db.py`, `internos.py`). Para
+comparar con la entrada por el gateway, súmese el salto gateway → obras medido arriba (~0,06 s). La sesión ve
+**1 obra**, es decir, 4 + 2 × 1 = **6 viajes a Neon** por petición. Las 7 respuestas fueron 200, todas en SCL.
+Salida cruda (sin token: solo tiempos y CF-Ray): `api/docs/rendimiento/antes-2026-11-02-obras-directo.txt` y
+`api/docs/rendimiento/antes-2026-11-02-gateway-sin-sesion.txt`.
 
 Lectura de lo medido:
 
@@ -51,7 +63,12 @@ Lectura de lo medido:
 - El salto **gateway → obras** por `https://sigro-obras.onrender.com` cuesta **~0,06 s** (0,45 − 0,38). Pasa
   por Cloudflare, pero el gateway ya usaba un cliente httpx persistente (keep-alive), así que no paga TLS en
   cada petición. **No es donde se va el tiempo.**
-- Lo que falta medir es la parte con base, con la sesión del usuario: es la que hace consultas a Neon.
+- **La base es lo que pesa.** El mismo servicio responde `/salud` en 0,35 s y `/api/v1/obras` con sesión en
+  0,75 s: **~0,40 s** dentro de obras, para 6 viajes a Neon con 1 sola obra. Eso son **~65 ms por viaje**, que
+  coincide con un ida y vuelta Oregon ↔ US East (la hipótesis de región de abajo). Es una inferencia sobre
+  tiempos de curl: lo confirma `obras-db` ÷ consultas cuando `Server-Timing` esté desplegado.
+- Con más obras el costo crece en ~0,13 s por obra (2 viajes cada una) mientras siga el N+1.
+- Una de las 7 peticiones tardó 1,18 s (#5): el resto estuvo entre 0,72 y 0,89 s.
 
 ### Lo que dice el código (antes)
 
@@ -115,7 +132,9 @@ lo descarta `obras-db` ÷ número de consultas en la primera medición con sesi�
 
 ## Después
 
-*Pendiente de despliegue en Render.* Misma ruta, mismo script, misma cadencia (1 cada 5 s).
+*Pendiente de despliegue en Render.* Misma ruta, mismo script, misma cadencia (1 cada 5 s). Para que la
+comparación sea justa con el «antes» con sesión, medir **también directo contra `sigro-obras`** (si el gateway
+sigue bloqueado, solo así).
 
 | Ruta | n | Primer byte (mediana) | `gw-up` | `obras-db` (consultas) | `obras-db-con` |
 |---|---|---|---|---|---|
