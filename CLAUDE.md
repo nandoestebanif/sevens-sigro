@@ -61,7 +61,7 @@ lo declara.
 | Web de oficina | React 18 · TypeScript · Vite |
 | Integraciones | Microservicio FastAPI aparte (importación del S10, consulta de RUC en SUNAT) |
 | Notificaciones | Microservicio FastAPI aparte con patrón outbox (avisos a residente y administrador · ADR-07, propuesto) |
-| Despliegue | Nube gestionada, PostgreSQL administrado, APK por enlace |
+| Despliegue | Nube gestionada, PostgreSQL administrado, APK por enlace. **Pruebas (ADR-10):** un solo servicio gratuito `sigro-api` en Render con un proceso por microservicio (`api/Dockerfile.pruebas`); producción, un contenedor por servicio |
 
 **Arquitectura de microservicios (ADR-09).** La web y la app entran solo por el **gateway** (`/api/v1`).
 Detrás hay un servicio por dominio, cada uno con su proceso, su imagen Docker, su esquema y su usuario de base:
@@ -166,5 +166,5 @@ probada con datos inventados **no está terminada**.
 | `docs/flujo-de-trabajo.md` | Git, ramas, PR y pruebas |
 | `equipo/*.md` | Qué le toca a cada uno |
 | `docs/plan-claude-code.md` | **Plan de trabajo vigente para Claude Code** (orden de tareas y criterios de hecho) |
-| `docs/despliegue-pruebas.md` · `render.yaml` | Ambiente de pruebas (HT-01) en Render + Neon |
+| `docs/despliegue-pruebas.md` · `render.yaml` | Ambiente de pruebas (HT-01) en Render + Neon, en un nodo (ADR-10), y cómo pasar a él sin perder variables |
 | `docs/diagramas/c4/` | Arquitectura C4: C1 contexto, C2 contenedores, C3 componentes (compras y app) |

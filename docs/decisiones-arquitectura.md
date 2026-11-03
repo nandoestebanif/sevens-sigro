@@ -122,3 +122,88 @@ Un bus de mensajes (RabbitMQ, Kafka): para el volumen de una obra, el outbox con
 - Las pruebas levantan todos los servicios en el mismo proceso, cada uno con su usuario de base, y se hablan
   por el mismo contrato HTTP; `pruebas/test_microservicios.py` verifica las cinco reglas de arriba.
 
+
+## ADR-10 · Ambiente de pruebas en un solo nodo (03/11/2026)
+**Contexto.** El ambiente de pruebas (HT-01, ADR-06) corría en Render con **ocho servicios Docker gratuitos**, uno
+por microservicio, y dos problemas que no se arreglan con código:
+- **La red privada no sirve en el plan gratuito.** Un servicio gratuito puede *enviar* tráfico privado pero no
+  *recibirlo* («Free web services can't receive private network traffic»). El gateway llamaba a cada servicio por
+  `https://sigro-<servicio>.onrender.com`, es decir **pasando por Cloudflare**, y Cloudflare empezó a responder
+  **429**: el 03/11 `/salud/servicios` mostró catálogo, compras, tareo e integraciones con `error_429`, y almacén y
+  costo con 502. El sondeo de la pantalla de arranque (7 llamadas cada 2 s) lo precipitó (hotfix en el PR #26),
+  pero cualquier uso normal multiplica las llamadas gateway → servicio → obras (`/interno/autorizar` en cada petición).
+- **Cada servicio duerme por separado.** Tras 15 min sin tráfico, Render duerme cada servicio y despertarlo tarda
+  ~25 s (medido: 25,2 s para obras sola, `docs/rendimiento-render.md`). Una petición que cruza gateway → servicio →
+  obras podía pagar tres despertares.
+
+**Decisión.** Solo en el **ambiente de pruebas**, todos los microservicios corren en **un solo servicio gratuito,
+`sigro-api`**: un contenedor (`api/Dockerfile.pruebas`) con **un proceso por microservicio**. El gateway atiende
+`$PORT` (el único puerto que Render publica); obras, catálogo, compras, tareo, almacén, costo e integraciones
+escuchan en `127.0.0.1:8001–8007`, notificaciones en `8008`, y el relevo corre sin puerto. Un supervisor de
+biblioteca estándar (`infra/un_nodo/supervisor.py`) reinicia el proceso que se cae (espera 1, 2, 4 … 30 s),
+reenvía `SIGTERM` y pone el nombre del proceso en cada línea de log. Se hablan por `http://127.0.0.1:800x`: sin TLS,
+sin Cloudflare, sin 429. La región es **ohio**, la misma de Neon (`aws-us-east-2`). La web (`sigro-web`, estática)
+llama a su propio dominio y Render **reescribe** `/api/*` y `/salud/*` hacia `sigro-api` («Destination can be either
+a path or a full, publicly accessible URL»): el navegador no habla con otro origen, así que no hay CORS ni preflight
+y no se cruza con el *challenge* de Cloudflare en `sigro-api`.
+
+**Qué se mantiene igual (y se sigue verificando).**
+
+| Regla de ADR-09 | En el nodo único |
+|---|---|
+| Un esquema y un usuario de base por servicio | Igual. Cada proceso recibe **solo su** cadena: `SIGRO_DB_OBRAS` → `SIGRO_APP_DATABASE_URL` de obras, y así. Ningún proceso ve la cadena de otro (`api/pruebas/test_un_nodo.py`). La base sigue negando el esquema ajeno por permisos (migración 0009) |
+| Comunicación solo por API (`/interno` con `X-Servicio-Token`) o eventos (outbox) | Igual. Cambia solo la dirección: `127.0.0.1:800x` en lugar de `onrender.com` |
+| Control de acceso en obras en cada petición (regla 9) | Igual: `POST /interno/autorizar` en cada petición, ahora sin salir del contenedor |
+| Código e imagen propios, podados | Producción sigue con `api/Dockerfile` (una imagen podada por servicio) y `docker-compose.yml` **sin cambios**; CI sigue construyendo cada imagen podada (`test_microservicios.py`). La imagen de pruebas lleva todo el código, pero cada proceso importa solo su `app.servicios.<servicio>` |
+| Fallos aislados | Un proceso que se cae no tumba a los demás: el supervisor lo reinicia y mientras tanto solo sus rutas responden 503. Si falta la variable de base de un servicio, ese servicio no arranca y el resto sí |
+| Secretos solo donde se usan | El gateway y las integraciones no reciben cadenas de base ni el secreto JWT; `FACTILIZA_TOKEN` solo va a integraciones |
+
+**Descartado.**
+- *Seguir con ocho servicios gratuitos* y bajar el tráfico interno: no quita el paso por Cloudflare ni los ocho
+  despertares; el 429 vuelve con el uso normal.
+- *Planes pagos o `type: pserv` con red privada*: resuelve las dos cosas y es lo que corresponde a producción, pero
+  el presupuesto del ambiente de pruebas es cero (ADR-06).
+- *Un solo proceso Python que monte todas las apps*: menos memoria todavía, pero los servicios compartirían
+  proceso, memoria, conexión y fallos, y dejaría de ser una arquitectura de microservicios. La precarga con `fork()`
+  consigue la mayor parte del ahorro sin juntar procesos.
+- *honcho / supervisord*: honcho no reinicia un proceso caído (si uno muere, para todos) y supervisord agrega una
+  dependencia y su configuración para lo que hacen unas 300 líneas de biblioteca estándar (que además
+  hacen la precarga con `fork()`).
+- *Otra nube gratuita* (Fly.io, Railway): cambiar de proveedor a mitad del Sprint 2 cuesta más que esta decisión, y
+  sus niveles gratuitos tienen límites parecidos.
+
+**Consecuencias que se aceptan.**
+- **Memoria: 512 MB y 0,1 CPU para diez procesos.** Solo cabe con precarga y `fork()` (ver «Memoria», abajo). Si no
+  alcanza, `SIGRO_UN_NODO_EXTRAS=0` quita relevo y notificaciones: los avisos y los hechos de costo esperan en
+  `outbox.evento`, sin perderse. Con 0,1 CPU, una importación del S10 hace más lentas las demás peticiones.
+- **Un solo punto de fallo en pruebas**: si `sigro-api` cae o se redespliega, cae todo el ambiente a la vez. En
+  pruebas es aceptable; en producción no, y por eso producción no cambia.
+- **Un solo despertar** en lugar de uno por servicio; a cambio, el arranque en frío suma el de los diez procesos.
+- **Notificaciones pierde su base al dormir** (sistema de archivos efímero): la campana del usuario se vacía al
+  redesplegar; el evento original queda en `outbox.evento`.
+- La reescritura de `sigro-web` hacia `sigro-api` depende de que Render reenvíe métodos y cabeceras; Render no lo
+  documenta. Se prueba con el login (un POST) al migrar y, si falla, `VITE_API_URL` vuelve a apuntar a `sigro-api`
+  (la API ya acepta ese origen por `SIGRO_CORS`).
+- La app del almacenero apunta a `https://sigro-api.onrender.com` (antes `sigro-gateway`).
+
+**Memoria.** Medido en CI (job `un-nodo`, Linux, contenedor con `--memory 512m` como Render gratis, datos reales del
+cliente), con la prueba de humo completa por el gateway:
+
+| Cómo se lanzan los procesos | Diez procesos vivos | PSS total | Contenedor | Resultado |
+|---|---|---|---|---|
+| Cada servicio con su propio intérprete (run 41674366797) | **no**: el núcleo mata obras, catálogo, almacén y costo al arrancar (código -9) y quedan en bucle de reinicio | 488 MB con compras ya muerta | 450 MiB / 512 (88 %) | **no cabe** |
+| **Precarga + `fork()`** (run 41675739156) | **sí**, sin un solo reinicio | **398 MB** | **366 MiB / 512 (71,5 %)** | humo en verde |
+
+Por eso el supervisor, en Linux, carga **una vez** las bibliotecas comunes del venv de la API (FastAPI, pydantic,
+SQLAlchemy, psycopg, httpx, uvicorn…) y crea cada servicio con `fork()` seguido de `gc.freeze()`, como
+`gunicorn --preload`. Cada servicio **sigue siendo un proceso aparte**: su PID, su entorno (`os.environ` se
+reemplaza en el hijo por el suyo), su cadena de base, su pool de conexiones y sus fallos; lo que comparten son las
+páginas de solo lectura de esas bibliotecas (copia al escribir). El código `app.*` se importa recién en el hijo,
+con su entorno. Cada servicio de la API bajó de ~55 MB a 25–41 MB de PSS. Integraciones y notificaciones fijan
+otras versiones de FastAPI y se lanzan con su propio intérprete (~45–49 MB cada uno). Margen: ~146 MiB para picos
+(una importación del S10, un catálogo grande). Si el log de Render muestra `terminó con código -9`, primero
+`SIGRO_UN_NODO_EXTRAS=0` (relevo y notificaciones fuera, ~75 MB) y después, si hace falta, subir el plan de
+`sigro-api`. `SIGRO_UN_NODO_FORK=0` vuelve a un intérprete por servicio (solo para diagnosticar).
+
+**Cómo se vuelve atrás.** `render.yaml` anterior (ocho servicios) está en la historia de Git; el paso a un nodo
+(`docs/despliegue-pruebas.md`) deja los servicios viejos **suspendidos** antes de borrarlos.

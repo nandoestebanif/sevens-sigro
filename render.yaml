@@ -50,7 +50,8 @@ services:
         sync: false
       - key: FACTILIZA_TOKEN               # integraciones (SUNAT/RENIEC); nunca en el repositorio
         sync: false
-      # Relevo y notificaciones dentro del mismo nodo. Ver ADR-10, «Memoria»: con 512 MB entran (medido en local).
+      # Relevo y notificaciones dentro del mismo nodo. ADR-10, «Memoria»: los diez procesos caben en 512 MB SOLO con la
+      # precarga + fork() del supervisor (medido en CI: 366 MiB de 512). Si el log muestra «código -9», poner "0".
       - key: SIGRO_UN_NODO_EXTRAS
         value: "1"
       # Pool chico pero persistente por servicio (app/db.py, docs/rendimiento-render.md).
