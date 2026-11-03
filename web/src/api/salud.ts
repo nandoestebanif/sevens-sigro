@@ -2,8 +2,12 @@
    Esperar a que el servidor esté listo antes de mostrar la web.
    En Render cada servicio se duerme y tarda 20-30 s en despertar. Una sola
    llamada al gateway, GET /salud/servicios, los despierta a todos a la vez y
-   dice cuáles ya responden. Se pregunta cada 2 s hasta que todos estén
-   listos; a los 90 s se deja de esperar y la pantalla ofrece «Reintentar».
+   dice cuáles ya responden. Se pregunta cada 10 s hasta que todos estén
+   listos (y ni una vez más); a los 90 s se deja de esperar y la pantalla
+   ofrece «Reintentar». Con la sesión ya abierta no se consulta (Arranque).
+   No bajar de 10 s: cada consulta son 7 llamadas del gateway a los servicios
+   y con 2 s Cloudflare respondió 429 a todo (hotfix-sondeo). El gateway,
+   además, guarda la respuesta 30 s.
    ───────────────────────────────────────────────────────────────────────── */
 import { API_URL } from './http'
 
@@ -13,7 +17,7 @@ export interface Salud { listo: boolean; servicios: SaludServicio[] }
 export type FaseArranque = 'preparando' | 'despertando' | 'listo' | 'sin_conexion'
 export interface EstadoArranque { fase: FaseArranque; listos: number; total: number }
 
-export const CADA_MS = 2000      // entre una consulta y la siguiente
+export const CADA_MS = 10000     // entre una consulta y la siguiente
 export const AVISO_MS = 5000     // desde aquí se dice «el servidor está despertando»
 export const LIMITE_MS = 90000   // desde aquí, «No pudimos conectar» y Reintentar
 const ESPERA_CONSULTA_MS = 12000 // una consulta colgada no detiene la espera
