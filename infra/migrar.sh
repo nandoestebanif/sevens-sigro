@@ -3,7 +3,7 @@
 # Corre con el usuario DUEÑO; ningún servicio lo usa después.
 #   SIGRO_DATABASE_URL      conexión SQLAlchemy del dueño (la lee Alembic)
 #   SIGRO_OWNER_DSN         la misma conexión en formato libpq
-#   SIGRO_CLAVE_<SERVICIO>  contraseña del usuario de cada servicio (OBRAS, CATALOGO, COMPRAS, TAREO, RELEVO)
+#   SIGRO_CLAVE_<SERVICIO>  contraseña del usuario de cada servicio (OBRAS, CATALOGO, COMPRAS, TAREO, ALMACEN, COSTO, RELEVO)
 set -eu
 alembic upgrade head
 python - <<'PY'
@@ -13,7 +13,7 @@ import psycopg
 from psycopg import sql
 
 # usuario con LOGIN → rol con los privilegios SOLO de su esquema (migración 0009)
-SERVICIOS = ["obras", "catalogo", "compras", "tareo", "relevo"]
+SERVICIOS = ["obras", "catalogo", "compras", "tareo", "almacen", "costo", "relevo"]   # almacen y costo: migración 0010
 with psycopg.connect(os.environ["SIGRO_OWNER_DSN"], autocommit=True) as c:
     for s in SERVICIOS:
         usuario, rol, clave = f"sigro_{s}", f"sigro_svc_{s}", os.environ[f"SIGRO_CLAVE_{s.upper()}"]

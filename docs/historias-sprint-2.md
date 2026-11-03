@@ -451,7 +451,7 @@
 **Criterios de aceptación**
 
 - [ ] Exige origen declarado: saldo de otra obra, devolución de cuadrilla, préstamo, sobrante u otro
-- [ ] El origen "saldo de otra obra" solo se admite si esa obra no está registrada en el sistema; si lo está, debe usarse el traslado (HU-40)
+- [ ] El origen "saldo de otra obra" solo se admite si esa obra no está registrada en el sistema; si lo está, debe usarse el traslado (HU-42)
 - [ ] Exige costo unitario para poder valorizarlo
 - [ ] Queda distinguible de los ingresos originados en una recepción
 

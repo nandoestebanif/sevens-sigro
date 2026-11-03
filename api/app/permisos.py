@@ -43,6 +43,16 @@ ACCIONES: dict[str, frozenset[str]] = {
     "requerimiento.consultar": frozenset({RESIDENTE, ADMIN, GERENTE}),
     "reposicion.registrar": frozenset({RESIDENTE, ADMIN}),
     "reposicion.consultar": frozenset({RESIDENTE, ADMIN, GERENTE}),
+    # --- almacén (migración 0010): solo el almacenero registra; el residente también corrige con reverso
+    "salida.registrar": frozenset({ALMACENERO}),                       # HU-40 (desde su dispositivo autorizado, R5)
+    "ingreso.registrar": frozenset({ALMACENERO}),                      # HU-41
+    "recepcion.registrar": frozenset({ALMACENERO}),                    # HU-35
+    "traslado.registrar": frozenset({ALMACENERO}),                     # HU-42 (el «A» del residente queda pendiente)
+    "conteo.registrar": frozenset({ALMACENERO}),                       # HU-46
+    "movimiento.revertir": frozenset({ALMACENERO, RESIDENTE}),         # HU-45
+    "stock.consultar": TODOS,                                          # HU-43, kárdex
+    # --- costo (modelo de lectura)
+    "costo.consultar": frozenset({RESIDENTE, ADMIN, GERENTE}),         # HU-58
     # --- catálogo de insumos (HU-07, HU-08, HU-17)
     "insumo.consultar": TODOS,
     "insumo.registrar": frozenset({ALMACENERO, RESIDENTE, ADMIN}),      # el almacenero no espera: lo nombra y el residente lo verifica

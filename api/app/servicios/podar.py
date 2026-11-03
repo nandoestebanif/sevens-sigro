@@ -17,10 +17,12 @@ MODULOS = {
     "catalogo": {"catalogo"},
     "compras": {"compras"},
     "tareo": {"tareo"},
+    "almacen": {"almacen"},
+    "costo": {"costo"},
     "relevo": {"outbox"},
     "gateway": set(),
 }
-ENTRADAS = {"obras", "catalogo", "compras", "tareo", "gateway"}
+ENTRADAS = {"obras", "catalogo", "compras", "tareo", "almacen", "costo", "gateway"}
 
 
 def podar(servicio: str, raiz: Path = RAIZ) -> list[str]:

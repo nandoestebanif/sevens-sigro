@@ -1,0 +1,2541 @@
+{
+ "openapi": "3.1.0",
+ "info": {
+  "title": "SIGRO · servicio almacen",
+  "description": "Movimientos de almacén, saldo, kárdex y costo promedio ponderado.",
+  "version": "0.2.0"
+ },
+ "paths": {
+  "/salud": {
+   "get": {
+    "tags": [
+     "sistema"
+    ],
+    "summary": "Salud",
+    "operationId": "salud_salud_get",
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/obras/{obra_id}/almacen/salidas": {
+   "post": {
+    "tags": [
+     "almacén"
+    ],
+    "summary": "Registrar Salida",
+    "description": "Exige almacén, insumo, cantidad, motivo y quién retira; el frente es opcional. Nunca más de lo disponible en ese\nalmacén. El costo lo pone el servidor: el promedio vigente en ese instante, congelado. Reenvío ⇒ 200 con el original.",
+    "operationId": "registrar_salida_api_v1_obras__obra_id__almacen_salidas_post",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "obra_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "minimum": 1,
+       "title": "Obra Id"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/SalidaIn"
+       }
+      }
+     }
+    },
+    "responses": {
+     "201": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/MovimientoOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/obras/{obra_id}/almacen/ingresos": {
+   "post": {
+    "tags": [
+     "almacén"
+    ],
+    "summary": "Registrar Ingreso",
+    "description": "Origen declarado y costo unitario obligatorios; queda distinguible (tipo `ingreso_sin_compra`) de una recepción.\n«Saldo de otra obra» solo si esa obra no está en SIGRO (D5): si está, se usa el traslado (HU-42).",
+    "operationId": "registrar_ingreso_api_v1_obras__obra_id__almacen_ingresos_post",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "obra_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "minimum": 1,
+       "title": "Obra Id"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/IngresoIn"
+       }
+      }
+     }
+    },
+    "responses": {
+     "201": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/MovimientoOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/obras/{obra_id}/almacen/movimientos/{movimiento_id}/reverso": {
+   "post": {
+    "tags": [
+     "almacén"
+    ],
+    "summary": "Revertir",
+    "description": "Corregir = un movimiento inverso que apunta al original, con autor, fecha y motivo. El original no se toca; un\noriginal se revierte una sola vez y un reverso no se revierte. Se admite en un periodo cerrado (D4).",
+    "operationId": "revertir_api_v1_obras__obra_id__almacen_movimientos__movimiento_id__reverso_post",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "movimiento_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Movimiento Id"
+      }
+     },
+     {
+      "name": "obra_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "minimum": 1,
+       "title": "Obra Id"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/ReversoIn"
+       }
+      }
+     }
+    },
+    "responses": {
+     "201": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/MovimientoOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/obras/{obra_id}/almacen/recepciones": {
+   "post": {
+    "tags": [
+     "almacén"
+    ],
+    "summary": "Registrar Recepcion",
+    "description": "Total o parcial; varias recepciones hasta completar lo comprado y nunca más de lo comprado de cada insumo. Cada\nlínea genera su ingreso al costo de la compra sin IGV. Sin líneas se recibe todo lo pendiente (caso habitual).",
+    "operationId": "registrar_recepcion_api_v1_obras__obra_id__almacen_recepciones_post",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "obra_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "minimum": 1,
+       "title": "Obra Id"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/RecepcionIn"
+       }
+      }
+     }
+    },
+    "responses": {
+     "201": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/RecepcionOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/obras/{obra_id}/almacen/compras/{compra_id}/recepcion": {
+   "get": {
+    "tags": [
+     "almacén"
+    ],
+    "summary": "Estado Recepcion",
+    "description": "HU-35: pedido, recibido y pendiente por insumo (en unidad de compra).",
+    "operationId": "estado_recepcion_api_v1_obras__obra_id__almacen_compras__compra_id__recepcion_get",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "compra_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Compra Id"
+      }
+     },
+     {
+      "name": "obra_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "minimum": 1,
+       "title": "Obra Id"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "type": "array",
+         "items": {
+          "$ref": "#/components/schemas/RecepcionLineaOut"
+         },
+         "title": "Response Estado Recepcion Api V1 Obras  Obra Id  Almacen Compras  Compra Id  Recepcion Get"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/obras/{obra_id}/almacen/traslados": {
+   "post": {
+    "tags": [
+     "almacén"
+    ],
+    "summary": "Registrar Traslado",
+    "description": "Solo hasta el stock del origen. Genera una salida en origen y un ingreso en destino que comparten el id del\ntraslado; el costo unitario viaja con el material (lo copia el motor).",
+    "operationId": "registrar_traslado_api_v1_obras__obra_id__almacen_traslados_post",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "obra_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "minimum": 1,
+       "title": "Obra Id"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/TrasladoIn"
+       }
+      }
+     }
+    },
+    "responses": {
+     "201": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/OperacionOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/obras/{obra_id}/almacen/traslados/{traslado_id}/anular": {
+   "post": {
+    "tags": [
+     "almacén"
+    ],
+    "summary": "Anular Traslado",
+    "description": "Anular = dos reversos por insumo (primero el ingreso en destino, luego la salida en origen), nunca un borrado.",
+    "operationId": "anular_traslado_api_v1_obras__obra_id__almacen_traslados__traslado_id__anular_post",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "traslado_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Traslado Id"
+      }
+     },
+     {
+      "name": "obra_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "minimum": 1,
+       "title": "Obra Id"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/AnularIn"
+       }
+      }
+     }
+    },
+    "responses": {
+     "201": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/OperacionOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/obras/{obra_id}/almacen/conteos": {
+   "post": {
+    "tags": [
+     "almacén"
+    ],
+    "summary": "Abrir Conteo",
+    "description": "El conteo se registra por almacén y fecha. Uno abierto (borrador) a la vez por almacén.",
+    "operationId": "abrir_conteo_api_v1_obras__obra_id__almacen_conteos_post",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "obra_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "minimum": 1,
+       "title": "Obra Id"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/ConteoIn"
+       }
+      }
+     }
+    },
+    "responses": {
+     "201": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ConteoOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/obras/{obra_id}/almacen/conteos/{conteo_id}/lineas": {
+   "post": {
+    "tags": [
+     "almacén"
+    ],
+    "summary": "Contar",
+    "description": "El saldo teórico lo pone el servidor (R2); toda diferencia exige su motivo antes de confirmarse.",
+    "operationId": "contar_api_v1_obras__obra_id__almacen_conteos__conteo_id__lineas_post",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "conteo_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Conteo Id"
+      }
+     },
+     {
+      "name": "obra_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "minimum": 1,
+       "title": "Obra Id"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/ConteoLineaIn"
+       }
+      }
+     }
+    },
+    "responses": {
+     "201": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ConteoOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/obras/{obra_id}/almacen/conteos/{conteo_id}": {
+   "get": {
+    "tags": [
+     "almacén"
+    ],
+    "summary": "Ver Conteo",
+    "description": "Saldo teórico, contado y diferencia por insumo.",
+    "operationId": "ver_conteo_api_v1_obras__obra_id__almacen_conteos__conteo_id__get",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "conteo_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Conteo Id"
+      }
+     },
+     {
+      "name": "obra_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "minimum": 1,
+       "title": "Obra Id"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ConteoOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/obras/{obra_id}/almacen/conteos/{conteo_id}/confirmar": {
+   "post": {
+    "tags": [
+     "almacén"
+    ],
+    "summary": "Confirmar Conteo",
+    "description": "Un movimiento de ajuste por cada diferencia, al costo promedio vigente. Si el saldo cambió desde que se contó,\nno se ajusta a ciegas: hay que contar de nuevo. Confirmar dos veces devuelve lo mismo.",
+    "operationId": "confirmar_conteo_api_v1_obras__obra_id__almacen_conteos__conteo_id__confirmar_post",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "conteo_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Conteo Id"
+      }
+     },
+     {
+      "name": "obra_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "minimum": 1,
+       "title": "Obra Id"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ConteoOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/obras/{obra_id}/almacen/stock": {
+   "get": {
+    "tags": [
+     "almacén"
+    ],
+    "summary": "Stock",
+    "description": "Saldo por almacén y consolidado de la obra, con la hora del último movimiento considerado y los insumos bajo su\npunto de reposición. Lo calcula el servidor a partir del libro (R2).",
+    "operationId": "stock_api_v1_obras__obra_id__almacen_stock_get",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "obra_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "minimum": 1,
+       "title": "Obra Id"
+      }
+     },
+     {
+      "name": "almacen_id",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "integer",
+         "minimum": 1
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Almacen Id"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/StockOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/obras/{obra_id}/almacen/kardex": {
+   "get": {
+    "tags": [
+     "almacén"
+    ],
+    "summary": "Kardex",
+    "description": "Cada movimiento con el saldo y el promedio que dejó; se ve el anulado (`revertido_por_id`) y el que lo anuló.",
+    "operationId": "kardex_api_v1_obras__obra_id__almacen_kardex_get",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "obra_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "minimum": 1,
+       "title": "Obra Id"
+      }
+     },
+     {
+      "name": "insumo_id",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "integer",
+         "minimum": 1
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Insumo Id"
+      }
+     },
+     {
+      "name": "almacen_id",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "integer",
+         "minimum": 1
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Almacen Id"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "type": "array",
+         "items": {
+          "$ref": "#/components/schemas/KardexFilaOut"
+         },
+         "title": "Response Kardex Api V1 Obras  Obra Id  Almacen Kardex Get"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/interno/obras/{obra_id}/recibido-consumido": {
+   "get": {
+    "tags": [
+     "interno"
+    ],
+    "summary": "Recibido Consumido",
+    "description": "Por insumo, en la unidad del S10: lo recibido de compras y lo consumido por salidas, netos de sus reversos.",
+    "operationId": "recibido_consumido_interno_obras__obra_id__recibido_consumido_get",
+    "parameters": [
+     {
+      "name": "obra_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Obra Id"
+      }
+     },
+     {
+      "name": "x-servicio-token",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "X-Servicio-Token"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  }
+ },
+ "components": {
+  "schemas": {
+   "AnularIn": {
+    "properties": {
+     "uuid_cliente": {
+      "type": "string",
+      "format": "uuid",
+      "title": "Uuid Cliente"
+     },
+     "hora_dispositivo_ms": {
+      "anyOf": [
+       {
+        "type": "integer",
+        "minimum": 0.0
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Hora Dispositivo Ms"
+     },
+     "dispositivo": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 128,
+        "minLength": 8
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Dispositivo"
+     },
+     "motivo": {
+      "type": "string",
+      "maxLength": 300,
+      "minLength": 3,
+      "title": "Motivo"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "uuid_cliente",
+     "motivo"
+    ],
+    "title": "AnularIn"
+   },
+   "ConteoIn": {
+    "properties": {
+     "uuid_cliente": {
+      "type": "string",
+      "format": "uuid",
+      "title": "Uuid Cliente"
+     },
+     "hora_dispositivo_ms": {
+      "anyOf": [
+       {
+        "type": "integer",
+        "minimum": 0.0
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Hora Dispositivo Ms"
+     },
+     "dispositivo": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 128,
+        "minLength": 8
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Dispositivo"
+     },
+     "almacen_id": {
+      "anyOf": [
+       {
+        "type": "integer",
+        "minimum": 1.0
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Almacen Id"
+     },
+     "fecha": {
+      "type": "string",
+      "format": "date",
+      "title": "Fecha"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "uuid_cliente",
+     "fecha"
+    ],
+    "title": "ConteoIn"
+   },
+   "ConteoLineaIn": {
+    "properties": {
+     "insumo_id": {
+      "type": "integer",
+      "minimum": 1.0,
+      "title": "Insumo Id"
+     },
+     "cantidad_contada": {
+      "anyOf": [
+       {
+        "type": "number",
+        "minimum": 0.0
+       },
+       {
+        "type": "string",
+        "pattern": "^(?!^[-+.]*$)[+-]?0*(?:\\d{0,14}|(?=[\\d.]{1,19}0*$)\\d{0,14}\\.\\d{0,4}0*$)"
+       }
+      ],
+      "title": "Cantidad Contada"
+     },
+     "motivo": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 300
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Motivo"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "insumo_id",
+     "cantidad_contada"
+    ],
+    "title": "ConteoLineaIn"
+   },
+   "ConteoLineaOut": {
+    "properties": {
+     "insumo_id": {
+      "type": "integer",
+      "title": "Insumo Id"
+     },
+     "saldo_teorico": {
+      "type": "string",
+      "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+      "title": "Saldo Teorico"
+     },
+     "cantidad_contada": {
+      "type": "string",
+      "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+      "title": "Cantidad Contada"
+     },
+     "diferencia": {
+      "type": "string",
+      "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+      "title": "Diferencia"
+     },
+     "motivo": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Motivo"
+     }
+    },
+    "type": "object",
+    "required": [
+     "insumo_id",
+     "saldo_teorico",
+     "cantidad_contada",
+     "diferencia",
+     "motivo"
+    ],
+    "title": "ConteoLineaOut"
+   },
+   "ConteoOut": {
+    "properties": {
+     "id": {
+      "type": "integer",
+      "title": "Id"
+     },
+     "uuid_cliente": {
+      "type": "string",
+      "format": "uuid",
+      "title": "Uuid Cliente"
+     },
+     "almacen_id": {
+      "type": "integer",
+      "title": "Almacen Id"
+     },
+     "fecha": {
+      "type": "string",
+      "format": "date",
+      "title": "Fecha"
+     },
+     "estado": {
+      "type": "string",
+      "title": "Estado"
+     },
+     "registrado_por": {
+      "type": "integer",
+      "title": "Registrado Por"
+     },
+     "confirmado_por": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Confirmado Por"
+     },
+     "confirmado_en": {
+      "anyOf": [
+       {
+        "type": "string",
+        "format": "date-time"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Confirmado En"
+     },
+     "lineas": {
+      "items": {
+       "$ref": "#/components/schemas/ConteoLineaOut"
+      },
+      "type": "array",
+      "title": "Lineas"
+     },
+     "ajustes": {
+      "items": {
+       "$ref": "#/components/schemas/MovimientoOut"
+      },
+      "type": "array",
+      "title": "Ajustes",
+      "default": []
+     }
+    },
+    "type": "object",
+    "required": [
+     "id",
+     "uuid_cliente",
+     "almacen_id",
+     "fecha",
+     "estado",
+     "registrado_por",
+     "confirmado_por",
+     "confirmado_en",
+     "lineas"
+    ],
+    "title": "ConteoOut"
+   },
+   "HTTPValidationError": {
+    "properties": {
+     "detail": {
+      "items": {
+       "$ref": "#/components/schemas/ValidationError"
+      },
+      "type": "array",
+      "title": "Detail"
+     }
+    },
+    "type": "object",
+    "title": "HTTPValidationError"
+   },
+   "IngresoIn": {
+    "properties": {
+     "uuid_cliente": {
+      "type": "string",
+      "format": "uuid",
+      "title": "Uuid Cliente"
+     },
+     "hora_dispositivo_ms": {
+      "anyOf": [
+       {
+        "type": "integer",
+        "minimum": 0.0
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Hora Dispositivo Ms"
+     },
+     "dispositivo": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 128,
+        "minLength": 8
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Dispositivo"
+     },
+     "almacen_id": {
+      "anyOf": [
+       {
+        "type": "integer",
+        "minimum": 1.0
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Almacen Id"
+     },
+     "insumo_id": {
+      "type": "integer",
+      "minimum": 1.0,
+      "title": "Insumo Id"
+     },
+     "cantidad": {
+      "anyOf": [
+       {
+        "type": "number",
+        "exclusiveMinimum": 0.0
+       },
+       {
+        "type": "string",
+        "pattern": "^(?!^[-+.]*$)[+-]?0*(?:\\d{0,14}|(?=[\\d.]{1,19}0*$)\\d{0,14}\\.\\d{0,4}0*$)"
+       }
+      ],
+      "title": "Cantidad"
+     },
+     "unidad": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 20
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Unidad"
+     },
+     "costo_unitario": {
+      "anyOf": [
+       {
+        "type": "number",
+        "exclusiveMinimum": 0.0
+       },
+       {
+        "type": "string",
+        "pattern": "^(?!^[-+.]*$)[+-]?0*(?:\\d{0,12}|(?=[\\d.]{1,19}0*$)\\d{0,12}\\.\\d{0,6}0*$)"
+       }
+      ],
+      "title": "Costo Unitario"
+     },
+     "origen": {
+      "type": "string",
+      "enum": [
+       "saldo_otra_obra",
+       "devolucion_cuadrilla",
+       "prestamo",
+       "sobrante",
+       "otro"
+      ],
+      "title": "Origen"
+     },
+     "origen_detalle": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 300
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Origen Detalle"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "uuid_cliente",
+     "insumo_id",
+     "cantidad",
+     "costo_unitario",
+     "origen"
+    ],
+    "title": "IngresoIn",
+    "description": "HU-41: ingreso que no viene de una compra."
+   },
+   "KardexFilaOut": {
+    "properties": {
+     "id": {
+      "type": "integer",
+      "title": "Id"
+     },
+     "uuid_cliente": {
+      "type": "string",
+      "format": "uuid",
+      "title": "Uuid Cliente"
+     },
+     "tipo": {
+      "type": "string",
+      "title": "Tipo"
+     },
+     "sentido": {
+      "type": "integer",
+      "title": "Sentido"
+     },
+     "proyecto_id": {
+      "type": "integer",
+      "title": "Proyecto Id"
+     },
+     "almacen_id": {
+      "type": "integer",
+      "title": "Almacen Id"
+     },
+     "insumo_id": {
+      "type": "integer",
+      "title": "Insumo Id"
+     },
+     "insumo_codigo": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Insumo Codigo"
+     },
+     "unidad": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Unidad"
+     },
+     "cantidad": {
+      "type": "string",
+      "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+      "title": "Cantidad"
+     },
+     "costo_unitario": {
+      "type": "string",
+      "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+      "title": "Costo Unitario"
+     },
+     "importe": {
+      "type": "string",
+      "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+      "title": "Importe"
+     },
+     "moneda": {
+      "type": "string",
+      "title": "Moneda"
+     },
+     "motivo": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Motivo"
+     },
+     "quien_retira": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Quien Retira"
+     },
+     "frente": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Frente"
+     },
+     "origen": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Origen"
+     },
+     "origen_detalle": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Origen Detalle"
+     },
+     "recepcion_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Recepcion Id"
+     },
+     "traslado_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Traslado Id"
+     },
+     "conteo_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Conteo Id"
+     },
+     "revierte_a_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Revierte A Id"
+     },
+     "periodo_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Periodo Id"
+     },
+     "dispositivo_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Dispositivo Id"
+     },
+     "registrado_por": {
+      "type": "integer",
+      "title": "Registrado Por"
+     },
+     "fecha_dispositivo": {
+      "anyOf": [
+       {
+        "type": "string",
+        "format": "date-time"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Fecha Dispositivo"
+     },
+     "fecha_servidor": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Fecha Servidor"
+     },
+     "saldo": {
+      "anyOf": [
+       {
+        "type": "string",
+        "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Saldo"
+     },
+     "revertido_por_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Revertido Por Id"
+     },
+     "saldo_despues": {
+      "type": "string",
+      "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+      "title": "Saldo Despues"
+     },
+     "promedio_despues": {
+      "anyOf": [
+       {
+        "type": "string",
+        "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Promedio Despues"
+     }
+    },
+    "type": "object",
+    "required": [
+     "id",
+     "uuid_cliente",
+     "tipo",
+     "sentido",
+     "proyecto_id",
+     "almacen_id",
+     "insumo_id",
+     "cantidad",
+     "costo_unitario",
+     "importe",
+     "moneda",
+     "motivo",
+     "quien_retira",
+     "frente",
+     "origen",
+     "origen_detalle",
+     "recepcion_id",
+     "traslado_id",
+     "conteo_id",
+     "revierte_a_id",
+     "periodo_id",
+     "dispositivo_id",
+     "registrado_por",
+     "fecha_dispositivo",
+     "fecha_servidor",
+     "revertido_por_id",
+     "saldo_despues",
+     "promedio_despues"
+    ],
+    "title": "KardexFilaOut"
+   },
+   "LineaCantidad": {
+    "properties": {
+     "insumo_id": {
+      "type": "integer",
+      "minimum": 1.0,
+      "title": "Insumo Id"
+     },
+     "cantidad": {
+      "anyOf": [
+       {
+        "type": "number",
+        "exclusiveMinimum": 0.0
+       },
+       {
+        "type": "string",
+        "pattern": "^(?!^[-+.]*$)[+-]?0*(?:\\d{0,14}|(?=[\\d.]{1,19}0*$)\\d{0,14}\\.\\d{0,4}0*$)"
+       }
+      ],
+      "title": "Cantidad"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "insumo_id",
+     "cantidad"
+    ],
+    "title": "LineaCantidad"
+   },
+   "MovimientoOut": {
+    "properties": {
+     "id": {
+      "type": "integer",
+      "title": "Id"
+     },
+     "uuid_cliente": {
+      "type": "string",
+      "format": "uuid",
+      "title": "Uuid Cliente"
+     },
+     "tipo": {
+      "type": "string",
+      "title": "Tipo"
+     },
+     "sentido": {
+      "type": "integer",
+      "title": "Sentido"
+     },
+     "proyecto_id": {
+      "type": "integer",
+      "title": "Proyecto Id"
+     },
+     "almacen_id": {
+      "type": "integer",
+      "title": "Almacen Id"
+     },
+     "insumo_id": {
+      "type": "integer",
+      "title": "Insumo Id"
+     },
+     "insumo_codigo": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Insumo Codigo"
+     },
+     "unidad": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Unidad"
+     },
+     "cantidad": {
+      "type": "string",
+      "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+      "title": "Cantidad"
+     },
+     "costo_unitario": {
+      "type": "string",
+      "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+      "title": "Costo Unitario"
+     },
+     "importe": {
+      "type": "string",
+      "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+      "title": "Importe"
+     },
+     "moneda": {
+      "type": "string",
+      "title": "Moneda"
+     },
+     "motivo": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Motivo"
+     },
+     "quien_retira": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Quien Retira"
+     },
+     "frente": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Frente"
+     },
+     "origen": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Origen"
+     },
+     "origen_detalle": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Origen Detalle"
+     },
+     "recepcion_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Recepcion Id"
+     },
+     "traslado_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Traslado Id"
+     },
+     "conteo_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Conteo Id"
+     },
+     "revierte_a_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Revierte A Id"
+     },
+     "periodo_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Periodo Id"
+     },
+     "dispositivo_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Dispositivo Id"
+     },
+     "registrado_por": {
+      "type": "integer",
+      "title": "Registrado Por"
+     },
+     "fecha_dispositivo": {
+      "anyOf": [
+       {
+        "type": "string",
+        "format": "date-time"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Fecha Dispositivo"
+     },
+     "fecha_servidor": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Fecha Servidor"
+     },
+     "saldo": {
+      "anyOf": [
+       {
+        "type": "string",
+        "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Saldo"
+     }
+    },
+    "type": "object",
+    "required": [
+     "id",
+     "uuid_cliente",
+     "tipo",
+     "sentido",
+     "proyecto_id",
+     "almacen_id",
+     "insumo_id",
+     "cantidad",
+     "costo_unitario",
+     "importe",
+     "moneda",
+     "motivo",
+     "quien_retira",
+     "frente",
+     "origen",
+     "origen_detalle",
+     "recepcion_id",
+     "traslado_id",
+     "conteo_id",
+     "revierte_a_id",
+     "periodo_id",
+     "dispositivo_id",
+     "registrado_por",
+     "fecha_dispositivo",
+     "fecha_servidor"
+    ],
+    "title": "MovimientoOut"
+   },
+   "OperacionOut": {
+    "properties": {
+     "id": {
+      "type": "integer",
+      "title": "Id"
+     },
+     "uuid_cliente": {
+      "type": "string",
+      "format": "uuid",
+      "title": "Uuid Cliente"
+     },
+     "movimientos": {
+      "items": {
+       "$ref": "#/components/schemas/MovimientoOut"
+      },
+      "type": "array",
+      "title": "Movimientos"
+     }
+    },
+    "type": "object",
+    "required": [
+     "id",
+     "uuid_cliente",
+     "movimientos"
+    ],
+    "title": "OperacionOut"
+   },
+   "RecepcionIn": {
+    "properties": {
+     "uuid_cliente": {
+      "type": "string",
+      "format": "uuid",
+      "title": "Uuid Cliente"
+     },
+     "hora_dispositivo_ms": {
+      "anyOf": [
+       {
+        "type": "integer",
+        "minimum": 0.0
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Hora Dispositivo Ms"
+     },
+     "dispositivo": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 128,
+        "minLength": 8
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Dispositivo"
+     },
+     "compra_id": {
+      "type": "integer",
+      "minimum": 1.0,
+      "title": "Compra Id"
+     },
+     "almacen_id": {
+      "anyOf": [
+       {
+        "type": "integer",
+        "minimum": 1.0
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Almacen Id"
+     },
+     "lineas": {
+      "anyOf": [
+       {
+        "items": {
+         "$ref": "#/components/schemas/LineaCantidad"
+        },
+        "type": "array",
+        "maxItems": 500,
+        "minItems": 1
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Lineas"
+     },
+     "motivo_exceso": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 300
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Motivo Exceso"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "uuid_cliente",
+     "compra_id"
+    ],
+    "title": "RecepcionIn",
+    "description": "HU-35. Sin líneas = recepción TOTAL de lo pendiente (el caso habitual en SEVENS). Cantidades en unidad de compra."
+   },
+   "RecepcionLineaOut": {
+    "properties": {
+     "insumo_id": {
+      "type": "integer",
+      "title": "Insumo Id"
+     },
+     "unidad_compra": {
+      "type": "string",
+      "title": "Unidad Compra"
+     },
+     "pedido": {
+      "type": "string",
+      "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+      "title": "Pedido"
+     },
+     "recibido": {
+      "type": "string",
+      "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+      "title": "Recibido"
+     },
+     "pendiente": {
+      "type": "string",
+      "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+      "title": "Pendiente"
+     }
+    },
+    "type": "object",
+    "required": [
+     "insumo_id",
+     "unidad_compra",
+     "pedido",
+     "recibido",
+     "pendiente"
+    ],
+    "title": "RecepcionLineaOut"
+   },
+   "RecepcionOut": {
+    "properties": {
+     "id": {
+      "type": "integer",
+      "title": "Id"
+     },
+     "uuid_cliente": {
+      "type": "string",
+      "format": "uuid",
+      "title": "Uuid Cliente"
+     },
+     "movimientos": {
+      "items": {
+       "$ref": "#/components/schemas/MovimientoOut"
+      },
+      "type": "array",
+      "title": "Movimientos"
+     },
+     "compra_id": {
+      "type": "integer",
+      "title": "Compra Id"
+     },
+     "lineas": {
+      "items": {
+       "$ref": "#/components/schemas/RecepcionLineaOut"
+      },
+      "type": "array",
+      "title": "Lineas"
+     },
+     "advertencias": {
+      "items": {
+       "type": "string"
+      },
+      "type": "array",
+      "title": "Advertencias",
+      "default": []
+     }
+    },
+    "type": "object",
+    "required": [
+     "id",
+     "uuid_cliente",
+     "movimientos",
+     "compra_id",
+     "lineas"
+    ],
+    "title": "RecepcionOut"
+   },
+   "ReversoIn": {
+    "properties": {
+     "uuid_cliente": {
+      "type": "string",
+      "format": "uuid",
+      "title": "Uuid Cliente"
+     },
+     "hora_dispositivo_ms": {
+      "anyOf": [
+       {
+        "type": "integer",
+        "minimum": 0.0
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Hora Dispositivo Ms"
+     },
+     "dispositivo": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 128,
+        "minLength": 8
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Dispositivo"
+     },
+     "motivo": {
+      "type": "string",
+      "maxLength": 300,
+      "minLength": 3,
+      "title": "Motivo"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "uuid_cliente",
+     "motivo"
+    ],
+    "title": "ReversoIn",
+    "description": "HU-45: la corrección es un movimiento inverso que apunta al original, con autor, fecha y motivo."
+   },
+   "SalidaIn": {
+    "properties": {
+     "uuid_cliente": {
+      "type": "string",
+      "format": "uuid",
+      "title": "Uuid Cliente"
+     },
+     "hora_dispositivo_ms": {
+      "anyOf": [
+       {
+        "type": "integer",
+        "minimum": 0.0
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Hora Dispositivo Ms"
+     },
+     "dispositivo": {
+      "type": "string",
+      "maxLength": 128,
+      "minLength": 8,
+      "title": "Dispositivo"
+     },
+     "almacen_id": {
+      "anyOf": [
+       {
+        "type": "integer",
+        "minimum": 1.0
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Almacen Id"
+     },
+     "insumo_id": {
+      "type": "integer",
+      "minimum": 1.0,
+      "title": "Insumo Id"
+     },
+     "cantidad": {
+      "anyOf": [
+       {
+        "type": "number",
+        "exclusiveMinimum": 0.0
+       },
+       {
+        "type": "string",
+        "pattern": "^(?!^[-+.]*$)[+-]?0*(?:\\d{0,14}|(?=[\\d.]{1,19}0*$)\\d{0,14}\\.\\d{0,4}0*$)"
+       }
+      ],
+      "title": "Cantidad"
+     },
+     "unidad": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 20
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Unidad"
+     },
+     "motivo": {
+      "type": "string",
+      "maxLength": 300,
+      "minLength": 1,
+      "title": "Motivo"
+     },
+     "quien_retira": {
+      "type": "string",
+      "maxLength": 120,
+      "minLength": 1,
+      "title": "Quien Retira"
+     },
+     "frente": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 120
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Frente"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "uuid_cliente",
+     "dispositivo",
+     "insumo_id",
+     "cantidad",
+     "motivo",
+     "quien_retira"
+    ],
+    "title": "SalidaIn",
+    "description": "El contrato que ya usa la app (android/LEEME.md) más `almacen_id`."
+   },
+   "StockFilaOut": {
+    "properties": {
+     "almacen_id": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Almacen Id"
+     },
+     "almacen": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Almacen"
+     },
+     "insumo_id": {
+      "type": "integer",
+      "title": "Insumo Id"
+     },
+     "insumo_codigo": {
+      "type": "string",
+      "title": "Insumo Codigo"
+     },
+     "descripcion": {
+      "type": "string",
+      "title": "Descripcion"
+     },
+     "unidad": {
+      "type": "string",
+      "title": "Unidad"
+     },
+     "cantidad": {
+      "type": "string",
+      "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+      "title": "Cantidad"
+     },
+     "costo_promedio": {
+      "anyOf": [
+       {
+        "type": "string",
+        "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Costo Promedio"
+     },
+     "valor": {
+      "type": "string",
+      "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+      "title": "Valor"
+     },
+     "ultimo_movimiento_en": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Ultimo Movimiento En"
+     },
+     "punto_reposicion": {
+      "anyOf": [
+       {
+        "type": "string",
+        "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Punto Reposicion"
+     },
+     "bajo_punto_reposicion": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Bajo Punto Reposicion"
+     }
+    },
+    "type": "object",
+    "required": [
+     "almacen_id",
+     "almacen",
+     "insumo_id",
+     "insumo_codigo",
+     "descripcion",
+     "unidad",
+     "cantidad",
+     "costo_promedio",
+     "valor",
+     "ultimo_movimiento_en"
+    ],
+    "title": "StockFilaOut"
+   },
+   "StockOut": {
+    "properties": {
+     "criterio": {
+      "type": "string",
+      "title": "Criterio"
+     },
+     "corte": {
+      "anyOf": [
+       {
+        "type": "string",
+        "format": "date-time"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Corte"
+     },
+     "por_almacen": {
+      "items": {
+       "$ref": "#/components/schemas/StockFilaOut"
+      },
+      "type": "array",
+      "title": "Por Almacen"
+     },
+     "consolidado": {
+      "items": {
+       "$ref": "#/components/schemas/StockFilaOut"
+      },
+      "type": "array",
+      "title": "Consolidado"
+     },
+     "advertencias": {
+      "items": {
+       "type": "string"
+      },
+      "type": "array",
+      "title": "Advertencias",
+      "default": []
+     }
+    },
+    "type": "object",
+    "required": [
+     "criterio",
+     "corte",
+     "por_almacen",
+     "consolidado"
+    ],
+    "title": "StockOut"
+   },
+   "TrasladoIn": {
+    "properties": {
+     "uuid_cliente": {
+      "type": "string",
+      "format": "uuid",
+      "title": "Uuid Cliente"
+     },
+     "hora_dispositivo_ms": {
+      "anyOf": [
+       {
+        "type": "integer",
+        "minimum": 0.0
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Hora Dispositivo Ms"
+     },
+     "dispositivo": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 128,
+        "minLength": 8
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Dispositivo"
+     },
+     "origen_almacen_id": {
+      "anyOf": [
+       {
+        "type": "integer",
+        "minimum": 1.0
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Origen Almacen Id"
+     },
+     "destino_obra_id": {
+      "anyOf": [
+       {
+        "type": "integer",
+        "minimum": 1.0
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Destino Obra Id"
+     },
+     "destino_almacen_id": {
+      "type": "integer",
+      "minimum": 1.0,
+      "title": "Destino Almacen Id"
+     },
+     "motivo": {
+      "type": "string",
+      "maxLength": 300,
+      "minLength": 1,
+      "title": "Motivo"
+     },
+     "lineas": {
+      "items": {
+       "$ref": "#/components/schemas/LineaCantidad"
+      },
+      "type": "array",
+      "maxItems": 500,
+      "minItems": 1,
+      "title": "Lineas"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "uuid_cliente",
+     "destino_almacen_id",
+     "motivo",
+     "lineas"
+    ],
+    "title": "TrasladoIn",
+    "description": "HU-42. Destino: otro almacén de esta obra u otra obra (donde quien registra también esté asignado, regla 9)."
+   },
+   "ValidationError": {
+    "properties": {
+     "loc": {
+      "items": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "integer"
+        }
+       ]
+      },
+      "type": "array",
+      "title": "Location"
+     },
+     "msg": {
+      "type": "string",
+      "title": "Message"
+     },
+     "type": {
+      "type": "string",
+      "title": "Error Type"
+     },
+     "input": {
+      "title": "Input"
+     },
+     "ctx": {
+      "type": "object",
+      "title": "Context"
+     }
+    },
+    "type": "object",
+    "required": [
+     "loc",
+     "msg",
+     "type"
+    ],
+    "title": "ValidationError"
+   }
+  },
+  "securitySchemes": {
+   "HTTPBearer": {
+    "type": "http",
+    "scheme": "bearer"
+   }
+  }
+ }
+}
