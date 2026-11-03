@@ -50,9 +50,9 @@ def esperar_listo(limite_s: float) -> None:
     fin = time.monotonic() + limite_s
     while True:
         try:
-            codigo, cuerpo, ms = pedir("GET", "/salud/servicios", espera=15)
+            codigo, cuerpo, _ = pedir("GET", "/salud/servicios", espera=15)
         except (urllib.error.URLError, ConnectionError, TimeoutError):
-            codigo, cuerpo, ms = 0, None, 0
+            codigo, cuerpo = 0, None
         if codigo == 200:
             nombres = ", ".join(s["servicio"] for s in cuerpo["servicios"])
             paso("salud de los servicios", True, f"{len(cuerpo['servicios'])} listos ({nombres})")
