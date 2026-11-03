@@ -27,3 +27,4 @@ class Evento(Base):
     intentos: Mapped[int] = mapped_column(SmallInteger, server_default="0")
     siguiente_intento: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     ultimo_error: Mapped[str | None] = mapped_column(Text)
+    destino: Mapped[str] = mapped_column(Text, server_default="aviso")   # 0010: 'aviso' (notificaciones) | 'integracion' (costo)
