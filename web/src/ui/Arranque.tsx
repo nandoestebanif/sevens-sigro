@@ -4,13 +4,16 @@
    escribe su clave, espera y recibe un error que no es suyo. Aquí:
    - una capa de vidrio a pantalla completa con «el plano se dibuja» y el logo;
    - lo de atrás queda inerte (ni clic ni teclado) y con aria-busy;
-   - se pregunta a GET /salud/servicios cada 2 s; a los 5 s se avisa que el
-     servidor está despertando; a los 90 s, «No pudimos conectar» y Reintentar;
+   - se pregunta a GET /salud/servicios cada 10 s y se deja apenas todo está
+     listo; a los 5 s se avisa que el servidor está despertando; a los 90 s,
+     «No pudimos conectar» y Reintentar;
+   - con la sesión ya abierta (recarga de la página) no se consulta: si el
+     servidor respondió para entrar, no hace falta despertarlo otra vez;
    - con «reducir movimiento», sin animación: solo una barra de progreso.
    Con el cliente simulado (sin VITE_API_URL) no hay servidor que esperar.
    ───────────────────────────────────────────────────────────────────────── */
 import { useEffect, useRef, useState, type ReactNode, type RefObject } from 'react'
-import { usaApiReal } from '../api/http'
+import { sesionActual, usaApiReal } from '../api/http'
 import { AVISO_MS, esperarServidor, type EstadoArranque } from '../api/salud'
 import { PlanoQueSeDibuja, useMenosMovimiento } from './PlanoQueSeDibuja'
 import { Pildora } from './vidrio'
@@ -67,7 +70,9 @@ export function CapaPlano({ titulo, detalle, progreso, saliendo, alDibujarse, ac
 }
 
 export function Arranque({ children }: { children: ReactNode }) {
-  const [visible, setVisible] = useState(usaApiReal)
+  // con la sesión ya abierta no se espera ni se consulta (hotfix-sondeo)
+  const [debeEsperar] = useState(() => usaApiReal && !sesionActual())
+  const [visible, setVisible] = useState(debeEsperar)
   const [saliendo, setSaliendo] = useState(false)
   const [estado, setEstado] = useState<EstadoArranque>({ fase: 'preparando', listos: 0, total: 0 })
   const [lento, setLento] = useState(false)
@@ -76,7 +81,7 @@ export function Arranque({ children }: { children: ReactNode }) {
   useInerte(contenido, visible)
 
   useEffect(() => {
-    if (!usaApiReal) return
+    if (!debeEsperar) return
     const corte = new AbortController()
     let salida: ReturnType<typeof setTimeout> | undefined
     setLento(false)
@@ -88,7 +93,7 @@ export function Arranque({ children }: { children: ReactNode }) {
       salida = setTimeout(() => setVisible(false), SALIDA_MS)
     })
     return () => { corte.abort(); clearTimeout(reloj); clearTimeout(salida) }
-  }, [intento])
+  }, [intento, debeEsperar])
 
   // al quitar la capa, el foco va al primer campo (el autoFocus de Entrar no pudo tomarlo mientras era inerte)
   useEffect(() => {
