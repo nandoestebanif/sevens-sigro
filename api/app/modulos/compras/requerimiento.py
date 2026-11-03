@@ -239,6 +239,80 @@ def saldo_por_comprar(
     return sorted(rows, key=lambda r: (-r["saldo"], r["insumo_codigo"]))
 
 
+# ------------------------------------------------------------------ avance de compra y consumo (HU-23)
+class AvanceFilaOut(BaseModel):
+    insumo_id: int
+    insumo_codigo: str
+    descripcion: str
+    unidad_compra: str
+    requerido: Decimal
+    comprado: Decimal
+    recibido: Decimal | None          # None: lo sabe almacén (migración 0010), todavía no disponible
+    consumido: Decimal | None
+    saldo_por_comprar: Decimal
+    pct_comprado: Decimal
+    pct_recibido: Decimal | None
+    pct_consumido: Decimal | None
+
+
+class AvanceOut(BaseModel):
+    unidad: Literal["unidad_compra"] = "unidad_compra"
+    base_porcentaje: Literal["requerimiento_total"] = "requerimiento_total"
+    pendiente: list[str]              # cifras que aún no se pueden calcular y por qué
+    filas: list[AvanceFilaOut]
+
+
+D2 = Decimal("0.01")
+
+
+def porcentaje(parte: Decimal | None, total: Decimal) -> Decimal | None:
+    """% de `parte` sobre el requerimiento total (HU-23), a 2 decimales. Sin requerimiento no hay porcentaje: 0."""
+    if parte is None:
+        return None
+    if total <= 0:
+        return Decimal("0.00")
+    return (parte * 100 / total).quantize(D2, rounding=ROUND_HALF_UP)
+
+
+def a_unidad_compra(cantidad_s10: Decimal, factor: Decimal) -> Decimal:
+    """Unidad del S10 → unidad de compra (factor = unidades del S10 por unidad de compra, D-R1)."""
+    return (cantidad_s10 / factor).quantize(D4, rounding=ROUND_HALF_UP)
+
+
+def recibido_y_consumido(obra_id: int) -> dict[int, tuple[Decimal, Decimal]] | None:
+    """Lo recibido y lo consumido por insumo (en unidad del S10) es dato de almacén. Sin la migración 0010 no existe:
+    devuelve None y el avance lo declara como pendiente en vez de inventarlo."""
+    return None
+
+
+@router.get("/avance", response_model=AvanceOut)
+def avance(q: str | None = Query(None, max_length=100), a: Actor = Depends(exigir("avance.consultar"))):
+    """HU-23: requerido, comprado, recibido, consumido y saldo por comprar de cada insumo del requerimiento, en unidad de
+    compra, con su porcentaje sobre el requerimiento total. Lo que depende de almacén se declara en `pendiente`."""
+    rows = filas(
+        a.sesion,
+        "SELECT s.insumo_id, s.requerido, s.comprado, s.saldo FROM compras.saldo_por_comprar s WHERE s.proyecto_id = :p",
+        p=a.obra_id)
+    rows = _con_insumo(rows, ("codigo", "descripcion", "unidad_compra", "factor_conversion"), (q or "").strip() or None)
+    almacen = recibido_y_consumido(a.obra_id)
+    salida = []
+    for r in rows:
+        factor = r.pop("factor_conversion")
+        req, com = a_unidad_compra(r.pop("requerido"), factor), a_unidad_compra(r.pop("comprado"), factor)
+        saldo = a_unidad_compra(r.pop("saldo"), factor)
+        rec = con = None
+        if almacen is not None:
+            rs, cs = almacen.get(r["insumo_id"], (Decimal(0), Decimal(0)))
+            rec, con = a_unidad_compra(rs, factor), a_unidad_compra(cs, factor)
+        salida.append({**r, "requerido": req, "comprado": com, "recibido": rec, "consumido": con,
+                       "saldo_por_comprar": saldo,
+                       "pct_comprado": porcentaje(com, req), "pct_recibido": porcentaje(rec, req),
+                       "pct_consumido": porcentaje(con, req)})
+    pendiente = [] if almacen is not None else [
+        "recibido y consumido: dependen de los movimientos de almacén (migración 0010, servicio almacen); hoy llegan vacíos"]
+    return AvanceOut(pendiente=pendiente, filas=sorted(salida, key=lambda r: r["insumo_codigo"]))
+
+
 # ------------------------------------------------------------------ parámetros de reposición (HU-25)
 _PAR = ("SELECT v.id, v.insumo_id, v.stock_seguridad, "
         "v.punto_reposicion, v.registrado_por, v.vigente_desde::text AS vigente_desde ")

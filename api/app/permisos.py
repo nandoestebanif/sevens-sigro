@@ -43,6 +43,7 @@ ACCIONES: dict[str, frozenset[str]] = {
     "requerimiento.consultar": frozenset({RESIDENTE, ADMIN, GERENTE}),
     "reposicion.registrar": frozenset({RESIDENTE, ADMIN}),
     "reposicion.consultar": frozenset({RESIDENTE, ADMIN, GERENTE}),
+    "avance.consultar": frozenset({RESIDENTE, ADMIN, GERENTE}),       # HU-23 (como «sugerencia de compra» de la matriz)
     # --- almacén (migración 0010): solo el almacenero registra; el residente también corrige con reverso
     "salida.registrar": frozenset({ALMACENERO}),                       # HU-40 (desde su dispositivo autorizado, R5)
     "ingreso.registrar": frozenset({ALMACENERO}),                      # HU-41
