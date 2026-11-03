@@ -159,3 +159,57 @@ def test_catalogo_en_seco_no_escribe(base, tmp_path):
     assert insumos(base) == {}
     assert catalogo.main([str(f), "--url", url_sqlalchemy(base)]) == 0
     assert len(insumos(base)) == 2
+
+
+# ───────────────────────── usuarios de prueba (crear-usuario, idempotente)
+def _con_obra(base, monkeypatch):
+    from app import cli
+
+    monkeypatch.setattr(cli, "motor", lambda: create_engine(url_sqlalchemy(base)))
+    cli.primer_admin("adiel", "Víctor Adiel Luján", "Clave-Segura-2026", "Multifamiliar Flores", date(2026, 10, 19), date(2027, 10, 17))
+    return cli
+
+
+def test_crear_usuario_crea_y_asigna_y_repetirlo_no_duplica(base, monkeypatch):
+    from app.seguridad import verificar
+
+    cli = _con_obra(base, monkeypatch)
+    r = cli.crear_usuario("henry", "Henry Ticona", "Clave-Henry-2026", "residente", "Multifamiliar Flores")
+    assert r.usuario_creado and r.asignacion_creada and r.rol == "residente"
+    otra = cli.crear_usuario("henry", "Otro Nombre", "Otra-Clave-9999", "residente", "Multifamiliar Flores")
+    assert (otra.usuario_id, otra.usuario_creado, otra.asignacion_creada) == (r.usuario_id, False, False)
+    assert "ya existía" in otra.resumen("henry", "Multifamiliar Flores")
+    with psycopg.connect(dsn(base), row_factory=dict_row) as c:
+        u = c.execute("SELECT * FROM obra.usuario WHERE usuario = 'henry'").fetchone()
+        n = c.execute("SELECT count(*) AS n FROM obra.asignacion WHERE usuario_id = %s", (u["id"],)).fetchone()["n"]
+        por = c.execute("SELECT asignado_por FROM obra.asignacion WHERE usuario_id = %s", (u["id"],)).fetchone()["asignado_por"]
+        adiel = c.execute("SELECT id FROM obra.usuario WHERE usuario = 'adiel'").fetchone()["id"]
+    assert n == 1 and por == adiel
+    assert u["nombre"] == "Henry Ticona" and verificar("Clave-Henry-2026", u["hash_clave"])   # el reintento no pisó nada
+
+
+def test_crear_usuario_no_pisa_otro_rol_ni_inventa_obra_ni_acepta_clave_debil(base, monkeypatch):
+    cli = _con_obra(base, monkeypatch)
+    cli.crear_usuario("nico", "Nicolás Pachamora", "Clave-Nico-2026", "almacenero", "Multifamiliar Flores")
+    with pytest.raises(SystemExit, match="ya es almacenero"):
+        cli.crear_usuario("nico", "Nicolás Pachamora", None, "residente", "Multifamiliar Flores")
+    with pytest.raises(SystemExit, match="No existe la obra"):
+        cli.crear_usuario("x1", "X", "Clave-Segura-2026", "residente", "Obra que no existe")
+    with pytest.raises(SystemExit):
+        cli.crear_usuario("debil", "D", "123", "residente", "Multifamiliar Flores")
+    with pytest.raises(SystemExit, match="SIGRO_USUARIO_CLAVE"):
+        cli.crear_usuario("sinclave", "S", None, "residente", "Multifamiliar Flores")
+    with psycopg.connect(dsn(base)) as c:
+        assert c.execute("SELECT count(*) FROM obra.usuario").fetchone()[0] == 2        # adiel y nico; nada a medias
+
+
+def test_crear_usuario_por_linea_de_comandos_lee_la_clave_solo_del_entorno(base, monkeypatch, capsys):
+    cli = _con_obra(base, monkeypatch)
+    monkeypatch.setenv("SIGRO_USUARIO_CLAVE", "Clave-Fer-2026x")
+    argv = ["crear-usuario", "--usuario", "fernando", "--nombre", "Fernando Istaña", "--rol", "gerente", "--obra", "Multifamiliar Flores"]
+    assert cli.main(argv) == 0
+    assert "creado" in capsys.readouterr().out
+    assert cli.main(argv) == 0
+    assert "ya estaba asignado" in capsys.readouterr().out
+    with pytest.raises(SystemExit):
+        cli.main([*argv[:-2], "--obra", "Multifamiliar Flores", "--clave", "x"])     # no existe opción de clave
