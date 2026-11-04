@@ -137,10 +137,10 @@ def test_con_la_cadena_pooler_de_neon_se_apagan_los_prepared_statements():
 
 
 def test_el_pool_es_chico_persistente_y_se_renueva_antes_que_neon_lo_corte(monkeypatch):
-    for v in ("SIGRO_DB_POOL", "SIGRO_DB_POOL_EXTRA", "SIGRO_DB_RECICLAR_S"):
+    for v in ("SIGRO_DB_POOL", "POOL_MAX", "SIGRO_DB_RECICLAR_S"):
         monkeypatch.delenv(v, raising=False)
     op = db.opciones_motor("postgresql+psycopg://u:x@localhost/sigro")
-    assert (op["pool_size"], op["max_overflow"]) == (2, 3)
+    assert (op["pool_size"], op["max_overflow"]) == (1, 2)          # 1 abierta, hasta 3 en picos (POOL_MAX)
     assert op["pool_recycle"] < 300 and op["pool_pre_ping"] is True
 
 

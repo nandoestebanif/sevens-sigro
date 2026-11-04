@@ -165,7 +165,7 @@ y no se cruza con el *challenge* de Cloudflare en `sigro-api`.
   el presupuesto del ambiente de pruebas es cero (ADR-06).
 - *Un solo proceso Python que monte todas las apps*: menos memoria todavía, pero los servicios compartirían
   proceso, memoria, conexión y fallos, y dejaría de ser una arquitectura de microservicios. La precarga con `fork()`
-  consigue la mayor parte del ahorro sin juntar procesos.
+  consigue la mayor parte del ahorro sin juntar procesos. **Revisado el 04/11/2026: se adopta, ver abajo.**
 - *honcho / supervisord*: honcho no reinicia un proceso caído (si uno muere, para todos) y supervisord agrega una
   dependencia y su configuración para lo que hacen unas 300 líneas de biblioteca estándar (que además
   hacen la precarga con `fork()`).
@@ -207,3 +207,58 @@ otras versiones de FastAPI y se lanzan con su propio intérprete (~45–49 MB ca
 
 **Cómo se vuelve atrás.** `render.yaml` anterior (ocho servicios) está en la historia de Git; el paso a un nodo
 (`docs/despliegue-pruebas.md`) deja los servicios viejos **suspendidos** antes de borrarlos.
+
+### Revisión del 04/11/2026 · un proceso, varias apps ASGI, por el límite de 512 MB
+
+**Contexto.** Ya desplegado, `sigro-api` murió en Render con «Ran out of memory (used over 512MB)», aunque en CI los
+diez procesos cabían en 366 MiB. Dos causas: (1) diez intérpretes Python, aun con precarga + `fork()`, dejan poco
+margen y cada uno va copiando páginas al escribir; (2) **cada login reserva 64 MiB** mientras Argon2id verifica la
+contraseña (`memory_cost` por defecto de argon2-cffi): los logins corren en hilos y varios a la vez se suman sin
+tope. Medido el 04/11 en una PC con Windows (psutil, todas las apps cargadas en un proceso): **20 verificaciones a la
+vez llevaron el proceso a 1 365 MB**.
+
+**Decisión.** En el ambiente de pruebas todo corre en **un solo proceso Python** (`infra/un_nodo/un_proceso.py`):
+un event loop asyncio con un `uvicorn.Server` por app (`workers=1`, `lifespan="on"`, sin `--reload`), el gateway en
+`$PORT` y el resto en `127.0.0.1:8001–8008`, más el relevo del outbox como tarea asyncio. Si un servidor cae, se
+registra y el proceso termina con código 1 para que Render lo reinicie. Además, en `api/`: argon2 corre como mucho
+`SIGRO_ARGON2_SIMULTANEOS` (2) verificaciones a la vez, sin cambiar los parámetros del hash; el pool por servicio
+baja a 1..`POOL_MAX` (3) conexiones (Neon -pooler multiplexa del otro lado); y `/salud/servicios` informa
+`memoria_mb` (pico de RSS del proceso, `resource.getrusage`) para vigilarlo en Render.
+
+**Qué cambia respecto de la tabla «Qué se mantiene igual».**
+
+| Regla | Con un proceso |
+|---|---|
+| Un esquema y un usuario de base por servicio | **Igual en la base**: cada app abre su propio motor con su usuario. Como todas comparten `os.environ`, la cadena se elige por `contexto.SERVICIO` de la petición en curso (`app.config.url_de_base`): obras → `SIGRO_DB_OBRAS`, y así. Sin servicio, o sin su variable, falla y nunca toma la de otro (`api/pruebas/test_un_proceso.py`). La base sigue negando el esquema ajeno por permisos (0009) |
+| Comunicación solo por API o eventos | Igual: el gateway y los servicios siguen llamándose por HTTP a `127.0.0.1:puerto`, con un `httpx.AsyncClient` compartido en el gateway. El código de los servicios no cambia |
+| Fallos aislados | **Ya no**: un fallo que tumba el proceso tumba todo el ambiente, y Render lo reinicia entero. Un servicio sin su variable de base sigue sin levantarse sin afectar al resto |
+| Secretos solo donde se usan | **Ya no a nivel de proceso**: todas las apps ven las mismas variables. Se acepta solo en pruebas, con usuarios de base distintos por servicio y sin la cadena de dueño (el lanzador quita `SIGRO_DATABASE_URL` y `SIGRO_APP_DATABASE_URL`) |
+| Dependencias propias de cada servicio | Integraciones y notificaciones corren con las versiones de FastAPI, uvicorn, httpx y pydantic de la API (un solo venv). CI corre las pruebas de notificaciones y la importación real del S10 con ese conjunto |
+
+**Para la exposición.** Los servicios **siguen siendo independientes y desplegables por separado**: cada uno es su
+app, su imagen podada (`api/Dockerfile`), su esquema y su usuario, y en producción corren en su propio contenedor
+(`docker-compose.yml`, sin cambios). Juntarlos en un proceso es una decisión de **despliegue del ambiente de pruebas**
+por el plan gratuito de 512 MB, no de arquitectura: ningún servicio lee la base de otro ni llama a otro por dentro
+del proceso.
+
+**Memoria medida.**
+
+| Dónde | Qué | RSS |
+|---|---|---|
+| PC Windows, psutil (04/11) | Proceso único con todas las apps y el relevo, en reposo | 102 MB |
+| PC Windows, psutil (04/11) | Ídem, con 20 logins + 20 `GET /obras` a la vez **sin base** (no llegan a argon2) | 113 MB pico |
+| PC Windows, psutil (04/11) | Apps cargadas + 20 verificaciones argon2 a la vez, **sin límite** | 1 365 MB pico |
+| PC Windows, psutil (04/11) | Ídem, con `SIGRO_ARGON2_SIMULTANEOS=2` | 212 MB pico |
+| CI, job `un-nodo` (Linux, `--memory 512m`, base real; run 41864595180) | Proceso único tras la prueba de humo, antes de la carga | 180,5 MB pico · 116,7 MB actual |
+| CI, job `un-nodo` (ídem) | **20 logins + 20 `GET /obras` a la vez** (`infra/un_nodo/carga.py`), los 40 con 200 | **247,1 MB pico** (meta < 300) · 119,3 MB actual · contenedor 91 MiB / 512 al final, sin OOM |
+
+La carga completa con base real no se pudo correr en la PC del autor (sin Docker ni PostgreSQL con `btree_gist`); la
+corre CI en cada PR y falla si el pico pasa de 300 MB. Antes, con diez procesos, el mismo job medía 398 MB de PSS tras
+la prueba de humo, sin esta carga. Sin Docker, `infra/un_nodo/medir_memoria.py` hace la misma
+medición con psutil contra cualquier base. El arreglo anterior (`supervisor.py`, un intérprete por servicio) queda
+para diagnóstico.
+
+**Consecuencias.** Un solo punto de fallo también dentro del contenedor. Un solo threadpool para todos los
+endpoints síncronos (`SIGRO_HILOS`, 60): una petición de almacén ocupa un hilo y su `/interno/autorizar` otro. Con
+`POOL_MAX=3`, 20 logins a la vez hacen fila por conexión (y cada uno la retiene mientras espera su turno de argon2):
+con 0,1 CPU el último puede tardar varios segundos, dentro de los 10 s de `pool_timeout`.
