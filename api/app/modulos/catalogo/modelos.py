@@ -12,7 +12,11 @@ from app.base import Base
 
 class Insumo(Base):
     __tablename__ = "insumo"
-    __table_args__ = (UniqueConstraint("codigo", name="uq_insumo_codigo"), {"schema": "catalogo"})
+    __table_args__ = (
+        UniqueConstraint("codigo", name="uq_insumo_codigo"),
+        Index("ix_insumo_codigo_upper", text("upper(codigo)")),      # migración 0011
+        {"schema": "catalogo"},
+    )
 
     id: Mapped[int] = mapped_column(BigInteger, Identity(always=True), primary_key=True)
     codigo: Mapped[str] = mapped_column(Text)
