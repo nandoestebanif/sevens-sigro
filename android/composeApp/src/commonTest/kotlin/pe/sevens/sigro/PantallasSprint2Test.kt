@@ -91,14 +91,14 @@ class PantallasSprint2Test {
     @Test
     fun stockNoSeCalculaEnElCelular() {
         assertEquals("[lo calcula el servidor]", saldoParaMostrar(null, "bolsas"), "regla 2: sin saldo del servidor no hay número")
-        assertEquals("38 bolsas", saldoParaMostrar("38", "bolsas"))
+        assertEquals("38 bolsas", saldoParaMostrar("38.0000", "bolsas"))
     }
 
     @Test
     fun entradaNoRecibeMasDeLoComprado() {
         val c = CompraParaRecibir(1, "[Proveedor]", "Factura [número]", "2026-10-27", listOf(
-            LineaCompra("1151", "CEMENTO PORTLAND TIPO I - 42.5 KG", "100", "bolsas"),
-            LineaCompra("423", "ARENA GRUESA", "6", "metro cúbico"),
+            LineaCompra("1151", "CEMENTO PORTLAND TIPO I - 42.5 KG", "100", "bolsas", insumoId = 1151),
+            LineaCompra("423", "ARENA GRUESA", "6", "metro cúbico", insumoId = 423),
         ))
         assertTrue(validarRecepcion(c, mapOf(0 to "60", 1 to "0")).isEmpty(), "una parte puede llegar después")
         assertTrue(validarRecepcion(c, mapOf(0 to "101", 1 to "6")).containsKey(0), "HU-35: no más de lo comprado")
@@ -133,5 +133,44 @@ class PantallasSprint2Test {
     fun cierreExigeConfirmarLosSaldos() {
         assertFalse(EstadoCierre("2026-11-01").puedeGuardar)
         assertTrue(EstadoCierre("2026-11-01", confirmo = true).puedeGuardar)
+    }
+
+    @Test
+    fun ingresoDeOtraObraExigeSuNombre() {
+        val arena = Insumo(423, "423", "ARENA GRUESA", "metro cúbico")
+        assertEquals(setOf("detalle"), validarIngreso(arena, "1", "60", pe.sevens.sigro.dominio.OrigenIngreso.OTRA_OBRA, "").keys)
+        assertTrue(validarIngreso(arena, "1", "60", pe.sevens.sigro.dominio.OrigenIngreso.OTRA_OBRA, "Obra X").isEmpty())
+    }
+
+    @Test
+    fun entradaRespetaLoPendienteDelServidor() {
+        val c = CompraParaRecibir(1, "[Proveedor]", "Factura [número]", "2026-10-27", listOf(
+            LineaCompra("1151", "CEMENTO PORTLAND TIPO I - 42.5 KG", "100", "bolsas", insumoId = 1151),
+            LineaCompra("9", "SIN CATALOGO", "5", "unidades"),
+        ))
+        val pend = mapOf(1151 to pe.sevens.sigro.dominio.PendienteRecepcion(1151, "bolsas", "100", "60", "40"))
+        assertTrue(validarRecepcion(c, mapOf(0 to "41"), pend).containsKey(0), "el pendiente lo dice el servidor")
+        assertTrue(validarRecepcion(c, mapOf(0 to "40"), pend).isEmpty())
+        assertTrue(validarRecepcion(c, mapOf(1 to "2"), pend).containsKey(1), "sin id del catálogo no se puede enviar por línea")
+        assertTrue(validarRecepcion(c, emptyMap(), pend, todo = true).isEmpty(), "«llegó todo» viaja sin líneas")
+    }
+
+    @Test
+    fun trasladoExigeAlmacenDestinoYMotivo() {
+        val cemento = Insumo(1151, "1151", "CEMENTO PORTLAND TIPO I - 42.5 KG", "bolsas")
+        val e = validarTraslado(ObraAsignada(2, "Otra", ""), listOf(LineaAlmacen(cemento, "20")), null, "")
+        assertEquals(setOf("almacenDestino", "motivo"), e.keys)
+    }
+
+    @Test
+    fun stockSoloFiltraLoQueMandoElServidor() {
+        val filas = listOf(
+            pe.sevens.sigro.dominio.FilaStock(1, "1151", "CEMENTO PORTLAND TIPO I - 42.5 KG", "bolsas", "38", "2026-11-01T16:35", false),
+            pe.sevens.sigro.dominio.FilaStock(2, "423", "ARENA GRUESA", "m3", "4.5", "2026-11-01T16:35", true),
+        )
+        val f = pe.sevens.sigro.ui.pantallas.filtrarStock(filas, "arena")
+        assertEquals(listOf("4.5"), f.map { it.cantidad }, "la cantidad es la del servidor, sin tocar")
+        val s = pe.sevens.sigro.dominio.StockServidor(filas, null, 1_000L, desdeCelular = true)
+        assertTrue(pe.sevens.sigro.ui.pantallas.origenDelStock(s) { "01/11 16:40" }.contains("último saldo recibido el 01/11 16:40"))
     }
 }

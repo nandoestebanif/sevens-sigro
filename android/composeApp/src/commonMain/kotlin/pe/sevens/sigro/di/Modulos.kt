@@ -84,11 +84,11 @@ val moduloPresentacion = module {
     viewModel { TrabajadoresViewModel(get(), get()) }
     viewModel { TrabajadorNuevoViewModel(get()) }
     viewModel { AsistenciaViewModel(get(), get(), get()) }
-    viewModel { StockViewModel(get(), get()) }
-    viewModel { EntradaViewModel(get(), get()) }
-    viewModel { IngresoSinCompraViewModel(get(), get(), get()) }
-    viewModel { TrasladoViewModel(get(), get(), get()) }
-    viewModel { ConteoViewModel(get(), get(), get()) }
+    viewModel { StockViewModel(get()) }
+    viewModel { EntradaViewModel(get(), get(), get(), get()) }
+    viewModel { IngresoSinCompraViewModel(get(), get(), get(), get()) }
+    viewModel { TrasladoViewModel(get(), get(), get(), get()) }
+    viewModel { ConteoViewModel(get(), get(), get(), get()) }
     viewModel { CierreViewModel(get(), get()) }
 }
 
