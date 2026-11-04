@@ -10,7 +10,9 @@ from __future__ import annotations
 
 import asyncio
 import os
+import sys
 import time
+from contextlib import asynccontextmanager
 
 import httpx
 from starlette.applications import Starlette
@@ -25,7 +27,35 @@ from app.enrutado import servicio_para
 
 _SALTO = {"connection", "keep-alive", "proxy-authenticate", "proxy-authorization", "te", "trailers",
           "transfer-encoding", "upgrade", "host", "content-length"}
-_cliente: httpx.AsyncClient | None = None
+_cliente: httpx.AsyncClient | None = None     # UNO por proceso (keep-alive hacia todos los servicios)
+
+
+def _http() -> httpx.AsyncClient:
+    """El cliente compartido. Se crea la primera vez (o al arrancar la app) y lo cierra el lifespan."""
+    global _cliente
+    if _cliente is None or _cliente.is_closed:
+        _cliente = httpx.AsyncClient(timeout=httpx.Timeout(30.0, connect=3.0),
+                                     limits=httpx.Limits(max_connections=50, max_keepalive_connections=20))
+    return _cliente
+
+
+def _memoria() -> dict:
+    """RSS del proceso del gateway en MB. En el nodo único (un proceso, ADR-10) es la memoria de TODO el ambiente;
+    con un proceso por servicio, solo la del gateway. `memoria_mb` es el pico (resource.getrusage: lo que mira
+    Render para matar por OOM); `memoria_actual_mb`, lo que ocupa ahora (/proc, solo Linux)."""
+    datos: dict = {"memoria_mb": None}
+    try:
+        import resource
+    except ImportError:                       # Windows: sin resource
+        return datos
+    pico = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss          # KB en Linux, bytes en macOS
+    datos["memoria_mb"] = round(pico / (1024 * 1024 if sys.platform == "darwin" else 1024), 1)
+    try:
+        with open("/proc/self/statm") as f:
+            datos["memoria_actual_mb"] = round(int(f.read().split()[1]) * os.sysconf("SC_PAGE_SIZE") / 2**20, 1)
+    except (OSError, ValueError, IndexError):
+        pass
+    return datos
 
 
 def _error(estado: int, codigo: str, mensaje: str) -> JSONResponse:
@@ -33,15 +63,12 @@ def _error(estado: int, codigo: str, mensaje: str) -> JSONResponse:
 
 
 async def _reenviar(request: Request) -> Response:
-    global _cliente
     servicio = servicio_para(request.url.path)
     if servicio is None:
         return _error(404, "no_existe", "Esa ruta no existe.")
     base = os.environ.get(f"SIGRO_URL_{servicio.upper()}")
     if not base:
         return _error(503, "servicio_no_configurado", f"El gateway no conoce la dirección del servicio {servicio}.")
-    if _cliente is None:
-        _cliente = httpx.AsyncClient(timeout=httpx.Timeout(30.0, connect=3.0))
     cabeceras = {k: v for k, v in request.headers.items() if k.lower() not in _SALTO | {"accept-encoding"}}
     cabeceras["x-forwarded-for"] = request.client.host if request.client else ""
     # Se pide solo gzip, que httpx sabe descomprimir: si se reenviara el «br» del navegador, Cloudflare (Render)
@@ -53,7 +80,7 @@ async def _reenviar(request: Request) -> Response:
     cuerpo = await request.body()
     inicio = time.perf_counter()
     try:
-        r = await _cliente.request(
+        r = await _http().request(
             request.method, f"{base.rstrip('/')}{request.url.path}", params=request.query_params,
             content=cuerpo, headers=cabeceras,
         )
@@ -91,16 +118,13 @@ def _segundos_de(retry_after: str | None) -> float:
 
 
 async def _salud_de(servicio: str, base: str | None, espera: float) -> dict:
-    global _cliente
     if not base:
         return {"servicio": servicio, "listo": False, "estado": "no_configurado", "ms": 0}
-    if _cliente is None:
-        _cliente = httpx.AsyncClient(timeout=httpx.Timeout(30.0, connect=3.0))
     inicio = time.perf_counter()
     pausa = 0.0
     try:
         # wait_for además del timeout de httpx: el tope vale aunque el servidor acepte la conexión y no conteste
-        r = await asyncio.wait_for(_cliente.get(f"{base.rstrip('/')}/salud", timeout=espera), espera)
+        r = await asyncio.wait_for(_http().get(f"{base.rstrip('/')}/salud", timeout=espera), espera)
         if r.status_code == 429:
             # Cloudflare (o el servicio) pide frenar: se informa «ocupado» y NO se reintenta; el resultado queda en
             # memoria al menos lo que diga Retry-After (ver _guardar_salud)
@@ -173,12 +197,26 @@ async def _salud_compartida() -> dict:
 
 async def salud_servicios(_: Request) -> JSONResponse:
     cuerpo = await _salud_compartida()
-    return JSONResponse(cuerpo, status_code=200 if cuerpo["listo"] else 503, headers={"Cache-Control": "no-store"})
+    # la memoria se mide en cada respuesta, fuera del resultado guardado: la salud se reusa 30 s, la memoria no
+    return JSONResponse({**cuerpo, **_memoria()}, status_code=200 if cuerpo["listo"] else 503, headers={"Cache-Control": "no-store"})
+
+
+@asynccontextmanager
+async def _vida(_: Starlette):
+    _http()
+    try:
+        yield
+    finally:
+        global _cliente
+        if _cliente is not None:
+            await _cliente.aclose()
+            _cliente = None
 
 
 def crear_app() -> Starlette:
     origenes = [o for o in os.environ.get("SIGRO_CORS", "http://localhost:5173").split(",") if o]
     return Starlette(
+        lifespan=_vida,
         routes=[
             Route("/salud", salud, methods=["GET"]),
             Route("/salud/servicios", salud_servicios, methods=["GET"]),

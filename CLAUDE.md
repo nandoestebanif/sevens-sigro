@@ -61,7 +61,7 @@ lo declara.
 | Web de oficina | React 18 · TypeScript · Vite |
 | Integraciones | Microservicio FastAPI aparte (importación del S10, consulta de RUC en SUNAT) |
 | Notificaciones | Microservicio FastAPI aparte con patrón outbox (avisos a residente y administrador · ADR-07, propuesto) |
-| Despliegue | Nube gestionada, PostgreSQL administrado, APK por enlace. **Pruebas (ADR-10):** un solo servicio gratuito `sigro-api` en Render con un proceso por microservicio (`api/Dockerfile.pruebas`); producción, un contenedor por servicio |
+| Despliegue | Nube gestionada, PostgreSQL administrado, APK por enlace. **Pruebas (ADR-10):** un solo servicio gratuito `sigro-api` en Render con todas las apps en un proceso Python, cada una con su puerto y su usuario de base (`api/Dockerfile.pruebas`, por el límite de 512 MB); producción, un contenedor por servicio |
 
 **Arquitectura de microservicios (ADR-09).** La web y la app entran solo por el **gateway** (`/api/v1`).
 Detrás hay un servicio por dominio, cada uno con su proceso, su imagen Docker, su esquema y su usuario de base:
