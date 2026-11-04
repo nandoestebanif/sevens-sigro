@@ -6,19 +6,53 @@
 
 ## Lo primero
 
-1. **Revisa los PR de la app** (abajo): eres el responsable de la app y quien la aprueba.
-2. **HT-05 (T-242)** sigue en Doing. Si los PR #20 y #21 cumplen su criterio, pásala a Done con esa evidencia.
-3. **App del Sprint 2:** tus HU de abajo, empezando por las que ya tienen el servicio de almacén (#19, fusionado): conteo físico HU-46 y estado de sincronización HU-39.
+1. **Revisa los PR de la app** (abajo): eres el responsable de la app y quien la aprueba. Empieza por el #29: es una
+   línea y hace que la app entre al ambiente nuevo.
+2. **Pruebas de aceptación:** tus 4 HU del Excel de pruebas (abajo), en el ambiente de pruebas.
+3. **HT-05 (T-242)** sigue en Doing. Si los PR #20 y #21 cumplen su criterio, pásala a Done con esa evidencia.
+4. **App del Sprint 2:** tus HU de abajo, empezando por las que ya tienen el servicio de almacén (#19, fusionado):
+   conteo físico HU-46 y estado de sincronización HU-39.
+
+## Ambiente de pruebas · vigente desde el 04/11
+
+| Para | Dirección |
+|---|---|
+| **App** (campo «Servidor» de la pantalla de entrada) | **https://sigro-api.onrender.com** |
+| **Web** | **https://sigro-web.onrender.com** |
+| **Postman** | `https://sigro-api.onrender.com/api/v1`, **como máximo 1 petición cada 5 s**; si no, Cloudflare bloquea el servidor |
+
+`sigro-gateway.onrender.com` ya no responde. Un celular o emulador que lo tenía guardado **no** cambia solo, porque el
+servidor guardado manda sobre el que trae la app por defecto: cámbialo a mano en «Servidor». La primera vez del día el
+servicio tarda en despertar, así que espera y no reintentes el login varias veces.
+**Fernando te pasa tu usuario por privado.** No lo escribas en el repositorio, en el código ni en el Excel. Más detalle
+en [`LEEME.md`](LEEME.md).
+
+## Tus pruebas de aceptación
+
+Archivo: [`docs/pruebas/SIGRO - Pruebas de aceptación (Sprint 2).xlsx`](../docs/pruebas/SIGRO%20-%20Pruebas%20de%20aceptaci%C3%B3n%20(Sprint%202).xlsx), hoja **«Nicolás»**.
+Son las mismas tareas «Pruebas» de tu tablero (abajo).
+
+| HU | Historia | Tarjeta «Pruebas» | Tarjeta «Aceptación» (Adiel) |
+|---|---|---|---|
+| HU-01 | Creación del proyecto | T-008 | T-009 |
+| HU-03 | División en semanas | T-016 | T-017 |
+| HU-07 | Importación del catálogo | T-025 | T-026 |
+| HU-25 | Parámetros de reposición | T-109 | T-110 |
+
+Prueba desde la web, que es donde están esas pantallas, y usa tu obra de prueba para crear datos. HU-07 se prueba con
+el PDF real del cliente. Al terminar tu hoja, avísale a Adiel. Si una pantalla te responde que no tienes permiso,
+anótalo en «Observación» y avísale a Fernando.
 
 ## Los PR que te toca revisar
 
 | PR | Qué es | Qué miras |
 |---|---|---|
+| [#29](https://github.com/xteban-sp/sevens-sigro/pull/29) | app: servidor por defecto `https://sigro-api.onrender.com` | que compile y que la app entre al ambiente nuevo, también en modo avión y al volver la señal |
 | [#20](https://github.com/xteban-sp/sevens-sigro/pull/20) | App: pantallas del Sprint 2 en estilo vidrio | que compile y se vea bien en el celular |
 | [#21](https://github.com/xteban-sp/sevens-sigro/pull/21) | App: almacén conectado al servicio real (apilado sobre #20) | modo avión y recuperar la señal; que un reenvío no duplique (regla 3) |
 | [#22](https://github.com/xteban-sp/sevens-sigro/pull/22) | app: rendimiento medido (R8, Baseline Profile, APK de 22 a 7,9 MB) | que el APK firmado se instale y abra |
 
-Se fusionan en orden: #20 → #21 → #22.
+#20, #21 y #22 se fusionan en ese orden. El #29 no depende de ellos y puede entrar antes.
 
 ## Tus tareas pendientes según el tablero · 26 tareas · 69 h · 2 en Doing
 

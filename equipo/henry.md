@@ -6,18 +6,47 @@
 
 ## Lo primero
 
-1. **Revisa los PR de la web** (abajo): son los que hacen que la Review se vea entera en estilo vidrio.
-2. **Pruebas:** tus tareas «Pruebas» del tablero, en el ambiente de pruebas (`https://sigro-web.onrender.com`).
+1. **Pruebas de aceptación:** tus 5 HU del Excel de pruebas (abajo), en el ambiente de pruebas.
+2. **Revisa los PR de la web** (abajo): son los que hacen que la Review se vea entera en estilo vidrio.
 3. **Web del Sprint 2:** las HU web, repartidas con Fernando en el corte de las 08:00.
+
+## Ambiente de pruebas · vigente desde el 04/11
+
+| Para | Dirección |
+|---|---|
+| **Web** | **https://sigro-web.onrender.com** |
+| **App** (campo «Servidor») | **https://sigro-api.onrender.com** |
+| **Postman** | `https://sigro-api.onrender.com/api/v1`, **como máximo 1 petición cada 5 s**; si no, Cloudflare bloquea el servidor |
+
+`sigro-gateway.onrender.com` ya no responde: si tu colección de Postman o tu entorno lo tienen, cámbialo.
+**Fernando te pasa tu usuario por privado.** No lo escribas en el repositorio, en el Excel ni en un entorno de Postman
+compartido. Más detalle en [`LEEME.md`](LEEME.md).
+
+## Tus pruebas de aceptación
+
+Archivo: [`docs/pruebas/SIGRO - Pruebas de aceptación (Sprint 2).xlsx`](../docs/pruebas/SIGRO%20-%20Pruebas%20de%20aceptaci%C3%B3n%20(Sprint%202).xlsx), hoja **«Henry»**.
+
+| HU | Historia | Tarjeta «Pruebas» | Tarjeta «Aceptación» (Adiel) |
+|---|---|---|---|
+| HU-08 | Alta estandarizada de insumo | T-033 | T-034 |
+| HU-19 | Requerimiento total | T-086 | T-087 |
+| HU-24 | Saldo por comprar | T-102 | T-103 |
+| HU-29 | Lista de proveedores | T-134 | T-135 |
+| HU-30 | Alta rápida de proveedor | T-142 | T-143 |
+
+Prueba desde la interfaz y usa tu obra de prueba para crear datos. Al terminar tu hoja, avísale a Adiel. Si una
+pantalla te responde que no tienes permiso, anótalo en «Observación» y avísale a Fernando: puede que tu usuario
+necesite otro rol para esa HU.
 
 ## Los PR que te toca revisar
 
 | PR | Qué es | Qué miras |
 |---|---|---|
 | [#15](https://github.com/xteban-sp/sevens-sigro/pull/15) | Web: resto de páginas en estilo vidrio | build sin errores, modo claro/oscuro y escala 125 % |
-| [#23](https://github.com/xteban-sp/sevens-sigro/pull/23) | Web: pantalla de arranque, login con reintentos y entrada a la obra (apilado sobre #15) | el arranque en frío y el login (HU-12) |
-| [#16](https://github.com/xteban-sp/sevens-sigro/pull/16) | HT-06: colección Postman, e2e con Playwright y plan de pruebas | que la colección y el plan te sirvan para tus pruebas |
-| [#18](https://github.com/xteban-sp/sevens-sigro/pull/18) | Rendimiento web y API | la parte de `web/` (la de `api/` la revisa Adiel) |
+| [#23](https://github.com/xteban-sp/sevens-sigro/pull/23) | Web: pantalla de arranque, login con reintentos y entrada a la obra (apilado sobre #15) | el arranque en frío contra `sigro-api` y el login (HU-12) |
+| [#16](https://github.com/xteban-sp/sevens-sigro/pull/16) | HT-06: colección Postman, e2e con Playwright y plan de pruebas | que la colección y el plan te sirvan para tus pruebas, y que apunten a `sigro-api` |
+
+El #18 (rendimiento web y API) se fusionó el 03/11: ya no se revisa.
 
 ## Tus tareas pendientes según el tablero · 24 tareas · 65 h · 2 en Doing
 
