@@ -11,7 +11,7 @@ import platform.UIKit.UIAccessibilityIsReduceMotionEnabled
 actual object Plataforma {
     actual val nombre: String = "ios"
     // Ambiente de pruebas en Render. El simulador comparte red con la Mac: http://localhost:8000 llega a la API local.
-    actual val servidorPorDefecto: String = "https://sigro-gateway.onrender.com"
+    actual val servidorPorDefecto: String = "https://sigro-api.onrender.com"
     actual fun ahoraMs(): Long = (NSDate().timeIntervalSince1970 * 1000).toLong()
     actual fun formatearHora(ms: Long): String {
         val f = NSDateFormatter()
