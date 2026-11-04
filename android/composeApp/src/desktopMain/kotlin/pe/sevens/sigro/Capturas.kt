@@ -62,7 +62,7 @@ private fun insumo(nombre: String) = catalogo.firstOrNull { it.descripcion.start
 
 private val obra = ObraAsignada(1, "Multifamiliar Flores", "almacenero")
 private val sesionEjemplo = Sesion(
-    "https://sigro-gateway.onrender.com", "x", 1, "Almacenero Ejemplo", "almacenero",
+    "https://sigro-api.onrender.com", "x", 1, "Almacenero Ejemplo", "almacenero",
     listOf(obra, ObraAsignada(2, "Obra de ejemplo 2", "ssoma")),
 )
 
@@ -70,7 +70,7 @@ private val sesionEjemplo = Sesion(
 private class SesionFalsa(private val falla: Boolean = false, private val colgada: Boolean = false) : RepositorioSesion {
     override val sesion: Flow<Sesion?> = flowOf(sesionEjemplo)
     override val obraElegida: Flow<ObraAsignada?> = flowOf(obra)
-    override suspend fun servidorGuardado() = "https://sigro-gateway.onrender.com"
+    override suspend fun servidorGuardado() = "https://sigro-api.onrender.com"
     override suspend fun iniciarSesion(servidor: String, usuario: String, clave: String): Sesion =
         if (colgada) kotlinx.coroutines.awaitCancellation()
         else if (falla) throw ErrorSigro("credenciales", "Usuario o clave incorrectos.", 401) else sesionEjemplo
