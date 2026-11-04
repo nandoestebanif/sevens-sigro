@@ -80,13 +80,29 @@ android {
         targetSdk = 35
         versionCode = 1
         versionName = "0.1.0-sprint1"
+        // SQLite empaquetado (Room KMP) trae su .so por ABI (~2 MB cada una). x86 de 32 bits no existe en
+        // celulares; x86_64 se queda para el emulador.
+        ndk { abiFilters += listOf("arm64-v8a", "armeabi-v7a", "x86_64") }
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
     buildTypes {
-        getByName("release") { isMinifyEnabled = false }
+        getByName("release") {
+            // R8: quita el código y los recursos que no se usan (Material Icons Extended pesa varios MB).
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+        }
+    }
+    // Perfil de arranque escrito a mano (src/androidMain/baselineProfiles): con KMP, AGP no mira esa
+    // carpeta por su cuenta.
+    sourceSets["main"].baselineProfiles.srcDir("src/androidMain/baselineProfiles")
+    lint {
+        // El detector de LiveData de AGP 8.7 se cae con Kotlin 2.1 (IncompatibleClassChangeError) y tumba
+        // lintVitalAnalyzeRelease, o sea assembleRelease. La app no usa LiveData: se apaga solo esa regla.
+        disable += "NullSafeMutableLiveData"
     }
 }
 
@@ -124,4 +140,13 @@ tasks.register<JavaExec>("capturas") {
     mainClass.set("pe.sevens.sigro.CapturasKt")
     maxHeapSize = "768m"
     args(layout.buildDirectory.dir("capturas").get().asFile.absolutePath)
+}
+
+// Informe del compilador de Compose (estabilidad y funciones que se saltan), para docs/rendimiento-app.md:
+// ./gradlew :composeApp:compileReleaseKotlinAndroid -Psigro.metricasCompose --rerun-tasks → build/compose-metricas
+if (providers.gradleProperty("sigro.metricasCompose").isPresent) {
+    composeCompiler {
+        reportsDestination = layout.buildDirectory.dir("compose-metricas")
+        metricsDestination = layout.buildDirectory.dir("compose-metricas")
+    }
 }
