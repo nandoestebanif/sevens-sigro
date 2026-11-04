@@ -253,7 +253,7 @@ del proceso.
 | CI, job `un-nodo` (ídem) | **20 logins + 20 `GET /obras` a la vez** (`infra/un_nodo/carga.py`), los 40 con 200 | **247,1 MB pico** (meta < 300) · 119,3 MB actual · contenedor 91 MiB / 512 al final, sin OOM |
 
 La carga completa con base real no se pudo correr en la PC del autor (sin Docker ni PostgreSQL con `btree_gist`); la
-corre CI en cada PR y falla si el pico pasa de 300 MB. Antes, con diez procesos, el mismo job medía 398 MB de PSS en
+corre CI en cada PR y falla si el pico pasa de 300 MB. Antes, con diez procesos, el mismo job medía 398 MB de PSS tras
 reposo, sin carga. Sin Docker, `infra/un_nodo/medir_memoria.py` hace la misma
 medición con psutil contra cualquier base. El arreglo anterior (`supervisor.py`, un intérprete por servicio) queda
 para diagnóstico.
