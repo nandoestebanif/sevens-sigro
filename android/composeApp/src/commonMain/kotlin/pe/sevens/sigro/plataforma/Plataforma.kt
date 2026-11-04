@@ -27,3 +27,11 @@ expect fun ManejarAtras(activo: Boolean, alVolver: () -> Unit)
 /** «Reducir movimiento» del sistema: con él encendido, las animaciones del diseño se apagan. */
 @Composable
 expect fun reducirMovimiento(): Boolean
+
+/**
+ * El vidrio va sin desenfoque (blanco 82–90 %, el respaldo que el diseño ya permite): en celulares de
+ * gama baja (Android «low RAM») y con «reducir movimiento». Desenfocar cada tarjeta en cada cuadro es
+ * lo más caro de la interfaz (docs/rendimiento-app.md).
+ */
+@Composable
+expect fun vidrioSinDesenfoque(): Boolean
