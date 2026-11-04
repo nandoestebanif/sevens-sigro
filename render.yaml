@@ -1,9 +1,10 @@
 # SIGRO · ambiente de PRUEBAS (HT-01) en Render, plan gratuito, EN UN SOLO NODO (ADR-10). Base en Neon.
 # Guía paso a paso: docs/despliegue-pruebas.md
 #
-# La arquitectura NO cambia: siguen siendo microservicios separados, cada uno con su proceso, su esquema y su usuario
-# de base. Lo único que cambia en pruebas es DÓNDE corren: los ocho procesos viven en un mismo contenedor gratuito
-# («sigro-api», api/Dockerfile.pruebas) y se hablan por 127.0.0.1, sin pasar por Cloudflare. Motivo (ADR-10): en el
+# La arquitectura lógica NO cambia: siguen siendo microservicios separados, cada uno con su app, su puerto, su esquema
+# y su usuario de base. Lo único que cambia en pruebas es DÓNDE corren: todas las apps viven en UN proceso Python de un
+# contenedor gratuito («sigro-api», api/Dockerfile.pruebas, por el límite de 512 MB) y se hablan por 127.0.0.1, sin
+# pasar por Cloudflare. Motivo (ADR-10): en el
 # plan gratuito un servicio no puede RECIBIR tráfico por la red privada, así que gateway → servicio pasaba por
 # Cloudflare y recibía 429; y cada servicio dormía por separado (~25 s en frío cada uno).
 # Producción y docker-compose.yml siguen con un contenedor por servicio (api/Dockerfile).
@@ -32,7 +33,7 @@ services:
         value: https://sigro-web.onrender.com   # vuelve a llamar a sigro-api directo
       # Una cadena por servicio, cada una con SU usuario (sigro_<servicio>) y el host -pooler de Neon:
       #   postgresql+psycopg://sigro_<servicio>:<su clave>@<host-neon-pooler>/neondb?sslmode=require
-      # El supervisor (infra/un_nodo/supervisor.py) le pasa a cada proceso SOLO la suya como SIGRO_APP_DATABASE_URL.
+      # Cada app usa SOLO la suya, elegida por el servicio de la petición en curso (app/config.py · url_de_base).
       # Si falta una, ese servicio no arranca y /salud/servicios lo muestra «no_responde».
       - key: SIGRO_DB_OBRAS
         sync: false
@@ -50,14 +51,14 @@ services:
         sync: false
       - key: FACTILIZA_TOKEN               # integraciones (SUNAT/RENIEC); nunca en el repositorio
         sync: false
-      # Relevo y notificaciones dentro del mismo nodo. ADR-10, «Memoria»: los diez procesos caben en 512 MB SOLO con la
-      # precarga + fork() del supervisor (medido en CI: 366 MiB de 512). Si el log muestra «código -9», poner "0".
+      # Relevo y notificaciones dentro del mismo nodo. ADR-10, «Memoria» (04/11): todo corre en UN proceso Python
+      # (infra/un_nodo/un_proceso.py); la memoria se ve en /salud/servicios → memoria_mb. Si vuelve el OOM, poner "0".
       - key: SIGRO_UN_NODO_EXTRAS
         value: "1"
-      # Pool chico pero persistente por servicio (app/db.py, docs/rendimiento-render.md).
+      # Pool por servicio de 1 a 3 conexiones (app/db.py): Neon -pooler ya multiplexa del otro lado.
       - key: SIGRO_DB_POOL
-        value: "2"
-      - key: SIGRO_DB_POOL_EXTRA
+        value: "1"
+      - key: POOL_MAX
         value: "3"
       - key: SIGRO_DB_RECICLAR_S
         value: "240"

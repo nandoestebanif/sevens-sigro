@@ -2,6 +2,8 @@
 el rol y la obra se consultan en la base en cada petición (regla 9)."""
 from __future__ import annotations
 
+import os
+import threading
 from datetime import datetime, timedelta, timezone
 
 import jwt
@@ -11,18 +13,25 @@ from argon2.exceptions import InvalidHashError, VerificationError
 from app.config import cargar
 
 _hasher = PasswordHasher()   # Argon2id con parámetros por defecto de la librería (OWASP)
+# Cada hash o verificación reserva memory_cost (64 MiB con los parámetros por defecto) mientras dura. Los logins
+# corren en el threadpool: 20 a la vez serían 1,3 GB y Render gratis (512 MB) mata el proceso. Se limita cuántos
+# corren A LA VEZ (SIGRO_ARGON2_SIMULTANEOS, 2 = 128 MiB como mucho); los demás esperan su turno. Los parámetros
+# del hash no cambian: la contraseña queda igual de protegida y los hashes guardados siguen valiendo.
+_turnos = threading.BoundedSemaphore(max(int(os.environ.get("SIGRO_ARGON2_SIMULTANEOS", "2")), 1))
 # Hash de relleno: verificar contra algo cuando el usuario no existe evita distinguir los casos por tiempo.
 _RELLENO = _hasher.hash("relleno-para-igualar-tiempos")
 ALGORITMO = "HS256"
 
 
 def hashear(clave: str) -> str:
-    return _hasher.hash(clave)
+    with _turnos:
+        return _hasher.hash(clave)
 
 
 def verificar(clave: str, hash_guardado: str | None) -> bool:
     try:
-        return _hasher.verify(hash_guardado or _RELLENO, clave) and hash_guardado is not None
+        with _turnos:
+            return _hasher.verify(hash_guardado or _RELLENO, clave) and hash_guardado is not None
     except (VerificationError, InvalidHashError):
         return False
 
