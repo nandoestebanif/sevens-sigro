@@ -11,7 +11,8 @@ _OBRA = r"^/api/v1/obras/\d+/"
 
 # (patrón, servicio) — se evalúan en orden; la primera que calza gana.
 TABLA: list[tuple[re.Pattern[str], str]] = [
-    (re.compile(_OBRA + r"(compras|solicitudes|requerimiento|saldo-por-comprar|parametros-reposicion|avance)(/|$)"), "compras"),
+    (re.compile(_OBRA + r"(compras|solicitudes|requerimiento|saldo-por-comprar|parametros-reposicion|avance|partidas)(/|$)"), "compras"),
+    (re.compile(_OBRA + r"insumos/\d+/partidas(/|$)"), "compras"),   # HU-16 · trazabilidad inversa insumo → partidas
     (re.compile(_OBRA + r"(trabajadores|jornadas|horas-acumuladas)(/|$)"), "tareo"),
     (re.compile(_OBRA + r"almacen(/|$)"), "almacen"),          # 0010 · ojo: /almacenes (singular ≠ plural) es de obras
     (re.compile(_OBRA + r"costo(/|$)"), "costo"),
