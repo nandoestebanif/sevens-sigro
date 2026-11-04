@@ -43,13 +43,17 @@ interface RepositorioRegistros {
 sealed interface RegistroAlmacen {
     val tipo: TipoRegistro
 
-    data class Entrada(val almacenId: Int?, val compra: CompraParaRecibir, val recibido: List<Pair<LineaCompra, String>>, val conFotoGuia: Boolean) : RegistroAlmacen {
+    /** `todo`: llegó todo lo pendiente (la recepción viaja sin líneas y el servidor recibe el total pendiente). */
+    data class Entrada(val almacenId: Int?, val compra: CompraParaRecibir, val recibido: List<Pair<LineaCompra, String>>, val todo: Boolean) : RegistroAlmacen {
         override val tipo get() = TipoRegistro.ENTRADA_COMPRA
     }
     data class IngresoSinCompra(val almacenId: Int?, val origen: OrigenIngreso, val linea: LineaAlmacen, val costoUnitario: String, val detalle: String?) : RegistroAlmacen {
         override val tipo get() = TipoRegistro.INGRESO_SIN_COMPRA
     }
-    data class Traslado(val almacenId: Int?, val obraDestinoId: Int, val obraDestino: String, val lineas: List<LineaAlmacen>) : RegistroAlmacen {
+    data class Traslado(
+        val almacenId: Int?, val obraDestinoId: Int, val obraDestino: String, val destinoAlmacenId: Int, val motivo: String,
+        val lineas: List<LineaAlmacen>,
+    ) : RegistroAlmacen {
         override val tipo get() = TipoRegistro.TRASLADO
     }
     data class Conteo(val almacenId: Int?, val fecha: String, val lineas: List<Pair<LineaAlmacen, MotivoDiferencia?>>) : RegistroAlmacen {
@@ -64,6 +68,13 @@ sealed interface RegistroAlmacen {
 interface RepositorioObra {
     suspend fun almacenes(obraId: Int): List<AlmacenObra>
     suspend fun compras(obraId: Int): List<CompraParaRecibir>
+    /** Lo pedido, recibido y pendiente de una compra según el servidor (necesita señal). */
+    suspend fun estadoRecepcion(obraId: Int, compraId: Int): List<PendienteRecepcion>
+    /**
+     * HU-43: saldo del servidor (GET /almacen/stock). `almacenId` null = toda la obra (consolidado).
+     * Sin señal devuelve el último recibido, marcado; si nunca se recibió, lanza el error.
+     */
+    suspend fun stock(obraId: Int, almacenId: Int?): StockServidor
     /** Obras a las que se puede trasladar (GET /obras), sin la propia. */
     suspend fun obrasDestino(obraId: Int): List<ObraAsignada>
 }

@@ -204,10 +204,10 @@ object Asistencia {
  */
 enum class TipoRegistro(val legible: String, val conServicio: Boolean) {
     JORNADA("Asistencia", true),
-    ENTRADA_COMPRA("Entrada de compra", false),
-    INGRESO_SIN_COMPRA("Ingreso sin compra", false),
-    TRASLADO("Traslado", false),
-    CONTEO("Conteo físico", false),
+    ENTRADA_COMPRA("Entrada de compra", true),
+    INGRESO_SIN_COMPRA("Ingreso sin compra", true),
+    TRASLADO("Traslado", true),
+    CONTEO("Conteo físico", true),
     CIERRE("Cierre de obra", false),
 }
 
@@ -242,16 +242,38 @@ data class CompraParaRecibir(
     val lineas: List<LineaCompra>,
 )
 
-data class LineaCompra(val insumoCodigo: String, val descripcion: String, val cantidad: String, val unidad: String)
+/** `insumoId` se resuelve con el catálogo del celular por el código (la recepción lo pide por id). */
+data class LineaCompra(val insumoCodigo: String, val descripcion: String, val cantidad: String, val unidad: String, val insumoId: Int? = null)
 
 data class AlmacenObra(val id: Int, val nombre: String)
 
-enum class OrigenIngreso(val api: String, val legible: String) {
-    DEVOLUCION("devolucion", "Devolución de cuadrilla"),
-    OTRA_OBRA("otra_obra", "Saldo de otra obra"),
+/** Una fila del stock tal como la devuelve el servidor (GET /almacen/stock). La app no la calcula (regla 2). */
+data class FilaStock(
+    val insumoId: Int,
+    val codigo: String,
+    val descripcion: String,
+    val unidad: String,
+    val cantidad: String,
+    val ultimoMovimientoEn: String,
+    val bajoPuntoReposicion: Boolean?,
+)
+
+/**
+ * Stock del servidor con su momento. `desdeCelular`: sin señal, es el último que se recibió (con su hora
+ * de llegada); nunca un saldo armado con las salidas guardadas en el celular.
+ */
+data class StockServidor(val filas: List<FilaStock>, val corte: String?, val recibidoMs: Long, val desdeCelular: Boolean)
+
+/** Estado de recepción de una compra según el servidor (GET …/compras/{id}/recepcion): lo pendiente no se calcula aquí. */
+data class PendienteRecepcion(val insumoId: Int, val unidad: String, val pedido: String, val recibido: String, val pendiente: String)
+
+/** Orígenes que acepta POST /almacen/ingresos (`ORIGENES` del servicio almacén). */
+enum class OrigenIngreso(val api: String, val legible: String, val exigeDetalle: Boolean = false) {
+    DEVOLUCION("devolucion_cuadrilla", "Devolución de cuadrilla"),
+    OTRA_OBRA("saldo_otra_obra", "Saldo de otra obra", exigeDetalle = true),
     PRESTAMO("prestamo", "Préstamo"),
     SOBRANTE("sobrante", "Sobrante"),
-    OTRO("otro", "Otro"),
+    OTRO("otro", "Otro", exigeDetalle = true),
 }
 
 enum class MotivoDiferencia(val legible: String) { MERMA("Merma"), ERROR("Error de registro"), PERDIDA("Pérdida"), OTRO("Otro") }

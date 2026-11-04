@@ -25,6 +25,7 @@ internal class Credenciales(private val ajustes: AjusteDao) {
     suspend fun servidor(): String? = ajustes.leer(Clave.SERVIDOR)
     suspend fun token(): String? = ajustes.leer(Clave.TOKEN)
     suspend fun guardar(clave: String, valor: String) = ajustes.guardar(AjusteEntity(clave, valor))
+    suspend fun leer(clave: String): String? = ajustes.leer(clave)
 
     /** HU-15: código que la app genera en la primera instalación y conserva (no se borra al salir). */
     @OptIn(ExperimentalUuidApi::class)

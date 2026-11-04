@@ -91,6 +91,28 @@ import pe.sevens.sigro.dominio.ErrorSigro
     val cantidad: String,
     @SerialName("unidad_compra") val unidadCompra: String,
 )
+@Serializable data class RecepcionLineaDto(
+    @SerialName("insumo_id") val insumoId: Int,
+    @SerialName("unidad_compra") val unidadCompra: String,
+    val pedido: String,
+    val recibido: String,
+    val pendiente: String,
+)
+@Serializable data class StockFilaDto(
+    @SerialName("insumo_id") val insumoId: Int,
+    @SerialName("insumo_codigo") val insumoCodigo: String,
+    val descripcion: String,
+    val unidad: String,
+    val cantidad: String,
+    @SerialName("ultimo_movimiento_en") val ultimoMovimientoEn: String,
+    @SerialName("bajo_punto_reposicion") val bajoPuntoReposicion: Boolean? = null,
+)
+@Serializable data class StockDto(
+    val criterio: String = "",
+    val corte: String? = null,
+    @SerialName("por_almacen") val porAlmacen: List<StockFilaDto> = emptyList(),
+    val consolidado: List<StockFilaDto> = emptyList(),
+)
 @Serializable data class CompraDto(
     val id: Int,
     @SerialName("proveedor_razon_social") val proveedor: String,
@@ -174,6 +196,15 @@ class ApiSigro(private val http: HttpClient, private val json: Json) {
             http.get(url(servidor, "/obras/$obraId/compras")) { bearerAuth(token); parameter("estado", "registrada") }
         }
 
+    /** Texto tal cual: el repositorio lo guarda para mostrarlo sin señal con su hora. */
+    suspend fun stockTexto(servidor: String, token: String, obraId: Int, almacenId: Int?): String =
+        llamar<JsonObject> {
+            http.get(url(servidor, "/obras/$obraId/almacen/stock")) { bearerAuth(token); if (almacenId != null) parameter("almacen_id", almacenId) }
+        }.toString()
+
+    suspend fun estadoRecepcion(servidor: String, token: String, obraId: Int, compraId: Int): List<RecepcionLineaDto> =
+        llamar { http.get(url(servidor, "/obras/$obraId/almacen/compras/$compraId/recepcion")) { bearerAuth(token) } }
+
     /**
      * Envía un registro de la cola general: el cuerpo es el JSON que se armó al registrarlo (mismo uuid,
      * mismo contenido en cada reintento). `ruta` va relativa a /api/v1.
@@ -186,6 +217,15 @@ class ApiSigro(private val http: HttpClient, private val json: Json) {
             }
         }
     }
+
+    /** Como [enviarRegistro], pero devuelve la respuesta: el conteo necesita su id para las líneas y la confirmación. */
+    suspend fun enviarConRespuesta(servidor: String, token: String, ruta: String, cuerpoJson: String): JsonObject =
+        llamar {
+            http.post(url(servidor, ruta)) {
+                bearerAuth(token)
+                setBody(TextContent(cuerpoJson, ContentType.Application.Json))
+            }
+        }
 
     /**
      * POST /obras/{id}/almacen/salidas — contrato propuesto a Adiel para HU-40 (aún no existe en la API).

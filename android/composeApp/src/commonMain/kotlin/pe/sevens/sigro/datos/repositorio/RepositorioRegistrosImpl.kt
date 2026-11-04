@@ -4,9 +4,13 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.addJsonObject
 import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonArray
 import pe.sevens.sigro.datos.local.AjusteDao
@@ -89,9 +93,11 @@ class RepositorioRegistrosImpl(
         val uuid = Uuid.random().toString()
         val hora = reloj()
         val (titulo, detalle) = resumen(registro)
+        // Regla 5: el celular viaja en el cuerpo; el servidor rechaza (403) si no está autorizado en la obra.
+        val dispositivo = cred.identificadorDispositivo()
         val fila = nueva(
-            uuid, obraId, registro.tipo, titulo, detalle, cuerpoAlmacen(uuid, hora, registro).toString(),
-            null, hora, NOTA_SIN_SERVICIO_ALMACEN,
+            uuid, obraId, registro.tipo, titulo, detalle, cuerpoAlmacen(uuid, hora, dispositivo, registro).toString(),
+            null, hora, if (registro.tipo.conServicio) null else NOTA_SIN_SERVICIO_ALMACEN,
         )
         registros.insertar(fila)
         return aDominio(fila)
@@ -108,7 +114,7 @@ class RepositorioRegistrosImpl(
         for (r in cola) {
             val tipo = TipoRegistro.valueOf(r.tipo)
             try {
-                api.enviarRegistro(servidor, token, ruta(tipo, r.obraId), r.cuerpo)
+                enviar(servidor, token, tipo, r)
                 registros.marcar(r.uuidCliente, EstadoEnvio.ENVIADO.name, null, null, reloj())
                 enviados++
             } catch (e: ErrorSigro) {
@@ -128,6 +134,31 @@ class RepositorioRegistrosImpl(
             }
         }
         ResultadoSincronizacion(enviados, rechazados, registros.pendientes(tiposConServicio).size)
+    }
+
+    private suspend fun enviar(servidor: String, token: String, tipo: TipoRegistro, r: RegistroLocalEntity) {
+        if (tipo == TipoRegistro.CONTEO) enviarConteo(servidor, token, r) else api.enviarRegistro(servidor, token, ruta(tipo, r.obraId), r.cuerpo)
+    }
+
+    /**
+     * HU-46 en tres pasos: abrir (idempotente por uuid: un reenvío devuelve el mismo conteo con sus líneas),
+     * contar las líneas que el servidor aún no tiene y confirmar si no está confirmado. Repetirlo entero es
+     * seguro: lo que ya llegó no se vuelve a mandar.
+     */
+    private suspend fun enviarConteo(servidor: String, token: String, r: RegistroLocalEntity) {
+        val cuerpo = jsonSigro.parseToJsonElement(r.cuerpo).jsonObject
+        val apertura = JsonObject(cuerpo - "lineas")
+        val conteo = api.enviarConRespuesta(servidor, token, ruta(TipoRegistro.CONTEO, r.obraId), apertura.toString())
+        val id = conteo["id"]!!.jsonPrimitive.content
+        val yaContados = conteo["lineas"]?.jsonArray.orEmpty().mapNotNull { it.jsonObject["insumo_id"]?.jsonPrimitive?.content }.toSet()
+        cuerpo["lineas"]?.jsonArray.orEmpty().forEach { l ->
+            if (l.jsonObject["insumo_id"]!!.jsonPrimitive.content !in yaContados) {
+                api.enviarConRespuesta(servidor, token, "/obras/${r.obraId}/almacen/conteos/$id/lineas", l.toString())
+            }
+        }
+        if (conteo["estado"]?.jsonPrimitive?.content != "confirmado") {
+            api.enviarConRespuesta(servidor, token, "/obras/${r.obraId}/almacen/conteos/$id/confirmar", "{}")
+        }
     }
 
     private fun nueva(
@@ -173,39 +204,46 @@ class RepositorioRegistrosImpl(
         }
 
         /** El cuerpo que viajará al servicio almacén, armado ya para que el reenvío sea idéntico. */
-        fun cuerpoAlmacen(uuid: String, hora: Long, r: RegistroAlmacen): JsonObject = buildJsonObject {
+        fun cuerpoAlmacen(uuid: String, hora: Long, dispositivo: String, r: RegistroAlmacen): JsonObject = buildJsonObject {
             put("uuid_cliente", uuid)
             put("hora_dispositivo_ms", hora)
+            put("dispositivo", dispositivo)
             when (r) {
-                is RegistroAlmacen.Entrada -> {
-                    put("almacen_id", r.almacenId)
+                is RegistroAlmacen.Entrada -> { // RecepcionIn: sin líneas = el total pendiente
                     put("compra_id", r.compra.id)
-                    put("con_foto_guia", r.conFotoGuia)
-                    putJsonArray("lineas") {
-                        r.recibido.forEach { (l, c) -> addJsonObject { put("insumo_codigo", l.insumoCodigo); put("cantidad", cant(c)) } }
+                    put("almacen_id", r.almacenId)
+                    if (r.todo) {
+                        put("lineas", JsonNull)
+                    } else {
+                        putJsonArray("lineas") {
+                            r.recibido.forEach { (l, c) -> addJsonObject { put("insumo_id", l.insumoId); put("cantidad", cant(c)) } }
+                        }
                     }
                 }
-                is RegistroAlmacen.IngresoSinCompra -> {
+                is RegistroAlmacen.IngresoSinCompra -> { // IngresoIn del servicio almacén
                     put("almacen_id", r.almacenId)
-                    put("origen", r.origen.api)
                     put("insumo_id", r.linea.insumo.id)
                     put("cantidad", cant(r.linea.cantidad))
+                    put("unidad", r.linea.insumo.unidad) // unidad de compra: el servidor convierte con el factor
                     put("costo_unitario", cant(r.costoUnitario))
-                    put("detalle", r.detalle)
+                    put("origen", r.origen.api)
+                    put("origen_detalle", r.detalle)
                 }
-                is RegistroAlmacen.Traslado -> {
-                    put("almacen_id", r.almacenId)
-                    put("obra_destino_id", r.obraDestinoId)
+                is RegistroAlmacen.Traslado -> { // TrasladoIn: el costo lo pone el servidor y viaja con el material
+                    put("origen_almacen_id", r.almacenId)
+                    put("destino_obra_id", r.obraDestinoId)
+                    put("destino_almacen_id", r.destinoAlmacenId)
+                    put("motivo", r.motivo)
                     putJsonArray("lineas") {
                         r.lineas.forEach { addJsonObject { put("insumo_id", it.insumo.id); put("cantidad", cant(it.cantidad)) } }
                     }
                 }
-                is RegistroAlmacen.Conteo -> {
+                is RegistroAlmacen.Conteo -> { // ConteoIn + las ConteoLineaIn que se mandan después de abrirlo
                     put("almacen_id", r.almacenId)
                     put("fecha", r.fecha)
                     putJsonArray("lineas") {
                         r.lineas.forEach { (l, m) ->
-                            addJsonObject { put("insumo_id", l.insumo.id); put("contado", cant(l.cantidad)); put("motivo", m?.legible) }
+                            addJsonObject { put("insumo_id", l.insumo.id); put("cantidad_contada", cant(l.cantidad)); put("motivo", m?.legible) }
                         }
                     }
                 }

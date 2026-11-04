@@ -159,7 +159,7 @@ private class RegistrosFalsos : RepositorioRegistros {
     val lista = MutableStateFlow(
         listOf(
             RegistroLocal("r-1", 1, TipoRegistro.JORNADA, "Trabajador 01 (ejemplo)", "Presente · 8 h + 2 extra", ahora - 600_000L, EstadoEnvio.PENDIENTE, null, null, 0),
-            RegistroLocal("r-2", 1, TipoRegistro.INGRESO_SIN_COMPRA, insumo("ARENA GRUESA").descripcion, "1.5 m3 · Devolución de cuadrilla", ahora - 2_400_000L, EstadoEnvio.PENDIENTE, null, NOTA_SIN_SERVICIO_ALMACEN, 0),
+            RegistroLocal("r-2", 1, TipoRegistro.INGRESO_SIN_COMPRA, insumo("ARENA GRUESA").descripcion, "1.5 m3 · Devolución de cuadrilla", ahora - 2_400_000L, EstadoEnvio.PENDIENTE, null, "Sin señal o servidor ocupado: se reintenta solo.", 1),
         )
     )
     override fun deObra(obraId: Int) = lista
@@ -198,6 +198,13 @@ private object ObraFalsa : RepositorioObra {
             listOf("CEMENTO PORTLAND TIPO I", "ARENA GRUESA", "CLAVOS").map { insumo(it) }.map { LineaCompra(it.codigo, it.descripcion, "10", it.unidad) },
         ),
     )
+    override suspend fun stock(obraId: Int, almacenId: Int?) = pe.sevens.sigro.dominio.StockServidor(
+        listOf("CEMENTO PORTLAND TIPO I", "ARENA GRUESA", "PIEDRA CHANCADA").mapIndexed { i, n -> insumo(n) }.mapIndexed { i, x ->
+            pe.sevens.sigro.dominio.FilaStock(x.id, x.codigo, x.descripcion, x.unidad, "[saldo]", "2026-11-01T16:35", i == 1)
+        },
+        "2026-11-01T16:35:00", System.currentTimeMillis(), desdeCelular = false,
+    )
+    override suspend fun estadoRecepcion(obraId: Int, compraId: Int) = emptyList<pe.sevens.sigro.dominio.PendienteRecepcion>()
     override suspend fun obrasDestino(obraId: Int) = listOf(ObraAsignada(2, "[Otra obra registrada en SIGRO]", ""))
 }
 
@@ -277,21 +284,21 @@ fun main(args: Array<String>) {
     capturar(dir, "16-asistencia", preparar = { asis.cargar(1); Thread.sleep(300); asis.extra(1, 2); asis.estado(4, pe.sevens.sigro.dominio.EstadoAsistencia.AUSENTE) }) {
         PantallaAsistencia(1, {}, {}, asis)
     }
-    val stock = StockViewModel(CatalogoFalso, ObraFalsa)
-    capturar(dir, "17-stock", preparar = { stock.cargar(1); stock.buscador.buscar("cemento") }) { PantallaStock(1, {}, stock) }
-    val entrada = EntradaViewModel(ObraFalsa, registros)
-    capturar(dir, "18-entrada", preparar = { entrada.cargar(1); Thread.sleep(300); entrada.estado.value.compras.firstOrNull()?.let(entrada::elegir); entrada.alternarModo(); entrada.recibido(0, "6") }) {
+    val stock = StockViewModel(ObraFalsa)
+    capturar(dir, "17-stock", preparar = { stock.cargar(1) }) { PantallaStock(1, {}, stock) }
+    val entrada = EntradaViewModel(ObraFalsa, registros, CatalogoFalso, sinProgramar)
+    capturar(dir, "18-entrada", preparar = { entrada.cargar(1); Thread.sleep(300); entrada.estado.value.compras.firstOrNull()?.let { entrada.elegir(1, it) }; entrada.alternarModo(); entrada.recibido(0, "6") }) {
         PantallaEntrada(1, {}, entrada)
     }
-    val ingreso = IngresoSinCompraViewModel(CatalogoFalso, ObraFalsa, registros)
+    val ingreso = IngresoSinCompraViewModel(CatalogoFalso, ObraFalsa, registros, sinProgramar)
     capturar(dir, "19-ingreso-sin-compra", preparar = { ingreso.origen(pe.sevens.sigro.dominio.OrigenIngreso.OTRA_OBRA); ingreso.elegir(insumo("ARENA GRUESA")); ingreso.cantidad("1,5"); ingreso.guardar(1) }) {
         PantallaIngresoSinCompra(1, {}, ingreso)
     }
-    val traslado = TrasladoViewModel(CatalogoFalso, ObraFalsa, registros)
+    val traslado = TrasladoViewModel(CatalogoFalso, ObraFalsa, registros, sinProgramar)
     capturar(dir, "20-traslado", preparar = { traslado.cargar(1, sesionEjemplo.obras); Thread.sleep(300); traslado.estado.value.destinos.firstOrNull()?.let(traslado::destino); traslado.agregar(insumo("CEMENTO PORTLAND TIPO I")); traslado.cantidad(0, "20") }) {
         PantallaTraslado(1, "Multifamiliar Flores", sesionEjemplo.obras, {}, traslado)
     }
-    val conteo = ConteoViewModel(CatalogoFalso, ObraFalsa, registros)
+    val conteo = ConteoViewModel(CatalogoFalso, ObraFalsa, registros, sinProgramar)
     capturar(dir, "21-conteo", preparar = { conteo.agregar(insumo("CEMENTO PORTLAND TIPO I")); conteo.contado(0, "36"); conteo.motivo(0, pe.sevens.sigro.dominio.MotivoDiferencia.MERMA) }) {
         PantallaConteo(1, {}, conteo)
     }
