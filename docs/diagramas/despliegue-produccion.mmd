@@ -1,0 +1,43 @@
+%% SIGRO · Despliegue · vista PRODUCCIÓN (ADR-09): un contenedor por microservicio, como docker-compose.yml.
+%% Fuentes: docker-compose.yml, api/Dockerfile (imagen podada por servicio). Pruebas: despliegue-pruebas-un-nodo.mmd
+flowchart LR
+  subgraph Clientes["Dispositivos de los usuarios"]
+    WEB["Web de oficina<br/>navegador"]
+    APP["App del almacenero<br/>Android · iOS · cola sin señal"]
+  end
+
+  subgraph Host["Nube gestionada · red interna de contenedores"]
+    direction LR
+    GW["gateway · contenedor propio<br/>única puerta pública"]
+    subgraph Dominio["un CONTENEDOR por microservicio · imagen podada (api/Dockerfile, SERVICIO=…)"]
+      direction TB
+      OB["obras<br/>identidad · autoriza a los demás"]
+      CA["catalogo"]
+      CO["compras"]
+      TA["tareo"]
+      AL["almacen"]
+      CS["costo"]
+    end
+    subgraph Apoyo["contenedores de apoyo"]
+      direction TB
+      IN["integraciones"]
+      NO["notificaciones · volumen propio"]
+      RE["relevo (outbox)"]
+    end
+    MI["migrar · una vez · sigro_owner"]
+  end
+
+  subgraph Datos["PostgreSQL administrado"]
+    PG[("un esquema y un usuario por servicio<br/>sigro_obras · sigro_catalogo · sigro_compras · sigro_tareo<br/>sigro_almacen · sigro_costo · sigro_relevo")]
+  end
+  FAC[("Factiliza · RUC · DNI")]
+
+  WEB -->|"HTTPS · JWT"| GW
+  APP -->|"HTTPS · JWT"| GW
+  GW -->|"http://&lt;servicio&gt;:8000 · red interna"| Dominio
+  Dominio -->|"cada contenedor con SU usuario"| PG
+  RE -->|"sigro_relevo"| PG
+  MI --> PG
+  RE -.->|"eventos → costo · avisos → notificaciones"| Dominio
+  Dominio -.->|"RUC · S10"| IN
+  IN --> FAC

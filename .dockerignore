@@ -1,0 +1,14 @@
+# Solo lo usa api/Dockerfile.pruebas (contexto = raíz del repo, ADR-10). Las demás imágenes tienen su propio
+# contexto (./api, ./integraciones, ./notificaciones) y su propio .dockerignore.
+*
+!api
+!integraciones
+!notificaciones
+!infra/un_nodo
+**/__pycache__
+**/*.pyc
+**/.venv
+**/.pytest_cache
+**/pruebas
+**/.env
+**/*.db

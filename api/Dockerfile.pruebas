@@ -1,0 +1,35 @@
+# SIGRO · ambiente de PRUEBAS «todo en uno» (ADR-10). Un contenedor, un proceso por microservicio.
+# Contexto: la RAÍZ del repositorio (necesita api/, integraciones/, notificaciones/ e infra/un_nodo/).
+#
+#   docker build -f api/Dockerfile.pruebas -t sigro-api .
+#   docker run --env-file un-nodo.env -p 8000:10000 sigro-api
+#
+# Producción NO usa esta imagen: sigue con api/Dockerfile (una imagen podada por servicio) y docker-compose.yml.
+# Tres entornos virtuales porque integraciones y notificaciones fijan versiones de FastAPI/httpx distintas a la API:
+# cada proceso corre con las dependencias de su propio servicio, como en su imagen.
+FROM python:3.13-slim
+
+# MALLOC_ARENA_MAX=2: glibc abre un «arena» por hilo y FastAPI atiende las rutas síncronas en un pool de hilos; con
+# diez procesos en 512 MB (Render gratis) eso pesa. Dos arenas por proceso bajan la memoria residente sin costo visible.
+ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 PORT=10000 MALLOC_ARENA_MAX=2
+WORKDIR /app
+
+COPY api/requirements.txt /tmp/req-api.txt
+COPY integraciones/requirements.txt /tmp/req-integraciones.txt
+COPY notificaciones/requirements.txt /tmp/req-notificaciones.txt
+RUN python -m venv /opt/venv-api && /opt/venv-api/bin/pip install --no-cache-dir -r /tmp/req-api.txt \
+ && python -m venv /opt/venv-integraciones && /opt/venv-integraciones/bin/pip install --no-cache-dir -r /tmp/req-integraciones.txt \
+ && python -m venv /opt/venv-notificaciones && /opt/venv-notificaciones/bin/pip install --no-cache-dir -r /tmp/req-notificaciones.txt \
+ && rm /tmp/req-*.txt
+
+COPY api /app/api
+COPY integraciones /app/integraciones
+COPY notificaciones /app/notificaciones
+COPY infra/un_nodo /app/infra/un_nodo
+
+# Sin root, como las imágenes de cada servicio.
+RUN useradd --system --no-create-home sigro && chown -R sigro /app
+USER sigro
+EXPOSE 10000
+# Render fija PORT (10000 por omisión) y solo publica ese puerto: el del gateway. Los demás quedan en 127.0.0.1.
+CMD ["/opt/venv-api/bin/python", "/app/infra/un_nodo/supervisor.py"]
