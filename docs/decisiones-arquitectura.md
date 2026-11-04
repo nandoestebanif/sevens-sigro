@@ -254,7 +254,7 @@ del proceso.
 
 La carga completa con base real no se pudo correr en la PC del autor (sin Docker ni PostgreSQL con `btree_gist`); la
 corre CI en cada PR y falla si el pico pasa de 300 MB. Antes, con diez procesos, el mismo job medía 398 MB de PSS tras
-reposo, sin carga. Sin Docker, `infra/un_nodo/medir_memoria.py` hace la misma
+la prueba de humo, sin esta carga. Sin Docker, `infra/un_nodo/medir_memoria.py` hace la misma
 medición con psutil contra cualquier base. El arreglo anterior (`supervisor.py`, un intérprete por servicio) queda
 para diagnóstico.
 
