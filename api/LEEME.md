@@ -12,7 +12,7 @@
 | **gateway** | `uvicorn app.servicios.gateway:app` | — | todas las de `/api/v1` (las reparte según `app/enrutado.py`) |
 | **obras** | `uvicorn app.servicios.obras:app` | `obra` · `sigro_svc_obras` | `/auth`, `/usuarios`, `/obras/...` (obra, periodos, almacenes, asignaciones, dispositivos), `/notificaciones` |
 | **catalogo** | `uvicorn app.servicios.catalogo:app` | `catalogo` · `sigro_svc_catalogo` | `/catalogo/...` |
-| **compras** | `uvicorn app.servicios.compras:app` | `compras` · `sigro_svc_compras` | `/proveedores`, `/obras/{id}/compras · solicitudes · requerimiento · saldo-por-comprar · parametros-reposicion` |
+| **compras** | `uvicorn app.servicios.compras:app` | `compras` · `sigro_svc_compras` | `/proveedores`, `/obras/{id}/compras · solicitudes · requerimiento · saldo-por-comprar · parametros-reposicion · partidas` |
 | **tareo** | `uvicorn app.servicios.tareo:app` | `tareo` · `sigro_svc_tareo` | `/obras/{id}/trabajadores · jornadas · horas-acumuladas` |
 | **almacen** | `uvicorn app.servicios.almacen:app` | `almacen` · `sigro_svc_almacen` | `/obras/{id}/almacen/...` (salidas, ingresos, recepciones, traslados, reversos, conteos, stock, kárdex) |
 | **costo** | `uvicorn app.servicios.costo:app` | `costo` · `sigro_svc_costo` | `/obras/{id}/costo/gasto` |
@@ -104,6 +104,8 @@ Las migraciones corren con el usuario DUEÑO. Cada servicio se conecta con SU us
 | 0008 | **requerimiento de obra** (HU-19) con su libro de ajustes, **parámetros de reposición** (HU-25) y la vista `saldo_por_comprar` (HU-24) |
 | 0010 | **almacén y costo** (aprobada por Adiel el 01/11/2026): libro `almacen.movimiento` + recepción, traslado, conteo, réplicas `almacen_ref`/`insumo_ref`; vistas `saldo`, `saldo_obra`, `kardex`, `recibido_por_compra`; `costo.evento_recibido` + `costo.hecho` + vista `gasto_por_obra`; `outbox.evento.destino`; roles `sigro_svc_almacen` y `sigro_svc_costo` |
 | 0009 | **microservicios** (ADR-09): un rol por servicio (`sigro_svc_*`) con permisos solo sobre su esquema; 3 validaciones entre esquemas pasan a `SECURITY DEFINER` |
+| 0011 | **índices de rendimiento** (adoptada por Adiel el 03/11/2026): `upper(codigo)` del insumo, compra registrada por proveedor y fecha, línea de solicitud por solicitud |
+| 0012 | **partidas y APU** (HU-16): `compras.partida` y `compras.partida_recurso`, libros de solo agregar; concedidas también a `sigro_svc_compras` |
 
 ## Modelo físico y diagramas (`api/docs/`)
 
@@ -219,6 +221,7 @@ Argon2id, bloqueo a los 5 intentos (15 min), misma respuesta para usuario inexis
 | `POST /catalogo/insumos/importar-s10` | residente, administrador (aplica lo que leyó Integraciones; repetirlo no duplica) |
 | `POST /obras/{id}/requerimiento/importar`, `GET …/requerimiento`, `POST …/{id}/ajustar`, `GET …/{id}/ajustes` | importar y ajustar: residente, administrador (ajuste con motivo) · ver: + gerente |
 | `GET /obras/{id}/saldo-por-comprar?solo_pendientes=` | residente, administrador, gerente |
+| `POST /obras/{id}/partidas/importar-apu`, `GET …/partidas`, `GET …/partidas/{id}/recursos`, `GET …/insumos/{id}/partidas` (HU-16) | importar: residente, administrador · consultar: + gerente. El lector del PDF del APU es de Integraciones; esta API guarda lo que él entrega |
 | `GET /obras/{id}/avance?q=` (HU-23) | `avance.consultar` → residente, administrador, gerente. Requerido, comprado, recibido, consumido y saldo por comprar en **unidad de compra**, % sobre el requerimiento total. Recibido y consumido son de almacén (0010): mientras no exista, llegan `null` y `pendiente` lo dice |
 | `POST·GET /obras/{id}/parametros-reposicion`, `GET …/{insumo_id}/historial` | registrar: residente, administrador · ver: + gerente (cada cambio es una vigencia nueva) |
 | `GET /notificaciones`, `POST /notificaciones/{id}/leida` | autenticado (siempre con SU usuario del token) |
@@ -250,6 +253,9 @@ Errores: `{"codigo": "...", "mensaje": "..."}`, igual que `ErrorApi` en `web/src
 | D-R2 | «Comprado» cuenta solo compras `registrada`; las anuladas no restan | Coherente con D-C2 |
 | D-R3 | Importar el requerimiento nunca pisa: si ya existe con otra cantidad/precio avisa; se corrige con ajuste (motivo + autor, libro) | Trazabilidad del presupuesto |
 | D-A3 | `python -m app.cli crear-usuario` (usuarios de prueba) crea el usuario si falta y su asignación vigente; si ya tiene otro rol en esa obra no lo pisa. La asignación la firma un administrador vigente de la obra (o `--asignado-por`) | Preparar el ambiente de pruebas sin abrir la base; propuesto por Claude Code el 01/11, por ratificar |
+| D-P1 | La partida se identifica por obra + código + descripción (sin mayúsculas ni espacios de más): el reporte del S10 trunca el código | Dos partidas con el mismo código truncado no se mezclan |
+| D-P2 | El APU importado es un libro de solo agregar: repetir no duplica ni pisa; si el archivo trae otra cantidad se avisa | Registro de lo que dijo el S10 ese día |
+| D-P3 | Un recurso que el catálogo no conoce se reporta en `fallidos` y no detiene la importación; compras lo pide al catálogo por `/interno/insumos/buscar` (no lee su base) | ADR-09 |
 | D-N1 | Los avisos los resuelve la API (destinatarios) y nunca incluyen a quien hizo la acción | Nadie necesita que le avisen de lo que acaba de hacer |
 
 ## Almacén y costo (migración 0010) · decisiones aprobadas por Adiel el 01/11/2026
