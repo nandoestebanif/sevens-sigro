@@ -166,11 +166,26 @@ def _puertos_libres(n: int) -> int:
     raise RuntimeError("sin puertos libres")
 
 
-def _lanzar(base: int, **extra: str) -> subprocess.Popen:
+_INTEGRACIONES_MINIMA = """from fastapi import FastAPI
+
+app = FastAPI()
+
+
+@app.get("/salud")
+def salud():
+    return {"estado": "ok", "servicio": "integraciones"}
+"""
+
+
+def _lanzar(base: int, raiz: Path, **extra: str) -> subprocess.Popen:
+    """Con un integraciones/main.py mínimo en `raiz`: las dependencias propias de integraciones (pdfplumber) no son
+    de la API y este job no las instala; el job un-nodo prueba la imagen completa."""
+    (raiz / "integraciones").mkdir(exist_ok=True)
+    (raiz / "integraciones" / "main.py").write_text(_INTEGRACIONES_MINIMA, encoding="utf-8")
     entorno = {k: v for k, v in os.environ.items() if not k.startswith("SIGRO_")}
     entorno |= {f"SIGRO_DB_{s.upper()}": _cadena(s) for s in CON_BASE}
     entorno |= {"PORT": str(base), "SIGRO_UN_NODO_PUERTO_BASE": str(base + 1), "SIGRO_UN_NODO_EXTRAS": "0",
-                "SIGRO_UN_NODO_API": str(RAIZ / "api"), "SIGRO_UN_NODO_RAIZ": str(RAIZ),
+                "SIGRO_UN_NODO_API": str(RAIZ / "api"), "SIGRO_UN_NODO_RAIZ": str(raiz),
                 "SIGRO_SERVICIO_TOKEN": "token", "PYTHONIOENCODING": "utf-8"} | extra
     return subprocess.Popen([sys.executable, str(_RUTA)], env=entorno, stdout=subprocess.PIPE,
                             stderr=subprocess.STDOUT, text=True, encoding="utf-8")
@@ -184,9 +199,9 @@ def _get(url: str) -> tuple[int, bytes]:
         return e.code, e.read()
 
 
-def test_todas_las_apps_responden_desde_un_solo_proceso():
+def test_todas_las_apps_responden_desde_un_solo_proceso(tmp_path):
     base = _puertos_libres(9)
-    p = _lanzar(base)
+    p = _lanzar(base, tmp_path)
     try:
         fin = time.monotonic() + 60
         while True:
@@ -212,13 +227,13 @@ def test_todas_las_apps_responden_desde_un_solo_proceso():
             p.wait(timeout=20)
 
 
-def test_si_un_servidor_cae_el_proceso_entero_termina_con_codigo_1():
+def test_si_un_servidor_cae_el_proceso_entero_termina_con_codigo_1(tmp_path):
     base = _puertos_libres(9)
     ocupado = socket.socket()
     ocupado.bind(("127.0.0.1", base + 3))                     # el puerto de compras ya está tomado
     ocupado.listen()
     try:
-        p = _lanzar(base)
+        p = _lanzar(base, tmp_path)
         salida, _ = p.communicate(timeout=60)
     finally:
         ocupado.close()
