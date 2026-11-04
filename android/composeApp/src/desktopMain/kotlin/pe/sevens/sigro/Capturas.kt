@@ -20,7 +20,13 @@ import pe.sevens.sigro.dominio.ObraAsignada
 import pe.sevens.sigro.dominio.ProgramadorSincronizacion
 import pe.sevens.sigro.dominio.RepositorioCatalogo
 import pe.sevens.sigro.dominio.RepositorioDispositivo
+import pe.sevens.sigro.dominio.RepositorioRegistros
 import pe.sevens.sigro.dominio.RepositorioSalidas
+import pe.sevens.sigro.dominio.RegistroAlmacen
+import pe.sevens.sigro.dominio.RegistroLocal
+import pe.sevens.sigro.dominio.MarcaAsistencia
+import pe.sevens.sigro.dominio.TipoRegistro
+import pe.sevens.sigro.dominio.NOTA_SIN_SERVICIO_ALMACEN
 import pe.sevens.sigro.dominio.RepositorioSesion
 import pe.sevens.sigro.dominio.ResultadoSincronizacion
 import pe.sevens.sigro.dominio.SalidaRegistrada
@@ -28,6 +34,42 @@ import pe.sevens.sigro.dominio.Sesion
 import pe.sevens.sigro.ui.pantallas.DispositivoViewModel
 import pe.sevens.sigro.ui.pantallas.EntrarViewModel
 import pe.sevens.sigro.ui.pantallas.InicioViewModel
+import pe.sevens.sigro.ui.pantallas.ObrasViewModel
+import pe.sevens.sigro.ui.pantallas.CatalogoViewModel
+import pe.sevens.sigro.ui.pantallas.InsumoNuevoViewModel
+import pe.sevens.sigro.ui.pantallas.PantallaCatalogo
+import pe.sevens.sigro.ui.pantallas.PantallaFichaInsumo
+import pe.sevens.sigro.ui.pantallas.PantallaInsumoNuevo
+import pe.sevens.sigro.dominio.RepositorioInsumos
+import pe.sevens.sigro.dominio.BusquedaInsumos
+import pe.sevens.sigro.dominio.FichaInsumo
+import pe.sevens.sigro.dominio.NuevoInsumo
+import pe.sevens.sigro.dominio.CatalogoTexto
+import pe.sevens.sigro.dominio.RepositorioTrabajadores
+import pe.sevens.sigro.dominio.Trabajador
+import pe.sevens.sigro.dominio.NuevoTrabajador
+import pe.sevens.sigro.ui.pantallas.TrabajadoresViewModel
+import pe.sevens.sigro.ui.pantallas.TrabajadorNuevoViewModel
+import pe.sevens.sigro.ui.pantallas.AsistenciaViewModel
+import pe.sevens.sigro.ui.pantallas.PantallaTrabajadores
+import pe.sevens.sigro.ui.pantallas.PantallaTrabajadorNuevo
+import pe.sevens.sigro.ui.pantallas.PantallaAsistencia
+import pe.sevens.sigro.ui.pantallas.PantallaStock
+import pe.sevens.sigro.ui.pantallas.StockViewModel
+import pe.sevens.sigro.ui.pantallas.EntradaViewModel
+import pe.sevens.sigro.ui.pantallas.PantallaEntrada
+import pe.sevens.sigro.ui.pantallas.CierreViewModel
+import pe.sevens.sigro.ui.pantallas.PantallaCierre
+import pe.sevens.sigro.ui.pantallas.ConteoViewModel
+import pe.sevens.sigro.ui.pantallas.PantallaConteo
+import pe.sevens.sigro.ui.pantallas.TrasladoViewModel
+import pe.sevens.sigro.ui.pantallas.PantallaTraslado
+import pe.sevens.sigro.ui.pantallas.IngresoSinCompraViewModel
+import pe.sevens.sigro.ui.pantallas.PantallaIngresoSinCompra
+import pe.sevens.sigro.dominio.RepositorioObra
+import pe.sevens.sigro.dominio.AlmacenObra
+import pe.sevens.sigro.dominio.CompraParaRecibir
+import pe.sevens.sigro.dominio.LineaCompra
 import pe.sevens.sigro.ui.pantallas.PantallaDispositivo
 import pe.sevens.sigro.ui.pantallas.PantallaEntrar
 import pe.sevens.sigro.ui.pantallas.PantallaInicio
@@ -111,6 +153,54 @@ private object DispositivoFalso : RepositorioDispositivo {
     override suspend fun solicitarAutorizacion(obraId: Int) = estado(obraId)
 }
 
+/** Cola general de ejemplo: una asistencia por enviar y un ingreso que espera al servicio almacén. */
+private class RegistrosFalsos : RepositorioRegistros {
+    private val ahora = System.currentTimeMillis()
+    val lista = MutableStateFlow(
+        listOf(
+            RegistroLocal("r-1", 1, TipoRegistro.JORNADA, "Trabajador 01 (ejemplo)", "Presente · 8 h + 2 extra", ahora - 600_000L, EstadoEnvio.PENDIENTE, null, null, 0),
+            RegistroLocal("r-2", 1, TipoRegistro.INGRESO_SIN_COMPRA, insumo("ARENA GRUESA").descripcion, "1.5 m3 · Devolución de cuadrilla", ahora - 2_400_000L, EstadoEnvio.PENDIENTE, null, NOTA_SIN_SERVICIO_ALMACEN, 0),
+        )
+    )
+    override fun deObra(obraId: Int) = lista
+    override val pendientes: Flow<Int> = lista.map { l -> l.count { it.estado == EstadoEnvio.PENDIENTE && it.tipo.conServicio } }
+    override suspend fun registrarAsistencia(obraId: Int, fecha: String, marcas: List<MarcaAsistencia>) = emptyList<RegistroLocal>()
+    override suspend fun yaMarcados(obraId: Int, fecha: String) = emptySet<Int>()
+    override suspend fun registrarAlmacen(obraId: Int, registro: RegistroAlmacen) = lista.value.last()
+    override suspend fun sincronizar() = ResultadoSincronizacion(0, 0, 1)
+}
+
+/** Catálogo real del cliente como si viniera del servidor. El factor del acero es un [marcador] del ejemplo. */
+private object InsumosFalsos : RepositorioInsumos {
+    private val todos = catalogo.map { FichaInsumo(it.id, it.codigo, it.descripcion, it.unidad, it.unidad, "1", "material", true, true) }
+    override suspend fun buscar(texto: String) = BusquedaInsumos(todos.filter { CatalogoTexto.coincide(it, texto) }, desdeCelular = false)
+    override suspend fun registrar(nuevo: NuevoInsumo) = FichaInsumo(9999, "9999", nuevo.descripcion, nuevo.unidad)
+}
+
+/** Trabajadores de ejemplo: las personas no son datos del cliente y lo dicen. */
+private object TrabajadoresFalsos : RepositorioTrabajadores {
+    private val cats = listOf("operario", "oficial", "oficial", "peon", "operario", "peon", "peon")
+    val lista = MutableStateFlow((1..7).map { n ->
+        Trabajador(n, 1, "Trabajador 0$n (ejemplo)", "DNI", "[documento]", cats[n - 1], if (n <= 3) "Cuadrilla A" else "Cuadrilla B",
+            "2026-10-01", if (n == 7) "2026-10-20" else null)
+    })
+    override fun deObra(obraId: Int) = lista
+    override suspend fun actualizar(obraId: Int) = lista.value.size
+    override suspend fun registrar(obraId: Int, nuevo: NuevoTrabajador) = lista.value.first()
+}
+
+/** Lecturas de obra de ejemplo: el proveedor y la otra obra son [marcador]; los insumos, del catálogo real. */
+private object ObraFalsa : RepositorioObra {
+    override suspend fun almacenes(obraId: Int) = listOf(AlmacenObra(1, "Almacén principal"))
+    override suspend fun compras(obraId: Int) = listOf(
+        CompraParaRecibir(
+            10, "[Proveedor]", "Factura [número]", "2026-10-27",
+            listOf("CEMENTO PORTLAND TIPO I", "ARENA GRUESA", "CLAVOS").map { insumo(it) }.map { LineaCompra(it.codigo, it.descripcion, "10", it.unidad) },
+        ),
+    )
+    override suspend fun obrasDestino(obraId: Int) = listOf(ObraAsignada(2, "[Otra obra registrada en SIGRO]", ""))
+}
+
 private val sinProgramar = object : ProgramadorSincronizacion { override fun programar() {} }
 
 private fun capturar(dir: File, nombre: String, oscuro: Boolean = false, ms: Int = 1500, preparar: () -> Unit = {}, contenido: @Composable () -> Unit) {
@@ -142,9 +232,10 @@ fun main(args: Array<String>) {
 
     capturar(dir, "02-entrar-error", preparar = { entrarMal.usuario("almacenero"); entrarMal.clave("x"); entrarMal.entrar() }) { PantallaEntrar(entrarMal) }
 
-    capturar(dir, "03-elegir-obra") { PantallaObras(sesionEjemplo, {}, {}) }
-
     val salidas = SalidasFalsas()
+    val registros = RegistrosFalsos()
+    capturar(dir, "03-elegir-obra") { PantallaObras(sesionEjemplo, {}, {}, ObrasViewModel(DispositivoFalso, salidas, registros)) }
+
     capturar(dir, "04-inicio") { PantallaInicio(sesionEjemplo, obra, {}, InicioViewModel(SesionFalsa(), salidas, CatalogoFalso, sinProgramar)) }
     capturar(dir, "04-inicio-oscuro", oscuro = true) { PantallaInicio(sesionEjemplo, obra, {}, InicioViewModel(SesionFalsa(), salidas, CatalogoFalso, sinProgramar)) }
 
@@ -165,9 +256,45 @@ fun main(args: Array<String>) {
         guardada.elegir(insumo("ARENA GRUESA")); guardada.cantidad("3,5"); guardada.motivo("Tarrajeo"); guardada.quienRetira("Maestro de obra (ejemplo)"); guardada.guardar(1)
     }) { PantallaSalida(1, {}, guardada) }
 
-    capturar(dir, "09-mis-registros") { PantallaPendientes(1, {}, PendientesViewModel(salidas)) }
-    capturar(dir, "09-mis-registros-oscuro", oscuro = true) { PantallaPendientes(1, {}, PendientesViewModel(salidas)) }
+    capturar(dir, "09-mis-registros") { PantallaPendientes(1, {}, PendientesViewModel(salidas, registros)) }
+    capturar(dir, "09-mis-registros-oscuro", oscuro = true) { PantallaPendientes(1, {}, PendientesViewModel(salidas, registros)) }
 
-    capturar(dir, "10-mi-celular") { PantallaDispositivo(1, {}, DispositivoViewModel(DispositivoFalso)) }
+    capturar(dir, "10-mi-celular") { PantallaDispositivo(1, {}, "Multifamiliar Flores", DispositivoViewModel(DispositivoFalso)) }
+    val cat = CatalogoViewModel(InsumosFalsos)
+    capturar(dir, "11-catalogo-buscar", preparar = { cat.buscar("fierro corrugado") }) { PantallaCatalogo({}, {}, {}, cat) }
+    val fierro = catalogo.firstOrNull { it.descripcion.startsWith("FIERRO CORRUGADO") } ?: insumo("FIERRO")
+    capturar(dir, "12-catalogo-ficha") {
+        PantallaFichaInsumo(FichaInsumo(fierro.id, fierro.codigo, fierro.descripcion, "unidades", "kg", "1", "material", true, false), {}, {})
+    }
+    val nuevo = InsumoNuevoViewModel(InsumosFalsos)
+    capturar(dir, "13-catalogo-nuevo", ms = 2500, preparar = { nuevo.material("Fierro corrugado"); nuevo.medida("1/2"); nuevo.unidad("unidades") }) { PantallaInsumoNuevo({}, {}, nuevo) }
+    capturar(dir, "14-trabajadores") { PantallaTrabajadores(1, "Multifamiliar Flores", {}, {}, TrabajadoresViewModel(TrabajadoresFalsos, registros)) }
+    val tn = TrabajadorNuevoViewModel(TrabajadoresFalsos)
+    capturar(dir, "15-trabajador-nuevo", preparar = { tn.documento("1234567"); tn.nombre("Trabajador 08 (ejemplo)") }) {
+        PantallaTrabajadorNuevo(1, {}, tn, TrabajadoresViewModel(TrabajadoresFalsos, registros))
+    }
+    val asis = AsistenciaViewModel(TrabajadoresFalsos, registros, sinProgramar)
+    capturar(dir, "16-asistencia", preparar = { asis.cargar(1); Thread.sleep(300); asis.extra(1, 2); asis.estado(4, pe.sevens.sigro.dominio.EstadoAsistencia.AUSENTE) }) {
+        PantallaAsistencia(1, {}, {}, asis)
+    }
+    val stock = StockViewModel(CatalogoFalso, ObraFalsa)
+    capturar(dir, "17-stock", preparar = { stock.cargar(1); stock.buscador.buscar("cemento") }) { PantallaStock(1, {}, stock) }
+    val entrada = EntradaViewModel(ObraFalsa, registros)
+    capturar(dir, "18-entrada", preparar = { entrada.cargar(1); Thread.sleep(300); entrada.estado.value.compras.firstOrNull()?.let(entrada::elegir); entrada.alternarModo(); entrada.recibido(0, "6") }) {
+        PantallaEntrada(1, {}, entrada)
+    }
+    val ingreso = IngresoSinCompraViewModel(CatalogoFalso, ObraFalsa, registros)
+    capturar(dir, "19-ingreso-sin-compra", preparar = { ingreso.origen(pe.sevens.sigro.dominio.OrigenIngreso.OTRA_OBRA); ingreso.elegir(insumo("ARENA GRUESA")); ingreso.cantidad("1,5"); ingreso.guardar(1) }) {
+        PantallaIngresoSinCompra(1, {}, ingreso)
+    }
+    val traslado = TrasladoViewModel(CatalogoFalso, ObraFalsa, registros)
+    capturar(dir, "20-traslado", preparar = { traslado.cargar(1, sesionEjemplo.obras); Thread.sleep(300); traslado.estado.value.destinos.firstOrNull()?.let(traslado::destino); traslado.agregar(insumo("CEMENTO PORTLAND TIPO I")); traslado.cantidad(0, "20") }) {
+        PantallaTraslado(1, "Multifamiliar Flores", sesionEjemplo.obras, {}, traslado)
+    }
+    val conteo = ConteoViewModel(CatalogoFalso, ObraFalsa, registros)
+    capturar(dir, "21-conteo", preparar = { conteo.agregar(insumo("CEMENTO PORTLAND TIPO I")); conteo.contado(0, "36"); conteo.motivo(0, pe.sevens.sigro.dominio.MotivoDiferencia.MERMA) }) {
+        PantallaConteo(1, {}, conteo)
+    }
+    capturar(dir, "22-cierre") { PantallaCierre(1, "Multifamiliar Flores", {}, CierreViewModel(ObraFalsa, registros)) }
     kotlin.system.exitProcess(0)
 }
