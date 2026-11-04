@@ -6,20 +6,48 @@
 
 ## Lo primero
 
-1. **Como PO:** acepta desde la interfaz las HU que vuelven del Sprint 1 a medida que pasen sus pruebas. 39 de tus tareas pendientes son de «Aceptación»: sin tu aceptación ninguna HU llega a Done.
-2. **Revisa los PR de `api/`** (abajo). El #19 (migración 0010, almacén y costo) ya se fusionó.
+1. **Como PO:** acepta desde la interfaz las HU que vuelven del Sprint 1 a medida que pasen sus pruebas. 39 de tus tareas pendientes son de «Aceptación»: sin tu aceptación ninguna HU llega a Done. Empieza por las **10 del Excel de pruebas** (abajo).
+2. **Revisa los PR de estas guías** (abajo). Los de `api/` que tenías (#17, #18 y #24) se fusionaron el 03/11.
 3. **Backend del Sprint 2:** tus HU de abajo, empezando por las que desbloquean a la app y a la web (traslados HU-42, conteo físico HU-46 en el servidor, cierre de obra HU-47).
+
+## Ambiente de pruebas · vigente desde el 04/11
+
+| Para | Dirección |
+|---|---|
+| **Web** | **https://sigro-web.onrender.com** |
+| **App** (campo «Servidor») | **https://sigro-api.onrender.com** |
+| **Postman** | `https://sigro-api.onrender.com/api/v1`, **como máximo 1 petición cada 5 s**; si no, Cloudflare bloquea el servidor |
+
+- Corre en **un solo servicio de Render**, `sigro-api`, con un proceso por microservicio, y cada uno conserva su usuario
+  y su esquema (ADR-10). Los ocho servicios viejos están suspendidos y se borran después de un día de uso normal.
+- **En Neon, la migración 0010 se aplicó el 03/11** (antes estaba en 0009: almacén y costo no tenían base). Se crearon
+  solo los usuarios `sigro_almacen` y `sigro_costo`, sin volver a correr `migrar.sh`, y la clave de `sigro_relevo` se
+  cambió. Todo quedó en la incidencia I-6 del registro del sprint.
+- **Fernando te pasa tu usuario por privado.** No lo escribas en el repositorio ni en el Excel. Más detalle en
+  [`LEEME.md`](LEEME.md).
+
+## Las 10 HU que aceptas después de sus pruebas
+
+Archivo: [`docs/pruebas/SIGRO - Pruebas de aceptación (Sprint 2).xlsx`](../docs/pruebas/SIGRO%20-%20Pruebas%20de%20aceptaci%C3%B3n%20(Sprint%202).xlsx).
+La hoja **«Resumen»** se llena sola con las hojas de cada probador. Tú completas la columna **«Acepta el PO (Sí/No)»** y
+mueves la tarjeta «Aceptación», solo si **todas** las condiciones finales de esa HU cumplen.
+
+| Prueba | HU | Tarjeta «Aceptación» |
+|---|---|---|
+| Nicolás | HU-01 · HU-03 · HU-07 · HU-25 | T-009 · T-017 · T-026 · T-110 |
+| Henry | HU-08 · HU-19 · HU-24 · HU-29 · HU-30 | T-034 · T-087 · T-103 · T-135 · T-143 |
+| Fernando | HU-12 | T-042 |
+
+En HU-12, la condición 3 («la contraseña se guarda cifrada») pide que muestres en el código que se guarda con hash.
 
 ## Los PR que te toca revisar
 
 | PR | Qué es | Qué miras |
 |---|---|---|
-| [#17](https://github.com/xteban-sp/sevens-sigro/pull/17) | api: CLI crear-usuario y HU-23 avance de compra y consumo | la lógica y las pruebas de HU-23 |
-| [#18](https://github.com/xteban-sp/sevens-sigro/pull/18) | Rendimiento web y API: N+1, paginación opcional y propuesta de índices | la parte de `api/` y la propuesta de migración 0011 (solo tú la creas) |
-| [#24](https://github.com/xteban-sp/sevens-sigro/pull/24) | perf: Server-Timing, CF-Ray, `GET /obras` en una consulta y pool persistente (borrador) | `docs/rendimiento-render.md` y la decisión sobre el caché del permiso |
-| PR de esta guía | Guías del equipo para el Sprint 2 | que el reparto y las tareas sean los acordados |
+| [#25](https://github.com/xteban-sp/sevens-sigro/pull/25) | Guías del equipo para el Sprint 2 | que el reparto y las tareas sean los acordados |
+| [#30](https://github.com/xteban-sp/sevens-sigro/pull/30) | Guías al 04/11: ambiente en un nodo, Excel de pruebas y PR vigentes (apilado sobre #25) | que las HU de cada probador y los PR sean los acordados |
 
-La parte web del #18 la revisa Henry.
+Primero se fusiona #25 y después #30.
 
 ## Tus tareas pendientes según el tablero · 70 tareas · 86 h · 1 en Doing
 
