@@ -44,6 +44,7 @@ class Compra(Base):
         ForeignKeyConstraint(["solicitud_id", "proyecto_id"], ["compras.solicitud.id", "compras.solicitud.proyecto_id"],
                              name="fk_compra_solicitud_id_solicitud"),
         Index("ix_compra_proyecto_id_fecha", "proyecto_id", text("fecha DESC")),
+        Index("ix_compra_proveedor_registrada", "proveedor_id", "fecha", postgresql_where=text("estado = 'registrada'")),   # 0011
         Index("ix_compra_proveedor_id", "proveedor_id"),
         Index("ix_compra_solicitud_id", "solicitud_id", postgresql_where=text("solicitud_id IS NOT NULL")),
         {"schema": "compras"},
@@ -137,6 +138,7 @@ class SolicitudLinea(Base):
         Index("uq_solicitud_linea_solicitud_insumo", "solicitud_id", "insumo_id", unique=True,
               postgresql_where=text("insumo_id IS NOT NULL")),
         Index("ix_solicitud_linea_insumo_id", "insumo_id", postgresql_where=text("insumo_id IS NOT NULL")),
+        Index("ix_solicitud_linea_solicitud_id", "solicitud_id"),      # migración 0011
         {"schema": "compras"},
     )
 
