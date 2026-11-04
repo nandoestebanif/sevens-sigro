@@ -41,6 +41,9 @@ ACCIONES: dict[str, frozenset[str]] = {
     "requerimiento.importar": frozenset({RESIDENTE, ADMIN}),
     "requerimiento.ajustar": frozenset({RESIDENTE, ADMIN}),
     "requerimiento.consultar": frozenset({RESIDENTE, ADMIN, GERENTE}),
+    # --- partidas y análisis de precios unitarios (HU-16)
+    "partida.importar": frozenset({RESIDENTE, ADMIN}),
+    "partida.consultar": frozenset({RESIDENTE, ADMIN, GERENTE}),
     "reposicion.registrar": frozenset({RESIDENTE, ADMIN}),
     "reposicion.consultar": frozenset({RESIDENTE, ADMIN, GERENTE}),
     "avance.consultar": frozenset({RESIDENTE, ADMIN, GERENTE}),       # HU-23 (como «sugerencia de compra» de la matriz)
