@@ -4,11 +4,13 @@ Para qué: que alguien distinto del autor pruebe cada HU en un lugar público (T
 emulador o del celular tenga a qué servidor conectarse. Responsable: Fernando. Lo puede ejecutar Claude Code.
 
 **Cómo está armado (ADR-10).** En pruebas, los microservicios corren en **un solo servicio gratuito de Render,
-`sigro-api`**: un contenedor (`api/Dockerfile.pruebas`) con **un proceso por microservicio**. El gateway atiende
-`$PORT`; obras, catálogo, compras, tareo, almacén, costo e integraciones escuchan en `127.0.0.1:8001–8007`,
-notificaciones en `8008`, y el relevo corre sin puerto. Un supervisor liviano (`infra/un_nodo/supervisor.py`)
-reinicia el proceso que se cae. Cada servicio sigue con **su propio usuario y su propio esquema de base**: el
-supervisor le pasa a cada proceso solo su cadena (`SIGRO_DB_OBRAS` → `SIGRO_APP_DATABASE_URL` de obras, etc.).
+`sigro-api`**: un contenedor (`api/Dockerfile.pruebas`) con **un solo proceso Python** (desde el 04/11, por el
+límite de 512 MB) que levanta cada microservicio como su propia app ASGI con su propio `uvicorn.Server`
+(`infra/un_nodo/un_proceso.py`). El gateway atiende `$PORT`; obras, catálogo, compras, tareo, almacén, costo e
+integraciones escuchan en `127.0.0.1:8001–8007`, notificaciones en `8008`, y el relevo es una tarea del mismo
+proceso. Si un servidor cae, el proceso entero termina y Render lo reinicia. Cada servicio sigue con **su propio
+usuario y su propio esquema de base**: cada app usa solo `SIGRO_DB_<SERVICIO>`, elegida por el servicio de la
+petición en curso (`app/config.py`, `url_de_base`).
 La web (`sigro-web`) es un sitio estático que llama a **su propio dominio**; Render reescribe `/api/*` y `/salud/*`
 hacia `sigro-api`. **La arquitectura no cambia** (ADR-09): producción y `docker-compose.yml` siguen con un
 contenedor por servicio. Diagramas: [`diagramas/despliegue-pruebas-un-nodo.png`](diagramas/despliegue-pruebas-un-nodo.png)
@@ -61,14 +63,15 @@ Si se corre otra vez, hay que pasarle las claves vigentes de cada uno; si no, ca
 | `SIGRO_JWT_SECRET`, `SIGRO_SERVICIO_TOKEN` | generados por Render | `render.yaml` (`generateValue`) |
 | `SIGRO_ENTORNO`, `SIGRO_CORS`, `SIGRO_UN_NODO_EXTRAS`, pool, `SIGRO_SERVER_TIMING` | fijos | `render.yaml` |
 
-Las `SIGRO_URL_*` **ya no se configuran**: el supervisor fija `http://127.0.0.1:800x`. Integraciones recibe
+Las `SIGRO_URL_*` **ya no se configuran**: el lanzador fija `http://127.0.0.1:800x`. Integraciones recibe
 `SIGRO_SERVICIO_TOKEN` como su `SERVICIO_TOKEN` (exige `X-Servicio-Token`, HT-08) sin paso extra.
 
 ## Comprobar
 
 1. `https://sigro-api.onrender.com/salud` → `{"estado":"ok","servicio":"gateway"}`.
-2. Log de arranque de `sigro-api`: `[supervisor] procesos: gateway, obras, … relevo`, **sin** «(sin base)», y una
-   línea `sigro base: pooler=sí pool=2+3` por cada servicio con base.
+2. Log de arranque de `sigro-api`: `[sigro.un_nodo] un proceso (pid …): gateway:10000, obras:8001, … + relevo`,
+   **sin** «NO se levanta», y una línea `sigro base: usuario=sigro_<servicio> pooler=sí pool=1..3` por cada servicio
+   la primera vez que usa la base.
 3. `https://sigro-web.onrender.com/salud/servicios` → `200` y los siete servicios `"ok"` (prueba la reescritura).
 4. Entrar a `https://sigro-web.onrender.com` y abrir el catálogo y los proveedores.
 5. Desde una máquina con Python: `SIGRO_BASE=https://sigro-api.onrender.com SIGRO_ADMIN_USUARIO=<usuario>
@@ -137,10 +140,11 @@ piden: Render las ignora y hay que pegarlas a mano en el panel.
 - `sigro-api` se duerme a los 15 min sin tráfico y Render tarda del orden de un minuto en despertarlo; ahora es
   **un** despertar para todo el sistema. La pantalla de arranque de la web lo espera (consulta cada 10 s; el
   gateway guarda la salud 30 s).
-- **Memoria: 512 MB** para todos los procesos. Caben gracias a que el supervisor carga una vez las bibliotecas y crea
-  cada servicio con `fork()` (CI: 366 MiB de 512, ADR-10 «Memoria»). Si el log muestra
-  `terminó con código -9` o `137` (el sistema mató un proceso por memoria), poner `SIGRO_UN_NODO_EXTRAS=0`: se
-  quitan relevo y notificaciones y los avisos y hechos de costo esperan en `outbox.evento` sin perderse.
+- **Memoria: 512 MB** para todo el ambiente, en un solo proceso (ADR-10, «Revisión del 04/11»). Se vigila en
+  `GET /salud/servicios` → `memoria_mb` (pico de RSS del proceso) y `memoria_actual_mb`. Si Render vuelve a mostrar
+  «Ran out of memory», primero `SIGRO_ARGON2_SIMULTANEOS=1` (cada login reserva 64 MiB mientras verifica) y después
+  `SIGRO_UN_NODO_EXTRAS=0`: se quitan relevo y notificaciones y los avisos y hechos de costo esperan en
+  `outbox.evento` sin perderse.
 - **0,1 CPU** compartida entre todos: una importación del S10 (PDF) hace más lentas las demás peticiones mientras dura.
 - Sistema de archivos efímero: la base propia de notificaciones (`/tmp/notificaciones.db`, SQLite) **se pierde** al
   redesplegar o al dormirse `sigro-api`, y con ella la campana de cada usuario (`GET /api/v1/notificaciones` la lee

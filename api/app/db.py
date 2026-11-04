@@ -3,7 +3,10 @@
 Pool chico pero persistente (docs/rendimiento-render.md): en Render cada servicio corre en UN proceso con pocas
 peticiones a la vez; lo caro es abrir la conexión (TCP + TLS + autenticación con Neon), no tenerla abierta.
 
-- `SIGRO_DB_POOL` (2) conexiones se quedan abiertas; `SIGRO_DB_POOL_EXTRA` (3) más solo en picos.
+- `SIGRO_DB_POOL` (1) conexión se queda abierta; en picos se abren más hasta `POOL_MAX` (3) en total por servicio.
+  Neon -pooler (PgBouncer) ya multiplexa del otro lado: más conexiones por servicio solo gastan memoria.
+- Un motor por cadena de conexión. Con un proceso por servicio hay uno solo; en el nodo único (ADR-10, un proceso)
+  hay uno por servicio, cada uno con SU usuario de base (`config.url_de_base`): nunca se comparte un pool.
 - `pool_recycle` (240 s) por debajo de los 5 min en que Neon suspende el cómputo: una conexión vieja se renueva
   antes de que el servidor la corte. `pool_pre_ping` se mantiene: si Neon la cortó igual, se descarta sin error.
 - Con la cadena **-pooler** de Neon (PgBouncer en modo transacción) se apagan los prepared statements
@@ -15,7 +18,7 @@ from __future__ import annotations
 import os
 import time
 from collections.abc import Iterator
-from functools import lru_cache
+import threading
 from urllib.parse import urlsplit
 
 from sqlalchemy import create_engine, event
@@ -33,10 +36,12 @@ def es_pooler(url: str) -> bool:
 
 def opciones_motor(url: str) -> dict:
     """Parámetros del pool. Función aparte para probarla sin base."""
+    minimo = max(int(os.environ.get("SIGRO_DB_POOL", "1")), 1)
+    maximo = max(int(os.environ.get("POOL_MAX", "3")), minimo)
     opciones: dict = {
         "pool_pre_ping": True,
-        "pool_size": int(os.environ.get("SIGRO_DB_POOL", "2")),
-        "max_overflow": int(os.environ.get("SIGRO_DB_POOL_EXTRA", "3")),
+        "pool_size": minimo,
+        "max_overflow": max(maximo - minimo, 0),
         "pool_recycle": int(os.environ.get("SIGRO_DB_RECICLAR_S", "240")),
         "pool_timeout": 10,
     }
@@ -75,12 +80,22 @@ def instrumentar(m: Engine) -> Engine:
     return m
 
 
-@lru_cache(maxsize=1)
+_motores: dict[str, Engine] = {}
+_candado = threading.Lock()
+
+
 def motor() -> Engine:
     url = cargar().database_url
-    op = opciones_motor(url)
-    medicion.log.info("sigro base: pooler=%s pool=%s+%s", "sí" if es_pooler(url) else "no", op["pool_size"], op["max_overflow"])
-    return instrumentar(create_engine(url, **op))
+    m = _motores.get(url)
+    if m is None:
+        with _candado:                       # los endpoints síncronos corren en hilos: se crea una sola vez
+            m = _motores.get(url)
+            if m is None:
+                op = opciones_motor(url)
+                medicion.log.info("sigro base: usuario=%s pooler=%s pool=%s..%s", urlsplit(url).username,
+                                  "sí" if es_pooler(url) else "no", op["pool_size"], op["pool_size"] + op["max_overflow"])
+                m = _motores[url] = instrumentar(create_engine(url, **op))
+    return m
 
 
 def obtener_sesion() -> Iterator[Session]:
