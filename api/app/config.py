@@ -20,7 +20,8 @@ def url_de_base() -> str:
 
     Con un proceso por servicio (producción, docker-compose) es `SIGRO_APP_DATABASE_URL`, la única que ese proceso
     recibe. En el nodo único todas las apps comparten el entorno: cada una usa `SIGRO_DB_<SERVICIO>` según
-    `contexto.SERVICIO` (lo fija el middleware de cada app, y el relevo para el suyo). Sin servicio, o sin su
+    `contexto.SERVICIO` (lo fija el middleware de cada app; el relevo NO tiene petición HTTP: su contexto lo fija el
+    lanzador del nodo único, `infra/un_nodo/un_proceso.py`, antes de cada vuelta). Sin servicio, o sin su
     variable, falla: nunca se cae a la cadena de otro servicio. El mensaje no incluye la cadena.
     """
     if not un_proceso():
