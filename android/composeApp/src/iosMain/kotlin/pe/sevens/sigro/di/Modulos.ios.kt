@@ -18,7 +18,7 @@ import pe.sevens.sigro.sincronizacion.ProgramadorIos
 actual val moduloPlataforma: Module = module {
     single { crearClienteHttp(Darwin.create()) }
     single<BaseDatosSigro> { construirBaseDatos(Room.databaseBuilder<BaseDatosSigro>(name = rutaBase())) }
-    single<ProgramadorSincronizacion> { ProgramadorIos(get()) }
+    single<ProgramadorSincronizacion> { ProgramadorIos(get(), get()) }
 }
 
 @OptIn(ExperimentalForeignApi::class)
