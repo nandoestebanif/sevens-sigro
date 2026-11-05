@@ -3,7 +3,6 @@ package pe.sevens.sigro.datos.remoto
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.request.HttpRequestBuilder
-import io.ktor.client.request.bearerAuth
 import io.ktor.client.request.get
 import io.ktor.client.request.parameter
 import io.ktor.client.request.post
@@ -109,15 +108,28 @@ import pe.sevens.sigro.dominio.ErrorSigro
     val estado: String,
 )
 
+/** Estado de recepción de una línea de compra (HU-35), en unidad de compra. Lo calcula el servidor. */
+@Serializable data class RecepcionLineaDto(
+    @SerialName("insumo_id") val insumoId: Int,
+    @SerialName("unidad_compra") val unidadCompra: String,
+    val pedido: String,
+    val recibido: String,
+    val pendiente: String,
+)
+
 /**
  * Salida que viaja al servidor (HU-40). `uuid_cliente` es la clave de idempotencia (regla 3):
  * un reenvío con el mismo uuid no crea nada nuevo. La hora del dispositivo viaja como dato;
  * la hora que vale para auditar la pone el servidor (HU-38).
+ * `unidad` es la de compra (la que guarda el catálogo del celular): el servidor la convierte con el
+ * factor del insumo. `almacen_id` nulo solo si la obra tiene un único almacén activo.
  */
 @Serializable data class SalidaIn(
     @SerialName("uuid_cliente") val uuidCliente: String,
+    @SerialName("almacen_id") val almacenId: Int? = null,
     @SerialName("insumo_id") val insumoId: Int,
     val cantidad: String,
+    val unidad: String? = null,
     val motivo: String,
     @SerialName("quien_retira") val quienRetira: String,
     val frente: String? = null,
@@ -125,78 +137,77 @@ import pe.sevens.sigro.dominio.ErrorSigro
     @SerialName("dispositivo") val dispositivo: String,
 )
 
-class ApiSigro(private val http: HttpClient, private val json: Json) {
+/**
+ * El token NO pasa por aquí: lo pone el plugin Auth de Ktor (ver ClienteHttp.kt). Un 401 en una ruta con
+ * sesión cierra la sesión (`alVencerSesion`) y deja las colas intactas; el error sigue su camino para que
+ * la cola anote «vuelve a ingresar».
+ */
+class ApiSigro(
+    private val http: HttpClient,
+    private val json: Json,
+    private val alVencerSesion: suspend () -> Unit = {},
+) {
 
     private fun url(servidor: String, ruta: String) = servidor.trimEnd('/') + "/api/v1" + ruta
 
+    /** Tras entrar o salir: que el próximo pedido lea el token nuevo del almacén cifrado. */
+    fun olvidarToken() = http.olvidarToken()
+
     suspend fun iniciarSesion(servidor: String, usuario: String, clave: String): SesionDto =
-        llamar { http.post(url(servidor, "/auth/login")) { cuerpo(LoginIn(usuario.trim(), clave)) } }
+        llamar(conSesion = false) { http.post(url(servidor, RUTA_LOGIN)) { cuerpo(LoginIn(usuario.trim(), clave)) } }
 
-    suspend fun quienSoy(servidor: String, token: String): YoDto =
-        llamar { http.get(url(servidor, "/auth/yo")) { bearerAuth(token) } }
+    suspend fun quienSoy(servidor: String): YoDto =
+        llamar { http.get(url(servidor, "/auth/yo")) }
 
-    suspend fun insumos(servidor: String, token: String, q: String? = null): List<InsumoDto> =
+    suspend fun insumos(servidor: String, q: String? = null): List<InsumoDto> =
         llamar {
             http.get(url(servidor, "/catalogo/insumos")) {
-                bearerAuth(token)
                 if (!q.isNullOrBlank()) parameter("q", q.trim())
             }
         }
 
-    suspend fun dispositivos(servidor: String, token: String, obraId: Int): List<DispositivoDto> =
-        llamar { http.get(url(servidor, "/obras/$obraId/dispositivos")) { bearerAuth(token) } }
+    suspend fun dispositivos(servidor: String, obraId: Int): List<DispositivoDto> =
+        llamar { http.get(url(servidor, "/obras/$obraId/dispositivos")) }
 
-    suspend fun solicitarDispositivo(servidor: String, token: String, obraId: Int, identificador: String): DispositivoDto =
-        llamar {
-            http.post(url(servidor, "/obras/$obraId/dispositivos")) {
-                bearerAuth(token)
-                cuerpo(DispositivoIn(identificador))
-            }
-        }
+    suspend fun solicitarDispositivo(servidor: String, obraId: Int, identificador: String): DispositivoDto =
+        llamar { http.post(url(servidor, "/obras/$obraId/dispositivos")) { cuerpo(DispositivoIn(identificador)) } }
 
-    suspend fun registrarInsumo(servidor: String, token: String, nuevo: InsumoIn): InsumoDto =
-        llamar { http.post(url(servidor, "/catalogo/insumos")) { bearerAuth(token); cuerpo(nuevo) } }
+    suspend fun registrarInsumo(servidor: String, nuevo: InsumoIn): InsumoDto =
+        llamar { http.post(url(servidor, "/catalogo/insumos")) { cuerpo(nuevo) } }
 
-    suspend fun trabajadores(servidor: String, token: String, obraId: Int): List<TrabajadorDto> =
-        llamar { http.get(url(servidor, "/obras/$obraId/trabajadores")) { bearerAuth(token) } }
+    suspend fun trabajadores(servidor: String, obraId: Int): List<TrabajadorDto> =
+        llamar { http.get(url(servidor, "/obras/$obraId/trabajadores")) }
 
-    suspend fun registrarTrabajador(servidor: String, token: String, obraId: Int, nuevo: TrabajadorIn): TrabajadorDto =
-        llamar { http.post(url(servidor, "/obras/$obraId/trabajadores")) { bearerAuth(token); cuerpo(nuevo) } }
+    suspend fun registrarTrabajador(servidor: String, obraId: Int, nuevo: TrabajadorIn): TrabajadorDto =
+        llamar { http.post(url(servidor, "/obras/$obraId/trabajadores")) { cuerpo(nuevo) } }
 
-    suspend fun obras(servidor: String, token: String): List<ObraDto> =
-        llamar { http.get(url(servidor, "/obras")) { bearerAuth(token) } }
+    suspend fun obras(servidor: String): List<ObraDto> =
+        llamar { http.get(url(servidor, "/obras")) }
 
-    suspend fun almacenes(servidor: String, token: String, obraId: Int): List<AlmacenDto> =
-        llamar { http.get(url(servidor, "/obras/$obraId/almacenes")) { bearerAuth(token) } }
+    suspend fun almacenes(servidor: String, obraId: Int): List<AlmacenDto> =
+        llamar { http.get(url(servidor, "/obras/$obraId/almacenes")) }
 
-    suspend fun compras(servidor: String, token: String, obraId: Int): List<CompraDto> =
-        llamar {
-            http.get(url(servidor, "/obras/$obraId/compras")) { bearerAuth(token); parameter("estado", "registrada") }
-        }
+    suspend fun compras(servidor: String, obraId: Int): List<CompraDto> =
+        llamar { http.get(url(servidor, "/obras/$obraId/compras")) { parameter("estado", "registrada") } }
+
+    /** HU-35: pedido, recibido y pendiente por línea, en el orden de las líneas de la compra. */
+    suspend fun estadoRecepcion(servidor: String, obraId: Int, compraId: Int): List<RecepcionLineaDto> =
+        llamar { http.get(url(servidor, "/obras/$obraId/almacen/compras/$compraId/recepcion")) }
 
     /**
      * Envía un registro de la cola general: el cuerpo es el JSON que se armó al registrarlo (mismo uuid,
      * mismo contenido en cada reintento). `ruta` va relativa a /api/v1.
      */
-    suspend fun enviarRegistro(servidor: String, token: String, ruta: String, cuerpoJson: String) {
+    suspend fun enviarRegistro(servidor: String, ruta: String, cuerpoJson: String) {
         llamar<JsonObject?>(permitirVacio = true) {
-            http.post(url(servidor, ruta)) {
-                bearerAuth(token)
-                setBody(TextContent(cuerpoJson, ContentType.Application.Json))
-            }
+            http.post(url(servidor, ruta)) { setBody(TextContent(cuerpoJson, ContentType.Application.Json)) }
         }
     }
 
-    /**
-     * POST /obras/{id}/almacen/salidas — contrato propuesto a Adiel para HU-40 (aún no existe en la API).
-     * Mientras responda 404, la sincronización deja la salida PENDIENTE con una nota: no se pierde nada.
-     */
-    suspend fun enviarSalida(servidor: String, token: String, obraId: Int, salida: SalidaIn) {
+    /** POST /obras/{id}/almacen/salidas (HU-40). Reenvío con el mismo uuid ⇒ 200 con el original. */
+    suspend fun enviarSalida(servidor: String, obraId: Int, salida: SalidaIn) {
         llamar<JsonObject?>(permitirVacio = true) {
-            http.post(url(servidor, "/obras/$obraId/almacen/salidas")) {
-                bearerAuth(token)
-                cuerpo(salida)
-            }
+            http.post(url(servidor, "/obras/$obraId/almacen/salidas")) { cuerpo(salida) }
         }
     }
 
@@ -205,9 +216,13 @@ class ApiSigro(private val http: HttpClient, private val json: Json) {
         setBody(v)
     }
 
-    /** Hace la llamada y traduce cualquier falla a ErrorSigro, con el mismo contrato que la web. */
+    /**
+     * Hace la llamada y traduce cualquier falla a ErrorSigro, con el mismo contrato que la web.
+     * `conSesion = false` solo para el login: ahí un 401 es «clave incorrecta», no «sesión vencida».
+     */
     private suspend inline fun <reified T> llamar(
         permitirVacio: Boolean = false,
+        conSesion: Boolean = true,
         bloque: () -> HttpResponse,
     ): T {
         val r = try {
@@ -220,7 +235,14 @@ class ApiSigro(private val http: HttpClient, private val json: Json) {
                 "No se pudo conectar con el servidor de SIGRO. Revisa la señal o la dirección del servidor.",
             )
         }
-        if (!r.status.isSuccess()) throw errorDe(r)
+        if (!r.status.isSuccess()) {
+            val error = errorDe(r)
+            if (conSesion && r.status.value == 401) {
+                http.olvidarToken()
+                alVencerSesion() // vuelve a «Entrar»; las colas no se tocan
+            }
+            throw error
+        }
         if (permitirVacio && r.bodyAsText().isBlank()) return null as T
         return r.body()
     }
