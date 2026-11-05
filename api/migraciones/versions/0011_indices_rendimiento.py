@@ -1,8 +1,11 @@
-"""PROPUESTA (no aplicada) · Tres índices para las consultas más usadas, medidos con datos reales del cliente.
+"""Tres índices para las consultas más usadas, medidos con datos reales del cliente.
 
-Estado: BORRADOR para revisión de Adiel (solo él crea migraciones). Vive en `migraciones/propuestas/`, fuera de
-`versions/`, así que Alembic no la aplica. Para adoptarla: moverla a `versions/` y ajustar `down_revision` a la última
-migración real que haya en ese momento (hoy sería la 0010 de almacén y costo si se adopta antes; si no, la 0009).
+Estado: ADOPTADA por Adiel (Product Owner, dueño de las migraciones) el 03/11/2026; entró a `versions/` con el PR #32.
+
+Idempotente a propósito (`IF NOT EXISTS` / `IF EXISTS`): en el ambiente de pruebas (Neon) estos tres índices ya se habían
+creado a mano el 03/11, antes de que la migración existiera en `versions/`. Con `CREATE INDEX` a secas, `alembic upgrade`
+fallaba con «la relación ya existe». Así corre igual sobre una base limpia y sobre una que ya los tiene, y se puede
+revertir (la definición de cada índice es la misma en ambos casos).
 
 Medición (docs/rendimiento-web-api.md, `api/docs/rendimiento/medir_consultas.py explicar [--indices]`), PostgreSQL 16,
 catálogo real (2 243 del cliente + 284 del S10), 626 proveedores reales y volumen de EJEMPLO rotulado
@@ -34,14 +37,14 @@ depends_on = None
 
 def upgrade() -> None:
     # catálogo: compras, requerimiento y reposición piden insumos por código sin distinguir mayúsculas
-    op.execute("CREATE INDEX ix_insumo_codigo_upper ON catalogo.insumo (upper(codigo))")
+    op.execute("CREATE INDEX IF NOT EXISTS ix_insumo_codigo_upper ON catalogo.insumo (upper(codigo))")
     # compras: «compras registradas» y «última compra» de cada proveedor en la lista de proveedores
-    op.execute("CREATE INDEX ix_compra_proveedor_registrada ON compras.compra (proveedor_id, fecha) WHERE estado = 'registrada'")
+    op.execute("CREATE INDEX IF NOT EXISTS ix_compra_proveedor_registrada ON compras.compra (proveedor_id, fecha) WHERE estado = 'registrada'")
     # compras: las líneas de una solicitud, con o sin insumo del catálogo
-    op.execute("CREATE INDEX ix_solicitud_linea_solicitud_id ON compras.solicitud_linea (solicitud_id)")
+    op.execute("CREATE INDEX IF NOT EXISTS ix_solicitud_linea_solicitud_id ON compras.solicitud_linea (solicitud_id)")
 
 
 def downgrade() -> None:
-    op.execute("DROP INDEX compras.ix_solicitud_linea_solicitud_id")
-    op.execute("DROP INDEX compras.ix_compra_proveedor_registrada")
-    op.execute("DROP INDEX catalogo.ix_insumo_codigo_upper")
+    op.execute("DROP INDEX IF EXISTS compras.ix_solicitud_linea_solicitud_id")
+    op.execute("DROP INDEX IF EXISTS compras.ix_compra_proveedor_registrada")
+    op.execute("DROP INDEX IF EXISTS catalogo.ix_insumo_codigo_upper")
