@@ -31,8 +31,8 @@ ACCIONES: dict[str, frozenset[str]] = {
     "jornada.registrar": frozenset({ALMACENERO, SSOMA}),
     "horas.consultar": TODOS,
     # --- compras
-    "proveedor.registrar": frozenset({RESIDENTE, ADMIN}),
-    "proveedor.consultar": frozenset({RESIDENTE, ADMIN, GERENTE}),
+    "proveedor.registrar": frozenset({ALMACENERO, RESIDENTE, ADMIN}),
+    "proveedor.consultar": frozenset({ALMACENERO, RESIDENTE, ADMIN, GERENTE}),
     "compra.registrar": frozenset({RESIDENTE, ADMIN}),
     "compra.consultar": frozenset({RESIDENTE, ADMIN, GERENTE}),
     "solicitud.emitir": frozenset({RESIDENTE}),
