@@ -1,5 +1,5 @@
 /* SIGRO · armazón de la web de oficina: menú lateral de vidrio (lienzo «SIGRO Oficina · Web»), obra activa y rutas. */
-import { Component, Suspense, lazy, useEffect, useState, type ReactNode } from 'react'
+import { Component, Suspense, lazy, useEffect, useRef, useState, type ReactNode } from 'react'
 import { HashRouter, NavLink, Navigate, Route, Routes } from 'react-router-dom'
 import { api } from './api/cliente'
 import { cerrarSesion, sesionActual, usaApiReal } from './api/http'
@@ -93,7 +93,7 @@ const ICONOS = {
    la API verifica el rol en cada petición y responde 403 si no corresponde. */
 const GRUPO_ADMINISTRACION: (typeof GRUPOS)[number] = {
   rotulo: 'Administración',
-  items: [{ ruta: '/administracion', nombre: 'Celulares, usuarios y almacenes', icono: 'administracion' }],
+  items: [{ ruta: '/administracion', nombre: 'Administración', icono: 'administracion' }],
 }
 
 const GRUPOS: { rotulo: string; items: { ruta: string; nombre: string; icono: keyof typeof ICONOS }[] }[] = [
@@ -113,7 +113,7 @@ const GRUPOS: { rotulo: string; items: { ruta: string; nombre: string; icono: ke
       // costo total (gastos generales, subcontratos y planilla quedan fuera)
       { ruta: '/tablero', nombre: 'Gasto en recursos', icono: 'tablero' },
       { ruta: '/reposicion', nombre: 'Reposición', icono: 'reposicion' },
-      { ruta: '/parametros', nombre: 'Parámetros de reposición', icono: 'parametros' },
+      { ruta: '/parametros', nombre: 'Reposición: parámetros', icono: 'parametros' },
     ],
   },
   {
@@ -271,11 +271,16 @@ function Sistema() {
   const sesion = sesionActual()
   const rol = sesion?.obras.find((o) => String(o.id) === obra?.id)?.rol ?? sesion?.obras[0]?.rol
   const grupos = usaApiReal && esAdministrador(sesion, obra?.id) ? [...GRUPOS, GRUPO_ADMINISTRACION] : GRUPOS
+  // la lista de opciones arranca arriba (el navegador no debe dejarla desplazada al cargar)
+  const listaMenu = useRef<HTMLElement>(null)
+  useEffect(() => { listaMenu.current?.scrollTo({ top: 0 }) }, [])
 
   return (
     <HashRouter>
       <div className="armazon">
         <aside aria-label="Menú principal" className="vidrio-fuerte menu-lateral">
+          {/* cabecera fija: el logo y la obra activa siempre a la vista; solo la lista de opciones se desplaza */}
+          <div className="menu-cabecera">
           <NavLink to="/tablero" aria-label="SIGRO · inicio" style={{ display: 'flex', justifyContent: 'center', padding: '2px 0 4px' }}>
             <img src={logo} alt="SEVEN'S Ingenieros SAC" className="solo-claro" width={83} height={58} decoding="async" style={{ height: 58, width: 'auto' }} />
             <img src={logoBlanco} alt="SEVEN'S Ingenieros SAC" className="solo-oscuro" width={83} height={58} decoding="async" style={{ height: 58, width: 'auto' }} />
@@ -310,15 +315,16 @@ function Sistema() {
               </span>
             </div>
           </div>
+          </div>
 
-          <nav aria-label="Secciones" className="menu-grupos">
+          <nav aria-label="Secciones" className="menu-grupos" ref={listaMenu}>
             {grupos.map((g) => (
               <div key={g.rotulo} className="menu-grupo">
                 <span className="menu-grupo-rotulo">{g.rotulo}</span>
                 {g.items.map((s) => (
-                  <NavLink key={s.ruta} to={s.ruta} className="menu-enlace">
+                  <NavLink key={s.ruta} to={s.ruta} className="menu-enlace" title={s.nombre}>
                     <Icono d={ICONOS[s.icono]} tam={19} />
-                    {s.nombre}
+                    <span className="menu-enlace-texto">{s.nombre}</span>
                   </NavLink>
                 ))}
               </div>
@@ -326,19 +332,19 @@ function Sistema() {
           </nav>
 
           {usaApiReal && sesion && (
-            <div style={{ marginTop: 'auto', borderTop: '1px solid var(--separador)', padding: '14px 6px 0', display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div className="menu-pie">
               <span aria-hidden style={{ width: 40, height: 40, borderRadius: 20, background: 'var(--aviso-tinte)', color: 'var(--aviso)', display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 'none', fontWeight: 800 }}>
                 {sesion.usuario.nombre.trim().charAt(0).toUpperCase()}
               </span>
               <span style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
-                <span style={{ fontSize: 14, fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{sesion.usuario.nombre}</span>
-                {rol && <span style={{ fontSize: 12, color: 'var(--tinta-2)' }}>{ROLES[rol] ?? rol}</span>}
+                <span className="texto-corto" title={sesion.usuario.nombre} style={{ fontSize: 14, fontWeight: 700 }}>{sesion.usuario.nombre}</span>
+                {rol && <span className="texto-corto" style={{ fontSize: 12, color: 'var(--tinta-2)' }}>{ROLES[rol] ?? rol}</span>}
               </span>
               <button
-                type="button" onClick={cerrarSesion} aria-label="Cerrar sesión" title="Cerrar sesión" className="foco-vidrio"
-                style={{ width: 44, height: 44, borderRadius: 22, border: 0, background: 'transparent', color: 'var(--tinta-2)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flex: 'none' }}
+                type="button" onClick={cerrarSesion} aria-label="Cerrar sesión" title="Cerrar sesión" className="foco-vidrio menu-salir"
               >
-                <Icono d="M15 4h4v16h-4|M10 17l5-5-5-5|M15 12H3" tam={18} />
+                <Icono d="M15 4h4v16h-4|M10 17l5-5-5-5|M15 12H3" tam={17} />
+                Salir
               </button>
             </div>
           )}
