@@ -45,9 +45,11 @@ docs/capturas/  ← el diseño de cada pantalla, claro y oscuro
 | Inicio | — | Franja «N por enviar / todo enviado», accesos grandes, catálogo guardado para buscar sin señal |
 | Registrar salida | HU-40, HU-37 | Elige el **almacén** (con uno solo, automático), busca el insumo **sin señal**, cantidad en su unidad de compra, motivo, quién retira, frente opcional. Guarda en el celular con `uuid_cliente` y la envía a `POST /obras/{id}/almacen/salidas` |
 | Entrada de compra | HU-35, HU-37 | Compras de la obra, lo **pendiente** de cada línea según el servidor y el almacén de destino. «Llegó todo» o «llegó una parte»; se guarda con `uuid_cliente` y viaja por la misma cola a `POST /obras/{id}/almacen/recepciones` |
-| Mis registros | HU-37, HU-38 | Cada registro con su estado (por enviar · enviado · rechazado). Un rechazo muestra el **`mensaje` del servidor** tal cual (422, y 404 con código como `almacen_no_existe`). «Enviar ahora» |
-| Mi celular | HU-15 | Código del dispositivo generado en la primera instalación y botón para pedir autorización (`POST /obras/{id}/dispositivos`) |
-| Ingreso sin compra, traslado, conteo, cierre | HU-41, 42, 46, 47 | Se guardan en el celular y **todavía no se envían**: la API ya los recibe, falta alinear el cuerpo de cada uno en la app (siguiente PR) |
+| Mis registros | HU-37, HU-38 | Cada registro con su estado (por enviar · enviado · rechazado). Un rechazo muestra el **`mensaje` del servidor** tal cual (422, y 404 con código como `almacen_no_existe`). Al tocarlo, el detalle (insumo, cantidad, motivo, quién retira, estado) y, si se envió, «registró: <nombre> · <hora del servidor en Lima>», guardado en Room al recibir el 201/200. «Enviar ahora» |
+| Stock | HU-43 | `GET /obras/{id}/almacen/stock`: por almacén y consolidado, con el **corte** del servidor. Sin señal, la última respuesta guardada con «actualizado a las HH:MM». Nunca calcula |
+| Ingreso sin compra | HU-41 | Origen, insumo, cantidad, costo sin IGV y almacén; «otro» y «saldo de otra obra» exigen su detalle. Va por la cola a `POST /obras/{id}/almacen/ingresos` |
+| Mi celular | HU-15 | Código del dispositivo generado en la primera instalación y botón para pedir autorización (`POST /obras/{id}/dispositivos`). Si el usuario no puede listar dispositivos (403), no dice «Sin solicitar»; un 409 al pedir = «Ya solicitado (pendiente o autorizado)» |
+| Traslado, conteo, cierre | HU-42, 46, 47 | Se guardan en el celular y **todavía no se envían**: la API ya los recibe, falta alinear el cuerpo de cada uno en la app |
 
 Reglas que el código ya respeta (y prueba): la app **no calcula saldo** (regla 2), cada registro nace con su
 **uuid** y un reenvío lleva el mismo (regla 3), un rechazo **no se pierde** y queda con su motivo (HU-38),
@@ -65,13 +67,18 @@ La API ya recibe salidas, recepciones y stock (servicio almacén, migración 001
 | Compras por recibir | `GET /obras/{id}/compras?estado=registrada` | |
 | Pendiente de una compra | `GET /obras/{id}/almacen/compras/{compra_id}/recepcion` | Se une a las líneas de la compra por orden (ambas vienen por `compra_detalle.id`); si no calzan, no se adivina |
 | Entrada de compra | `POST /obras/{id}/almacen/recepciones` | Cuerpo exacto de `RecepcionIn`: `lineas: null` = todo lo pendiente; si no, `[{insumo_id, cantidad}]` |
-
-El stock (`GET /obras/{id}/almacen/stock`) ya existe en la API, pero la pantalla de stock (HU-43) **aún no lo consulta**:
-sigue mostrando «[lo calcula el servidor]». Queda para el siguiente PR.
+| Ingreso sin compra | `POST /obras/{id}/almacen/ingresos` | Cuerpo exacto de `IngresoIn`; `origen` con los valores de `ORIGENES`; `costo_unitario` por unidad del S10 |
+| Stock | `GET /obras/{id}/almacen/stock` | Se guarda la última respuesta (tabla `stock_guardado`) para verla sin señal |
+| Estado del celular | `GET /obras/{id}/dispositivos` | Solo el administrador puede listar: el almacenero recibe 403. **Pedido a Adiel:** `GET /obras/{id}/dispositivos/mio` |
 
 Respuestas: 201/200 (reenvío con el mismo `uuid_cliente`) ⇒ enviado · 422/403/409 o 404 **con** `codigo` ⇒
 rechazado con su `mensaje` · 404 sin `codigo` (servidor anterior) ⇒ sigue en cola · sin señal o 5xx ⇒ sigue en
-cola y se corta el lote · 401 ⇒ se cierra la sesión (ver abajo).
+cola y se corta el lote · 401 ⇒ se cierra la sesión (ver abajo). Sin red o con 502/503/504 la pantalla dice
+«El servidor no responde. Revisa la dirección o inténtalo en un minuto.». Un celular que tenía guardado
+`sigro-gateway.onrender.com` (retirado, ADR-10) pasa solo a `https://sigro-api.onrender.com`.
+
+La API devuelve `registrado_por` como id de usuario: la app pone el nombre de la sesión cuando es el mismo
+usuario, y «usuario N.º …» si no. **Pedido a Adiel:** `registrado_por_nombre` en la respuesta (la app ya lo lee si llega).
 
 ## Sesión y token
 
@@ -92,7 +99,7 @@ usa la IP de tu PC o la URL del ambiente de pruebas (botón «Servidor» en la p
 
 ```bash
 ./gradlew :composeApp:assembleDebug        # APK en composeApp/build/outputs/apk/debug/
-./gradlew :composeApp:testDebugUnitTest    # pruebas de commonTest (64: colas, sesión, almacén, entrada)
+./gradlew :composeApp:testDebugUnitTest    # pruebas de commonTest (85: colas, sesión, almacén, entrada, stock, ingreso)
 ./gradlew :composeApp:run                  # la app en una ventana de la PC, contra la API local
 ./gradlew :composeApp:capturas             # PNG de cada pantalla en composeApp/build/capturas
 ```

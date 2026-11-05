@@ -64,6 +64,9 @@ data class SalidaRegistrada(
     val motivoRechazo: String?,
     val nota: String?,
     val intentos: Int,
+    /** A1: lo que dijo el servidor al recibirla (nombre de quien registró y hora del servidor). */
+    val registradoPor: String? = null,
+    val fechaServidor: String? = null,
 )
 
 /** Datos que el almacenero llena en la pantalla de salida. */
@@ -79,19 +82,31 @@ data class NuevaSalida(
     val almacenId: Int? = null,
 )
 
-/** Estado del celular frente a la obra (HU-15). */
+/**
+ * Estado del celular frente a la obra (HU-15).
+ * `visible = false`: el usuario no puede listar los dispositivos (403, solo el administrador puede), así que
+ * NO se sabe si ya lo pidió: no se dice «Sin solicitar». Falta en la API `GET /obras/{id}/dispositivos/mio`.
+ */
 data class EstadoDispositivo(
     val identificador: String,
-    val estado: String?, // null: aún no se pidió autorización desde este celular
+    val estado: String?, // null: aún no se pidió autorización desde este celular (si `visible`)
+    val visible: Boolean = true,
 ) {
     val estadoLegible: String
-        get() = when (estado) {
-            null -> "Sin solicitar"
-            "pendiente" -> "Pendiente de autorizar"
-            "autorizado" -> "Autorizado"
-            "revocado" -> "Revocado"
+        get() = when {
+            !visible && estado == null -> "Estado no disponible para tu usuario"
+            estado == null -> "Sin solicitar"
+            estado == "pendiente" -> "Pendiente de autorizar"
+            estado == "autorizado" -> "Autorizado"
+            estado == "revocado" -> "Revocado"
+            estado == YA_SOLICITADO -> "Ya solicitado (pendiente o autorizado)"
             else -> estado
         }
+
+    companion object {
+        /** El servidor respondió 409 al pedir: este celular ya estaba registrado en la obra. */
+        const val YA_SOLICITADO = "ya_solicitado"
+    }
 }
 
 /** Error de la API con el mismo contrato que usa la web: {codigo, mensaje}. */

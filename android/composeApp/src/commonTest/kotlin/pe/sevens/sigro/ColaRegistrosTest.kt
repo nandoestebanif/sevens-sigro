@@ -11,6 +11,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.test.runTest
+import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import pe.sevens.sigro.datos.local.AjusteDao
@@ -27,7 +28,6 @@ import pe.sevens.sigro.dominio.Insumo
 import pe.sevens.sigro.dominio.LineaAlmacen
 import pe.sevens.sigro.dominio.MarcaAsistencia
 import pe.sevens.sigro.dominio.NOTA_SIN_SERVICIO_ALMACEN
-import pe.sevens.sigro.dominio.OrigenIngreso
 import pe.sevens.sigro.dominio.RegistroAlmacen
 import pe.sevens.sigro.dominio.TipoRegistro
 import pe.sevens.sigro.dominio.Trabajador
@@ -65,6 +65,9 @@ private class RegistrosEnMemoria : RegistroDao {
         filas.value = filas.value.map {
             if (it.uuidCliente == uuid) it.copy(estado = estado, motivoRechazo = motivoRechazo, nota = nota, intentos = it.intentos + 1, ultimoIntentoMs = ahora) else it
         }
+    }
+    override suspend fun anotarRecibo(uuid: String, porId: Int?, por: String?, fecha: String?) {
+        filas.value = filas.value.map { if (it.uuidCliente == uuid) it.copy(registradoPorId = porId, registradoPor = por, fechaServidor = fecha) else it }
     }
     fun una(uuid: String) = filas.value.first { it.uuidCliente == uuid }
 }
@@ -151,20 +154,21 @@ class ColaRegistrosTest {
     }
 
     @Test
-    fun almacenSeGuardaConSuNotaYNoSeEnvia() = runTest {
+    fun almacenSinContratoSeGuardaConSuNotaYNoSeEnvia() = runTest {
+        // El traslado todavía no tiene su cuerpo alineado con la API: se guarda y no se envía.
         val c = Cola { HttpStatusCode.Created to "{}" }
         val r = c.repo.registrarAlmacen(
-            1, RegistroAlmacen.IngresoSinCompra(3, OrigenIngreso.DEVOLUCION, LineaAlmacen(arena, "1,5"), "60", null),
+            1, RegistroAlmacen.Traslado(3, 2, "Obra 2", listOf(LineaAlmacen(arena, "1,5"))),
         )
-        assertEquals(TipoRegistro.INGRESO_SIN_COMPRA, r.tipo)
+        assertEquals(TipoRegistro.TRASLADO, r.tipo)
         assertEquals(NOTA_SIN_SERVICIO_ALMACEN, r.nota)
         assertEquals(EstadoEnvio.PENDIENTE, r.estado)
         val s = c.repo.sincronizar()
-        assertTrue(c.cuerpos.isEmpty(), "no hay servicio almacén todavía: no se envía")
+        assertTrue(c.cuerpos.isEmpty(), "sin contrato en la app todavía: no se envía")
         assertEquals(0, s.siguenPendientes, "no cuenta como pendiente: el trabajo de fondo no reintenta en vano")
         assertEquals(0, c.repo.pendientes.first())
         val cuerpo = jsonSigro.parseToJsonElement(c.filas.una(r.uuidCliente).cuerpo).jsonObject
         assertEquals(r.uuidCliente, cuerpo["uuid_cliente"]!!.jsonPrimitive.content)
-        assertEquals("1.5", cuerpo["cantidad"]!!.jsonPrimitive.content)
+        assertEquals("1.5", cuerpo["lineas"]!!.jsonArray[0].jsonObject["cantidad"]!!.jsonPrimitive.content)
     }
 }
