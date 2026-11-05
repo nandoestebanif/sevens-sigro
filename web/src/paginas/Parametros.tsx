@@ -8,18 +8,51 @@
    - El stock de seguridad y el punto de reposición se registran en unidad de compra.
    - Un cambio durante la obra queda en el historial (el anterior no se pisa).
    - Los conceptos se muestran por separado, nunca como un solo «mínimo».
-   - El punto no puede ser menor que el stock de seguridad (lo valida el servidor).
+   - El punto no puede ser menor que el stock de seguridad (se avisa bajo el campo y lo valida el servidor).
    ───────────────────────────────────────────────────────────────────────── */
 import { useEffect, useMemo, useState } from 'react'
 import { ErrorApi, api } from '../api/cliente'
 import type { AvanceInsumo, ParametroReposicion } from '../api/tipos'
-import { Boton, Campo, Modal, Tarjeta, Titulo, Vacio } from '../ui/base'
+import { unidadParaMostrar } from '../api/unidades'
+import { BuscarOpcion } from '../ui/BuscarOpcion'
+import { Boton, Modal, Tarjeta, Titulo, Vacio } from '../ui/base'
+import { type ErroresParametros, leerCantidad, validarParametros } from './parametros-reglas'
 
 const n = (v: number) => v.toLocaleString('es-PE', { maximumFractionDigits: 2 })
 const fecha = (iso: string) => new Date(iso).toLocaleString('es-PE', { dateStyle: 'short', timeStyle: 'short' })
 
-function Formulario({ insumos, inicial, enCerrar, enListo }: {
+/** Campo de cantidad con su unidad pegada a la derecha y el mensaje (error o ayuda) debajo. */
+function CampoCantidad({ id, etiqueta, valor, enCambio, unidad, error, ayuda }: {
+  id: string; etiqueta: string; valor: string; enCambio: (v: string) => void; unidad: string; error?: string; ayuda: string
+}) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+      <label htmlFor={id} style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--tinta-2)' }}>{etiqueta}</label>
+      <div style={{ display: 'flex', alignItems: 'stretch', border: `1px solid ${error ? 'var(--grave)' : 'var(--borde)'}`, borderRadius: 'var(--radio-chico)', background: 'var(--tarjeta)', overflow: 'hidden' }}>
+        <input
+          id={id} value={valor} inputMode="decimal" autoComplete="off" onChange={(e) => enCambio(e.target.value)}
+          aria-invalid={error ? true : undefined} aria-describedby={`${id}-msj`}
+          style={{ flex: 1, minWidth: 0, height: 40, border: 0, padding: '0 13px', fontSize: 14, fontFamily: 'inherit', color: 'var(--tinta)', background: 'transparent', outlineColor: 'var(--accion)' }}
+        />
+        <span aria-hidden className="n" style={{ flex: 'none', display: 'flex', alignItems: 'center', padding: '0 12px', fontSize: 13, fontWeight: 600, color: 'var(--tinta-2)', background: 'var(--tarjeta-suave)', borderLeft: '1px solid var(--borde)' }}>
+          {unidad || '—'}
+        </span>
+      </div>
+      <span id={`${id}-msj`} role={error ? 'alert' : undefined} style={{ fontSize: 12, color: error ? 'var(--grave)' : 'var(--tinta-3)' }}>
+        {error ?? (unidad ? `${ayuda} En ${unidad}.` : ayuda)}
+      </span>
+    </div>
+  )
+}
+
+/*
+ * HU-25 · «Definir parámetros». El insumo se busca por código o nombre (no un <select> de 284).
+ * La unidad va junto a cada campo: la de compra del insumo, o la del S10 con aviso si falta el factor.
+ * «Nivel máximo» no está: la API (ParametroIn) no lo acepta todavía (pedido a Adiel en el PR).
+ */
+function Formulario({ insumos, todos, inicial, enCerrar, enListo }: {
   insumos: AvanceInsumo[]
+  todos: AvanceInsumo[]
   inicial: ParametroReposicion | null
   enCerrar: () => void
   enListo: () => void
@@ -27,42 +60,48 @@ function Formulario({ insumos, inicial, enCerrar, enListo }: {
   const [codigo, setCodigo] = useState(inicial?.insumoCodigo ?? '')
   const [seguridad, setSeguridad] = useState(inicial ? String(inicial.stockSeguridad) : '')
   const [punto, setPunto] = useState(inicial ? String(inicial.puntoReposicion) : '')
+  const [errores, setErrores] = useState<ErroresParametros>({})
   const [error, setError] = useState('')
   const [guardando, setGuardando] = useState(false)
-  const unidad = insumos.find((i) => i.codigo === codigo)?.unidadCompra ?? inicial?.unidadCompra ?? ''
+
+  const insumo = todos.find((i) => i.codigo === codigo) ?? null
+  const { unidad, aviso } = unidadParaMostrar(insumo ?? (inicial ? { unidadCompra: inicial.unidadCompra } : null))
+  const opciones = useMemo(() => insumos.map((i) => ({ valor: i.codigo, texto: i.descripcion, detalle: `${i.codigo} · ${i.unidadCompra}` })), [insumos])
 
   const guardar = async () => {
-    const s = Number(seguridad.replace(',', '.')), p = Number(punto.replace(',', '.'))
-    if (!codigo) { setError('Elige el insumo.'); return }
-    if (!(s >= 0) || !(p >= 0) || seguridad === '' || punto === '') { setError('Escribe las dos cantidades (0 o más).'); return }
-    setGuardando(true); setError('')
+    const e = validarParametros({ insumo: codigo, seguridad, punto, unidad })
+    setErrores(e); setError('')
+    if (Object.keys(e).length) return
+    setGuardando(true)
     try {
-      await api.registrarParametro({ insumoCodigo: codigo, stockSeguridad: s, puntoReposicion: p })
+      await api.registrarParametro({ insumoCodigo: codigo, stockSeguridad: leerCantidad(seguridad), puntoReposicion: leerCantidad(punto) })
       enListo()
-    } catch (e) {
-      setError(e instanceof ErrorApi ? e.message : 'No se pudo guardar.')
+    } catch (x) {
+      setError(x instanceof ErrorApi ? x.message : 'No se pudo guardar. Inténtalo de nuevo.')
     } finally {
       setGuardando(false)
     }
   }
 
   return (
-    <Modal titulo={inicial ? `Cambiar parámetros · ${inicial.descripcion}` : 'Definir parámetros de un insumo'} enCerrar={enCerrar}>
+    <Modal titulo={inicial ? `Cambiar parámetros · ${inicial.descripcion}` : 'Definir parámetros de un insumo'} enCerrar={enCerrar} ancho={480}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
         {!inicial && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <label htmlFor="par-insumo" style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--tinta-2)' }}>Insumo del requerimiento</label>
-            <select id="par-insumo" value={codigo} onChange={(e) => setCodigo(e.target.value)}
-              style={{ height: 42, border: '1px solid var(--borde)', borderRadius: 'var(--radio-chico)', padding: '0 10px', fontSize: 14, fontFamily: 'inherit', background: 'var(--tarjeta)', color: 'var(--tinta)' }}>
-              <option value="">Elige un insumo…</option>
-              {insumos.map((i) => <option key={i.codigo} value={i.codigo}>{i.descripcion} · {i.codigo}</option>)}
-            </select>
-          </div>
+          <BuscarOpcion
+            id="par-insumo" etiqueta="Insumo del requerimiento" opciones={opciones} valor={codigo}
+            enCambio={(v) => { setCodigo(v); setErrores((x) => ({ ...x, insumo: undefined })) }}
+            marcador="Escribe el código o parte del nombre" error={errores.insumo}
+            ayuda={`${insumos.length} insumos del requerimiento sin parámetros.`}
+            sinResultados="Ningún insumo coincide con"
+          />
         )}
-        <Campo id="par-seguridad" etiqueta={`Stock de seguridad${unidad ? ` (${unidad})` : ''}`} valor={seguridad} enCambio={setSeguridad}
-          marcador="colchón frente a la demora del proveedor" />
-        <Campo id="par-punto" etiqueta={`Punto de reposición${unidad ? ` (${unidad})` : ''}`} valor={punto} enCambio={setPunto}
-          marcador="saldo que dispara el aviso (incluye el colchón)" />
+        {aviso && <div role="status" style={{ fontSize: 12.5, lineHeight: 1.5, color: 'var(--aviso)', background: 'var(--aviso-tinte)', borderRadius: 'var(--radio-chico)', padding: '8px 12px' }}>{aviso}</div>}
+        <CampoCantidad id="par-seguridad" etiqueta="Stock de seguridad" valor={seguridad} unidad={unidad}
+          enCambio={(v) => { setSeguridad(v); setErrores((x) => ({ ...x, seguridad: undefined, punto: undefined })) }}
+          error={errores.seguridad} ayuda="Colchón frente a la demora del proveedor." />
+        <CampoCantidad id="par-punto" etiqueta="Punto de reposición" valor={punto} unidad={unidad}
+          enCambio={(v) => { setPunto(v); setErrores((x) => ({ ...x, punto: undefined })) }}
+          error={errores.punto} ayuda="Saldo que dispara el aviso; igual o mayor que el stock de seguridad." />
         {error && <div role="alert" style={{ fontSize: 13, color: 'var(--grave)' }}>{error}</div>}
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
           <Boton tipo="secundario" enClic={enCerrar}>Cancelar</Boton>
@@ -149,7 +188,7 @@ export function Parametros() {
           )}
       </Tarjeta>
       {editando && (
-        <Formulario insumos={sinParametro} inicial={editando === 'nuevo' ? null : editando}
+        <Formulario insumos={sinParametro} todos={insumos} inicial={editando === 'nuevo' ? null : editando}
           enCerrar={() => setEditando(null)} enListo={() => { setEditando(null); cargar() }} />
       )}
       {viendo && <Historial p={viendo} enCerrar={() => setViendo(null)} />}
