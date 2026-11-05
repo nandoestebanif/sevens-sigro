@@ -18,6 +18,8 @@ export type Escala = (typeof ESCALAS)[number]
 
 export const CORTE_MEDIO = 900
 export const CORTE_CHICO = 760
+/** Alto útil por debajo del cual el menú lateral se compacta para entrar sin scroll (1366×768 a 125 % ≈ 574). */
+export const CORTE_BAJO = 680
 
 /** «125» → 1.25. Lo que no sea una escala conocida vale 1. */
 export function factor(escala: string | null | undefined): number {
@@ -32,6 +34,11 @@ export function anchoUtil(anchoVentana: number, escala: string | null | undefine
 export function tipoDeAncho(anchoVentana: number, escala: string | null | undefined): 'amplio' | 'medio' | 'chico' {
   const w = anchoUtil(anchoVentana, escala)
   return w <= CORTE_CHICO ? 'chico' : w <= CORTE_MEDIO ? 'medio' : 'amplio'
+}
+
+/** «bajo» si el alto útil (alto de la ventana ÷ escala) no alcanza para el menú con su tamaño normal. */
+export function tipoDeAlto(altoVentana: number, escala: string | null | undefined): 'normal' | 'bajo' {
+  return altoVentana / factor(escala) < CORTE_BAJO ? 'bajo' : 'normal'
 }
 
 /** La escala guardada en el dispositivo (o 100 si no hay o el navegador bloquea el almacenamiento). */
@@ -50,7 +57,10 @@ export function escalaGuardada(): Escala {
  */
 export function vigilarEscala(raiz: HTMLElement = document.documentElement) {
   if (!raiz.dataset.escala) raiz.dataset.escala = escalaGuardada()
-  const aplicar = () => { raiz.dataset.ancho = tipoDeAncho(window.innerWidth, raiz.dataset.escala) }
+  const aplicar = () => {
+    raiz.dataset.ancho = tipoDeAncho(window.innerWidth, raiz.dataset.escala)
+    raiz.dataset.alto = tipoDeAlto(window.innerHeight, raiz.dataset.escala)
+  }
   aplicar()
   window.addEventListener('resize', aplicar)
   new MutationObserver(aplicar).observe(raiz, { attributes: true, attributeFilter: ['data-escala'] })
