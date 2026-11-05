@@ -189,7 +189,7 @@ export function Modal({ titulo, children, enCerrar }: {
         onClick={(e) => e.stopPropagation()}
         className="modal-caja"
         style={{
-          width: 420, maxWidth: 'calc(100vw - 32px)', background: 'var(--tarjeta)',
+          width: 420, maxWidth: 'calc(100vw / var(--escala, 1) - 32px)', background: 'var(--tarjeta)',
           border: '1px solid var(--borde)',
           borderRadius: 'var(--radio)', boxShadow: '0 24px 60px rgba(20,20,20,0.25)',
           padding: '20px 22px',
