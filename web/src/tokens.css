@@ -89,10 +89,16 @@
 
 /* ── escala de texto (panel de accesibilidad) ──
    El zoom escala texto y espaciado en proporción, como el zoom del navegador,
-   y los medidores y tablas no se rompen. */
-:root[data-escala='90'] body { zoom: 0.9; }
-:root[data-escala='110'] body { zoom: 1.1; }
-:root[data-escala='125'] body { zoom: 1.25; }
+   y los medidores y tablas no se rompen. Ojo con dos cosas del zoom:
+   · 100vh y 100vw crecen con él (a 125 %, 100vh pasa del alto de la ventana):
+     toda medida de pantalla se divide entre --escala;
+   · los @media miden la ventana real, no el ancho útil: los cortes de diseño
+     van por <html data-ancho> (src/escala.ts), no por @media. */
+:root { --escala: 1; }
+:root[data-escala='90'] { --escala: 0.9; }
+:root[data-escala='110'] { --escala: 1.1; }
+:root[data-escala='125'] { --escala: 1.25; }
+body { zoom: var(--escala); }
 
 :root {
   color-scheme: light;
@@ -365,10 +371,17 @@ body { transition: background-color 0.25s ease-out, color 0.25s ease-out; }
   display: flex; gap: 20px; align-items: flex-start;
 }
 .menu-lateral {
-  flex: none; width: 264px; position: sticky; top: 20px; max-height: calc(100vh - 40px); overflow-y: auto;
-  border-radius: var(--radio-menu); padding: 20px 14px 16px;
+  flex: none; width: 264px; position: sticky; top: 20px;
+  /* el alto de la ventana ÷ escala: con zoom, 100vh solo crecería y el pie del menú quedaría fuera */
+  max-height: calc(100vh / var(--escala) - 40px);
+  max-height: calc(100dvh / var(--escala) - 40px);
+  overflow-y: auto; overscroll-behavior: contain;
+  scrollbar-width: thin; scrollbar-color: var(--borde) transparent; scrollbar-gutter: stable;
+  border-radius: var(--radio-menu); padding: 20px 10px 16px 14px;
   display: flex; flex-direction: column; gap: 16px; box-shadow: 0 14px 40px rgba(15, 23, 42, 0.12);
 }
+.menu-lateral::-webkit-scrollbar { width: 6px; }
+.menu-lateral::-webkit-scrollbar-thumb { background: var(--borde); border-radius: 3px; }
 .menu-grupos { display: flex; flex-direction: column; gap: 14px; }
 .menu-grupo { display: flex; flex-direction: column; gap: 3px; }
 .menu-grupo-rotulo {
@@ -386,14 +399,21 @@ body { transition: background-color 0.25s ease-out, color 0.25s ease-out; }
 .menu-enlace:focus-visible { outline: 2px solid var(--accion); outline-offset: 2px; }
 .contenido { flex: 1; min-width: 0; padding-top: 4px; }
 
-@media (max-width: 900px) {
-  .armazon { flex-direction: column; align-items: stretch; padding: 12px; gap: 14px; }
-  .menu-lateral { width: auto; position: static; max-height: none; padding: 14px; gap: 12px; border-radius: 24px; }
-  .menu-grupos { flex-direction: row; overflow-x: auto; gap: 6px; padding-bottom: 2px; }
-  .menu-grupo { flex-direction: row; }
-  .menu-grupo-rotulo { display: none; }
-  .menu-enlace { white-space: nowrap; }
+/* ≤ 900 px ÚTILES (ver src/escala.ts): el menú pasa arriba */
+:root:not([data-ancho='amplio']) .armazon { flex-direction: column; align-items: stretch; padding: 12px; gap: 14px; }
+:root:not([data-ancho='amplio']) .menu-lateral {
+  width: auto; position: static; max-height: none; overflow: visible; scrollbar-gutter: auto;
+  padding: 14px; gap: 12px; border-radius: 24px;
 }
+:root:not([data-ancho='amplio']) .menu-grupos {
+  flex-direction: row; overflow-x: auto; gap: 6px; padding-bottom: 4px;
+  scrollbar-width: thin; scrollbar-color: var(--borde) transparent;
+}
+:root:not([data-ancho='amplio']) .menu-grupos::-webkit-scrollbar { height: 6px; }
+:root:not([data-ancho='amplio']) .menu-grupos::-webkit-scrollbar-thumb { background: var(--borde); border-radius: 3px; }
+:root:not([data-ancho='amplio']) .menu-grupo { flex-direction: row; }
+:root:not([data-ancho='amplio']) .menu-grupo-rotulo { display: none; }
+:root:not([data-ancho='amplio']) .menu-enlace { white-space: nowrap; }
 
 /* ── W1 · Entrar: la tarjeta oscura de la marca y el formulario de vidrio.
    En angosto el formulario va primero: es lo que se viene a hacer. ── */
@@ -405,8 +425,7 @@ body { transition: background-color 0.25s ease-out, color 0.25s ease-out; }
 }
 .entrar-marca h1 { font-size: 40px; font-weight: 800; line-height: 1.12; letter-spacing: -0.03em; }
 .entrar-formulario { flex: 1 1 360px; max-width: 440px; border-radius: 34px; padding: 36px 32px; }
-@media (max-width: 760px) {
-  .entrar-formulario { order: -1; padding: 28px 22px; border-radius: 28px; }
-  .entrar-marca { min-height: 0; padding: 28px 24px; border-radius: 28px; }
-  .entrar-marca h1 { font-size: 26px; }
-}
+/* ≤ 760 px ÚTILES (ver src/escala.ts) */
+:root[data-ancho='chico'] .entrar-formulario { order: -1; padding: 28px 22px; border-radius: 28px; }
+:root[data-ancho='chico'] .entrar-marca { min-height: 0; padding: 28px 24px; border-radius: 28px; }
+:root[data-ancho='chico'] .entrar-marca h1 { font-size: 26px; }
