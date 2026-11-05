@@ -17,6 +17,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { ErrorApi, api } from '../api/cliente'
 import type { Compra, EstadoCompra, InsumoCatalogo, LineaCompra, LineaRecepcion, Proveedor, TipoComprobante } from '../api/tipos'
 import { Boton, Campo, Chip, Modal, Tarjeta, Titulo, Vacio, type TonoChip } from '../ui/base'
+import { BuscarOpcion } from '../ui/BuscarOpcion'
 import { AltaProveedor } from './Proveedores'
 
 /* HU-35: el estado lo deriva el servidor de las recepciones; aquí solo se pinta */
@@ -158,6 +159,8 @@ export function Compras() {
 
   // cabecera de la compra
   const [proveedorId, setProveedorId] = useState('')
+  const opcionesProveedor = useMemo(
+    () => proveedores.map((p) => ({ valor: String(p.id), texto: acorta(p.razonSocial), detalle: `RUC ${p.ruc}` })), [proveedores])
   const [tipo, setTipo] = useState<TipoComprobante>('factura')
   const [numero, setNumero] = useState('')
   const [fecha, setFecha] = useState(() => new Date().toISOString().slice(0, 10))
@@ -235,13 +238,11 @@ export function Compras() {
             bajan de fila en vez de desbordarse */}
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'flex-end' }}>
           <div style={celdaForm(3, 240)}>
-            <Etiqueta htmlFor="c-prov">Proveedor</Etiqueta>
-            <select id="c-prov" value={proveedorId} onChange={(e) => setProveedorId(String(e.target.value))} style={estiloCampo}>
-              <option value="">Elegir…</option>
-              {proveedores.map((p) => (
-                <option key={p.id} value={String(p.id)}>{acorta(p.razonSocial)} · {p.ruc}</option>
-              ))}
-            </select>
+            <BuscarOpcion
+              id="c-prov" etiqueta="Proveedor" valor={proveedorId} enCambio={setProveedorId}
+              opciones={opcionesProveedor} marcador="Escribe la razón social o el RUC"
+              sinResultados="Ningún proveedor coincide con"
+            />
           </div>
           <div style={{ flex: 'none' }}>
             <Boton tipo="secundario" enClic={() => setAltaAbierta(true)}>+ Nuevo</Boton>

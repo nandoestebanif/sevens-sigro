@@ -182,6 +182,12 @@ button {
 /* modales: el velo funde y la caja aterriza */
 .velo { animation: velo-entra 0.18s ease-out both; }
 .modal-caja { animation: modal-entra 0.24s var(--paso) both; }
+.modal-cerrar {
+  flex: none; width: 36px; height: 36px; border-radius: 18px; border: 0; background: transparent;
+  font-size: 17px; line-height: 1; cursor: pointer; color: var(--tinta-3);
+}
+.modal-cerrar:hover { background: var(--vidrio-celda); color: var(--tinta); }
+.modal-cerrar:focus-visible { outline: 2px solid var(--accion); outline-offset: 1px; }
 
 /* medidores: la barra crece desde la izquierda al cargar */
 .medidor-barra {
@@ -371,33 +377,52 @@ body { transition: background-color 0.25s ease-out, color 0.25s ease-out; }
   display: flex; gap: 20px; align-items: flex-start;
 }
 .menu-lateral {
-  flex: none; width: 264px; position: sticky; top: 20px;
+  flex: none; width: 272px; position: sticky; top: 20px;
   /* el alto de la ventana ÷ escala: con zoom, 100vh solo crecería y el pie del menú quedaría fuera */
   max-height: calc(100vh / var(--escala) - 40px);
   max-height: calc(100dvh / var(--escala) - 40px);
-  overflow-y: auto; overscroll-behavior: contain;
-  scrollbar-width: thin; scrollbar-color: var(--borde) transparent; scrollbar-gutter: stable;
-  border-radius: var(--radio-menu); padding: 20px 10px 16px 14px;
+  /* el menú no se desplaza entero: cabecera y pie fijos, solo la lista de opciones (un scroll por zona) */
+  overflow: hidden;
+  border-radius: var(--radio-menu); padding: 20px 14px 16px;
   display: flex; flex-direction: column; gap: 16px; box-shadow: 0 14px 40px rgba(15, 23, 42, 0.12);
 }
-.menu-lateral::-webkit-scrollbar { width: 6px; }
-.menu-lateral::-webkit-scrollbar-thumb { background: var(--borde); border-radius: 3px; }
-.menu-grupos { display: flex; flex-direction: column; gap: 14px; }
+.menu-cabecera { flex: none; display: flex; flex-direction: column; gap: 16px; }
+.menu-grupos {
+  display: flex; flex-direction: column; gap: 14px;
+  flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain;
+  margin-right: -6px; padding-right: 6px; /* la barra delgada no tapa los ítems */
+  scrollbar-width: thin; scrollbar-color: var(--borde) transparent;
+}
+.menu-grupos::-webkit-scrollbar { width: 6px; }
+.menu-grupos::-webkit-scrollbar-thumb { background: var(--borde); border-radius: 3px; }
+.menu-pie {
+  flex: none; border-top: 1px solid var(--separador); padding: 12px 2px 0;
+  display: flex; align-items: center; gap: 10px;
+}
+.menu-salir {
+  flex: none; min-height: 40px; padding: 0 12px; border-radius: 20px; border: 1px solid var(--borde);
+  background: transparent; color: var(--tinta-2); display: inline-flex; align-items: center; gap: 6px;
+  font: inherit; font-size: 13px; font-weight: 600; cursor: pointer;
+}
+.menu-salir:hover { color: var(--tinta); background: var(--vidrio-celda); }
+.texto-corto { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .menu-grupo { display: flex; flex-direction: column; gap: 3px; }
 .menu-grupo-rotulo {
   padding: 0 10px 4px; font-size: 11px; font-weight: 700; letter-spacing: 0.08em;
   text-transform: uppercase; color: var(--tinta-2);
 }
 .menu-enlace {
-  min-height: 44px; padding: 0 12px; border-radius: 15px; display: flex; align-items: center; gap: 10px;
+  flex: none; min-height: 44px; padding: 0 12px; border-radius: 15px; display: flex; align-items: center; gap: 10px;
   font-size: 14px; font-weight: 600; text-decoration: none; color: var(--tinta-2);
 }
+/* una sola línea: un texto largo no agranda el ítem (el texto completo queda en el title) */
+.menu-enlace-texto { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .menu-enlace.active {
   background: var(--menu-activo); color: var(--menu-activo-tinta); font-weight: 700;
   box-shadow: var(--menu-activo-sombra);
 }
 .menu-enlace:focus-visible { outline: 2px solid var(--accion); outline-offset: 2px; }
-.contenido { flex: 1; min-width: 0; padding-top: 4px; }
+.contenido { flex: 1; min-width: 0; padding-top: 4px; padding-bottom: 72px; /* el botón «Aa» no tapa la última fila */ }
 
 /* ≤ 900 px ÚTILES (ver src/escala.ts): el menú pasa arriba */
 :root:not([data-ancho='amplio']) .armazon { flex-direction: column; align-items: stretch; padding: 12px; gap: 14px; }
@@ -406,7 +431,7 @@ body { transition: background-color 0.25s ease-out, color 0.25s ease-out; }
   padding: 14px; gap: 12px; border-radius: 24px;
 }
 :root:not([data-ancho='amplio']) .menu-grupos {
-  flex-direction: row; overflow-x: auto; gap: 6px; padding-bottom: 4px;
+  flex: none; flex-direction: row; overflow-x: auto; overflow-y: visible; margin-right: 0; padding-right: 0; gap: 6px; padding-bottom: 4px;
   scrollbar-width: thin; scrollbar-color: var(--borde) transparent;
 }
 :root:not([data-ancho='amplio']) .menu-grupos::-webkit-scrollbar { height: 6px; }
