@@ -4,6 +4,7 @@ import { HashRouter, NavLink, Navigate, Route, Routes } from 'react-router-dom'
 import { api } from './api/cliente'
 import { cerrarSesion, sesionActual, usaApiReal } from './api/http'
 import { Entrar } from './paginas/Entrar'
+import { esAdministrador } from './paginas/administracion/reglas'
 import type { Obra, ObraActiva } from './api/tipos'
 import logo from './assets/sevens-logo.webp'   // 165×116: el doble de los 58 px de alto que ocupa (pantallas 2x)
 import logoBlanco from './assets/sevens-logo-blanco.webp'
@@ -54,6 +55,7 @@ class GuardianErrores extends Component<{ children: ReactNode }, { error: Error 
 
 /* Cada pantalla es su propio trozo de JS (React.lazy): la web arranca con el armazón y baja
    solo la pantalla que se abre. Las páginas exportan con nombre; lazy pide `default`. */
+const Administracion = lazy(() => import('./paginas/Administracion').then((m) => ({ default: m.Administracion })))
 const Catalogo = lazy(() => import('./paginas/Catalogo').then((m) => ({ default: m.Catalogo })))
 const Compras = lazy(() => import('./paginas/Compras').then((m) => ({ default: m.Compras })))
 const Importar = lazy(() => import('./paginas/Importar').then((m) => ({ default: m.Importar })))
@@ -84,6 +86,14 @@ const ICONOS = {
   importar: 'M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4|M7 8l5-5 5 5|M12 3v12',
   parametros: 'M4 21v-7|M4 10V3|M12 21v-9|M12 8V3|M20 21v-5|M20 12V3|M1 14h6|M9 8h6|M17 16h6',
   obra: 'M3 21h18|M5 21V7l7-4 7 4v14|M9 21v-4h6v4|M9 10h.01|M15 10h.01|M9 14h.01|M15 14h.01',
+  administracion: 'M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10|M9 12l2 2 4-4',
+}
+
+/* Solo para el administrador de la obra activa (HU-13, HU-14, HU-15). Esconderla es comodidad:
+   la API verifica el rol en cada petición y responde 403 si no corresponde. */
+const GRUPO_ADMINISTRACION: (typeof GRUPOS)[number] = {
+  rotulo: 'Administración',
+  items: [{ ruta: '/administracion', nombre: 'Celulares, usuarios y almacenes', icono: 'administracion' }],
 }
 
 const GRUPOS: { rotulo: string; items: { ruta: string; nombre: string; icono: keyof typeof ICONOS }[] }[] = [
@@ -260,6 +270,7 @@ function Sistema() {
 
   const sesion = sesionActual()
   const rol = sesion?.obras.find((o) => String(o.id) === obra?.id)?.rol ?? sesion?.obras[0]?.rol
+  const grupos = usaApiReal && esAdministrador(sesion, obra?.id) ? [...GRUPOS, GRUPO_ADMINISTRACION] : GRUPOS
 
   return (
     <HashRouter>
@@ -301,7 +312,7 @@ function Sistema() {
           </div>
 
           <nav aria-label="Secciones" className="menu-grupos">
-            {GRUPOS.map((g) => (
+            {grupos.map((g) => (
               <div key={g.rotulo} className="menu-grupo">
                 <span className="menu-grupo-rotulo">{g.rotulo}</span>
                 {g.items.map((s) => (
@@ -349,6 +360,8 @@ function Sistema() {
             <Route path="/importar" element={<Importar />} />
             <Route path="/obra" element={<Obras />} />
             <Route path="/parametros" element={<Parametros />} />
+            <Route path="/administracion" element={<Administracion obra={obra} />} />
+            <Route path="/administracion/:seccion" element={<Administracion obra={obra} />} />
           </Routes>
           </Suspense>
           </GuardianErrores>
