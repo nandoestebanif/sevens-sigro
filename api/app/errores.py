@@ -104,11 +104,38 @@ def instalar(app: FastAPI) -> None:
         e = traducir(exc)
         return JSONResponse(e.detail, status_code=e.status_code)
 
+    mensajes_campo = {
+        "ruc": "El RUC debe tener 11 dígitos",
+        "razon_social": "Escribe la razón social",
+        "numero_comprobante": "El comprobante debe ser serie-número, por ejemplo F001-4512.",
+        "motivo": "Escribe el motivo.",
+        "nombre": "Escribe el nombre.",
+        "usuario": "El usuario solo admite letras, números, punto, guion y guion bajo (3 a 40 caracteres).",
+        "clave": "Escribe la contraseña.",
+        "descripcion": "Escribe la descripción del insumo.",
+        "unidad": "Escribe la unidad de medida.",
+        "unidad_compra": "Escribe la unidad de compra.",
+        "insumo_codigo": "Elige el insumo.",
+        "cantidad": "La cantidad debe ser mayor que cero.",
+        "precio_unitario": "El precio unitario debe ser mayor que cero.",
+        "identificador": "El identificador del dispositivo debe tener entre 8 y 128 caracteres válidos.",
+        "dia_corte": "El día de corte debe estar entre 1 (lunes) y 7 (domingo).",
+    }
+
     @app.exception_handler(RequestValidationError)
     async def _validacion(_: Request, exc: RequestValidationError):
         primero = exc.errors()[0] if exc.errors() else {}
-        campo = ".".join(str(p) for p in primero.get("loc", ()) if p != "body")
+        partes = [str(p) for p in primero.get("loc", ()) if p != "body"]
+        campo = ".".join(partes)
+        ultimo = partes[-1] if partes else ""
+        msg = str(primero.get("msg", "dato inválido"))
+        if msg.startswith("Value error, "):
+            texto = msg.removeprefix("Value error, ")
+        elif ultimo in mensajes_campo:
+            texto = mensajes_campo[ultimo]
+        else:
+            texto = f"{campo}: {msg}".strip(": ")
         return JSONResponse(
-            {"codigo": "datos_invalidos", "mensaje": f"{campo}: {primero.get('msg', 'dato inválido')}".strip(": ")},
+            {"codigo": "datos_invalidos", "mensaje": texto},
             status_code=422,
         )
