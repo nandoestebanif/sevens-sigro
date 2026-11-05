@@ -236,10 +236,10 @@ export function Compras() {
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'flex-end' }}>
           <div style={celdaForm(3, 240)}>
             <Etiqueta htmlFor="c-prov">Proveedor</Etiqueta>
-            <select id="c-prov" value={proveedorId} onChange={(e) => setProveedorId(e.target.value)} style={estiloCampo}>
+            <select id="c-prov" value={proveedorId} onChange={(e) => setProveedorId(String(e.target.value))} style={estiloCampo}>
               <option value="">Elegir…</option>
               {proveedores.map((p) => (
-                <option key={p.id} value={p.id}>{acorta(p.razonSocial)} · {p.ruc}</option>
+                <option key={p.id} value={String(p.id)}>{acorta(p.razonSocial)} · {p.ruc}</option>
               ))}
             </select>
           </div>
@@ -430,9 +430,10 @@ export function Compras() {
           enCerrar={() => setAltaAbierta(false)}
           enCreado={(p) => {
             // HU-30: al guardarlo queda seleccionado en la compra en curso
+            const idStr = String(p.id)
             setAltaAbierta(false)
-            setProveedores((ps) => [p, ...ps])
-            setProveedorId(p.id)
+            setProveedores((ps) => [{ ...p, id: idStr }, ...ps.filter((x) => String(x.id) !== idStr)])
+            setProveedorId(idStr)
           }}
         />
       )}
