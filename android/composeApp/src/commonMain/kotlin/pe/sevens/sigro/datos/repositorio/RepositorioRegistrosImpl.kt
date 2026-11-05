@@ -35,9 +35,9 @@ import kotlin.uuid.Uuid
  * asistencia y los registros de almacén.
  *  - regla 3: cada registro nace con su uuid_cliente y su cuerpo queda fijo; reenviar es seguro;
  *  - HU-38: un rechazo queda con su motivo; nada se borra de la cola;
- *  - los tipos sin servicio (ingreso sin compra, traslado, conteo, cierre) se guardan y NO se envían: no
- *    cuentan como pendientes para el trabajo de fondo, así WorkManager no reintenta en vano. La entrada de
- *    compra ya tiene servicio (POST /obras/{id}/almacen/recepciones) y viaja por esta misma cola.
+ *  - los tipos sin servicio (traslado, conteo, cierre) se guardan y NO se envían: no cuentan como pendientes
+ *    para el trabajo de fondo, así WorkManager no reintenta en vano. La entrada de compra (…/recepciones) y el
+ *    ingreso sin compra (…/ingresos) ya tienen servicio y viajan por esta misma cola.
  */
 class RepositorioRegistrosImpl(
     private val api: ApiSigro,
@@ -108,8 +108,10 @@ class RepositorioRegistrosImpl(
         for (r in cola) {
             val tipo = TipoRegistro.valueOf(r.tipo)
             try {
-                api.enviarRegistro(servidor, ruta(tipo, r.obraId), r.cuerpo)
+                val respuesta = api.enviarRegistro(servidor, ruta(tipo, r.obraId), r.cuerpo)
                 registros.marcar(r.uuidCliente, EstadoEnvio.ENVIADO.name, null, null, reloj())
+                // A1: quién registró y la hora del servidor, tal como vinieron en el 201/200.
+                cred.recibo(respuesta)?.let { registros.anotarRecibo(r.uuidCliente, it.registradoPorId, it.registradoPor, it.fechaServidor) }
                 enviados++
             } catch (e: ErrorSigro) {
                 when (val d = decidirEnvio(e, tipo.legible.lowercase())) {
@@ -143,12 +145,13 @@ class RepositorioRegistrosImpl(
         uuidCliente = e.uuidCliente, obraId = e.obraId, tipo = TipoRegistro.valueOf(e.tipo), titulo = e.titulo,
         detalle = e.detalle, horaDispositivoMs = e.horaDispositivoMs, estado = EstadoEnvio.valueOf(e.estado),
         motivoRechazo = e.motivoRechazo, nota = e.nota, intentos = e.intentos,
+        registradoPor = e.registradoPor, fechaServidor = e.fechaServidor,
     )
 
     internal companion object {
         fun claveJornada(trabajadorId: Int, fecha: String) = "jornada:$trabajadorId:$fecha"
 
-        /** Rutas del contrato. JORNADA y ENTRADA_COMPRA se envían; las demás esperan su contrato en la app. */
+        /** Rutas del contrato. JORNADA, ENTRADA_COMPRA e INGRESO_SIN_COMPRA se envían; las demás esperan su contrato en la app. */
         fun ruta(tipo: TipoRegistro, obraId: Int): String = when (tipo) {
             TipoRegistro.JORNADA -> "/obras/$obraId/jornadas"
             TipoRegistro.ENTRADA_COMPRA -> "/obras/$obraId/almacen/recepciones"
@@ -199,12 +202,16 @@ class RepositorioRegistrosImpl(
                     }
                 }
                 is RegistroAlmacen.IngresoSinCompra -> {
+                    // A5: exactamente IngresoIn (la API rechaza campos de más). La cantidad va en la unidad de
+                    // compra del catálogo del celular; el servidor la convierte con el factor del insumo.
+                    put("dispositivo", dispositivo)
                     put("almacen_id", r.almacenId)
-                    put("origen", r.origen.api)
                     put("insumo_id", r.linea.insumo.id)
                     put("cantidad", cant(r.linea.cantidad))
+                    put("unidad", r.linea.insumo.unidad)
                     put("costo_unitario", cant(r.costoUnitario))
-                    put("detalle", r.detalle)
+                    put("origen", r.origen.api)
+                    put("origen_detalle", r.detalle?.trim()?.ifEmpty { null })
                 }
                 is RegistroAlmacen.Traslado -> {
                     put("almacen_id", r.almacenId)

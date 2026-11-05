@@ -108,6 +108,31 @@ import pe.sevens.sigro.dominio.ErrorSigro
     val estado: String,
 )
 
+/** A2 · Una fila de GET /obras/{id}/almacen/stock (StockFilaOut). Cifras como texto decimal, sin tocar. */
+@Serializable data class FilaStockDto(
+    @SerialName("almacen_id") val almacenId: Int? = null,
+    val almacen: String? = null,
+    @SerialName("insumo_id") val insumoId: Int,
+    @SerialName("insumo_codigo") val insumoCodigo: String,
+    val descripcion: String,
+    val unidad: String,
+    val cantidad: String,
+    @SerialName("costo_promedio") val costoPromedio: String? = null,
+    val valor: String? = null,
+    @SerialName("ultimo_movimiento_en") val ultimoMovimientoEn: String? = null,
+    @SerialName("punto_reposicion") val puntoReposicion: String? = null,
+    @SerialName("bajo_punto_reposicion") val bajoPuntoReposicion: Boolean? = null,
+)
+
+/** A2 · StockOut: por almacén y consolidado de la obra, con el corte (hora del último movimiento considerado). */
+@Serializable data class StockDto(
+    val criterio: String? = null,
+    val corte: String? = null,
+    @SerialName("por_almacen") val porAlmacen: List<FilaStockDto> = emptyList(),
+    val consolidado: List<FilaStockDto> = emptyList(),
+    val advertencias: List<String> = emptyList(),
+)
+
 /** Estado de recepción de una línea de compra (HU-35), en unidad de compra. Lo calcula el servidor. */
 @Serializable data class RecepcionLineaDto(
     @SerialName("insumo_id") val insumoId: Int,
@@ -142,6 +167,10 @@ import pe.sevens.sigro.dominio.ErrorSigro
  * sesión cierra la sesión (`alVencerSesion`) y deja las colas intactas; el error sigue su camino para que
  * la cola anote «vuelve a ingresar».
  */
+/** A4: lo que ve el almacenero ante un error de red o un servidor que no responde (502/503/504). */
+const val MENSAJE_SIN_RESPUESTA = "El servidor no responde. Revisa la dirección o inténtalo en un minuto."
+private val SIN_RESPUESTA = setOf(502, 503, 504)
+
 class ApiSigro(
     private val http: HttpClient,
     private val json: Json,
@@ -194,22 +223,25 @@ class ApiSigro(
     suspend fun estadoRecepcion(servidor: String, obraId: Int, compraId: Int): List<RecepcionLineaDto> =
         llamar { http.get(url(servidor, "/obras/$obraId/almacen/compras/$compraId/recepcion")) }
 
+    /** A2 · Stock por almacén y consolidado. Lo calcula el servidor a partir del libro (regla 2). */
+    suspend fun stock(servidor: String, obraId: Int): StockDto =
+        llamar { http.get(url(servidor, "/obras/$obraId/almacen/stock")) }
+
     /**
      * Envía un registro de la cola general: el cuerpo es el JSON que se armó al registrarlo (mismo uuid,
-     * mismo contenido en cada reintento). `ruta` va relativa a /api/v1.
+     * mismo contenido en cada reintento). `ruta` va relativa a /api/v1. Devuelve lo que respondió el servidor
+     * (A1: de ahí salen quién registró y la hora del servidor).
      */
-    suspend fun enviarRegistro(servidor: String, ruta: String, cuerpoJson: String) {
+    suspend fun enviarRegistro(servidor: String, ruta: String, cuerpoJson: String): JsonObject? =
         llamar<JsonObject?>(permitirVacio = true) {
             http.post(url(servidor, ruta)) { setBody(TextContent(cuerpoJson, ContentType.Application.Json)) }
         }
-    }
 
     /** POST /obras/{id}/almacen/salidas (HU-40). Reenvío con el mismo uuid ⇒ 200 con el original. */
-    suspend fun enviarSalida(servidor: String, obraId: Int, salida: SalidaIn) {
+    suspend fun enviarSalida(servidor: String, obraId: Int, salida: SalidaIn): JsonObject? =
         llamar<JsonObject?>(permitirVacio = true) {
             http.post(url(servidor, "/obras/$obraId/almacen/salidas")) { cuerpo(salida) }
         }
-    }
 
     private inline fun <reified T> HttpRequestBuilder.cuerpo(v: T) {
         contentType(ContentType.Application.Json)
@@ -230,10 +262,7 @@ class ApiSigro(
         } catch (e: kotlinx.coroutines.CancellationException) {
             throw e // cancelar una corrutina no es «sin conexión»
         } catch (e: Exception) {
-            throw ErrorSigro(
-                "sin_conexion",
-                "No se pudo conectar con el servidor de SIGRO. Revisa la señal o la dirección del servidor.",
-            )
+            throw ErrorSigro("sin_conexion", MENSAJE_SIN_RESPUESTA)
         }
         if (!r.status.isSuccess()) {
             val error = errorDe(r)
@@ -248,6 +277,8 @@ class ApiSigro(
     }
 
     private suspend fun errorDe(r: HttpResponse): ErrorSigro {
+        // A4: el servidor dormido o caído (Render responde 502/503/504 mientras despierta) se dice igual que sin red.
+        if (r.status.value in SIN_RESPUESTA) return ErrorSigro("servidor_no_responde", MENSAJE_SIN_RESPUESTA, r.status.value)
         val texto = runCatching { r.bodyAsText() }.getOrDefault("")
         val obj = runCatching { json.parseToJsonElement(texto).jsonObject }.getOrNull()
         // FastAPI responde {codigo, mensaje} o {detail: {codigo, mensaje}}

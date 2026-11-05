@@ -79,8 +79,10 @@ class RepositorioSalidasImpl(
         var rechazados = 0
         for (s in cola) {
             try {
-                api.enviarSalida(servidor, s.obraId, s.aEnvio(dispositivo))
+                val respuesta = api.enviarSalida(servidor, s.obraId, s.aEnvio(dispositivo))
                 salidas.marcar(s.uuidCliente, EstadoEnvio.ENVIADO.name, null, null, reloj())
+                // A1: quién registró y la hora del servidor, tal como vinieron en el 201/200.
+                cred.recibo(respuesta)?.let { salidas.anotarRecibo(s.uuidCliente, it.registradoPorId, it.registradoPor, it.fechaServidor) }
                 enviados++
             } catch (e: ErrorSigro) {
                 when (val decision = decidirEnvio(e, "salidas")) {
@@ -119,5 +121,7 @@ class RepositorioSalidasImpl(
         motivoRechazo = e.motivoRechazo,
         nota = e.nota,
         intentos = e.intentos,
+        registradoPor = e.registradoPor,
+        fechaServidor = e.fechaServidor,
     )
 }

@@ -66,7 +66,13 @@ class BovedaSesion(private val seguro: AlmacenSeguro, private val ajustes: Ajust
 
 /** Lectura cómoda de la sesión guardada, para los repositorios que hablan con el servidor. */
 class Credenciales(private val ajustes: AjusteDao, private val boveda: BovedaSesion) {
-    suspend fun servidor(): String? = ajustes.leer(Clave.SERVIDOR)
+    /** El servidor guardado; si es uno retirado (A4), se reemplaza y se guarda el nuevo. */
+    suspend fun servidor(): String? {
+        val guardado = ajustes.leer(Clave.SERVIDOR) ?: return null
+        val vigente = Servidores.migrar(guardado)
+        if (vigente != guardado) guardar(Clave.SERVIDOR, vigente)
+        return vigente
+    }
 
     /** Hay sesión si hay token. El token lo pone el plugin Auth de Ktor; los repositorios no lo tocan. */
     suspend fun haySesion(): Boolean = boveda.token() != null

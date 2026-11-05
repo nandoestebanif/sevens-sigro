@@ -40,6 +40,9 @@ class SalidasDePrueba : pe.sevens.sigro.datos.local.SalidaDao {
             if (it.uuidCliente == uuid) it.copy(estado = estado, motivoRechazo = motivoRechazo, nota = nota, intentos = it.intentos + 1, ultimoIntentoMs = ahora) else it
         }
     }
+    override suspend fun anotarRecibo(uuid: String, porId: Int?, por: String?, fecha: String?) {
+        filas.value = filas.value.map { if (it.uuidCliente == uuid) it.copy(registradoPorId = porId, registradoPor = por, fechaServidor = fecha) else it }
+    }
     fun una(uuid: String) = filas.value.first { it.uuidCliente == uuid }
 }
 
@@ -59,5 +62,15 @@ class RegistrosDePrueba : pe.sevens.sigro.datos.local.RegistroDao {
             if (it.uuidCliente == uuid) it.copy(estado = estado, motivoRechazo = motivoRechazo, nota = nota, intentos = it.intentos + 1, ultimoIntentoMs = ahora) else it
         }
     }
+    override suspend fun anotarRecibo(uuid: String, porId: Int?, por: String?, fecha: String?) {
+        filas.value = filas.value.map { if (it.uuidCliente == uuid) it.copy(registradoPorId = porId, registradoPor = por, fechaServidor = fecha) else it }
+    }
     fun una(uuid: String) = filas.value.first { it.uuidCliente == uuid }
+}
+
+/** Copia del stock en memoria. */
+class StockGuardadoDePrueba : pe.sevens.sigro.datos.local.StockDao {
+    val m = mutableMapOf<Int, pe.sevens.sigro.datos.local.StockGuardadoEntity>()
+    override suspend fun guardar(s: pe.sevens.sigro.datos.local.StockGuardadoEntity) { m[s.obraId] = s }
+    override suspend fun leer(obraId: Int) = m[obraId]
 }
