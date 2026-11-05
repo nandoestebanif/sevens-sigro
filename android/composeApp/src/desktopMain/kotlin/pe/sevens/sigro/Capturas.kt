@@ -192,6 +192,10 @@ private object TrabajadoresFalsos : RepositorioTrabajadores {
 /** Lecturas de obra de ejemplo: el proveedor y la otra obra son [marcador]; los insumos, del catálogo real. */
 private object ObraFalsa : RepositorioObra {
     override suspend fun almacenes(obraId: Int) = listOf(AlmacenObra(1, "Almacén principal"))
+    override suspend fun almacenRecordado(obraId: Int): AlmacenObra? = null
+    override suspend fun recordarAlmacen(obraId: Int, almacen: AlmacenObra) {}
+    override suspend fun conPendientes(obraId: Int, compra: CompraParaRecibir) =
+        compra.copy(lineas = compra.lineas.mapIndexed { i, l -> l.copy(insumoId = i + 1, pendiente = l.cantidad) })
     override suspend fun compras(obraId: Int) = listOf(
         CompraParaRecibir(
             10, "[Proveedor]", "Factura [número]", "2026-10-27",
@@ -239,19 +243,19 @@ fun main(args: Array<String>) {
     capturar(dir, "04-inicio") { PantallaInicio(sesionEjemplo, obra, {}, InicioViewModel(SesionFalsa(), salidas, CatalogoFalso, sinProgramar)) }
     capturar(dir, "04-inicio-oscuro", oscuro = true) { PantallaInicio(sesionEjemplo, obra, {}, InicioViewModel(SesionFalsa(), salidas, CatalogoFalso, sinProgramar)) }
 
-    val buscar = SalidaViewModel(CatalogoFalso, salidas, sinProgramar)
+    val buscar = SalidaViewModel(CatalogoFalso, salidas, sinProgramar, ObraFalsa)
     capturar(dir, "05-salida-buscar", preparar = { buscar.buscar("cemento") }) { PantallaSalida(1, {}, buscar) }
 
-    val llena = SalidaViewModel(CatalogoFalso, salidas, sinProgramar)
+    val llena = SalidaViewModel(CatalogoFalso, salidas, sinProgramar, ObraFalsa)
     capturar(dir, "06-salida-llena", preparar = {
         llena.elegir(insumo("CEMENTO PORTLAND TIPO I")); llena.cantidad("25"); llena.motivo("Vaciado de columnas 2.º piso")
         llena.quienRetira("Maestro de obra (ejemplo)"); llena.frente("Cuadrilla de concreto")
     }) { PantallaSalida(1, {}, llena) }
 
-    val conErrores = SalidaViewModel(CatalogoFalso, salidas, sinProgramar)
+    val conErrores = SalidaViewModel(CatalogoFalso, salidas, sinProgramar, ObraFalsa)
     capturar(dir, "07-salida-validacion", preparar = { conErrores.cantidad("0"); conErrores.guardar(1) }) { PantallaSalida(1, {}, conErrores) }
 
-    val guardada = SalidaViewModel(CatalogoFalso, salidas, sinProgramar)
+    val guardada = SalidaViewModel(CatalogoFalso, salidas, sinProgramar, ObraFalsa)
     capturar(dir, "08-salida-guardada", preparar = {
         guardada.elegir(insumo("ARENA GRUESA")); guardada.cantidad("3,5"); guardada.motivo("Tarrajeo"); guardada.quienRetira("Maestro de obra (ejemplo)"); guardada.guardar(1)
     }) { PantallaSalida(1, {}, guardada) }
@@ -279,8 +283,8 @@ fun main(args: Array<String>) {
     }
     val stock = StockViewModel(CatalogoFalso, ObraFalsa)
     capturar(dir, "17-stock", preparar = { stock.cargar(1); stock.buscador.buscar("cemento") }) { PantallaStock(1, {}, stock) }
-    val entrada = EntradaViewModel(ObraFalsa, registros)
-    capturar(dir, "18-entrada", preparar = { entrada.cargar(1); Thread.sleep(300); entrada.estado.value.compras.firstOrNull()?.let(entrada::elegir); entrada.alternarModo(); entrada.recibido(0, "6") }) {
+    val entrada = EntradaViewModel(ObraFalsa, registros, sinProgramar)
+    capturar(dir, "18-entrada", preparar = { entrada.cargar(1); Thread.sleep(300); entrada.estado.value.compras.firstOrNull()?.let { entrada.elegir(1, it) }; Thread.sleep(300); entrada.alternarModo(); entrada.recibido(0, "6") }) {
         PantallaEntrada(1, {}, entrada)
     }
     val ingreso = IngresoSinCompraViewModel(CatalogoFalso, ObraFalsa, registros)

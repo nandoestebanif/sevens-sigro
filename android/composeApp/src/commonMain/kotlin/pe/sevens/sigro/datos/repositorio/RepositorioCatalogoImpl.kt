@@ -1,6 +1,5 @@
 package pe.sevens.sigro.datos.repositorio
 
-import pe.sevens.sigro.datos.local.AjusteDao
 import pe.sevens.sigro.datos.local.InsumoDao
 import pe.sevens.sigro.datos.local.InsumoLocalEntity
 import pe.sevens.sigro.datos.remoto.ApiSigro
@@ -11,18 +10,17 @@ import pe.sevens.sigro.dominio.RepositorioCatalogo
 class RepositorioCatalogoImpl(
     private val api: ApiSigro,
     private val insumos: InsumoDao,
-    ajustes: AjusteDao,
+    private val cred: Credenciales,
 ) : RepositorioCatalogo {
-    private val cred = Credenciales(ajustes)
 
     override suspend fun buscar(texto: String): List<Insumo> =
         insumos.buscar(texto.trim()).map { Insumo(it.id, it.codigo, it.descripcion, it.unidad) }
 
     override suspend fun actualizar(): Int {
         val servidor = cred.servidor() ?: throw sinSesion()
-        val token = cred.token() ?: throw sinSesion()
+        if (!cred.haySesion()) throw sinSesion()
         // En almacén solo salen materiales activos; la mano de obra va por tareo (HU-63).
-        val lista = api.insumos(servidor, token)
+        val lista = api.insumos(servidor)
             .filter { it.activo && it.tipo == "material" }
             .map { InsumoLocalEntity(it.id, it.codigo, it.descripcion, it.unidadCompra) }
         insumos.guardarTodos(lista)
