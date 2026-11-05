@@ -80,7 +80,7 @@ private class Cola(var responder: (Int) -> Pair<HttpStatusCode, String>?) {
         respond(r.second, r.first, headersOf(HttpHeaders.ContentType, "application/json"))
     }
     var hora = 5_000L
-    val repo = RepositorioRegistrosImpl(ApiSigro(crearClienteHttp(motor), jsonSigro), filas, AjustesFalsos()) { hora++ }
+    val repo = RepositorioRegistrosImpl(ApiSigro(crearClienteHttp(motor), jsonSigro), filas, credencialesDePrueba(AjustesFalsos())) { hora++ }
 }
 
 private fun trabajador(id: Int) = Trabajador(id, 1, "Trabajador 0$id", "DNI", "0000000$id", "operario", "Cuadrilla A", "2026-10-01", null)

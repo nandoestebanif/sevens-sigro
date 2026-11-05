@@ -74,6 +74,9 @@ data class NuevaSalida(
     val motivo: String,
     val quienRetira: String,
     val frente: String?,
+    /** M6: almacén de donde sale. Nulo solo si no se pudo saber (sin señal la primera vez): el servidor lo
+     *  resuelve si la obra tiene un único almacén activo, y si no, rechaza con su mensaje. */
+    val almacenId: Int? = null,
 )
 
 /** Estado del celular frente a la obra (HU-15). */

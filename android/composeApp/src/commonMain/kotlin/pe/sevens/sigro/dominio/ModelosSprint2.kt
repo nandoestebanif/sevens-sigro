@@ -204,7 +204,7 @@ object Asistencia {
  */
 enum class TipoRegistro(val legible: String, val conServicio: Boolean) {
     JORNADA("Asistencia", true),
-    ENTRADA_COMPRA("Entrada de compra", false),
+    ENTRADA_COMPRA("Entrada de compra", true), // POST /obras/{id}/almacen/recepciones (M5)
     INGRESO_SIN_COMPRA("Ingreso sin compra", false),
     TRASLADO("Traslado", false),
     CONTEO("Conteo físico", false),
@@ -228,7 +228,8 @@ data class RegistroLocal(
 /** Nota con la que queda un registro de almacén mientras no exista su servicio. */
 const val NOTA_SIN_SERVICIO_ALMACEN = "Se envía cuando exista el servicio almacén: queda guardado en el celular."
 
-// ── Almacén (UI lista; se envía en la fase 2) ───────────────────────────────────────────────
+// ── Almacén ─────────────────────────────────────────────────────────────────────────────────
+// La entrada de compra ya se envía; ingreso sin compra, traslado, conteo y cierre se guardan y esperan.
 
 /** Línea con insumo y cantidad: entrada, ingreso, traslado y conteo la usan igual. */
 data class LineaAlmacen(val insumo: Insumo, val cantidad: String)
@@ -240,11 +241,64 @@ data class CompraParaRecibir(
     val comprobante: String,
     val fecha: String,
     val lineas: List<LineaCompra>,
-)
+) {
+    /** Con el estado de recepción del servidor cada línea sabe su insumo y su pendiente: se puede recibir una parte. */
+    val conPendientes: Boolean get() = lineas.isNotEmpty() && lineas.all { it.insumoId != null && it.pendiente != null }
 
-data class LineaCompra(val insumoCodigo: String, val descripcion: String, val cantidad: String, val unidad: String)
+    /** Ya se recibió completa (según el servidor). */
+    val recibidaCompleta: Boolean
+        get() = conPendientes && lineas.all { (ValidarSalida.normalizarCantidad(it.pendiente!!).toDoubleOrNull() ?: 0.0) <= 0.0 }
+}
+
+/**
+ * Línea de compra en unidad de compra. `insumoId` y `pendiente` llegan de
+ * GET /obras/{id}/almacen/compras/{compra_id}/recepcion; sin señal quedan nulos.
+ */
+data class LineaCompra(
+    val insumoCodigo: String,
+    val descripcion: String,
+    val cantidad: String,
+    val unidad: String,
+    val insumoId: Int? = null,
+    val pendiente: String? = null,
+) {
+    /** Lo que todavía se puede recibir: el pendiente del servidor o, si no se sabe, lo comprado. */
+    val recibible: String get() = pendiente ?: cantidad
+}
 
 data class AlmacenObra(val id: Int, val nombre: String)
+
+/**
+ * M6 · qué almacén usar. Con uno solo activo se elige solo; con varios, el último elegido en esa obra si
+ * sigue activo (si no, el almacenero elige). `lista` nula = no se pudo consultar (sin señal): se usa el
+ * último elegido, que se guarda en el celular justamente para eso.
+ */
+object ElegirAlmacen {
+    fun inicial(lista: List<AlmacenObra>?, recordado: AlmacenObra?): AlmacenObra? = when {
+        lista == null -> recordado
+        lista.size == 1 -> lista.first()
+        else -> lista.firstOrNull { it.id == recordado?.id }
+    }
+
+    /** Hay que preguntar: varios almacenes y ninguno elegido. */
+    fun falta(lista: List<AlmacenObra>, elegido: AlmacenObra?): Boolean = elegido == null && lista.size > 1
+
+    /**
+     * Une las líneas de la compra con el estado de recepción. El servidor arma ambas listas en el orden de
+     * `compra_detalle.id`; si no calzan (cantidad u orden distinto), no se adivina: quedan sin pendiente.
+     */
+    fun unirPendientes(lineas: List<LineaCompra>, estado: List<EstadoLineaRecepcion>): List<LineaCompra> {
+        if (lineas.size != estado.size) return lineas
+        val calzan = lineas.zip(estado).all { (l, e) ->
+            l.unidad == e.unidad && l.cantidad.toDoubleOrNull() == e.pedido.toDoubleOrNull()
+        }
+        if (!calzan) return lineas
+        return lineas.zip(estado).map { (l, e) -> l.copy(insumoId = e.insumoId, pendiente = e.pendiente) }
+    }
+}
+
+/** Una fila de GET …/compras/{id}/recepcion, ya sin Ktor. Cantidades en unidad de compra. */
+data class EstadoLineaRecepcion(val insumoId: Int, val unidad: String, val pedido: String, val recibido: String, val pendiente: String)
 
 enum class OrigenIngreso(val api: String, val legible: String) {
     DEVOLUCION("devolucion", "Devolución de cuadrilla"),

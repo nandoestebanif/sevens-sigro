@@ -6,6 +6,8 @@ import org.koin.dsl.module
 import pe.sevens.sigro.datos.local.BaseDatosSigro
 import pe.sevens.sigro.datos.remoto.ApiSigro
 import pe.sevens.sigro.datos.remoto.jsonSigro
+import pe.sevens.sigro.datos.repositorio.BovedaSesion
+import pe.sevens.sigro.datos.repositorio.Credenciales
 import pe.sevens.sigro.datos.repositorio.RepositorioCatalogoImpl
 import pe.sevens.sigro.datos.repositorio.RepositorioDispositivoImpl
 import pe.sevens.sigro.datos.repositorio.RepositorioInsumosImpl
@@ -49,16 +51,22 @@ import pe.sevens.sigro.ui.pantallas.SalidaViewModel
  * La UI pide interfaces del dominio, nunca clases de Ktor o de Room.
  */
 
-/** Lo que cada plataforma provee: HttpClient, BaseDatosSigro y ProgramadorSincronizacion. */
+/**
+ * Lo que cada plataforma provee: HttpClient (con el token de [BovedaSesion]), BaseDatosSigro,
+ * ProgramadorSincronizacion y AlmacenSeguro (Keystore en Android, Keychain en iOS).
+ */
 expect val moduloPlataforma: Module
 
 val moduloDatos = module {
     single { jsonSigro }
-    single { ApiSigro(get(), get()) }
     single { get<BaseDatosSigro>().ajustes() }
+    single { BovedaSesion(get(), get()) }
+    single { Credenciales(get(), get()) }
+    // Un 401 cierra la sesión (vuelve a «Entrar») sin tocar las colas.
+    single { val boveda = get<BovedaSesion>(); ApiSigro(get(), get()) { boveda.cerrarSesion() } }
     single { get<BaseDatosSigro>().salidas() }
     single { get<BaseDatosSigro>().insumos() }
-    single<RepositorioSesion> { RepositorioSesionImpl(get(), get()) }
+    single<RepositorioSesion> { RepositorioSesionImpl(get(), get(), get()) }
     single<RepositorioCatalogo> { RepositorioCatalogoImpl(get(), get(), get()) }
     single<RepositorioSalidas> { RepositorioSalidasImpl(get(), get(), get()) }
     single<RepositorioDispositivo> { RepositorioDispositivoImpl(get(), get()) }
@@ -75,7 +83,7 @@ val moduloPresentacion = module {
     viewModel { RaizViewModel(get()) }
     viewModel { EntrarViewModel(get()) }
     viewModel { InicioViewModel(get(), get(), get(), get()) }
-    viewModel { SalidaViewModel(get(), get(), get()) }
+    viewModel { SalidaViewModel(get(), get(), get(), get()) }
     viewModel { PendientesViewModel(get(), get()) }
     viewModel { DispositivoViewModel(get()) }
     viewModel { ObrasViewModel(get(), get(), get()) }
@@ -85,7 +93,7 @@ val moduloPresentacion = module {
     viewModel { TrabajadorNuevoViewModel(get()) }
     viewModel { AsistenciaViewModel(get(), get(), get()) }
     viewModel { StockViewModel(get(), get()) }
-    viewModel { EntradaViewModel(get(), get()) }
+    viewModel { EntradaViewModel(get(), get(), get()) }
     viewModel { IngresoSinCompraViewModel(get(), get(), get()) }
     viewModel { TrasladoViewModel(get(), get(), get()) }
     viewModel { ConteoViewModel(get(), get(), get()) }

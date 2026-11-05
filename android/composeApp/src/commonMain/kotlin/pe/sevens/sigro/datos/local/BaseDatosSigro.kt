@@ -12,6 +12,9 @@ import androidx.room.Query
 import androidx.room.RoomDatabase
 import androidx.room.RoomDatabaseConstructor
 import androidx.room.Upsert
+import androidx.room.migration.AutoMigrationSpec
+import androidx.sqlite.SQLiteConnection
+import androidx.sqlite.execSQL
 import androidx.sqlite.driver.bundled.BundledSQLiteDriver
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
@@ -22,7 +25,8 @@ import kotlinx.coroutines.flow.Flow
  * Guarda lo que tiene que sobrevivir a que el sistema cierre la app sin señal (ADR-02, HU-37).
  */
 
-/** Ajustes clave → valor: servidor, sesión, obra elegida, identificador del dispositivo. */
+/** Ajustes clave → valor: servidor, datos de la sesión, obra y almacén elegidos, identificador del dispositivo.
+ *  El token NO está aquí: vive cifrado en AlmacenSeguro (desde la versión 3 de la base). */
 @Entity(tableName = "ajuste")
 data class AjusteEntity(@PrimaryKey val clave: String, val valor: String)
 
@@ -48,6 +52,8 @@ data class SalidaLocalEntity(
     val nota: String?,
     val intentos: Int,
     val ultimoIntentoMs: Long?,
+    /** M6 (versión 3): almacén de donde sale. Nulo en salidas anteriores: el servidor usa el único activo. */
+    val almacenId: Int? = null,
 )
 
 /** Copia del catálogo para buscar insumos en obra sin señal. Se refresca con señal. */
@@ -175,10 +181,11 @@ interface TrabajadorDao {
         AjusteEntity::class, SalidaLocalEntity::class, InsumoLocalEntity::class,
         RegistroLocalEntity::class, TrabajadorLocalEntity::class,
     ],
-    version = 2,
+    version = 3,
     exportSchema = true,
     // 1 → 2 solo agrega tablas: la cola de salidas que ya está en el celular no se toca.
-    autoMigrations = [AutoMigration(from = 1, to = 2)],
+    // 2 → 3 agrega salida_local.almacenId (nulo en lo anterior) y cierra las entradas de compra viejas.
+    autoMigrations = [AutoMigration(from = 1, to = 2), AutoMigration(from = 2, to = 3, spec = Migracion2a3::class)],
 )
 @ConstructedBy(ConstructorBaseDatos::class)
 abstract class BaseDatosSigro : RoomDatabase() {
@@ -188,6 +195,23 @@ abstract class BaseDatosSigro : RoomDatabase() {
     abstract fun registros(): RegistroDao
     abstract fun trabajadores(): TrabajadorDao
 }
+
+/**
+ * Hasta la versión 2 la entrada de compra se guardaba con un cuerpo propuesto (con `insumo_codigo` y
+ * `con_foto_guia`) que la API real rechaza. Esas filas no se envían: quedan RECHAZADAS con el motivo y a la
+ * vista en «Mis registros» (nada se borra), para registrarlas de nuevo con la pantalla nueva.
+ */
+class Migracion2a3 : AutoMigrationSpec {
+    override fun onPostMigrate(connection: SQLiteConnection) {
+        connection.execSQL(
+            "UPDATE registro_local SET estado = 'RECHAZADO', motivoRechazo = '$MOTIVO_ENTRADA_ANTIGUA' " +
+                "WHERE tipo = 'ENTRADA_COMPRA' AND estado = 'PENDIENTE'"
+        )
+    }
+}
+
+const val MOTIVO_ENTRADA_ANTIGUA =
+    "Se guardó con una versión anterior de la app, antes de que el servidor recibiera entradas. Regístrala de nuevo."
 
 /** Room genera la implementación para cada plataforma (KSP). */
 @Suppress("NO_ACTUAL_FOR_EXPECT", "EXPECT_ACTUAL_CLASSIFIERS_ARE_IN_BETA_WARNING")
