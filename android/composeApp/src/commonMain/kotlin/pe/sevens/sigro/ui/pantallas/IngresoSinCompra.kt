@@ -14,16 +14,17 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import org.koin.compose.viewmodel.koinViewModel
+import pe.sevens.sigro.dominio.AlmacenObra
 import pe.sevens.sigro.dominio.Insumo
 import pe.sevens.sigro.dominio.LineaAlmacen
 import pe.sevens.sigro.dominio.OrigenIngreso
+import pe.sevens.sigro.dominio.ProgramadorSincronizacion
 import pe.sevens.sigro.dominio.RegistroAlmacen
 import pe.sevens.sigro.dominio.RepositorioCatalogo
 import pe.sevens.sigro.dominio.RepositorioObra
 import pe.sevens.sigro.dominio.RepositorioRegistros
 import pe.sevens.sigro.dominio.ValidarAlmacen
 import pe.sevens.sigro.ui.componentes.AvisoNaranja
-import pe.sevens.sigro.ui.componentes.AvisoSinServicioAlmacen
 import pe.sevens.sigro.ui.componentes.BotonNegro
 import pe.sevens.sigro.ui.componentes.CampoVidrio
 import pe.sevens.sigro.ui.componentes.Opciones
@@ -37,11 +38,21 @@ import pe.sevens.sigro.ui.tema.Paleta
  * Se guarda en el celular y se envía cuando exista el servicio almacén.
  */
 
-/** HU-41: exige insumo, cantidad y costo. Devuelve campo → mensaje. */
-fun validarIngreso(insumo: Insumo?, cantidad: String, costo: String): Map<String, String> = buildMap {
+/**
+ * HU-41: exige insumo, cantidad y costo; «otro» y «saldo de otra obra» exigen además su detalle (para la otra
+ * obra, su nombre), igual que `IngresoIn` en el servidor. Devuelve campo → mensaje.
+ */
+fun validarIngreso(
+    insumo: Insumo?, cantidad: String, costo: String,
+    origen: OrigenIngreso = OrigenIngreso.DEVOLUCION, detalle: String = "",
+): Map<String, String> = buildMap {
     if (insumo == null) put("insumo", "Elige el insumo que ingresa")
     ValidarAlmacen.cantidad(cantidad)?.let { put("cantidad", it) }
     ValidarAlmacen.costo(costo)?.let { put("costo", it) }
+    if (origen.exigeDetalle && detalle.isBlank()) {
+        put("detalle", if (origen == OrigenIngreso.OTRA_OBRA) "Escribe el nombre de la obra de donde viene" else "Di de dónde viene")
+    }
+    if (detalle.trim().length > 300) put("detalle", "Máximo 300 letras")
 }
 
 data class EstadoIngreso(
@@ -50,7 +61,6 @@ data class EstadoIngreso(
     val cantidad: String = "",
     val costo: String = "",
     val detalle: String = "",
-    val almacenId: Int? = null,
     val errores: Map<String, String> = emptyMap(),
     val guardando: Boolean = false,
     val guardado: Boolean = false,
@@ -58,64 +68,75 @@ data class EstadoIngreso(
 
 class IngresoSinCompraViewModel(
     catalogo: RepositorioCatalogo,
-    private val obra: RepositorioObra,
+    obra: RepositorioObra,
     private val registros: RepositorioRegistros,
+    private val programador: ProgramadorSincronizacion,
 ) : ViewModel() {
     val buscador = BuscadorInsumos(catalogo, viewModelScope)
     private val _e = MutableStateFlow(EstadoIngreso())
     val estado = _e.asStateFlow()
+    val almacen = SelectorAlmacen(obra, viewModelScope)
 
-    fun cargar(obraId: Int) {
-        viewModelScope.launch {
-            val a = runCatching { obra.almacenes(obraId).firstOrNull()?.id }.getOrNull()
-            _e.update { it.copy(almacenId = a) }
-        }
+    fun cargar(obraId: Int) = almacen.cargar(obraId)
+    fun elegirAlmacen(obraId: Int, a: AlmacenObra) {
+        almacen.elegir(obraId, a)
+        _e.update { it.copy(errores = it.errores - "almacen") }
     }
 
-    fun origen(o: OrigenIngreso) = _e.update { it.copy(origen = o) }
+    fun origen(o: OrigenIngreso) = _e.update { it.copy(origen = o, errores = it.errores - "detalle") }
     fun elegir(i: Insumo) { buscador.limpiar(); _e.update { it.copy(insumo = i, errores = it.errores - "insumo") } }
     fun quitar() = _e.update { it.copy(insumo = null) }
     fun cantidad(v: String) = _e.update { it.copy(cantidad = v, errores = it.errores - "cantidad") }
     fun costo(v: String) = _e.update { it.copy(costo = v, errores = it.errores - "costo") }
-    fun detalle(v: String) = _e.update { it.copy(detalle = v) }
+    fun detalle(v: String) = _e.update { it.copy(detalle = v, errores = it.errores - "detalle") }
 
     fun guardar(obraId: Int) {
         val s = _e.value
-        val errores = validarIngreso(s.insumo, s.cantidad, s.costo)
+        val alm = almacen.estado.value
+        val errores = validarIngreso(s.insumo, s.cantidad, s.costo, s.origen, s.detalle) +
+            (if (alm.falta) mapOf("almacen" to "Elige a qué almacén entra") else emptyMap())
         if (errores.isNotEmpty()) { _e.update { it.copy(errores = errores) }; return }
         _e.update { it.copy(guardando = true) }
         viewModelScope.launch {
             registros.registrarAlmacen(
                 obraId,
-                RegistroAlmacen.IngresoSinCompra(s.almacenId, s.origen, LineaAlmacen(s.insumo!!, s.cantidad), s.costo, s.detalle.trim().ifEmpty { null }),
+                RegistroAlmacen.IngresoSinCompra(alm.elegido?.id, s.origen, LineaAlmacen(s.insumo!!, s.cantidad), s.costo, s.detalle.trim().ifEmpty { null }),
             )
+            programador.programar() // A5: viaja por la misma cola: si hay señal se envía ya; si no, cuando vuelva
             _e.update { it.copy(guardando = false, guardado = true) }
         }
     }
 
-    fun otro() = _e.update { EstadoIngreso(origen = it.origen, almacenId = it.almacenId) }
+    fun otro() = _e.update { EstadoIngreso(origen = it.origen) }
 }
 
 @Composable
 fun PantallaIngresoSinCompra(obraId: Int, alVolver: () -> Unit, vm: IngresoSinCompraViewModel = koinViewModel()) {
     val e by vm.estado.collectAsState()
     val b by vm.buscador.estado.collectAsState()
+    val almacen by vm.almacen.estado.collectAsState()
     LaunchedEffect(obraId) { vm.cargar(obraId) }
 
     PantallaVidrio("Ingreso sin compra", plano = { planoIngreso(it) }, alVolver = alVolver, subtitulo = "Material que llega sin una compra de por medio") {
         if (e.guardado) {
             GuardadoEnCelular(
                 "Ingreso guardado", "El ingreso de ${e.cantidad} ${e.insumo?.unidad.orEmpty()} de ${e.insumo?.descripcion.orEmpty()} quedó en el celular con su código único.",
-                "Registrar otro ingreso", vm::otro, alVolver,
+                "Registrar otro ingreso", vm::otro, alVolver, conServicio = true,
             )
             return@PantallaVidrio
         }
-        AvisoSinServicioAlmacen()
         FormularioAlmacen {
             PasoAlmacen("1", "¿De dónde viene?")
+            ElegirAlmacenObra(almacen, { vm.elegirAlmacen(obraId, it) }, e.errores["almacen"])
             Opciones(OrigenIngreso.entries, e.origen, { it.legible }, vm::origen)
             if (e.origen == OrigenIngreso.OTRA_OBRA) {
                 AvisoNaranja("Solo si esa obra no está en SIGRO. Si está registrada, usa «Traslado entre obras» para que el costo viaje con el material.")
+            }
+            if (e.origen.exigeDetalle) {
+                CampoVidrio(
+                    e.detalle, vm::detalle, if (e.origen == OrigenIngreso.OTRA_OBRA) "Nombre de la obra" else "¿De dónde viene?",
+                    error = e.errores["detalle"],
+                )
             }
         }
         FormularioAlmacen {
@@ -123,10 +144,12 @@ fun PantallaIngresoSinCompra(obraId: Int, alVolver: () -> Unit, vm: IngresoSinCo
             ElegirInsumo(b, e.insumo, vm.buscador::buscar, vm::elegir, vm::quitar, error = e.errores["insumo"])
             CampoVidrio(e.cantidad, vm::cantidad, "Cantidad", teclado = KeyboardType.Decimal, sufijo = e.insumo?.unidad ?: "—", error = e.errores["cantidad"])
             CampoVidrio(
-                e.costo, vm::costo, "Costo unitario", teclado = KeyboardType.Decimal, sufijo = "S/", error = e.errores["costo"],
-                ayuda = "Obligatorio: sin él no se puede valorizar el material.",
+                e.costo, vm::costo, "Costo unitario sin IGV", teclado = KeyboardType.Decimal, sufijo = "S/", error = e.errores["costo"],
+                ayuda = "Obligatorio. Por unidad del S10 (para el acero, por kg).",
             )
-            CampoVidrio(e.detalle, vm::detalle, "Detalle (opcional)", marcador = "Ej.: devuelve la cuadrilla de acabados")
+            if (!e.origen.exigeDetalle) {
+                CampoVidrio(e.detalle, vm::detalle, "Detalle (opcional)", marcador = "Ej.: devuelve la cuadrilla de acabados", error = e.errores["detalle"])
+            }
         }
         BotonNegro("Guardar ingreso", { vm.guardar(obraId) }, icono = Icons.Filled.Save, colorIcono = Paleta.NaranjaVivo, cargando = e.guardando)
     }

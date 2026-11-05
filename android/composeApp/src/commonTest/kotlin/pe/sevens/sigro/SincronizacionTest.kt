@@ -55,6 +55,9 @@ private class SalidasEnMemoria : SalidaDao {
             if (it.uuidCliente == uuid) it.copy(estado = estado, motivoRechazo = motivoRechazo, nota = nota, intentos = it.intentos + 1, ultimoIntentoMs = ahora) else it
         }
     }
+    override suspend fun anotarRecibo(uuid: String, porId: Int?, por: String?, fecha: String?) {
+        filas.value = filas.value.map { if (it.uuidCliente == uuid) it.copy(registradoPorId = porId, registradoPor = por, fechaServidor = fecha) else it }
+    }
     fun una(uuid: String) = filas.value.first { it.uuidCliente == uuid }
 }
 
