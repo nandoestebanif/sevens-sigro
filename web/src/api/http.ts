@@ -13,8 +13,8 @@
    ───────────────────────────────────────────────────────────────────────── */
 import { ErrorApi } from './error'
 import type {
-  AvanceInsumo, InsumoCatalogo, InsumoMaestro, Obra, ObraActiva, ParametroReposicion, Proveedor,
-  ResultadoRequerimiento, Semana,
+  AvanceInsumo, Compra, InsumoCatalogo, InsumoMaestro, LineaCompra, Obra, ObraActiva, ParametroReposicion, Proveedor,
+  ResultadoRequerimiento, Semana, TipoComprobante,
 } from './tipos'
 
 export const API_URL: string = (import.meta.env.VITE_API_URL ?? '').replace(/\/$/, '')
@@ -125,8 +125,11 @@ async function aObra(o: ObraApi): Promise<Obra> {
 const CLAVE_OBRA = 'sigro-obra-activa'
 let obraActivaId: string | null = null
 function leerObraActiva(): string | null {
-  if (obraActivaId) return obraActivaId
-  try { obraActivaId = sessionStorage.getItem(CLAVE_OBRA) } catch { /* nada */ }
+  if (obraActivaId && /^\d+$/.test(obraActivaId)) return obraActivaId
+  try {
+    const guardado = sessionStorage.getItem(CLAVE_OBRA)
+    obraActivaId = guardado && /^\d+$/.test(guardado) ? guardado : null
+  } catch { obraActivaId = null }
   return obraActivaId
 }
 
@@ -148,7 +151,8 @@ export const obrasHttp = {
     return obrasHttp.activa()
   },
   async crear(datos: { nombre: string; inicio: string; fin: string }): Promise<Obra> {
-    // las validaciones de HU-01 las hace el servidor (CHECK fin ≥ inicio, nombre obligatorio)
+    if (!datos.nombre.trim()) throw new ErrorApi('nombre', 'Escribe el nombre de la obra.')
+    if (!datos.inicio || !datos.fin) throw new ErrorApi('fechas', 'Elige las fechas de inicio y de fin.')
     const o = await pedir<ObraApi>('POST', '/obras', {
       nombre: datos.nombre.trim(), fechaInicio: datos.inicio, fechaFin: datos.fin,
     })
@@ -290,5 +294,46 @@ export const reposicionHttp = {
   },
   async cargarRequerimiento(filas: { insumoCodigo: string; cantidad: number; precio: number }[]): Promise<ResultadoRequerimiento> {
     return pedir<ResultadoRequerimiento>('POST', `/obras/${await obraId()}/requerimiento/importar`, { filas })
+  },
+}
+/* ── compras (HU-32) ── */
+interface CompraApi {
+  id: number; proveedorId: number; proveedorRazonSocial: string
+  tipoComprobante: TipoComprobante; numeroComprobante: string; fecha: string
+  estado: string; totales: { base: string; igv: string; total: string }
+  lineas: { insumoCodigo: string; descripcion: string; cantidad: string; unidadCompra: string; precioUnitario: string }[]
+}
+const aCompra = (c: CompraApi, oId: string): Compra => ({
+  id: String(c.id), obraId: oId, proveedorId: String(c.proveedorId),
+  proveedorRazonSocial: c.proveedorRazonSocial, tipoComprobante: c.tipoComprobante,
+  numeroComprobante: c.numeroComprobante, fecha: c.fecha, estado: 'registrada',
+  lineas: c.lineas.map((l) => ({
+    insumoId: l.insumoCodigo, descripcion: l.descripcion, unidadCompra: l.unidadCompra,
+    cantidad: num(l.cantidad), precioUnitario: num(l.precioUnitario),
+  })),
+  totales: { base: num(c.totales.base), igv: num(c.totales.igv), total: num(c.totales.total) },
+  adjunto: false,
+})
+export const comprasHttp = {
+  async registrar(d: { proveedorId: string; tipoComprobante: TipoComprobante; numeroComprobante: string; fecha: string; lineas: LineaCompra[] }): Promise<Compra> {
+    if (!d.proveedorId) throw new ErrorApi('proveedor', 'Elige el proveedor de la compra.')
+    const oId = await obraId()
+    const c = await pedir<CompraApi>('POST', `/obras/${oId}/compras`, {
+      proveedorId: Number(d.proveedorId),
+      tipoComprobante: d.tipoComprobante,
+      numeroComprobante: d.numeroComprobante.trim(),
+      fecha: d.fecha,
+      lineas: d.lineas.map((l) => ({
+        insumoCodigo: l.insumoId,
+        cantidad: l.cantidad,
+        unidadCompra: l.unidadCompra,
+        precioUnitario: l.precioUnitario,
+      })),
+    })
+    return aCompra(c, oId)
+  },
+  async listar(): Promise<Compra[]> {
+    const oId = await obraId()
+    return (await pedir<CompraApi[]>('GET', `/obras/${oId}/compras`)).map((c) => aCompra(c, oId))
   },
 }
