@@ -33,7 +33,7 @@ interface RepositorioRegistros {
     suspend fun registrarAsistencia(obraId: Int, fecha: String, marcas: List<MarcaAsistencia>): List<RegistroLocal>
     /** Trabajadores que ya tienen jornada guardada en el celular ese día (no rechazada). */
     suspend fun yaMarcados(obraId: Int, fecha: String): Set<Int>
-    /** Registros de almacén: se guardan, no se envían hasta que exista el servicio (fase 2). */
+    /** Registros de almacén: se guardan con su uuid; se envían los que ya tienen servicio (hoy, la entrada). */
     suspend fun registrarAlmacen(obraId: Int, registro: RegistroAlmacen): RegistroLocal
     /** Envía lo que tiene servicio. Seguro de repetir: el uuid hace idempotente cada envío. */
     suspend fun sincronizar(): ResultadoSincronizacion
@@ -43,7 +43,11 @@ interface RepositorioRegistros {
 sealed interface RegistroAlmacen {
     val tipo: TipoRegistro
 
-    data class Entrada(val almacenId: Int?, val compra: CompraParaRecibir, val recibido: List<Pair<LineaCompra, String>>, val conFotoGuia: Boolean) : RegistroAlmacen {
+    /**
+     * HU-35. `todo` = llegó todo lo pendiente: viaja SIN líneas y el servidor recibe lo que falte (aunque
+     * otra entrega haya llegado antes). Si no, cada línea va con su `insumo_id` y lo recibido.
+     */
+    data class Entrada(val almacenId: Int?, val compra: CompraParaRecibir, val recibido: List<Pair<LineaCompra, String>>, val todo: Boolean) : RegistroAlmacen {
         override val tipo get() = TipoRegistro.ENTRADA_COMPRA
     }
     data class IngresoSinCompra(val almacenId: Int?, val origen: OrigenIngreso, val linea: LineaAlmacen, val costoUnitario: String, val detalle: String?) : RegistroAlmacen {
@@ -63,7 +67,12 @@ sealed interface RegistroAlmacen {
 /** Lecturas de la obra que el almacén necesita: compras por recibir, almacenes y obras destino. */
 interface RepositorioObra {
     suspend fun almacenes(obraId: Int): List<AlmacenObra>
+    /** M6: el último almacén elegido en esa obra (vive en el celular, sirve sin señal). */
+    suspend fun almacenRecordado(obraId: Int): AlmacenObra?
+    suspend fun recordarAlmacen(obraId: Int, almacen: AlmacenObra)
     suspend fun compras(obraId: Int): List<CompraParaRecibir>
+    /** HU-35: la compra con el pendiente de cada línea según el servidor (necesita señal). */
+    suspend fun conPendientes(obraId: Int, compra: CompraParaRecibir): CompraParaRecibir
     /** Obras a las que se puede trasladar (GET /obras), sin la propia. */
     suspend fun obrasDestino(obraId: Int): List<ObraAsignada>
 }

@@ -12,11 +12,15 @@ import platform.Foundation.NSUserDomainMask
 import pe.sevens.sigro.datos.local.BaseDatosSigro
 import pe.sevens.sigro.datos.local.construirBaseDatos
 import pe.sevens.sigro.datos.remoto.crearClienteHttp
+import pe.sevens.sigro.datos.repositorio.BovedaSesion
 import pe.sevens.sigro.dominio.ProgramadorSincronizacion
+import pe.sevens.sigro.plataforma.AlmacenSeguro
+import pe.sevens.sigro.plataforma.AlmacenSeguroIos
 import pe.sevens.sigro.sincronizacion.ProgramadorIos
 
 actual val moduloPlataforma: Module = module {
-    single { crearClienteHttp(Darwin.create()) }
+    single { val boveda = get<BovedaSesion>(); crearClienteHttp(Darwin.create()) { boveda.token() } }
+    single<AlmacenSeguro> { AlmacenSeguroIos() }
     single<BaseDatosSigro> { construirBaseDatos(Room.databaseBuilder<BaseDatosSigro>(name = rutaBase())) }
     single<ProgramadorSincronizacion> { ProgramadorIos(get(), get()) }
 }

@@ -69,7 +69,7 @@ private class Escenario(var responder: (Int) -> Pair<HttpStatusCode, String>?) {
         respond(r.second, r.first, headersOf(HttpHeaders.ContentType, "application/json"))
     }
     var hora = 1_000L
-    val repo = RepositorioSalidasImpl(ApiSigro(crearClienteHttp(motor), jsonSigro), salidas, ajustes) { hora++ }
+    val repo = RepositorioSalidasImpl(ApiSigro(crearClienteHttp(motor), jsonSigro), salidas, credencialesDePrueba(ajustes)) { hora++ }
 }
 
 private val cemento = Insumo(7, "PRUEBA-001", "Cemento Portland tipo I", "bls")

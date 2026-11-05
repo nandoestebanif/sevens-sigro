@@ -2,7 +2,6 @@ package pe.sevens.sigro.datos.repositorio
 
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
-import pe.sevens.sigro.datos.local.AjusteDao
 import pe.sevens.sigro.datos.local.InsumoDao
 import pe.sevens.sigro.datos.local.TrabajadorDao
 import pe.sevens.sigro.datos.local.TrabajadorLocalEntity
@@ -15,6 +14,8 @@ import pe.sevens.sigro.dominio.AlmacenObra
 import pe.sevens.sigro.dominio.BusquedaInsumos
 import pe.sevens.sigro.dominio.CatalogoTexto
 import pe.sevens.sigro.dominio.CompraParaRecibir
+import pe.sevens.sigro.dominio.ElegirAlmacen
+import pe.sevens.sigro.dominio.EstadoLineaRecepcion
 import pe.sevens.sigro.dominio.ErrorSigro
 import pe.sevens.sigro.dominio.FichaInsumo
 import pe.sevens.sigro.dominio.LineaCompra
@@ -26,26 +27,18 @@ import pe.sevens.sigro.dominio.RepositorioObra
 import pe.sevens.sigro.dominio.RepositorioTrabajadores
 import pe.sevens.sigro.dominio.Trabajador
 
-private suspend fun Credenciales.exigir(): Pair<String, String> {
-    val s = servidor()
-    val t = token()
-    if (s == null || t == null) throw ErrorSigro("sin_sesion", "Vuelve a ingresar.")
-    return s to t
-}
-
 /** HU-10 con señal (servidor) y sin señal (copia del celular); HU-08 registrar con señal. */
 class RepositorioInsumosImpl(
     private val api: ApiSigro,
     private val local: InsumoDao,
-    ajustes: AjusteDao,
+    private val cred: Credenciales,
 ) : RepositorioInsumos {
-    private val cred = Credenciales(ajustes)
 
     override suspend fun buscar(texto: String): BusquedaInsumos {
-        val (s, t) = cred.exigir()
+        val s = cred.exigir()
         return try {
             // El servidor filtra por texto; aquí se afina sin tildes ni mayúsculas (HU-10).
-            val lista = api.insumos(s, t, texto.ifBlank { null }).map(::aFicha)
+            val lista = api.insumos(s, texto.ifBlank { null }).map(::aFicha)
             BusquedaInsumos(lista.filter { CatalogoTexto.coincide(it, texto) }.ifEmpty { lista }, desdeCelular = false)
         } catch (e: ErrorSigro) {
             if (!e.esTransitorio) throw e
@@ -55,8 +48,7 @@ class RepositorioInsumosImpl(
     }
 
     override suspend fun registrar(nuevo: NuevoInsumo): FichaInsumo {
-        val (s, t) = cred.exigir()
-        return aFicha(api.registrarInsumo(s, t, InsumoIn(nuevo.descripcion, nuevo.unidad.trim(), nuevo.tipo)))
+        return aFicha(api.registrarInsumo(cred.exigir(), InsumoIn(nuevo.descripcion, nuevo.unidad.trim(), nuevo.tipo)))
     }
 
     private fun aFicha(d: InsumoDto) = FichaInsumo(
@@ -69,25 +61,22 @@ class RepositorioInsumosImpl(
 class RepositorioTrabajadoresImpl(
     private val api: ApiSigro,
     private val local: TrabajadorDao,
-    ajustes: AjusteDao,
+    private val cred: Credenciales,
 ) : RepositorioTrabajadores {
-    private val cred = Credenciales(ajustes)
 
     override fun deObra(obraId: Int): Flow<List<Trabajador>> =
         local.observarDeObra(obraId).map { l -> l.map(::aDominio) }
 
     override suspend fun actualizar(obraId: Int): Int {
-        val (s, t) = cred.exigir()
-        val lista = api.trabajadores(s, t, obraId).map { aLocal(obraId, it) }
+        val lista = api.trabajadores(cred.exigir(), obraId).map { aLocal(obraId, it) }
         local.guardarTodos(lista)
         return lista.size
     }
 
     override suspend fun registrar(obraId: Int, nuevo: NuevoTrabajador): Trabajador {
-        val (s, t) = cred.exigir()
         val cat = requireNotNull(nuevo.categoria) { "Falta la categoría" }
         val d = api.registrarTrabajador(
-            s, t, obraId,
+            cred.exigir(), obraId,
             TrabajadorIn(nuevo.nombre.trim(), nuevo.tipoDocumento, nuevo.documento.trim(), cat.api, nuevo.cuadrilla.trim(), nuevo.fechaIngreso.trim()),
         )
         val fila = aLocal(obraId, d)
@@ -104,18 +93,30 @@ class RepositorioTrabajadoresImpl(
     )
 }
 
-/** Lecturas que las pantallas de almacén necesitan (con señal). */
-class RepositorioObraImpl(private val api: ApiSigro, ajustes: AjusteDao) : RepositorioObra {
-    private val cred = Credenciales(ajustes)
+/** Lecturas que las pantallas de almacén necesitan (con señal), y el almacén elegido (sin señal). */
+class RepositorioObraImpl(private val api: ApiSigro, private val cred: Credenciales) : RepositorioObra {
 
-    override suspend fun almacenes(obraId: Int): List<AlmacenObra> {
-        val (s, t) = cred.exigir()
-        return api.almacenes(s, t, obraId).filter { it.estado != "cerrado" }.map { AlmacenObra(it.id, it.nombre) }
+    /** Solo los activos: el servidor rechaza registrar en un almacén cerrado. */
+    override suspend fun almacenes(obraId: Int): List<AlmacenObra> =
+        api.almacenes(cred.exigir(), obraId).filter { it.estado == "activo" }.map { AlmacenObra(it.id, it.nombre) }
+
+    override suspend fun almacenRecordado(obraId: Int): AlmacenObra? {
+        val texto = cred.leer(Clave.almacen(obraId)) ?: return null
+        val id = texto.substringBefore('|').toIntOrNull() ?: return null
+        return AlmacenObra(id, texto.substringAfter('|'))
+    }
+
+    override suspend fun recordarAlmacen(obraId: Int, almacen: AlmacenObra) =
+        cred.guardar(Clave.almacen(obraId), "${almacen.id}|${almacen.nombre}")
+
+    override suspend fun conPendientes(obraId: Int, compra: CompraParaRecibir): CompraParaRecibir {
+        val estado = api.estadoRecepcion(cred.exigir(), obraId, compra.id)
+            .map { EstadoLineaRecepcion(it.insumoId, it.unidadCompra, it.pedido, it.recibido, it.pendiente) }
+        return compra.copy(lineas = ElegirAlmacen.unirPendientes(compra.lineas, estado))
     }
 
     override suspend fun compras(obraId: Int): List<CompraParaRecibir> {
-        val (s, t) = cred.exigir()
-        return api.compras(s, t, obraId).filter { it.estado == "registrada" }.map { c ->
+        return api.compras(cred.exigir(), obraId).filter { it.estado == "registrada" }.map { c ->
             CompraParaRecibir(
                 c.id, c.proveedor, "${c.tipoComprobante} ${c.numeroComprobante}", c.fecha,
                 c.lineas.map { LineaCompra(it.insumoCodigo, it.descripcion, it.cantidad, it.unidadCompra) },
@@ -124,7 +125,6 @@ class RepositorioObraImpl(private val api: ApiSigro, ajustes: AjusteDao) : Repos
     }
 
     override suspend fun obrasDestino(obraId: Int): List<ObraAsignada> {
-        val (s, t) = cred.exigir()
-        return api.obras(s, t).filter { it.id != obraId && it.estado != "cerrada" }.map { ObraAsignada(it.id, it.nombre, it.rol.orEmpty()) }
+        return api.obras(cred.exigir()).filter { it.id != obraId && it.estado != "cerrada" }.map { ObraAsignada(it.id, it.nombre, it.rol.orEmpty()) }
     }
 }

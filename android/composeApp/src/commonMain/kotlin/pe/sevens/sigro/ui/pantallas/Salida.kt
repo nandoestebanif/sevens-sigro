@@ -68,7 +68,9 @@ import pe.sevens.sigro.dominio.EstadoEnvio
 import pe.sevens.sigro.dominio.Insumo
 import pe.sevens.sigro.dominio.NuevaSalida
 import pe.sevens.sigro.dominio.ProgramadorSincronizacion
+import pe.sevens.sigro.dominio.AlmacenObra
 import pe.sevens.sigro.dominio.RepositorioCatalogo
+import pe.sevens.sigro.dominio.RepositorioObra
 import pe.sevens.sigro.dominio.RepositorioSalidas
 import pe.sevens.sigro.dominio.ValidarSalida
 import pe.sevens.sigro.plataforma.reducirMovimiento
@@ -101,10 +103,19 @@ class SalidaViewModel(
     private val catalogo: RepositorioCatalogo,
     private val salidas: RepositorioSalidas,
     private val programador: ProgramadorSincronizacion,
+    obra: RepositorioObra,
 ) : ViewModel() {
     private val _e = MutableStateFlow(EstadoSalida())
     val estado = _e.asStateFlow()
     private var busquedaJob: Job? = null
+
+    /** M6: de qué almacén sale (HU-40 lo exige). */
+    val almacen = SelectorAlmacen(obra, viewModelScope)
+    fun cargarAlmacenes(obraId: Int) = almacen.cargar(obraId)
+    fun elegirAlmacen(obraId: Int, a: AlmacenObra) {
+        almacen.elegir(obraId, a)
+        _e.update { it.copy(errores = it.errores - "almacen") }
+    }
 
     fun buscar(texto: String) {
         _e.update { it.copy(busqueda = texto) }
@@ -126,11 +137,13 @@ class SalidaViewModel(
 
     fun guardar(obraId: Int) {
         val s = _e.value
-        val errores = ValidarSalida.errores(s.insumo, s.cantidad, s.motivo, s.quienRetira)
+        val alm = almacen.estado.value
+        val errores = ValidarSalida.errores(s.insumo, s.cantidad, s.motivo, s.quienRetira) +
+            (if (alm.falta) mapOf("almacen" to "Elige de qué almacén sale") else emptyMap())
         if (errores.isNotEmpty()) { _e.update { it.copy(errores = errores) }; return }
         _e.update { it.copy(guardando = true) }
         viewModelScope.launch {
-            salidas.registrar(NuevaSalida(obraId, s.insumo!!, s.cantidad, s.motivo, s.quienRetira, s.frente))
+            salidas.registrar(NuevaSalida(obraId, s.insumo!!, s.cantidad, s.motivo, s.quienRetira, s.frente, alm.elegido?.id))
             programador.programar() // si hay señal se envía ya; si no, cuando vuelva
             _e.update { it.copy(guardando = false, guardada = true) }
         }
@@ -147,6 +160,8 @@ private val NaranjaTexto = Color(0xFF7C2D12)
 @Composable
 fun PantallaSalida(obraId: Int, alVolver: () -> Unit, vm: SalidaViewModel = koinViewModel()) {
     val e by vm.estado.collectAsState()
+    val almacen by vm.almacen.estado.collectAsState()
+    LaunchedEffect(obraId) { vm.cargarAlmacenes(obraId) }
     FondoPlano(plano = { planoSalida(it) }) {
         Column(
             Modifier.fillMaxSize().verticalScroll(rememberScrollState()).statusBarsPadding().imePadding()
@@ -166,6 +181,7 @@ fun PantallaSalida(obraId: Int, alVolver: () -> Unit, vm: SalidaViewModel = koin
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
                     Paso("1", "¿Qué sale?")
+                    ElegirAlmacenObra(almacen, { vm.elegirAlmacen(obraId, it) }, e.errores["almacen"])
                     if (e.insumo == null) {
                         CampoVidrio(
                             e.busqueda, vm::buscar, "Buscar insumo por nombre o código", marcador = "Ej.: cemento",
