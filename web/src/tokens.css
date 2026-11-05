@@ -388,13 +388,32 @@ body { transition: background-color 0.25s ease-out, color 0.25s ease-out; }
 }
 .menu-cabecera { flex: none; display: flex; flex-direction: column; gap: 16px; }
 .menu-grupos {
-  display: flex; flex-direction: column; gap: 14px;
-  flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain;
-  margin-right: -6px; padding-right: 6px; /* la barra delgada no tapa los ítems */
-  scrollbar-width: thin; scrollbar-color: var(--borde) transparent;
+  display: flex; flex-direction: column; gap: 4px;
+  /* acordeón: un área abierta a la vez, el menú entra sin scroll. El auto es solo una red de seguridad
+     para alturas que no se usan en obra (menos de ~600 px útiles); en 1366×768 a 125 % no aparece. */
+  flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none;
 }
-.menu-grupos::-webkit-scrollbar { width: 6px; }
-.menu-grupos::-webkit-scrollbar-thumb { background: var(--borde); border-radius: 3px; }
+.menu-grupos::-webkit-scrollbar { display: none; }
+.menu-area {
+  width: 100%; min-height: 36px; padding: 0 10px; border: 0; border-radius: 12px; background: transparent;
+  display: flex; align-items: center; gap: 8px; cursor: pointer; font: inherit; text-align: left;
+  font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--tinta-2);
+}
+.menu-area:hover { background: var(--vidrio-celda); color: var(--tinta); }
+.menu-area:focus-visible { outline: 2px solid var(--accion); outline-offset: 2px; }
+.menu-area-texto { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.menu-area-punto { flex: none; width: 7px; height: 7px; border-radius: 4px; background: var(--accion); }
+.menu-area-flecha { flex: none; transition: transform 0.18s ease-out; }
+.menu-grupo[data-abierto] .menu-area-flecha { transform: rotate(180deg); }
+.menu-area-lista { display: flex; flex-direction: column; gap: 3px; padding: 2px 0 6px; }
+.menu-area-lista[hidden] { display: none; }
+/* alto útil bajo (src/escala.ts: p. ej. 1366×768 a 125 %): el menú se compacta para entrar sin scroll */
+:root[data-alto='bajo'] .menu-lateral { padding-top: 14px; padding-bottom: 12px; gap: 10px; }
+:root[data-alto='bajo'] .menu-cabecera { gap: 10px; }
+:root[data-alto='bajo'] .menu-cabecera img { height: 44px !important; }
+:root[data-alto='bajo'] .menu-area { min-height: 30px; }
+:root[data-alto='bajo'] .menu-enlace { min-height: 36px; }
+:root[data-alto='bajo'] .menu-pie { padding-top: 10px; }
 .menu-pie {
   flex: none; border-top: 1px solid var(--separador); padding: 12px 2px 0;
   display: flex; align-items: center; gap: 10px;
@@ -406,11 +425,7 @@ body { transition: background-color 0.25s ease-out, color 0.25s ease-out; }
 }
 .menu-salir:hover { color: var(--tinta); background: var(--vidrio-celda); }
 .texto-corto { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.menu-grupo { display: flex; flex-direction: column; gap: 3px; }
-.menu-grupo-rotulo {
-  padding: 0 10px 4px; font-size: 11px; font-weight: 700; letter-spacing: 0.08em;
-  text-transform: uppercase; color: var(--tinta-2);
-}
+.menu-grupo { display: flex; flex-direction: column; }
 .menu-enlace {
   flex: none; min-height: 44px; padding: 0 12px; border-radius: 15px; display: flex; align-items: center; gap: 10px;
   font-size: 14px; font-weight: 600; text-decoration: none; color: var(--tinta-2);
@@ -437,7 +452,10 @@ body { transition: background-color 0.25s ease-out, color 0.25s ease-out; }
 :root:not([data-ancho='amplio']) .menu-grupos::-webkit-scrollbar { height: 6px; }
 :root:not([data-ancho='amplio']) .menu-grupos::-webkit-scrollbar-thumb { background: var(--borde); border-radius: 3px; }
 :root:not([data-ancho='amplio']) .menu-grupo { flex-direction: row; }
-:root:not([data-ancho='amplio']) .menu-grupo-rotulo { display: none; }
+/* en angosto no hay acordeón: todas las opciones en la fila */
+:root:not([data-ancho='amplio']) .menu-area { display: none; }
+:root:not([data-ancho='amplio']) .menu-area-lista,
+:root:not([data-ancho='amplio']) .menu-area-lista[hidden] { display: flex; flex-direction: row; gap: 6px; padding: 0; }
 :root:not([data-ancho='amplio']) .menu-enlace { white-space: nowrap; }
 
 /* ── W1 · Entrar: la tarjeta oscura de la marca y el formulario de vidrio.
