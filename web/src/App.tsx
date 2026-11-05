@@ -1,6 +1,7 @@
 /* SIGRO · armazón de la web de oficina: menú lateral de vidrio (lienzo «SIGRO Oficina · Web»), obra activa y rutas. */
-import { Component, Suspense, lazy, useEffect, useRef, useState, type ReactNode } from 'react'
-import { HashRouter, NavLink, Navigate, Route, Routes } from 'react-router-dom'
+import { Component, Suspense, lazy, useEffect, useState, type ReactNode } from 'react'
+import { HashRouter, NavLink, Navigate, Route, Routes, useLocation } from 'react-router-dom'
+import { alternarGrupo, grupoDeRuta } from './menu'
 import { api } from './api/cliente'
 import { cerrarSesion, sesionActual, usaApiReal } from './api/http'
 import { Entrar } from './paginas/Entrar'
@@ -236,6 +237,51 @@ function PanelAccesibilidad() {
   )
 }
 
+/* Secciones del menú en acordeón: cada área es un botón que se abre al tocarlo, una a la vez, y al
+   entrar está abierta la de la pantalla actual. Así el menú cabe sin scroll (también a 125 %).
+   En angosto (menú arriba, en una fila) se ven todas las opciones y los botones de área no aparecen. */
+function MenuSecciones({ grupos }: { grupos: typeof GRUPOS }) {
+  const { pathname } = useLocation()
+  const actual = grupoDeRuta(grupos, pathname)
+  const [abierto, setAbierto] = useState<string | null>(actual)
+  // al llegar a una pantalla de otra área (por un enlace o con «atrás»), se abre esa área
+  useEffect(() => { if (actual) setAbierto(actual) }, [actual])
+
+  return (
+    <nav aria-label="Secciones" className="menu-grupos">
+      {grupos.map((g, i) => {
+        const abre = abierto === g.rotulo
+        const idLista = `menu-area-${i}`
+        return (
+          <div key={g.rotulo} className="menu-grupo" data-abierto={abre || undefined}>
+            <button
+              type="button"
+              className="menu-area"
+              aria-expanded={abre}
+              aria-controls={idLista}
+              onClick={() => setAbierto((x) => alternarGrupo(x, g.rotulo))}
+            >
+              <span className="menu-area-texto">{g.rotulo}</span>
+              {actual === g.rotulo && !abre && <span className="menu-area-punto" aria-label="(pantalla actual)" />}
+              <svg className="menu-area-flecha" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="m6 9 6 6 6-6" />
+              </svg>
+            </button>
+            <div id={idLista} className="menu-area-lista" hidden={!abre}>
+              {g.items.map((s) => (
+                <NavLink key={s.ruta} to={s.ruta} className="menu-enlace" title={s.nombre}>
+                  <Icono d={ICONOS[s.icono]} tam={19} />
+                  <span className="menu-enlace-texto">{s.nombre}</span>
+                </NavLink>
+              ))}
+            </div>
+          </div>
+        )
+      })}
+    </nav>
+  )
+}
+
 /** HT-04: con la API real primero se entra; con el cliente simulado no hace falta */
 export default function App() {
   const [sesion, setSesion] = useState(() => sesionActual())
@@ -271,9 +317,6 @@ function Sistema() {
   const sesion = sesionActual()
   const rol = sesion?.obras.find((o) => String(o.id) === obra?.id)?.rol ?? sesion?.obras[0]?.rol
   const grupos = usaApiReal && esAdministrador(sesion, obra?.id) ? [...GRUPOS, GRUPO_ADMINISTRACION] : GRUPOS
-  // la lista de opciones arranca arriba (el navegador no debe dejarla desplazada al cargar)
-  const listaMenu = useRef<HTMLElement>(null)
-  useEffect(() => { listaMenu.current?.scrollTo({ top: 0 }) }, [])
 
   return (
     <HashRouter>
@@ -317,19 +360,7 @@ function Sistema() {
           </div>
           </div>
 
-          <nav aria-label="Secciones" className="menu-grupos" ref={listaMenu}>
-            {grupos.map((g) => (
-              <div key={g.rotulo} className="menu-grupo">
-                <span className="menu-grupo-rotulo">{g.rotulo}</span>
-                {g.items.map((s) => (
-                  <NavLink key={s.ruta} to={s.ruta} className="menu-enlace" title={s.nombre}>
-                    <Icono d={ICONOS[s.icono]} tam={19} />
-                    <span className="menu-enlace-texto">{s.nombre}</span>
-                  </NavLink>
-                ))}
-              </div>
-            ))}
-          </nav>
+          <MenuSecciones grupos={grupos} />
 
           {usaApiReal && sesion && (
             <div className="menu-pie">
