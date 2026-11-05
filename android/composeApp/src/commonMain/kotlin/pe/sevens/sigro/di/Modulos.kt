@@ -16,6 +16,7 @@ import pe.sevens.sigro.datos.repositorio.RepositorioRegistrosImpl
 import pe.sevens.sigro.datos.repositorio.RepositorioTrabajadoresImpl
 import pe.sevens.sigro.datos.repositorio.RepositorioSalidasImpl
 import pe.sevens.sigro.datos.repositorio.RepositorioSesionImpl
+import pe.sevens.sigro.datos.repositorio.RepositorioStockImpl
 import pe.sevens.sigro.dominio.RepositorioCatalogo
 import pe.sevens.sigro.dominio.RepositorioDispositivo
 import pe.sevens.sigro.dominio.RepositorioInsumos
@@ -24,6 +25,7 @@ import pe.sevens.sigro.dominio.RepositorioRegistros
 import pe.sevens.sigro.dominio.RepositorioTrabajadores
 import pe.sevens.sigro.dominio.RepositorioSalidas
 import pe.sevens.sigro.dominio.RepositorioSesion
+import pe.sevens.sigro.dominio.RepositorioStock
 import pe.sevens.sigro.ui.pantallas.AsistenciaViewModel
 import pe.sevens.sigro.ui.pantallas.CatalogoViewModel
 import pe.sevens.sigro.ui.pantallas.EntradaViewModel
@@ -77,6 +79,8 @@ val moduloDatos = module {
     single<RepositorioInsumos> { RepositorioInsumosImpl(get(), get(), get()) }
     single<RepositorioTrabajadores> { RepositorioTrabajadoresImpl(get(), get(), get()) }
     single<RepositorioObra> { RepositorioObraImpl(get(), get()) }
+    single { get<BaseDatosSigro>().stock() }
+    single<RepositorioStock> { RepositorioStockImpl(get(), get(), get()) }
 }
 
 val moduloPresentacion = module {
@@ -92,9 +96,9 @@ val moduloPresentacion = module {
     viewModel { TrabajadoresViewModel(get(), get()) }
     viewModel { TrabajadorNuevoViewModel(get()) }
     viewModel { AsistenciaViewModel(get(), get(), get()) }
-    viewModel { StockViewModel(get(), get()) }
+    viewModel { StockViewModel(get()) }
     viewModel { EntradaViewModel(get(), get(), get()) }
-    viewModel { IngresoSinCompraViewModel(get(), get(), get()) }
+    viewModel { IngresoSinCompraViewModel(get(), get(), get(), get()) }
     viewModel { TrasladoViewModel(get(), get(), get()) }
     viewModel { ConteoViewModel(get(), get(), get()) }
     viewModel { CierreViewModel(get(), get()) }

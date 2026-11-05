@@ -78,6 +78,7 @@ import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
 import org.koin.compose.viewmodel.koinViewModel
 import pe.sevens.sigro.dominio.CatalogoTexto
+import pe.sevens.sigro.dominio.EstadoDispositivo
 import pe.sevens.sigro.dominio.ObraAsignada
 import pe.sevens.sigro.dominio.RepositorioDispositivo
 import pe.sevens.sigro.dominio.RepositorioRegistros
@@ -104,12 +105,14 @@ enum class CelularEnObra(val texto: String) {
     REVOCADO("Celular revocado en esta obra"),
     SIN_SOLICITAR("Este celular aún no pide autorización aquí"),
     SIN_CONSULTAR("Estado del celular: se consulta con señal"),
+    NO_VISIBLE("Estado del celular: míralo en «Mi celular»"),
 }
 
-fun celularEnObra(estado: String?, consultado: Boolean): CelularEnObra = when {
+fun celularEnObra(estado: String?, consultado: Boolean, visible: Boolean = true): CelularEnObra = when {
     !consultado -> CelularEnObra.SIN_CONSULTAR
     estado == "autorizado" -> CelularEnObra.AUTORIZADO
-    estado == "pendiente" -> CelularEnObra.PENDIENTE
+    estado == "pendiente" || estado == EstadoDispositivo.YA_SOLICITADO -> CelularEnObra.PENDIENTE
+    !visible && estado == null -> CelularEnObra.NO_VISIBLE
     estado == "revocado" -> CelularEnObra.REVOCADO
     else -> CelularEnObra.SIN_SOLICITAR
 }
@@ -140,7 +143,7 @@ class ObrasViewModel(
             val r = obras.map { o ->
                 async {
                     o.id to runCatching { dispositivo.estado(o.id) }
-                        .fold({ celularEnObra(it.estado, consultado = true) }, { CelularEnObra.SIN_CONSULTAR })
+                        .fold({ celularEnObra(it.estado, consultado = true, visible = it.visible) }, { CelularEnObra.SIN_CONSULTAR })
                 }
             }.awaitAll()
             _celular.value = r.toMap()
