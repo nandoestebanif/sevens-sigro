@@ -12,6 +12,7 @@
    web sigue con el cliente simulado, para que nadie quede bloqueado.
    ───────────────────────────────────────────────────────────────────────── */
 import { ErrorApi } from './error'
+import { faltaFactor } from './unidades'
 import type {
   AvanceInsumo, Compra, InsumoCatalogo, InsumoMaestro, LineaCompra, Obra, ObraActiva, ParametroReposicion, Proveedor,
   ResultadoRequerimiento, Semana, TipoComprobante,
@@ -277,6 +278,7 @@ export const reposicionHttp = {
         compradoCantidad: comp, compradoPct: req ? Math.round((comp / req) * 1000) / 10 : 0,
         recibidoPct: 0, consumidoPct: 0, gastado: 0, // llegan con almacén y costo
         saldoPorComprar: num(s.saldoEnUnidadCompra), desviacionPuntos: 0,
+        faltaFactor: faltaFactor(s.unidadS10, s.unidadCompra, num(s.saldo), num(s.saldoEnUnidadCompra)),
       }
     })
   },
