@@ -1,0 +1,60 @@
+@startuml
+skinparam defaultFontName "DejaVu Sans"
+skinparam defaultFontSize 12
+skinparam shadowing false
+skinparam roundCorner 8
+skinparam ArrowColor #1F2A44
+skinparam ActivityBorderColor #1F2A44
+skinparam ActivityBackgroundColor #FFF7ED
+skinparam ActivityDiamondBackgroundColor #FEF3C7
+skinparam ActivityDiamondBorderColor #92400E
+skinparam SwimlaneTitleFontStyle bold
+skinparam SwimlaneTitleFontColor #1F2A44
+skinparam SwimlaneBorderColor #9CA3AF
+skinparam PartitionBorderColor #9CA3AF
+skinparam ParticipantBorderColor #1F2A44
+skinparam ParticipantBackgroundColor #FFF7ED
+skinparam ActorBorderColor #1F2A44
+skinparam ActorBackgroundColor #FFF7ED
+skinparam DatabaseBorderColor #1F2A44
+skinparam DatabaseBackgroundColor #E0E7FF
+skinparam SequenceLifeLineBorderColor #9CA3AF
+skinparam SequenceGroupBorderColor #C2410C
+skinparam SequenceGroupHeaderFontColor #C2410C
+skinparam StateBorderColor #1F2A44
+skinparam StateBackgroundColor #FFF7ED
+skinparam StateStartColor #1F2A44
+skinparam StateEndColor #1F2A44
+skinparam NoteBackgroundColor #F3F4F6
+skinparam NoteBorderColor #9CA3AF
+skinparam TitleFontSize 15
+skinparam TitleFontColor #C2410C
+skinparam ClassBorderColor #1F2A44
+skinparam ClassBackgroundColor #FFF7ED
+title HU-26 · Alerta de reposición\nDiagrama de actividades del sistema
+|Almacenero|
+start
+:Registra una salida (HU-40);
+|API (servicio Almacén)|
+:Guarda la salida y recalcula el saldo;
+:Publica el evento en el outbox;
+|Relevo de eventos|
+:Entrega el evento a Compras y a Notificaciones;
+|API (servicio Compras)|
+:Lee el punto de reposición del insumo (HU-25);
+if (¿El saldo cruzó el punto de reposición?) then (sí)
+  if (¿Ya hay un aviso activo de ese insumo?) then (sí)
+    :No repite el aviso;
+  else (no)
+    :Crea el aviso con insumo, saldo,\npunto y falta por comprar;
+    |Notificaciones|
+    :Lo entrega al residente de la obra;
+  endif
+else (no)
+endif
+|Residente de obra|
+:Ve el aviso y decide la compra;
+|API (servicio Compras)|
+:Al registrarse una compra del insumo,\nmarca el aviso «atendido»;
+stop
+@enduml

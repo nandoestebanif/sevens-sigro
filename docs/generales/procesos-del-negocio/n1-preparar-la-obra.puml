@@ -1,0 +1,55 @@
+@startuml
+skinparam defaultFontName "DejaVu Sans"
+skinparam defaultFontSize 12
+skinparam shadowing false
+skinparam roundCorner 8
+skinparam ArrowColor #1F2A44
+skinparam ActivityBorderColor #1F2A44
+skinparam ActivityBackgroundColor #FFF7ED
+skinparam ActivityDiamondBackgroundColor #FEF3C7
+skinparam ActivityDiamondBorderColor #92400E
+skinparam SwimlaneTitleFontStyle bold
+skinparam SwimlaneTitleFontColor #1F2A44
+skinparam SwimlaneBorderColor #9CA3AF
+skinparam PartitionBorderColor #9CA3AF
+skinparam ParticipantBorderColor #1F2A44
+skinparam ParticipantBackgroundColor #FFF7ED
+skinparam ActorBorderColor #1F2A44
+skinparam ActorBackgroundColor #FFF7ED
+skinparam DatabaseBorderColor #1F2A44
+skinparam DatabaseBackgroundColor #E0E7FF
+skinparam SequenceLifeLineBorderColor #9CA3AF
+skinparam SequenceGroupBorderColor #C2410C
+skinparam SequenceGroupHeaderFontColor #C2410C
+skinparam StateBorderColor #1F2A44
+skinparam StateBackgroundColor #FFF7ED
+skinparam StateStartColor #1F2A44
+skinparam StateEndColor #1F2A44
+skinparam NoteBackgroundColor #F3F4F6
+skinparam NoteBorderColor #9CA3AF
+skinparam TitleFontSize 15
+skinparam TitleFontColor #C2410C
+skinparam ClassBorderColor #1F2A44
+skinparam ClassBackgroundColor #FFF7ED
+title N1 · Preparar la obra para controlar sus recursos\nDiagrama de actividades del negocio
+|Residente de obra|
+start
+:Recibe la obra adjudicada;
+:Define su nombre, fecha de inicio y fecha de fin;
+:Divide el plazo en semanas de control\n(corte de domingo a sábado);
+:Declara los almacenes de la obra;
+|Administración|
+:Designa al personal que registra y al que consulta;
+:Asigna a cada persona su rol y sus obras;
+|Almacenero|
+:Recibe el celular de la obra;
+|Administración|
+if (¿La obra ya tenía un celular en uso?) then (sí)
+  :Retira el anterior y deja constancia;
+else (no)
+endif
+:Habilita el celular para registrar en esa obra;
+|Residente de obra|
+:Da la obra por lista para recibir material;
+stop
+@enduml

@@ -1,0 +1,77 @@
+@startuml
+skinparam defaultFontName "DejaVu Sans"
+skinparam defaultFontSize 12
+skinparam shadowing false
+skinparam roundCorner 8
+skinparam ArrowColor #1F2A44
+skinparam ActivityBorderColor #1F2A44
+skinparam ActivityBackgroundColor #FFF7ED
+skinparam ActivityDiamondBackgroundColor #FEF3C7
+skinparam ActivityDiamondBorderColor #92400E
+skinparam SwimlaneTitleFontStyle bold
+skinparam SwimlaneTitleFontColor #1F2A44
+skinparam SwimlaneBorderColor #9CA3AF
+skinparam PartitionBorderColor #9CA3AF
+skinparam ParticipantBorderColor #1F2A44
+skinparam ParticipantBackgroundColor #FFF7ED
+skinparam ActorBorderColor #1F2A44
+skinparam ActorBackgroundColor #FFF7ED
+skinparam DatabaseBorderColor #1F2A44
+skinparam DatabaseBackgroundColor #E0E7FF
+skinparam SequenceLifeLineBorderColor #9CA3AF
+skinparam SequenceGroupBorderColor #C2410C
+skinparam SequenceGroupHeaderFontColor #C2410C
+skinparam StateBorderColor #1F2A44
+skinparam StateBackgroundColor #FFF7ED
+skinparam StateStartColor #1F2A44
+skinparam StateEndColor #1F2A44
+skinparam NoteBackgroundColor #F3F4F6
+skinparam NoteBorderColor #9CA3AF
+skinparam TitleFontSize 15
+skinparam TitleFontColor #C2410C
+skinparam ClassBorderColor #1F2A44
+skinparam ClassBackgroundColor #FFF7ED
+title HU-15 · Dispositivo autorizado\nDiagrama de secuencia
+autonumber
+actor "Almacenero" as AL
+participant "App del almacenero" as APP
+actor "Administrador" as AD
+participant "Web de oficina" as UI
+participant "API Gateway" as GW
+participant "Servicio Obras" as SO
+participant "Servicio Almacén" as SA
+database "BD · esquema obras" as BD
+AL -> APP : primera instalación
+APP -> APP : genera el código del celular
+APP -> GW : POST /api/v1/obras/{id}/dispositivos
+GW -> SO : reenvía
+SO -> BD : celular «solicitado»
+AD -> UI : Administración → Celulares
+UI -> GW : POST /api/v1/obras/{id}/dispositivos/{d}/autorizar
+GW -> SO : reenvía
+alt ya hay otro celular activo
+  SO --> GW : 409 «Revoque primero el celular activo»
+  GW --> UI : 409 «Revoque primero el celular activo»
+  AD -> UI : revoca el anterior
+  UI -> GW : POST .../dispositivos/{anterior}/revocar
+  GW -> SO : reenvía
+  SO -> BD : anterior «revocado» (quién y cuándo)
+  UI -> GW : POST .../dispositivos/{d}/autorizar
+  GW -> SO : reenvía
+end
+SO -> BD : celular «autorizado»
+SO --> GW : 200
+GW --> UI : 200
+APP -> GW : POST /api/v1/obras/{id}/almacen/salidas\n(código del celular)
+GW -> SA : reenvía
+SA -> SO : POST /interno/autorizar (usuario, obra, celular)
+alt celular no autorizado
+  SO --> SA : denegado
+  SA --> GW : 403 «Celular no autorizado para esta obra»
+  GW --> APP : 403 «Celular no autorizado para esta obra»
+else autorizado
+  SO --> SA : permitido
+  SA --> GW : 201
+  GW --> APP : 201
+end
+@enduml

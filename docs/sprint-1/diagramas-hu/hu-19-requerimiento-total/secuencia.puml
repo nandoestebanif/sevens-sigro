@@ -1,0 +1,68 @@
+@startuml
+skinparam defaultFontName "DejaVu Sans"
+skinparam defaultFontSize 12
+skinparam shadowing false
+skinparam roundCorner 8
+skinparam ArrowColor #1F2A44
+skinparam ActivityBorderColor #1F2A44
+skinparam ActivityBackgroundColor #FFF7ED
+skinparam ActivityDiamondBackgroundColor #FEF3C7
+skinparam ActivityDiamondBorderColor #92400E
+skinparam SwimlaneTitleFontStyle bold
+skinparam SwimlaneTitleFontColor #1F2A44
+skinparam SwimlaneBorderColor #9CA3AF
+skinparam PartitionBorderColor #9CA3AF
+skinparam ParticipantBorderColor #1F2A44
+skinparam ParticipantBackgroundColor #FFF7ED
+skinparam ActorBorderColor #1F2A44
+skinparam ActorBackgroundColor #FFF7ED
+skinparam DatabaseBorderColor #1F2A44
+skinparam DatabaseBackgroundColor #E0E7FF
+skinparam SequenceLifeLineBorderColor #9CA3AF
+skinparam SequenceGroupBorderColor #C2410C
+skinparam SequenceGroupHeaderFontColor #C2410C
+skinparam StateBorderColor #1F2A44
+skinparam StateBackgroundColor #FFF7ED
+skinparam StateStartColor #1F2A44
+skinparam StateEndColor #1F2A44
+skinparam NoteBackgroundColor #F3F4F6
+skinparam NoteBorderColor #9CA3AF
+skinparam TitleFontSize 15
+skinparam TitleFontColor #C2410C
+skinparam ClassBorderColor #1F2A44
+skinparam ClassBackgroundColor #FFF7ED
+title HU-19 · Requerimiento total\nDiagrama de secuencia
+autonumber
+actor "Residente de obra" as U
+participant "Web de oficina" as UI
+participant "API Gateway" as GW
+participant "Servicio Compras" as S
+participant "Integraciones" as X0
+database "BD · esquema compras" as BD
+U -> UI : Abre «Importar APU y requerimiento»
+U -> UI : Sube el reporte de recursos del S10
+U -> UI : Pulsa «Importar»
+UI -> GW : POST /api/v1/obras/{id}/requerimiento/importar\nAuthorization: Bearer <JWT>
+GW -> S : reenvía la petición
+S -> BD : rol del usuario y asignación a la obra
+BD --> S : permisos
+alt sin permiso o sin asignación
+  S --> GW : 403 Prohibido
+  GW --> UI : 403
+  UI --> U : muestra «No tienes permiso en esta obra»
+else El archivo no es el reporte de recursos
+  S --> GW : 422 «No es el reporte de recursos del S10»
+  GW --> UI : 422
+  UI --> U : muestra el motivo junto al campo
+else datos válidos
+  S -> X0 : Lee el reporte y devuelve el total por insumo
+  X0 --> S : totales por insumo
+  S -> BD : Toma el total de cada insumo del reporte, sin recalcular
+  S -> S : Lo convierte a unidad de compra con el factor (HU-17)
+  S -> S : Lo guarda como el 100 % de la obra
+  S --> GW : 201 Creado
+  GW --> UI : respuesta
+  UI --> U : Muestra el requerimiento por insumo en unidad de compra
+end
+note over UI, BD : Ajuste con motivo: POST /requerimiento/{id}/ajustar · insumo agregado a mano: queda marcado como tal
+@enduml

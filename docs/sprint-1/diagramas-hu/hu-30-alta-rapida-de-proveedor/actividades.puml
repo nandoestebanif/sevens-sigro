@@ -1,0 +1,69 @@
+@startuml
+skinparam defaultFontName "DejaVu Sans"
+skinparam defaultFontSize 12
+skinparam shadowing false
+skinparam roundCorner 8
+skinparam ArrowColor #1F2A44
+skinparam ActivityBorderColor #1F2A44
+skinparam ActivityBackgroundColor #FFF7ED
+skinparam ActivityDiamondBackgroundColor #FEF3C7
+skinparam ActivityDiamondBorderColor #92400E
+skinparam SwimlaneTitleFontStyle bold
+skinparam SwimlaneTitleFontColor #1F2A44
+skinparam SwimlaneBorderColor #9CA3AF
+skinparam PartitionBorderColor #9CA3AF
+skinparam ParticipantBorderColor #1F2A44
+skinparam ParticipantBackgroundColor #FFF7ED
+skinparam ActorBorderColor #1F2A44
+skinparam ActorBackgroundColor #FFF7ED
+skinparam DatabaseBorderColor #1F2A44
+skinparam DatabaseBackgroundColor #E0E7FF
+skinparam SequenceLifeLineBorderColor #9CA3AF
+skinparam SequenceGroupBorderColor #C2410C
+skinparam SequenceGroupHeaderFontColor #C2410C
+skinparam StateBorderColor #1F2A44
+skinparam StateBackgroundColor #FFF7ED
+skinparam StateStartColor #1F2A44
+skinparam StateEndColor #1F2A44
+skinparam NoteBackgroundColor #F3F4F6
+skinparam NoteBorderColor #9CA3AF
+skinparam TitleFontSize 15
+skinparam TitleFontColor #C2410C
+skinparam ClassBorderColor #1F2A44
+skinparam ClassBackgroundColor #FFF7ED
+title HU-30 · Alta rápida de proveedor\nDiagrama de actividades del sistema
+|Almacenero|
+start
+:En la compra pulsa «+ Nuevo proveedor»;
+:Escribe RUC y razón social;
+:Pulsa «Guardar»;
+|Web de oficina|
+if (¿Falta un dato obligatorio?) then (sí)
+:Marca el campo y no envía;
+stop
+else (no)
+endif
+:Envía POST /api/v1/proveedores\ncon el token de sesión;
+|API (servicio Compras)|
+:Verifica la sesión y el permiso\ndel rol en esa obra;
+if (¿Sin permiso o sin asignación?) then (sí)
+:Responde 403;
+stop
+else (no)
+endif
+if (¿El RUC no tiene 11 dígitos o su\ndígito verificador no cuadra?) then (sí)
+:Responde 422 «RUC no válido»;
+stop
+else (no)
+endif
+if (¿Ya existe un proveedor con ese RUC?) then (sí)
+:Responde 409 «Ya existe: <razón social>»;
+stop
+else (no)
+endif
+:Crea el proveedor «por validar» (HU-31);
+|Web de oficina|
+:El proveedor queda seleccionado en la compra,\nsin perder lo ya escrito;
+|Almacenero|
+stop
+@enduml

@@ -1,0 +1,68 @@
+@startuml
+skinparam defaultFontName "DejaVu Sans"
+skinparam defaultFontSize 12
+skinparam shadowing false
+skinparam roundCorner 8
+skinparam ArrowColor #1F2A44
+skinparam ActivityBorderColor #1F2A44
+skinparam ActivityBackgroundColor #FFF7ED
+skinparam ActivityDiamondBackgroundColor #FEF3C7
+skinparam ActivityDiamondBorderColor #92400E
+skinparam SwimlaneTitleFontStyle bold
+skinparam SwimlaneTitleFontColor #1F2A44
+skinparam SwimlaneBorderColor #9CA3AF
+skinparam PartitionBorderColor #9CA3AF
+skinparam ParticipantBorderColor #1F2A44
+skinparam ParticipantBackgroundColor #FFF7ED
+skinparam ActorBorderColor #1F2A44
+skinparam ActorBackgroundColor #FFF7ED
+skinparam DatabaseBorderColor #1F2A44
+skinparam DatabaseBackgroundColor #E0E7FF
+skinparam SequenceLifeLineBorderColor #9CA3AF
+skinparam SequenceGroupBorderColor #C2410C
+skinparam SequenceGroupHeaderFontColor #C2410C
+skinparam StateBorderColor #1F2A44
+skinparam StateBackgroundColor #FFF7ED
+skinparam StateStartColor #1F2A44
+skinparam StateEndColor #1F2A44
+skinparam NoteBackgroundColor #F3F4F6
+skinparam NoteBorderColor #9CA3AF
+skinparam TitleFontSize 15
+skinparam TitleFontColor #C2410C
+skinparam ClassBorderColor #1F2A44
+skinparam ClassBackgroundColor #FFF7ED
+title HU-17 · Factor de conversión\nDiagrama de secuencia
+autonumber
+actor "Almacenero" as U
+participant "Web de oficina" as UI
+participant "API Gateway" as GW
+participant "Servicio Catálogo" as S
+database "BD · esquema catalogo" as BD
+U -> UI : Abre la ficha del insumo (p. ej. acero fy=4200)
+U -> UI : Escribe la unidad de compra y el factor\n(1 varilla 3/8" = 5.04 kg)
+U -> UI : Pulsa «Guardar»
+UI -> GW : POST /api/v1/catalogo/insumos/{id}/factor-conversion\nAuthorization: Bearer <JWT>
+GW -> S : reenvía la petición
+S -> BD : rol del usuario y asignación a la obra
+BD --> S : permisos
+alt sin permiso o sin asignación
+  S --> GW : 403 Prohibido
+  GW --> UI : 403
+  UI --> U : muestra «No tienes permiso en esta obra»
+else El factor es cero o negativo
+  S --> GW : 422 «El factor debe ser mayor que 0»
+  GW --> UI : 422
+  UI --> U : muestra el motivo junto al campo
+else El recurso del S10 corresponde\na más de un insumo de compra
+  S --> GW : 422 «Use el reparto por familia (HU-18)»
+  GW --> UI : 422
+  UI --> U : muestra el motivo junto al campo
+else datos válidos
+  S -> BD : Guarda el factor con su fecha y el usuario que lo declaró
+  S -> BD : Pasa el factor anterior al historial
+  S --> GW : 201 Creado
+  GW --> UI : respuesta
+  UI --> U : Requerido, comprado y consumido se muestran en unidad de compra
+end
+note over UI, BD : Sin factor declarado, el sistema asume que ambas unidades son la misma
+@enduml

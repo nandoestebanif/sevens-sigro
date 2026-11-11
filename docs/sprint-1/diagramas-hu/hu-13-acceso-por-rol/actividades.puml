@@ -1,0 +1,71 @@
+@startuml
+skinparam defaultFontName "DejaVu Sans"
+skinparam defaultFontSize 12
+skinparam shadowing false
+skinparam roundCorner 8
+skinparam ArrowColor #1F2A44
+skinparam ActivityBorderColor #1F2A44
+skinparam ActivityBackgroundColor #FFF7ED
+skinparam ActivityDiamondBackgroundColor #FEF3C7
+skinparam ActivityDiamondBorderColor #92400E
+skinparam SwimlaneTitleFontStyle bold
+skinparam SwimlaneTitleFontColor #1F2A44
+skinparam SwimlaneBorderColor #9CA3AF
+skinparam PartitionBorderColor #9CA3AF
+skinparam ParticipantBorderColor #1F2A44
+skinparam ParticipantBackgroundColor #FFF7ED
+skinparam ActorBorderColor #1F2A44
+skinparam ActorBackgroundColor #FFF7ED
+skinparam DatabaseBorderColor #1F2A44
+skinparam DatabaseBackgroundColor #E0E7FF
+skinparam SequenceLifeLineBorderColor #9CA3AF
+skinparam SequenceGroupBorderColor #C2410C
+skinparam SequenceGroupHeaderFontColor #C2410C
+skinparam StateBorderColor #1F2A44
+skinparam StateBackgroundColor #FFF7ED
+skinparam StateStartColor #1F2A44
+skinparam StateEndColor #1F2A44
+skinparam NoteBackgroundColor #F3F4F6
+skinparam NoteBorderColor #9CA3AF
+skinparam TitleFontSize 15
+skinparam TitleFontColor #C2410C
+skinparam ClassBorderColor #1F2A44
+skinparam ClassBackgroundColor #FFF7ED
+title HU-13 · Acceso por rol\nDiagrama de actividades del sistema
+|Administrador|
+start
+:Abre «Administración → Usuarios»;
+:Escribe nombre, usuario, contraseña inicial y rol;
+:Pulsa «Crear»;
+|Web de oficina|
+if (¿Falta un dato obligatorio?) then (sí)
+:Marca el campo y no envía;
+stop
+else (no)
+endif
+:Envía POST /api/v1/usuarios\ncon el token de sesión;
+|API (servicio Obras)|
+:Verifica la sesión y el permiso\ndel rol en esa obra;
+if (¿Sin permiso o sin asignación?) then (sí)
+:Responde 403;
+stop
+else (no)
+endif
+if (¿El rol no es almacenero, residente,\nadministrador ni gerente?) then (sí)
+:Responde 422 «Rol no válido»;
+stop
+else (no)
+endif
+if (¿Ya existe ese usuario?) then (sí)
+:Responde 409 «Ese usuario ya existe»;
+stop
+else (no)
+endif
+:Guarda la contraseña con Argon2id (nunca en claro);
+:Crea el usuario «activo» con su rol;
+|Web de oficina|
+:Muestra el usuario en la lista;
+|Administrador|
+stop
+floating note right: Dar de baja = POST /api/v1/usuarios/{id}/baja: cambia el estado, no borra
+@enduml

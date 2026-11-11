@@ -1,0 +1,57 @@
+@startuml
+skinparam defaultFontName "DejaVu Sans"
+skinparam defaultFontSize 12
+skinparam shadowing false
+skinparam roundCorner 8
+skinparam ArrowColor #1F2A44
+skinparam ActivityBorderColor #1F2A44
+skinparam ActivityBackgroundColor #FFF7ED
+skinparam ActivityDiamondBackgroundColor #FEF3C7
+skinparam ActivityDiamondBorderColor #92400E
+skinparam SwimlaneTitleFontStyle bold
+skinparam SwimlaneTitleFontColor #1F2A44
+skinparam SwimlaneBorderColor #9CA3AF
+skinparam PartitionBorderColor #9CA3AF
+skinparam ParticipantBorderColor #1F2A44
+skinparam ParticipantBackgroundColor #FFF7ED
+skinparam ActorBorderColor #1F2A44
+skinparam ActorBackgroundColor #FFF7ED
+skinparam DatabaseBorderColor #1F2A44
+skinparam DatabaseBackgroundColor #E0E7FF
+skinparam SequenceLifeLineBorderColor #9CA3AF
+skinparam SequenceGroupBorderColor #C2410C
+skinparam SequenceGroupHeaderFontColor #C2410C
+skinparam StateBorderColor #1F2A44
+skinparam StateBackgroundColor #FFF7ED
+skinparam StateStartColor #1F2A44
+skinparam StateEndColor #1F2A44
+skinparam NoteBackgroundColor #F3F4F6
+skinparam NoteBorderColor #9CA3AF
+skinparam TitleFontSize 15
+skinparam TitleFontColor #C2410C
+skinparam ClassBorderColor #1F2A44
+skinparam ClassBackgroundColor #FFF7ED
+title HU-26 · Alerta de reposición\nDiagrama de secuencia
+autonumber
+actor "Almacenero" as AL
+participant "Servicio Almacén" as SA
+participant "Relevo (outbox)" as RE
+participant "Servicio Compras" as SC
+participant "Notificaciones" as NO
+actor "Residente de obra" as R
+database "BD" as BD
+AL -> SA : salida registrada (HU-40)
+SA -> BD : movimiento + evento en outbox\n(misma transacción)
+RE -> BD : lee eventos pendientes
+RE -> SC : evento «salida registrada»
+SC -> BD : saldo y punto de reposición del insumo
+alt saldo ≤ punto de reposición y sin aviso activo
+  SC -> BD : crea el aviso (insumo, saldo, punto, falta)
+  SC -> NO : aviso de reposición
+  NO --> R : «Cemento: saldo 40 bls, punto 50, faltan 210»
+else ya había aviso activo o saldo sobre el punto
+  SC -> SC : no repite el aviso
+end
+R -> SC : registra una compra del insumo (HU-32)
+SC -> BD : aviso «atendido»
+@enduml

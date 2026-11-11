@@ -1,0 +1,53 @@
+@startuml
+skinparam defaultFontName "DejaVu Sans"
+skinparam defaultFontSize 12
+skinparam shadowing false
+skinparam roundCorner 8
+skinparam ArrowColor #1F2A44
+skinparam ActivityBorderColor #1F2A44
+skinparam ActivityBackgroundColor #FFF7ED
+skinparam ActivityDiamondBackgroundColor #FEF3C7
+skinparam ActivityDiamondBorderColor #92400E
+skinparam SwimlaneTitleFontStyle bold
+skinparam SwimlaneTitleFontColor #1F2A44
+skinparam SwimlaneBorderColor #9CA3AF
+skinparam PartitionBorderColor #9CA3AF
+skinparam ParticipantBorderColor #1F2A44
+skinparam ParticipantBackgroundColor #FFF7ED
+skinparam ActorBorderColor #1F2A44
+skinparam ActorBackgroundColor #FFF7ED
+skinparam DatabaseBorderColor #1F2A44
+skinparam DatabaseBackgroundColor #E0E7FF
+skinparam SequenceLifeLineBorderColor #9CA3AF
+skinparam SequenceGroupBorderColor #C2410C
+skinparam SequenceGroupHeaderFontColor #C2410C
+skinparam StateBorderColor #1F2A44
+skinparam StateBackgroundColor #FFF7ED
+skinparam StateStartColor #1F2A44
+skinparam StateEndColor #1F2A44
+skinparam NoteBackgroundColor #F3F4F6
+skinparam NoteBorderColor #9CA3AF
+skinparam TitleFontSize 15
+skinparam TitleFontColor #C2410C
+skinparam ClassBorderColor #1F2A44
+skinparam ClassBackgroundColor #FFF7ED
+title HU-45 · Corrección trazable\nDiagrama de actividades del sistema
+|Almacenero|
+start
+:Abre el kárdex y elige el movimiento errado;
+:Pulsa «Corregir» y escribe el motivo;
+|API (servicio Almacén)|
+if (¿El movimiento ya fue revertido?) then (sí)
+  :Responde 409 «Ya tiene reverso»;
+  stop
+else (no)
+endif
+:Crea un movimiento inverso que apunta al original,\ncon autor, fecha y motivo;
+:El original no se modifica ni se borra;
+:Recalcula el saldo con ambos movimientos;
+|Web de oficina|
+:Muestra el original «anulado» y el reverso;
+|Almacenero|
+:Registra el movimiento correcto, si corresponde;
+stop
+@enduml

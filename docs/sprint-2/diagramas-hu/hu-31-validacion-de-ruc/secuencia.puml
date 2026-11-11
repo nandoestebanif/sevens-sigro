@@ -1,0 +1,65 @@
+@startuml
+skinparam defaultFontName "DejaVu Sans"
+skinparam defaultFontSize 12
+skinparam shadowing false
+skinparam roundCorner 8
+skinparam ArrowColor #1F2A44
+skinparam ActivityBorderColor #1F2A44
+skinparam ActivityBackgroundColor #FFF7ED
+skinparam ActivityDiamondBackgroundColor #FEF3C7
+skinparam ActivityDiamondBorderColor #92400E
+skinparam SwimlaneTitleFontStyle bold
+skinparam SwimlaneTitleFontColor #1F2A44
+skinparam SwimlaneBorderColor #9CA3AF
+skinparam PartitionBorderColor #9CA3AF
+skinparam ParticipantBorderColor #1F2A44
+skinparam ParticipantBackgroundColor #FFF7ED
+skinparam ActorBorderColor #1F2A44
+skinparam ActorBackgroundColor #FFF7ED
+skinparam DatabaseBorderColor #1F2A44
+skinparam DatabaseBackgroundColor #E0E7FF
+skinparam SequenceLifeLineBorderColor #9CA3AF
+skinparam SequenceGroupBorderColor #C2410C
+skinparam SequenceGroupHeaderFontColor #C2410C
+skinparam StateBorderColor #1F2A44
+skinparam StateBackgroundColor #FFF7ED
+skinparam StateStartColor #1F2A44
+skinparam StateEndColor #1F2A44
+skinparam NoteBackgroundColor #F3F4F6
+skinparam NoteBorderColor #9CA3AF
+skinparam TitleFontSize 15
+skinparam TitleFontColor #C2410C
+skinparam ClassBorderColor #1F2A44
+skinparam ClassBackgroundColor #FFF7ED
+title HU-31 · Validación de RUC\nDiagrama de secuencia
+autonumber
+actor "Almacenero" as U
+participant "Web de oficina" as UI
+participant "API Gateway" as GW
+participant "Servicio Compras" as SC
+participant "Integraciones" as IN
+participant "SUNAT" as SU
+database "BD · esquema compras" as BD
+U -> UI : RUC 20606456892
+UI -> UI : dígito verificador (sin red)
+UI -> GW : POST /api/v1/proveedores
+GW -> SC : reenvía
+SC -> IN : GET /ruc/{ruc} (X-Servicio-Token)
+IN -> SU : consulta del padrón (tiempo límite)
+alt SUNAT responde
+  SU --> IN : razón social, estado
+  IN --> SC : RUC normalizado
+  SC -> BD : proveedor «validado»
+  SC --> GW : 201
+  GW --> UI : 201
+  UI --> U : razón social autocompletada
+else SUNAT no responde
+  IN --> SC : sin respuesta
+  SC -> BD : proveedor «por validar»
+  SC --> GW : 201 (por validar)
+  GW --> UI : 201 (por validar)
+  UI --> U : «Se validará después»; la compra sigue
+end
+U -> UI : «Validar de nuevo»
+UI -> GW : POST /api/v1/proveedores/{id}/validar
+@enduml

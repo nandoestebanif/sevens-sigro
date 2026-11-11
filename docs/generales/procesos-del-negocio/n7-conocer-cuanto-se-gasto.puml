@@ -1,0 +1,49 @@
+@startuml
+skinparam defaultFontName "DejaVu Sans"
+skinparam defaultFontSize 12
+skinparam shadowing false
+skinparam roundCorner 8
+skinparam ArrowColor #1F2A44
+skinparam ActivityBorderColor #1F2A44
+skinparam ActivityBackgroundColor #FFF7ED
+skinparam ActivityDiamondBackgroundColor #FEF3C7
+skinparam ActivityDiamondBorderColor #92400E
+skinparam SwimlaneTitleFontStyle bold
+skinparam SwimlaneTitleFontColor #1F2A44
+skinparam SwimlaneBorderColor #9CA3AF
+skinparam PartitionBorderColor #9CA3AF
+skinparam ParticipantBorderColor #1F2A44
+skinparam ParticipantBackgroundColor #FFF7ED
+skinparam ActorBorderColor #1F2A44
+skinparam ActorBackgroundColor #FFF7ED
+skinparam DatabaseBorderColor #1F2A44
+skinparam DatabaseBackgroundColor #E0E7FF
+skinparam SequenceLifeLineBorderColor #9CA3AF
+skinparam SequenceGroupBorderColor #C2410C
+skinparam SequenceGroupHeaderFontColor #C2410C
+skinparam StateBorderColor #1F2A44
+skinparam StateBackgroundColor #FFF7ED
+skinparam StateStartColor #1F2A44
+skinparam StateEndColor #1F2A44
+skinparam NoteBackgroundColor #F3F4F6
+skinparam NoteBorderColor #9CA3AF
+skinparam TitleFontSize 15
+skinparam TitleFontColor #C2410C
+skinparam ClassBorderColor #1F2A44
+skinparam ClassBackgroundColor #FFF7ED
+title N7 · Conocer cuánto se gastó en recursos\nDiagrama de actividades del negocio
+|Administración|
+start
+:Valoriza cada salida al costo promedio\nponderado del momento (NIC 2);
+:Calcula el valor del material en almacén\n(capital detenido);
+|Gerente|
+:Compara lo consumido contra lo planificado\nen el S10, insumo por insumo;
+:Revisa el gasto en recursos de la obra:\nmaterial, herramientas y horas hombre;
+note right: Es el gasto en recursos, no el costo\ntotal: quedan fuera gastos generales,\nsubcontratos, servicios y planilla
+if (¿Hay una desviación relevante?) then (sí)
+  |Residente de obra|
+  :Explica la desviación y ajusta el consumo;
+else (no)
+endif
+stop
+@enduml

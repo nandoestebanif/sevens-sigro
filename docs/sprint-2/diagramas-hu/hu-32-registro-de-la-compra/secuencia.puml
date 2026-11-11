@@ -1,0 +1,68 @@
+@startuml
+skinparam defaultFontName "DejaVu Sans"
+skinparam defaultFontSize 12
+skinparam shadowing false
+skinparam roundCorner 8
+skinparam ArrowColor #1F2A44
+skinparam ActivityBorderColor #1F2A44
+skinparam ActivityBackgroundColor #FFF7ED
+skinparam ActivityDiamondBackgroundColor #FEF3C7
+skinparam ActivityDiamondBorderColor #92400E
+skinparam SwimlaneTitleFontStyle bold
+skinparam SwimlaneTitleFontColor #1F2A44
+skinparam SwimlaneBorderColor #9CA3AF
+skinparam PartitionBorderColor #9CA3AF
+skinparam ParticipantBorderColor #1F2A44
+skinparam ParticipantBackgroundColor #FFF7ED
+skinparam ActorBorderColor #1F2A44
+skinparam ActorBackgroundColor #FFF7ED
+skinparam DatabaseBorderColor #1F2A44
+skinparam DatabaseBackgroundColor #E0E7FF
+skinparam SequenceLifeLineBorderColor #9CA3AF
+skinparam SequenceGroupBorderColor #C2410C
+skinparam SequenceGroupHeaderFontColor #C2410C
+skinparam StateBorderColor #1F2A44
+skinparam StateBackgroundColor #FFF7ED
+skinparam StateStartColor #1F2A44
+skinparam StateEndColor #1F2A44
+skinparam NoteBackgroundColor #F3F4F6
+skinparam NoteBorderColor #9CA3AF
+skinparam TitleFontSize 15
+skinparam TitleFontColor #C2410C
+skinparam ClassBorderColor #1F2A44
+skinparam ClassBackgroundColor #FFF7ED
+title HU-32 · Registro de la compra\nDiagrama de secuencia
+autonumber
+actor "Almacenero" as U
+participant "Web de oficina" as UI
+participant "API Gateway" as GW
+participant "Servicio Compras" as S
+database "BD · esquema compras" as BD
+U -> UI : Abre «Compras → Nueva compra»
+U -> UI : Elige proveedor, fecha, tipo y número de comprobante
+U -> UI : Agrega insumos con cantidad y precio
+U -> UI : Pulsa «Registrar»
+UI -> GW : POST /api/v1/obras/{id}/compras\nAuthorization: Bearer <JWT>
+GW -> S : reenvía la petición
+S -> BD : rol del usuario y asignación a la obra
+BD --> S : permisos
+alt sin permiso o sin asignación
+  S --> GW : 403 Prohibido
+  GW --> UI : 403
+  UI --> U : muestra «No tienes permiso en esta obra»
+else No hay al menos un insumo\ncon cantidad y precio
+  S --> GW : 422 «Agregue al menos un insumo»
+  GW --> UI : 422
+  UI --> U : muestra el motivo junto al campo
+else Ese proveedor ya tiene un comprobante\ncon el mismo tipo y número
+  S --> GW : 409 «Comprobante repetido»
+  GW --> UI : 409
+  UI --> U : muestra el motivo junto al campo
+else datos válidos
+  S -> S : Calcula base imponible, IGV y total
+  S -> BD : Guarda la compra «registrada»: no mueve el stock
+  S --> GW : 201 Creado
+  GW --> UI : respuesta
+  UI --> U : Muestra la compra con pedido, recibido y pendiente en 0
+end
+@enduml

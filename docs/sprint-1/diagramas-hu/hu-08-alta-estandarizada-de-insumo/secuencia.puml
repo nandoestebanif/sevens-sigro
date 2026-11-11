@@ -1,0 +1,67 @@
+@startuml
+skinparam defaultFontName "DejaVu Sans"
+skinparam defaultFontSize 12
+skinparam shadowing false
+skinparam roundCorner 8
+skinparam ArrowColor #1F2A44
+skinparam ActivityBorderColor #1F2A44
+skinparam ActivityBackgroundColor #FFF7ED
+skinparam ActivityDiamondBackgroundColor #FEF3C7
+skinparam ActivityDiamondBorderColor #92400E
+skinparam SwimlaneTitleFontStyle bold
+skinparam SwimlaneTitleFontColor #1F2A44
+skinparam SwimlaneBorderColor #9CA3AF
+skinparam PartitionBorderColor #9CA3AF
+skinparam ParticipantBorderColor #1F2A44
+skinparam ParticipantBackgroundColor #FFF7ED
+skinparam ActorBorderColor #1F2A44
+skinparam ActorBackgroundColor #FFF7ED
+skinparam DatabaseBorderColor #1F2A44
+skinparam DatabaseBackgroundColor #E0E7FF
+skinparam SequenceLifeLineBorderColor #9CA3AF
+skinparam SequenceGroupBorderColor #C2410C
+skinparam SequenceGroupHeaderFontColor #C2410C
+skinparam StateBorderColor #1F2A44
+skinparam StateBackgroundColor #FFF7ED
+skinparam StateStartColor #1F2A44
+skinparam StateEndColor #1F2A44
+skinparam NoteBackgroundColor #F3F4F6
+skinparam NoteBorderColor #9CA3AF
+skinparam TitleFontSize 15
+skinparam TitleFontColor #C2410C
+skinparam ClassBorderColor #1F2A44
+skinparam ClassBackgroundColor #FFF7ED
+title HU-08 · Alta estandarizada de insumo\nDiagrama de secuencia
+autonumber
+actor "Almacenero" as U
+participant "Web de oficina" as UI
+participant "API Gateway" as GW
+participant "Servicio Catálogo" as S
+database "BD · esquema catalogo" as BD
+U -> UI : Abre «Catálogo» y pulsa «Agregar insumo»
+U -> UI : Escribe material y unidad; si el tipo lo pide, medida, norma y marca
+U -> UI : Pulsa «Guardar»
+UI -> GW : POST /api/v1/catalogo/insumos\nAuthorization: Bearer <JWT>
+GW -> S : reenvía la petición
+S -> BD : rol del usuario y asignación a la obra
+BD --> S : permisos
+alt sin permiso o sin asignación
+  S --> GW : 403 Prohibido
+  GW --> UI : 403
+  UI --> U : muestra «No tienes permiso en esta obra»
+else El tipo exige medida o norma y faltan
+  S --> GW : 422 «Este tipo de insumo exige medida y norma»
+  GW --> UI : 422
+  UI --> U : muestra el motivo junto al campo
+else Ya existe el mismo material, medida y marca\n(sin distinguir mayúsculas ni espacios)
+  S --> GW : 409 «Ya existe ese insumo: <código>»
+  GW --> UI : 409
+  UI --> U : muestra el motivo junto al campo
+else datos válidos
+  S -> S : Genera el código único e irrepetible
+  S -> BD : Guarda el insumo «por verificar»
+  S --> GW : 201 Creado
+  GW --> UI : respuesta
+  UI --> U : Muestra el insumo con su código
+end
+@enduml

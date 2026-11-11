@@ -1,0 +1,66 @@
+@startuml
+skinparam defaultFontName "DejaVu Sans"
+skinparam defaultFontSize 12
+skinparam shadowing false
+skinparam roundCorner 8
+skinparam ArrowColor #1F2A44
+skinparam ActivityBorderColor #1F2A44
+skinparam ActivityBackgroundColor #FFF7ED
+skinparam ActivityDiamondBackgroundColor #FEF3C7
+skinparam ActivityDiamondBorderColor #92400E
+skinparam SwimlaneTitleFontStyle bold
+skinparam SwimlaneTitleFontColor #1F2A44
+skinparam SwimlaneBorderColor #9CA3AF
+skinparam PartitionBorderColor #9CA3AF
+skinparam ParticipantBorderColor #1F2A44
+skinparam ParticipantBackgroundColor #FFF7ED
+skinparam ActorBorderColor #1F2A44
+skinparam ActorBackgroundColor #FFF7ED
+skinparam DatabaseBorderColor #1F2A44
+skinparam DatabaseBackgroundColor #E0E7FF
+skinparam SequenceLifeLineBorderColor #9CA3AF
+skinparam SequenceGroupBorderColor #C2410C
+skinparam SequenceGroupHeaderFontColor #C2410C
+skinparam StateBorderColor #1F2A44
+skinparam StateBackgroundColor #FFF7ED
+skinparam StateStartColor #1F2A44
+skinparam StateEndColor #1F2A44
+skinparam NoteBackgroundColor #F3F4F6
+skinparam NoteBorderColor #9CA3AF
+skinparam TitleFontSize 15
+skinparam TitleFontColor #C2410C
+skinparam ClassBorderColor #1F2A44
+skinparam ClassBackgroundColor #FFF7ED
+title HU-15 · Dispositivo autorizado\nDiagrama de actividades del sistema
+|Almacenero|
+start
+:Instala la app y entra con su usuario;
+|App del almacenero|
+:Genera el código del celular\nen la primera instalación;
+:Envía POST /obras/{id}/dispositivos;
+|API (servicio Obras)|
+:Registra el celular como «solicitado»;
+|Administrador|
+:Abre «Administración → Celulares»;
+if (¿La obra ya tiene un celular activo?) then (sí)
+  :Revoca el anterior\n(queda registrado quién y cuándo);
+else (no)
+endif
+:Autoriza el celular nuevo;
+|API (servicio Obras)|
+if (¿Queda otro activo?) then (sí)
+  :Responde 409 «Ya hay un celular activo»;
+  stop
+else (no)
+endif
+:Marca el celular «autorizado»;
+|App del almacenero|
+:Envía un movimiento con su código;
+|API (servicio Almacén)|
+if (¿El celular no está autorizado en la obra?) then (sí)
+  :Rechaza con 403 y lo informa;
+else (no)
+  :Acepta el movimiento;
+endif
+stop
+@enduml

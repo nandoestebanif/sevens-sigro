@@ -1,0 +1,64 @@
+@startuml
+skinparam defaultFontName "DejaVu Sans"
+skinparam defaultFontSize 12
+skinparam shadowing false
+skinparam roundCorner 8
+skinparam ArrowColor #1F2A44
+skinparam ActivityBorderColor #1F2A44
+skinparam ActivityBackgroundColor #FFF7ED
+skinparam ActivityDiamondBackgroundColor #FEF3C7
+skinparam ActivityDiamondBorderColor #92400E
+skinparam SwimlaneTitleFontStyle bold
+skinparam SwimlaneTitleFontColor #1F2A44
+skinparam SwimlaneBorderColor #9CA3AF
+skinparam PartitionBorderColor #9CA3AF
+skinparam ParticipantBorderColor #1F2A44
+skinparam ParticipantBackgroundColor #FFF7ED
+skinparam ActorBorderColor #1F2A44
+skinparam ActorBackgroundColor #FFF7ED
+skinparam DatabaseBorderColor #1F2A44
+skinparam DatabaseBackgroundColor #E0E7FF
+skinparam SequenceLifeLineBorderColor #9CA3AF
+skinparam SequenceGroupBorderColor #C2410C
+skinparam SequenceGroupHeaderFontColor #C2410C
+skinparam StateBorderColor #1F2A44
+skinparam StateBackgroundColor #FFF7ED
+skinparam StateStartColor #1F2A44
+skinparam StateEndColor #1F2A44
+skinparam NoteBackgroundColor #F3F4F6
+skinparam NoteBorderColor #9CA3AF
+skinparam TitleFontSize 15
+skinparam TitleFontColor #C2410C
+skinparam ClassBorderColor #1F2A44
+skinparam ClassBackgroundColor #FFF7ED
+title HU-57 · Consumo contra lo presupuestado\nDiagrama de secuencia
+autonumber
+actor "Gerente" as U
+participant "Web de oficina" as UI
+participant "API Gateway" as GW
+participant "Servicio Costo" as S
+participant "Servicio Compras" as X0
+participant "Servicio Almacén" as X1
+database "BD · esquema costo" as BD
+U -> UI : Abre «Gasto en recursos → Consumo vs. planificado»
+U -> UI : Ordena por desviación
+UI -> GW : GET /api/v1/obras/{id}/costo/desviacion  (nuevo, Sprint 2)\nAuthorization: Bearer <JWT>
+GW -> S : reenvía la petición
+S -> BD : rol del usuario y asignación a la obra
+BD --> S : permisos
+alt sin permiso o sin asignación
+  S --> GW : 403 Prohibido
+  GW --> UI : 403
+  UI --> U : muestra «No tienes permiso en esta obra»
+else datos válidos
+  S -> X0 : lo planificado por insumo (requerimiento S10)
+  X0 --> S : cantidad y costo planificados
+  S -> X1 : GET /interno/obras/{id}/recibido-consumido
+  X1 --> S : consumo valorizado
+  S -> S : Calcula la desviación en cantidad, importe y porcentaje
+  S -> S : Separa los insumos no planificados
+  S --> GW : 200 OK
+  GW --> UI : respuesta
+  UI --> U : Muestra la desviación por insumo y advierte que lo\nplanificado incluye desperdicio y reserva
+end
+@enduml

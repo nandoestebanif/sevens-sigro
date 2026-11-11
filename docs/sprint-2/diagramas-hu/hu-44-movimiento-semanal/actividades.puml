@@ -1,0 +1,55 @@
+@startuml
+skinparam defaultFontName "DejaVu Sans"
+skinparam defaultFontSize 12
+skinparam shadowing false
+skinparam roundCorner 8
+skinparam ArrowColor #1F2A44
+skinparam ActivityBorderColor #1F2A44
+skinparam ActivityBackgroundColor #FFF7ED
+skinparam ActivityDiamondBackgroundColor #FEF3C7
+skinparam ActivityDiamondBorderColor #92400E
+skinparam SwimlaneTitleFontStyle bold
+skinparam SwimlaneTitleFontColor #1F2A44
+skinparam SwimlaneBorderColor #9CA3AF
+skinparam PartitionBorderColor #9CA3AF
+skinparam ParticipantBorderColor #1F2A44
+skinparam ParticipantBackgroundColor #FFF7ED
+skinparam ActorBorderColor #1F2A44
+skinparam ActorBackgroundColor #FFF7ED
+skinparam DatabaseBorderColor #1F2A44
+skinparam DatabaseBackgroundColor #E0E7FF
+skinparam SequenceLifeLineBorderColor #9CA3AF
+skinparam SequenceGroupBorderColor #C2410C
+skinparam SequenceGroupHeaderFontColor #C2410C
+skinparam StateBorderColor #1F2A44
+skinparam StateBackgroundColor #FFF7ED
+skinparam StateStartColor #1F2A44
+skinparam StateEndColor #1F2A44
+skinparam NoteBackgroundColor #F3F4F6
+skinparam NoteBorderColor #9CA3AF
+skinparam TitleFontSize 15
+skinparam TitleFontColor #C2410C
+skinparam ClassBorderColor #1F2A44
+skinparam ClassBackgroundColor #FFF7ED
+title HU-44 · Movimiento semanal\nDiagrama de actividades del sistema
+|Almacenero|
+start
+:Abre «Movimiento semanal»;
+:Elige la semana de control;
+|Web de oficina|
+:Envía GET /api/v1/obras/{id}/almacen/kardex?semana=\ncon el token de sesión;
+|API (servicio Almacén)|
+:Verifica la sesión y el permiso\ndel rol en esa obra;
+if (¿Sin permiso o sin asignación?) then (sí)
+:Responde 403;
+stop
+else (no)
+endif
+:Toma los movimientos de esa semana;
+:Calcula saldo inicial, entradas, salidas y saldo final por insumo;
+:Deja solo los insumos con movimiento en la semana;
+|Web de oficina|
+:Muestra la tabla semanal y permite exportarla;
+|Almacenero|
+stop
+@enduml

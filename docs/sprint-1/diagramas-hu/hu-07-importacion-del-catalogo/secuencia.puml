@@ -1,0 +1,66 @@
+@startuml
+skinparam defaultFontName "DejaVu Sans"
+skinparam defaultFontSize 12
+skinparam shadowing false
+skinparam roundCorner 8
+skinparam ArrowColor #1F2A44
+skinparam ActivityBorderColor #1F2A44
+skinparam ActivityBackgroundColor #FFF7ED
+skinparam ActivityDiamondBackgroundColor #FEF3C7
+skinparam ActivityDiamondBorderColor #92400E
+skinparam SwimlaneTitleFontStyle bold
+skinparam SwimlaneTitleFontColor #1F2A44
+skinparam SwimlaneBorderColor #9CA3AF
+skinparam PartitionBorderColor #9CA3AF
+skinparam ParticipantBorderColor #1F2A44
+skinparam ParticipantBackgroundColor #FFF7ED
+skinparam ActorBorderColor #1F2A44
+skinparam ActorBackgroundColor #FFF7ED
+skinparam DatabaseBorderColor #1F2A44
+skinparam DatabaseBackgroundColor #E0E7FF
+skinparam SequenceLifeLineBorderColor #9CA3AF
+skinparam SequenceGroupBorderColor #C2410C
+skinparam SequenceGroupHeaderFontColor #C2410C
+skinparam StateBorderColor #1F2A44
+skinparam StateBackgroundColor #FFF7ED
+skinparam StateStartColor #1F2A44
+skinparam StateEndColor #1F2A44
+skinparam NoteBackgroundColor #F3F4F6
+skinparam NoteBorderColor #9CA3AF
+skinparam TitleFontSize 15
+skinparam TitleFontColor #C2410C
+skinparam ClassBorderColor #1F2A44
+skinparam ClassBackgroundColor #FFF7ED
+title HU-07 · Importación del catálogo\nDiagrama de secuencia
+autonumber
+actor "Residente de obra" as R
+participant "Web de oficina" as UI
+participant "API Gateway" as GW
+participant "Servicio Catálogo" as SC
+participant "Integraciones" as IN
+database "BD · esquema catalogo" as BD
+R -> UI : sube «5.3 Relación de insumos.pdf»
+UI -> GW : POST /api/v1/catalogo/importaciones-s10\n(multipart, JWT)
+GW -> SC : reenvía
+SC -> BD : códigos de insumo existentes
+SC -> IN : POST /s10/relacion-insumos\n(PDF + códigos, X-Servicio-Token)
+IN -> IN : pdfplumber: secciones y filas
+alt no es un PDF del S10
+  IN --> SC : 422
+  SC --> GW : 422 «No se pudo leer como un PDF del S10»
+  GW --> UI : 422 «No se pudo leer como un PDF del S10»
+else lectura correcta
+  IN --> SC : insumos con acción crear / actualizar, y fallidos
+  SC --> GW : 200 lectura (no escribe nada)
+  GW --> UI : 200 lectura (no escribe nada)
+  UI --> R : 284 filas leídas, 0 fallidas, S/ 1 479 338.33
+  R -> UI : «Confirmar»
+  UI -> GW : POST /api/v1/catalogo/insumos/importar-s10
+  GW -> SC : reenvía
+  SC -> BD : INSERT nuevos · UPDATE cambiados (por código)
+  SC --> GW : creados, actualizados, sin cambios
+  GW --> UI : creados, actualizados, sin cambios
+  UI --> R : resultado; los saldos no cambian
+end
+note over SC, IN : ADR-01: Integraciones no escribe en la base;\nla API decide qué se guarda
+@enduml

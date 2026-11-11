@@ -1,0 +1,48 @@
+@startuml
+skinparam defaultFontName "DejaVu Sans"
+skinparam defaultFontSize 12
+skinparam shadowing false
+skinparam roundCorner 8
+skinparam ArrowColor #1F2A44
+skinparam ActivityBorderColor #1F2A44
+skinparam ActivityBackgroundColor #FFF7ED
+skinparam ActivityDiamondBackgroundColor #FEF3C7
+skinparam ActivityDiamondBorderColor #92400E
+skinparam SwimlaneTitleFontStyle bold
+skinparam SwimlaneTitleFontColor #1F2A44
+skinparam SwimlaneBorderColor #9CA3AF
+skinparam PartitionBorderColor #9CA3AF
+skinparam ParticipantBorderColor #1F2A44
+skinparam ParticipantBackgroundColor #FFF7ED
+skinparam ActorBorderColor #1F2A44
+skinparam ActorBackgroundColor #FFF7ED
+skinparam DatabaseBorderColor #1F2A44
+skinparam DatabaseBackgroundColor #E0E7FF
+skinparam SequenceLifeLineBorderColor #9CA3AF
+skinparam SequenceGroupBorderColor #C2410C
+skinparam SequenceGroupHeaderFontColor #C2410C
+skinparam StateBorderColor #1F2A44
+skinparam StateBackgroundColor #FFF7ED
+skinparam StateStartColor #1F2A44
+skinparam StateEndColor #1F2A44
+skinparam NoteBackgroundColor #F3F4F6
+skinparam NoteBorderColor #9CA3AF
+skinparam TitleFontSize 15
+skinparam TitleFontColor #C2410C
+skinparam ClassBorderColor #1F2A44
+skinparam ClassBackgroundColor #FFF7ED
+title HU-55 · Salida valorizada\nDiagrama de actividades del sistema
+|API (servicio Almacén)|
+start
+:Llega una recepción (HU-35) o un ingreso (HU-41);
+:Recalcula el costo promedio ponderado:\n(saldo × promedio + cantidad × costo) ÷ (saldo + cantidad);
+:Llega una salida (HU-40);
+:Toma el promedio vigente en ese instante;
+:Lo congela en el movimiento;
+note right: Un ingreso posterior no cambia\nel costo de una salida ya registrada (NIC 2)
+|Gerente|
+:Abre el kárdex valorizado;
+|Web de oficina|
+:Muestra cada salida con su costo unitario\ny su importe, y declara el criterio (NIC 2);
+stop
+@enduml

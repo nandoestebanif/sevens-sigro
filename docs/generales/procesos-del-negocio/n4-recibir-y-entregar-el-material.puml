@@ -1,0 +1,59 @@
+@startuml
+skinparam defaultFontName "DejaVu Sans"
+skinparam defaultFontSize 12
+skinparam shadowing false
+skinparam roundCorner 8
+skinparam ArrowColor #1F2A44
+skinparam ActivityBorderColor #1F2A44
+skinparam ActivityBackgroundColor #FFF7ED
+skinparam ActivityDiamondBackgroundColor #FEF3C7
+skinparam ActivityDiamondBorderColor #92400E
+skinparam SwimlaneTitleFontStyle bold
+skinparam SwimlaneTitleFontColor #1F2A44
+skinparam SwimlaneBorderColor #9CA3AF
+skinparam PartitionBorderColor #9CA3AF
+skinparam ParticipantBorderColor #1F2A44
+skinparam ParticipantBackgroundColor #FFF7ED
+skinparam ActorBorderColor #1F2A44
+skinparam ActorBackgroundColor #FFF7ED
+skinparam DatabaseBorderColor #1F2A44
+skinparam DatabaseBackgroundColor #E0E7FF
+skinparam SequenceLifeLineBorderColor #9CA3AF
+skinparam SequenceGroupBorderColor #C2410C
+skinparam SequenceGroupHeaderFontColor #C2410C
+skinparam StateBorderColor #1F2A44
+skinparam StateBackgroundColor #FFF7ED
+skinparam StateStartColor #1F2A44
+skinparam StateEndColor #1F2A44
+skinparam NoteBackgroundColor #F3F4F6
+skinparam NoteBorderColor #9CA3AF
+skinparam TitleFontSize 15
+skinparam TitleFontColor #C2410C
+skinparam ClassBorderColor #1F2A44
+skinparam ClassBackgroundColor #FFF7ED
+title N4 · Recibir y entregar el material en obra\nDiagrama de actividades del negocio
+|Proveedor|
+start
+:Entrega el material en obra,\na veces por partes;
+|Almacenero|
+:Verifica lo entregado contra la compra;
+if (¿Llega más de lo que la obra requiere?) then (sí)
+  |Residente de obra|
+  :Autoriza recibirlo e indica el motivo;
+  |Almacenero|
+else (no)
+endif
+:Ingresa al almacén lo realmente recibido;
+:Ingresa también el material que llega sin compra\n(devolución, préstamo, sobrante) con su origen y costo;
+|Cuadrilla|
+:Pide material para el frente;
+|Almacenero|
+:Entrega el material y anota en el momento\ninsumo, cantidad, motivo y quién retira;
+if (¿Se anotó mal?) then (sí)
+  :Corrige con un registro inverso\nsin borrar el original;
+else (no)
+endif
+|Residente de obra|
+:Revisa el stock y el movimiento de la semana;
+stop
+@enduml

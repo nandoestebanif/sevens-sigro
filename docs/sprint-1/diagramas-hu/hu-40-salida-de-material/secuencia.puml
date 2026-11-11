@@ -1,0 +1,67 @@
+@startuml
+skinparam defaultFontName "DejaVu Sans"
+skinparam defaultFontSize 12
+skinparam shadowing false
+skinparam roundCorner 8
+skinparam ArrowColor #1F2A44
+skinparam ActivityBorderColor #1F2A44
+skinparam ActivityBackgroundColor #FFF7ED
+skinparam ActivityDiamondBackgroundColor #FEF3C7
+skinparam ActivityDiamondBorderColor #92400E
+skinparam SwimlaneTitleFontStyle bold
+skinparam SwimlaneTitleFontColor #1F2A44
+skinparam SwimlaneBorderColor #9CA3AF
+skinparam PartitionBorderColor #9CA3AF
+skinparam ParticipantBorderColor #1F2A44
+skinparam ParticipantBackgroundColor #FFF7ED
+skinparam ActorBorderColor #1F2A44
+skinparam ActorBackgroundColor #FFF7ED
+skinparam DatabaseBorderColor #1F2A44
+skinparam DatabaseBackgroundColor #E0E7FF
+skinparam SequenceLifeLineBorderColor #9CA3AF
+skinparam SequenceGroupBorderColor #C2410C
+skinparam SequenceGroupHeaderFontColor #C2410C
+skinparam StateBorderColor #1F2A44
+skinparam StateBackgroundColor #FFF7ED
+skinparam StateStartColor #1F2A44
+skinparam StateEndColor #1F2A44
+skinparam NoteBackgroundColor #F3F4F6
+skinparam NoteBorderColor #9CA3AF
+skinparam TitleFontSize 15
+skinparam TitleFontColor #C2410C
+skinparam ClassBorderColor #1F2A44
+skinparam ClassBackgroundColor #FFF7ED
+title HU-40 · Salida de material\nDiagrama de secuencia
+autonumber
+actor "Almacenero" as U
+participant "App del almacenero" as APP
+participant "API Gateway" as GW
+participant "Servicio Almacén" as SA
+participant "Servicio Obras" as SO
+database "BD · esquema almacen" as BD
+U -> APP : almacén, insumo, cantidad,\nmotivo, quién retira
+APP -> APP : uuid_cliente, Room (HU-37)
+APP -> GW : POST /api/v1/obras/{id}/almacen/salidas
+GW -> SA : reenvía
+SA -> SO : POST /interno/autorizar (usuario, obra, celular)
+SO --> SA : permitido o denegado
+alt no autorizado
+  SA --> GW : 403
+  GW --> APP : 403
+  APP --> U : muestra el motivo; la salida queda «rechazada» sin perderse
+else fecha fuera de plazo o semana cerrada
+  SA --> GW : 422
+  GW --> APP : 422
+  APP --> U : muestra el motivo; la salida queda «rechazada» sin perderse
+else saldo insuficiente
+  SA --> GW : 422 «Stock insuficiente: hay 12 bls»
+  GW --> APP : 422 «Stock insuficiente: hay 12 bls»
+  APP --> U : muestra el motivo; la salida queda «rechazada» sin perderse
+else válida
+  SA -> BD : costo promedio vigente del insumo
+  SA -> BD : INSERT salida con costo congelado
+  SA --> GW : 201 + saldo
+  GW --> APP : 201 + saldo
+  APP --> U : «Enviado» · saldo 93 bls
+end
+@enduml

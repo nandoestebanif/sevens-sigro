@@ -1,0 +1,71 @@
+@startuml
+skinparam defaultFontName "DejaVu Sans"
+skinparam defaultFontSize 12
+skinparam shadowing false
+skinparam roundCorner 8
+skinparam ArrowColor #1F2A44
+skinparam ActivityBorderColor #1F2A44
+skinparam ActivityBackgroundColor #FFF7ED
+skinparam ActivityDiamondBackgroundColor #FEF3C7
+skinparam ActivityDiamondBorderColor #92400E
+skinparam SwimlaneTitleFontStyle bold
+skinparam SwimlaneTitleFontColor #1F2A44
+skinparam SwimlaneBorderColor #9CA3AF
+skinparam PartitionBorderColor #9CA3AF
+skinparam ParticipantBorderColor #1F2A44
+skinparam ParticipantBackgroundColor #FFF7ED
+skinparam ActorBorderColor #1F2A44
+skinparam ActorBackgroundColor #FFF7ED
+skinparam DatabaseBorderColor #1F2A44
+skinparam DatabaseBackgroundColor #E0E7FF
+skinparam SequenceLifeLineBorderColor #9CA3AF
+skinparam SequenceGroupBorderColor #C2410C
+skinparam SequenceGroupHeaderFontColor #C2410C
+skinparam StateBorderColor #1F2A44
+skinparam StateBackgroundColor #FFF7ED
+skinparam StateStartColor #1F2A44
+skinparam StateEndColor #1F2A44
+skinparam NoteBackgroundColor #F3F4F6
+skinparam NoteBorderColor #9CA3AF
+skinparam TitleFontSize 15
+skinparam TitleFontColor #C2410C
+skinparam ClassBorderColor #1F2A44
+skinparam ClassBackgroundColor #FFF7ED
+title HU-17 · Factor de conversión\nDiagrama de actividades del sistema
+|Almacenero|
+start
+:Abre la ficha del insumo (p. ej. acero fy=4200);
+:Escribe la unidad de compra y el factor\n(1 varilla 3/8" = 5.04 kg);
+:Pulsa «Guardar»;
+|Web de oficina|
+if (¿Falta un dato obligatorio?) then (sí)
+:Marca el campo y no envía;
+stop
+else (no)
+endif
+:Envía POST /api/v1/catalogo/insumos/{id}/factor-conversion\ncon el token de sesión;
+|API (servicio Catálogo)|
+:Verifica la sesión y el permiso\ndel rol en esa obra;
+if (¿Sin permiso o sin asignación?) then (sí)
+:Responde 403;
+stop
+else (no)
+endif
+if (¿El factor es cero o negativo?) then (sí)
+:Responde 422 «El factor debe ser mayor que 0»;
+stop
+else (no)
+endif
+if (¿El recurso del S10 corresponde\na más de un insumo de compra?) then (sí)
+:Responde 422 «Use el reparto por familia (HU-18)»;
+stop
+else (no)
+endif
+:Guarda el factor con su fecha y el usuario que lo declaró;
+:Pasa el factor anterior al historial;
+|Web de oficina|
+:Requerido, comprado y consumido se muestran en unidad de compra;
+|Almacenero|
+stop
+floating note right: Sin factor declarado, el sistema asume que ambas unidades son la misma
+@enduml

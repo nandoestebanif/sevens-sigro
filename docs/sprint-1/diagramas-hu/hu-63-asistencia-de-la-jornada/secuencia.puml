@@ -1,0 +1,68 @@
+@startuml
+skinparam defaultFontName "DejaVu Sans"
+skinparam defaultFontSize 12
+skinparam shadowing false
+skinparam roundCorner 8
+skinparam ArrowColor #1F2A44
+skinparam ActivityBorderColor #1F2A44
+skinparam ActivityBackgroundColor #FFF7ED
+skinparam ActivityDiamondBackgroundColor #FEF3C7
+skinparam ActivityDiamondBorderColor #92400E
+skinparam SwimlaneTitleFontStyle bold
+skinparam SwimlaneTitleFontColor #1F2A44
+skinparam SwimlaneBorderColor #9CA3AF
+skinparam PartitionBorderColor #9CA3AF
+skinparam ParticipantBorderColor #1F2A44
+skinparam ParticipantBackgroundColor #FFF7ED
+skinparam ActorBorderColor #1F2A44
+skinparam ActorBackgroundColor #FFF7ED
+skinparam DatabaseBorderColor #1F2A44
+skinparam DatabaseBackgroundColor #E0E7FF
+skinparam SequenceLifeLineBorderColor #9CA3AF
+skinparam SequenceGroupBorderColor #C2410C
+skinparam SequenceGroupHeaderFontColor #C2410C
+skinparam StateBorderColor #1F2A44
+skinparam StateBackgroundColor #FFF7ED
+skinparam StateStartColor #1F2A44
+skinparam StateEndColor #1F2A44
+skinparam NoteBackgroundColor #F3F4F6
+skinparam NoteBorderColor #9CA3AF
+skinparam TitleFontSize 15
+skinparam TitleFontColor #C2410C
+skinparam ClassBorderColor #1F2A44
+skinparam ClassBackgroundColor #FFF7ED
+title HU-63 · Asistencia de la jornada\nDiagrama de secuencia
+autonumber
+actor "Almacenero" as U
+participant "App del almacenero" as UI
+participant "API Gateway" as GW
+participant "Servicio Tareo" as S
+database "BD · esquema tareo" as BD
+U -> UI : Abre «Asistencia» del día
+U -> UI : Marca presente, ausente o permiso
+U -> UI : Anota horas normales y extra de cada presente
+U -> UI : Pulsa «Guardar»
+UI -> GW : POST /api/v1/obras/{id}/jornadas\nAuthorization: Bearer <JWT>
+GW -> S : reenvía la petición
+S -> BD : rol del usuario y asignación a la obra
+BD --> S : permisos
+alt sin permiso o sin asignación
+  S --> GW : 403 Prohibido
+  GW --> UI : 403
+  UI --> U : muestra «No tienes permiso en esta obra»
+else La fecha está fuera del plazo de la obra
+  S --> GW : 422 «Fecha fuera del plazo vigente»
+  GW --> UI : 422
+  UI --> U : muestra el motivo junto al campo
+else Ya hay asistencia de ese trabajador ese día
+  S --> GW : 409 «Ya registrada: use corrección»
+  GW --> UI : 409
+  UI --> U : muestra el motivo junto al campo
+else datos válidos
+  S -> BD : Guarda la jornada del día
+  S --> GW : 201 Creado
+  GW --> UI : respuesta
+  UI --> U : Muestra la asistencia del día registrada
+end
+note over UI, BD : Corrección = POST /jornadas/{id}/correccion: registro nuevo que deja constancia del anterior
+@enduml

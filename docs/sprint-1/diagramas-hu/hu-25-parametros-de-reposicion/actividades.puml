@@ -1,0 +1,70 @@
+@startuml
+skinparam defaultFontName "DejaVu Sans"
+skinparam defaultFontSize 12
+skinparam shadowing false
+skinparam roundCorner 8
+skinparam ArrowColor #1F2A44
+skinparam ActivityBorderColor #1F2A44
+skinparam ActivityBackgroundColor #FFF7ED
+skinparam ActivityDiamondBackgroundColor #FEF3C7
+skinparam ActivityDiamondBorderColor #92400E
+skinparam SwimlaneTitleFontStyle bold
+skinparam SwimlaneTitleFontColor #1F2A44
+skinparam SwimlaneBorderColor #9CA3AF
+skinparam PartitionBorderColor #9CA3AF
+skinparam ParticipantBorderColor #1F2A44
+skinparam ParticipantBackgroundColor #FFF7ED
+skinparam ActorBorderColor #1F2A44
+skinparam ActorBackgroundColor #FFF7ED
+skinparam DatabaseBorderColor #1F2A44
+skinparam DatabaseBackgroundColor #E0E7FF
+skinparam SequenceLifeLineBorderColor #9CA3AF
+skinparam SequenceGroupBorderColor #C2410C
+skinparam SequenceGroupHeaderFontColor #C2410C
+skinparam StateBorderColor #1F2A44
+skinparam StateBackgroundColor #FFF7ED
+skinparam StateStartColor #1F2A44
+skinparam StateEndColor #1F2A44
+skinparam NoteBackgroundColor #F3F4F6
+skinparam NoteBorderColor #9CA3AF
+skinparam TitleFontSize 15
+skinparam TitleFontColor #C2410C
+skinparam ClassBorderColor #1F2A44
+skinparam ClassBackgroundColor #FFF7ED
+title HU-25 · Parámetros de reposición\nDiagrama de actividades del sistema
+|Residente de obra|
+start
+:Abre «Parámetros de reposición» y elige el insumo;
+:Escribe stock de seguridad, punto de reposición\ny nivel máximo, en unidad de compra;
+:Pulsa «Guardar»;
+|Web de oficina|
+if (¿Falta un dato obligatorio?) then (sí)
+:Marca el campo y no envía;
+stop
+else (no)
+endif
+:Envía POST /api/v1/obras/{id}/parametros-reposicion\ncon el token de sesión;
+|API (servicio Compras)|
+:Verifica la sesión y el permiso\ndel rol en esa obra;
+if (¿Sin permiso o sin asignación?) then (sí)
+:Responde 403;
+stop
+else (no)
+endif
+if (¿El punto de reposición es menor\nque el stock de seguridad?) then (sí)
+:Responde 422 «El punto de reposición incluye el stock de seguridad»;
+stop
+else (no)
+endif
+if (¿El nivel máximo no supera\nel punto de reposición?) then (sí)
+:Responde 422 «El nivel máximo debe superar el punto de reposición»;
+stop
+else (no)
+endif
+:Guarda los parámetros con fecha y usuario;
+:Conserva el valor anterior en el histórico;
+|Web de oficina|
+:Muestra los tres conceptos por separado, nunca como un solo «mínimo»;
+|Residente de obra|
+stop
+@enduml

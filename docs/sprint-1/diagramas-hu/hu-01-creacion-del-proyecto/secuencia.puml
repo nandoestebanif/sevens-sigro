@@ -1,0 +1,64 @@
+@startuml
+skinparam defaultFontName "DejaVu Sans"
+skinparam defaultFontSize 12
+skinparam shadowing false
+skinparam roundCorner 8
+skinparam ArrowColor #1F2A44
+skinparam ActivityBorderColor #1F2A44
+skinparam ActivityBackgroundColor #FFF7ED
+skinparam ActivityDiamondBackgroundColor #FEF3C7
+skinparam ActivityDiamondBorderColor #92400E
+skinparam SwimlaneTitleFontStyle bold
+skinparam SwimlaneTitleFontColor #1F2A44
+skinparam SwimlaneBorderColor #9CA3AF
+skinparam PartitionBorderColor #9CA3AF
+skinparam ParticipantBorderColor #1F2A44
+skinparam ParticipantBackgroundColor #FFF7ED
+skinparam ActorBorderColor #1F2A44
+skinparam ActorBackgroundColor #FFF7ED
+skinparam DatabaseBorderColor #1F2A44
+skinparam DatabaseBackgroundColor #E0E7FF
+skinparam SequenceLifeLineBorderColor #9CA3AF
+skinparam SequenceGroupBorderColor #C2410C
+skinparam SequenceGroupHeaderFontColor #C2410C
+skinparam StateBorderColor #1F2A44
+skinparam StateBackgroundColor #FFF7ED
+skinparam StateStartColor #1F2A44
+skinparam StateEndColor #1F2A44
+skinparam NoteBackgroundColor #F3F4F6
+skinparam NoteBorderColor #9CA3AF
+skinparam TitleFontSize 15
+skinparam TitleFontColor #C2410C
+skinparam ClassBorderColor #1F2A44
+skinparam ClassBackgroundColor #FFF7ED
+title HU-01 · Creación del proyecto\nDiagrama de secuencia
+autonumber
+actor "Residente de obra" as U
+participant "Web de oficina" as UI
+participant "API Gateway" as GW
+participant "Servicio Obras" as S
+database "BD · esquema obras" as BD
+U -> UI : Abre «Obras» y pulsa «Nueva obra»
+U -> UI : Escribe nombre, fecha de inicio y fecha de fin
+U -> UI : Pulsa «Crear»
+UI -> GW : POST /api/v1/obras\nAuthorization: Bearer <JWT>
+GW -> S : reenvía la petición
+S -> BD : rol del usuario y asignación a la obra
+BD --> S : permisos
+alt sin permiso o sin asignación
+  S --> GW : 403 Prohibido
+  GW --> UI : 403
+  UI --> U : muestra «No tienes permiso en esta obra»
+else La fecha de fin es anterior a la de inicio
+  S --> GW : 422 «La fecha de fin no puede ser anterior a la de inicio»
+  GW --> UI : 422
+  UI --> U : muestra el motivo junto al campo
+else datos válidos
+  S -> BD : Crea la obra en estado «en ejecución»
+  S -> S : Genera las semanas de control del plazo (HU-03)
+  S --> GW : 201 Creado
+  GW --> UI : respuesta
+  UI --> U : Muestra la obra creada con su plazo y sus semanas
+end
+note over UI, BD : Criterio 4: las salidas e ingresos (HU-40, HU-41) rechazan una fecha fuera del plazo vigente
+@enduml
