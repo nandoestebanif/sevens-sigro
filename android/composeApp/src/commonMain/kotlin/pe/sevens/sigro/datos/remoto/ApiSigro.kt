@@ -289,6 +289,7 @@ class ApiSigro(
                 401 -> "Usuario o clave incorrectos, o la sesión venció."
                 403 -> "No tienes permiso para esto en esta obra."
                 404 -> "El servidor todavía no ofrece esta función."
+                408, 429 -> "El servidor está ocupado. Se reintenta solo en un momento."
                 else -> "El servidor rechazó la operación (${r.status.value})."
             }
         return ErrorSigro(codigo, mensaje, r.status.value)
