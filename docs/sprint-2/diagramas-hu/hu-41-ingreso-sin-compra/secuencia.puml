@@ -34,39 +34,32 @@ skinparam ClassBackgroundColor #FFF7ED
 title HU-41 · Ingreso sin compra\nDiagrama de secuencia
 autonumber
 actor "Almacenero" as U
-participant "App del almacenero" as UI
+participant "Pantalla Ingreso sin compra\n(ViewModel)" as UI
+database "Room (celular)" as RM
+participant "WorkManager" as WM
 participant "API Gateway" as GW
-participant "Servicio Almacén" as S
+participant "Servicio Almacén" as SA
 database "BD · esquema almacen" as BD
-U -> UI : Abre «Ingreso» y elige «Sin compra»
-U -> UI : Elige origen, insumo, cantidad y costo unitario
-U -> UI : Pulsa «Guardar»
-UI -> GW : POST /api/v1/obras/{id}/almacen/ingresos\nAuthorization: Bearer <JWT>
-GW -> S : reenvía la petición
-S -> BD : rol del usuario y asignación a la obra
-BD --> S : permisos
-alt sin permiso o sin asignación
-  S --> GW : 403 Prohibido
-  GW --> UI : 403
-  UI --> U : muestra «No tienes permiso en esta obra»
-else El celular no está autorizado para la obra
-  S --> GW : 403 «Celular no autorizado»
-  GW --> UI : 403
-  UI --> U : muestra el motivo junto al campo
-else Falta el origen o el costo unitario
-  S --> GW : 422 «El ingreso sin compra exige origen y costo unitario»
-  GW --> UI : 422
-  UI --> U : muestra el motivo junto al campo
-else El origen es «saldo de otra obra»\ny esa obra está en SIGRO
-  S --> GW : 422 «Use el traslado entre obras (HU-42)»
-  GW --> UI : 422
-  UI --> U : muestra el motivo junto al campo
-else datos válidos
-  S -> BD : Guarda el ingreso con su origen, distinguible de una recepción
-  S -> S : Recalcula el costo promedio ponderado del insumo
-  S --> GW : 201 Creado
-  GW --> UI : respuesta
-  UI --> U : Muestra el ingreso enviado y el saldo que devolvió el servidor
+U -> UI : origen, detalle, insumo, cantidad, costo
+UI -> UI : valida (origen con detalle, costo obligatorio)
+UI -> RM : INSERT ingreso «por enviar» (uuid_cliente, hora del celular)
+UI --> U : «Guardado en el celular»
+WM -> RM : ingresos «por enviar»
+WM -> GW : POST /api/v1/obras/{id}/almacen/ingresos (IngresoIn)
+GW -> SA : reenvía
+alt celular no autorizado
+  SA --> GW : 403
+  GW --> WM : 403
+  WM -> RM : «rechazado» + mensaje del servidor
+else reenvío del mismo uuid_cliente
+  SA --> GW : 200 ingreso original
+  GW --> WM : 200
+  WM -> RM : «enviado» + recibo
+else ingreso nuevo
+  SA -> BD : INSERT ingreso con origen y costo unitario
+  SA -> BD : recalcula el costo promedio ponderado
+  SA --> GW : 201 + quién registró y hora del servidor
+  GW --> WM : 201
+  WM -> RM : «enviado» + recibo
 end
-note over UI, BD : Sin señal, el ingreso sigue el mismo camino que la salida: cola en Room (HU-37, HU-38)
 @enduml
