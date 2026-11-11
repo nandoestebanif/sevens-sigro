@@ -16,12 +16,14 @@ import pe.sevens.sigro.datos.remoto.MENSAJE_SIN_RESPUESTA
 import pe.sevens.sigro.datos.remoto.crearClienteHttp
 import pe.sevens.sigro.datos.remoto.jsonSigro
 import pe.sevens.sigro.datos.repositorio.BovedaSesion
+import pe.sevens.sigro.datos.repositorio.DecisionEnvio
 import pe.sevens.sigro.datos.repositorio.RepositorioDispositivoImpl
 import pe.sevens.sigro.datos.repositorio.RepositorioRegistrosImpl
 import pe.sevens.sigro.datos.repositorio.RepositorioSalidasImpl
 import pe.sevens.sigro.datos.repositorio.RepositorioSesionImpl
 import pe.sevens.sigro.datos.repositorio.RepositorioStockImpl
 import pe.sevens.sigro.datos.repositorio.Servidores
+import pe.sevens.sigro.datos.repositorio.decidirEnvio
 import pe.sevens.sigro.datos.repositorio.reciboDe
 import pe.sevens.sigro.dominio.EstadoDispositivo
 import pe.sevens.sigro.dominio.EstadoEnvio
@@ -291,6 +293,35 @@ class ArreglosPruebaTest {
         assertEquals(MENSAJE_SIN_RESPUESTA, e2.message)
         assertEquals("El servidor no responde. Revisa la dirección o inténtalo en un minuto.", MENSAJE_SIN_RESPUESTA)
         assertTrue(e1.esTransitorio && e2.esTransitorio, "la cola los reintenta, no los rechaza")
+    }
+
+    @Test
+    fun un429Y408SonTransitoriosYLaColaLosReintenta() = runTest {
+        for (http in listOf(408, 429, 500, 502, 503)) {
+            val e = ErrorSigro("http_$http", "x", http)
+            assertTrue(e.esTransitorio, "$http es transitorio")
+            val d = decidirEnvio(e, "salidas")
+            assertTrue(d is DecisionEnvio.Reintentar && d.cortar, "$http: queda PENDIENTE y corta el lote")
+        }
+    }
+
+    @Test
+    fun lasReglasDeNegocioSiSeRechazan() = runTest {
+        for (http in listOf(400, 403, 422)) {
+            val d = decidirEnvio(ErrorSigro("stock_insuficiente", "No alcanza el stock.", http), "salidas")
+            assertEquals(DecisionEnvio.Rechazar("No alcanza el stock."), d, "$http se rechaza con su motivo")
+        }
+        // 404 con código = regla de negocio; 404 sin código = ruta que no existe (se espera).
+        assertTrue(decidirEnvio(ErrorSigro("almacen_no_existe", "m", 404), "salidas") is DecisionEnvio.Rechazar)
+        assertTrue(decidirEnvio(ErrorSigro("http_404", "m", 404), "salidas") is DecisionEnvio.Reintentar)
+    }
+
+    @Test
+    fun un429DelServidorLlegaComoTransitorio() = runTest {
+        val ocupado = Banco { _, _, _ -> HttpStatusCode.TooManyRequests to "Too Many Requests" }
+        val e = assertFailsWith<ErrorSigro> { ocupado.dispositivo.estado(1) }
+        assertEquals(429, e.estadoHttp)
+        assertTrue(e.esTransitorio, "un tope de peticiones no rechaza lo guardado en el celular")
     }
 
     @Test
