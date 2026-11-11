@@ -115,7 +115,11 @@ class ErrorSigro(
     override val message: String,
     val estadoHttp: Int? = null,
 ) : Exception(message) {
-    /** Sin señal o servidor caído: se reintenta, no se rechaza. */
+    /**
+     * Sin señal, servidor caído u ocupado: se reintenta, no se rechaza.
+     * 408 (tiempo agotado) y 429 (demasiadas peticiones) no son una regla de negocio: el mismo registro
+     * se acepta más tarde. Sin esto, un registro válido quedaba RECHAZADO para siempre por un tope de la nube.
+     */
     val esTransitorio: Boolean
-        get() = codigo == "sin_conexion" || (estadoHttp != null && estadoHttp >= 500)
+        get() = codigo == "sin_conexion" || (estadoHttp != null && (estadoHttp >= 500 || estadoHttp == 408 || estadoHttp == 429))
 }
