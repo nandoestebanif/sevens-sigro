@@ -1,0 +1,52 @@
+@startuml
+skinparam defaultFontName "DejaVu Sans"
+skinparam defaultFontSize 12
+skinparam shadowing false
+skinparam roundCorner 8
+skinparam ArrowColor #1F2A44
+skinparam ActivityBorderColor #1F2A44
+skinparam ActivityBackgroundColor #FFF7ED
+skinparam ActivityDiamondBackgroundColor #FEF3C7
+skinparam ActivityDiamondBorderColor #92400E
+skinparam SwimlaneTitleFontStyle bold
+skinparam SwimlaneTitleFontColor #1F2A44
+skinparam SwimlaneBorderColor #9CA3AF
+skinparam PartitionBorderColor #9CA3AF
+skinparam ParticipantBorderColor #1F2A44
+skinparam ParticipantBackgroundColor #FFF7ED
+skinparam ActorBorderColor #1F2A44
+skinparam ActorBackgroundColor #FFF7ED
+skinparam DatabaseBorderColor #1F2A44
+skinparam DatabaseBackgroundColor #E0E7FF
+skinparam SequenceLifeLineBorderColor #9CA3AF
+skinparam SequenceGroupBorderColor #C2410C
+skinparam SequenceGroupHeaderFontColor #C2410C
+skinparam StateBorderColor #1F2A44
+skinparam StateBackgroundColor #FFF7ED
+skinparam StateStartColor #1F2A44
+skinparam StateEndColor #1F2A44
+skinparam NoteBackgroundColor #F3F4F6
+skinparam NoteBorderColor #9CA3AF
+skinparam TitleFontSize 15
+skinparam TitleFontColor #C2410C
+skinparam ClassBorderColor #1F2A44
+skinparam ClassBackgroundColor #FFF7ED
+title HU-55 · Salida valorizada\nDiagrama de secuencia
+autonumber
+participant "App / Web" as UI
+participant "Servicio Almacén" as SA
+database "BD · esquema almacen" as BD
+actor "Gerente" as GE
+UI -> SA : recepción 100 bls a S/ 28.00
+SA -> BD : promedio = S/ 28.00
+UI -> SA : recepción 100 bls a S/ 30.00
+SA -> BD : promedio = (100×28 + 100×30) ÷ 200 = S/ 29.00
+UI -> SA : salida 25 bls
+SA -> BD : salida con costo congelado S/ 29.00 (S/ 725.00)
+UI -> SA : recepción 100 bls a S/ 32.00
+SA -> BD : nuevo promedio; la salida anterior sigue en S/ 29.00
+GE -> UI : kárdex valorizado
+UI -> SA : GET /api/v1/obras/{id}/almacen/kardex
+SA --> UI : movimientos con costo e importe
+UI --> GE : salida a S/ 29.00 · criterio NIC 2
+@enduml

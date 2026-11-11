@@ -1,0 +1,56 @@
+@startuml
+skinparam defaultFontName "DejaVu Sans"
+skinparam defaultFontSize 12
+skinparam shadowing false
+skinparam roundCorner 8
+skinparam ArrowColor #1F2A44
+skinparam ActivityBorderColor #1F2A44
+skinparam ActivityBackgroundColor #FFF7ED
+skinparam ActivityDiamondBackgroundColor #FEF3C7
+skinparam ActivityDiamondBorderColor #92400E
+skinparam SwimlaneTitleFontStyle bold
+skinparam SwimlaneTitleFontColor #1F2A44
+skinparam SwimlaneBorderColor #9CA3AF
+skinparam PartitionBorderColor #9CA3AF
+skinparam ParticipantBorderColor #1F2A44
+skinparam ParticipantBackgroundColor #FFF7ED
+skinparam ActorBorderColor #1F2A44
+skinparam ActorBackgroundColor #FFF7ED
+skinparam DatabaseBorderColor #1F2A44
+skinparam DatabaseBackgroundColor #E0E7FF
+skinparam SequenceLifeLineBorderColor #9CA3AF
+skinparam SequenceGroupBorderColor #C2410C
+skinparam SequenceGroupHeaderFontColor #C2410C
+skinparam StateBorderColor #1F2A44
+skinparam StateBackgroundColor #FFF7ED
+skinparam StateStartColor #1F2A44
+skinparam StateEndColor #1F2A44
+skinparam NoteBackgroundColor #F3F4F6
+skinparam NoteBorderColor #9CA3AF
+skinparam TitleFontSize 15
+skinparam TitleFontColor #C2410C
+skinparam ClassBorderColor #1F2A44
+skinparam ClassBackgroundColor #FFF7ED
+title HU-45 · Corrección trazable\nDiagrama de secuencia
+autonumber
+actor "Almacenero" as U
+participant "Web de oficina" as UI
+participant "API Gateway" as GW
+participant "Servicio Almacén" as SA
+database "BD · esquema almacen" as BD
+U -> UI : «Corregir» la salida #128 (motivo)
+UI -> GW : POST /api/v1/obras/{id}/almacen/movimientos/128/reverso
+GW -> SA : reenvía
+SA -> BD : ¿#128 ya tiene reverso?
+alt ya revertido
+  SA --> GW : 409
+  GW --> UI : 409
+else
+  SA -> BD : INSERT reverso (apunta a #128, autor, motivo)
+  note right of BD : No hay UPDATE ni DELETE\nsobre movimientos
+  SA -> BD : saldo = movimientos vigentes
+  SA --> GW : 201 reverso
+  GW --> UI : 201 reverso
+  UI --> U : #128 anulado · reverso #131 visible
+end
+@enduml

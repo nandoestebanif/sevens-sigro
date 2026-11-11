@@ -1,0 +1,56 @@
+@startuml
+skinparam defaultFontName "DejaVu Sans"
+skinparam defaultFontSize 12
+skinparam shadowing false
+skinparam roundCorner 8
+skinparam ArrowColor #1F2A44
+skinparam ActivityBorderColor #1F2A44
+skinparam ActivityBackgroundColor #FFF7ED
+skinparam ActivityDiamondBackgroundColor #FEF3C7
+skinparam ActivityDiamondBorderColor #92400E
+skinparam SwimlaneTitleFontStyle bold
+skinparam SwimlaneTitleFontColor #1F2A44
+skinparam SwimlaneBorderColor #9CA3AF
+skinparam PartitionBorderColor #9CA3AF
+skinparam ParticipantBorderColor #1F2A44
+skinparam ParticipantBackgroundColor #FFF7ED
+skinparam ActorBorderColor #1F2A44
+skinparam ActorBackgroundColor #FFF7ED
+skinparam DatabaseBorderColor #1F2A44
+skinparam DatabaseBackgroundColor #E0E7FF
+skinparam SequenceLifeLineBorderColor #9CA3AF
+skinparam SequenceGroupBorderColor #C2410C
+skinparam SequenceGroupHeaderFontColor #C2410C
+skinparam StateBorderColor #1F2A44
+skinparam StateBackgroundColor #FFF7ED
+skinparam StateStartColor #1F2A44
+skinparam StateEndColor #1F2A44
+skinparam NoteBackgroundColor #F3F4F6
+skinparam NoteBorderColor #9CA3AF
+skinparam TitleFontSize 15
+skinparam TitleFontColor #C2410C
+skinparam ClassBorderColor #1F2A44
+skinparam ClassBackgroundColor #FFF7ED
+title N0 · Proceso actual del material (antes del sistema)\nDiagrama de actividades del negocio · fuente: entrevista al responsable de operaciones, set. 2026
+|Residente de obra|
+start
+:Planifica la obra con MS Project\ny el presupuesto con S10;
+|Almacenero|
+:Anota solo las **salidas** en su cuaderno;
+note right: Los ingresos no se anotan:\nel saldo no es calculable (preg. 6)
+:Informa el inventario a la oficina\ncada dos días (preg. 8);
+|Residente de obra|
+if (¿El material ya faltó?) then (sí)
+  #FEE2E2:La cuadrilla se detiene\n(más de 5 veces al mes, preg. 10);
+  :Acuerda la compra **verbalmente**\ncon el almacenero (preg. 15);
+  |Proveedor|
+  :Entrega el mismo día o al siguiente,\na veces por partes (preg. 17);
+  |Almacenero|
+  :Recibe el material\nsin registrar el ingreso;
+else (no)
+  :Sigue la obra sin saber\ncuánto queda ni cuánto costó;
+endif
+|Gerente|
+:No conoce el costo real consumido\nni su desviación frente al S10;
+stop
+@enduml

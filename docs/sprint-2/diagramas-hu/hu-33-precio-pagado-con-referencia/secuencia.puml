@@ -1,0 +1,58 @@
+@startuml
+skinparam defaultFontName "DejaVu Sans"
+skinparam defaultFontSize 12
+skinparam shadowing false
+skinparam roundCorner 8
+skinparam ArrowColor #1F2A44
+skinparam ActivityBorderColor #1F2A44
+skinparam ActivityBackgroundColor #FFF7ED
+skinparam ActivityDiamondBackgroundColor #FEF3C7
+skinparam ActivityDiamondBorderColor #92400E
+skinparam SwimlaneTitleFontStyle bold
+skinparam SwimlaneTitleFontColor #1F2A44
+skinparam SwimlaneBorderColor #9CA3AF
+skinparam PartitionBorderColor #9CA3AF
+skinparam ParticipantBorderColor #1F2A44
+skinparam ParticipantBackgroundColor #FFF7ED
+skinparam ActorBorderColor #1F2A44
+skinparam ActorBackgroundColor #FFF7ED
+skinparam DatabaseBorderColor #1F2A44
+skinparam DatabaseBackgroundColor #E0E7FF
+skinparam SequenceLifeLineBorderColor #9CA3AF
+skinparam SequenceGroupBorderColor #C2410C
+skinparam SequenceGroupHeaderFontColor #C2410C
+skinparam StateBorderColor #1F2A44
+skinparam StateBackgroundColor #FFF7ED
+skinparam StateStartColor #1F2A44
+skinparam StateEndColor #1F2A44
+skinparam NoteBackgroundColor #F3F4F6
+skinparam NoteBorderColor #9CA3AF
+skinparam TitleFontSize 15
+skinparam TitleFontColor #C2410C
+skinparam ClassBorderColor #1F2A44
+skinparam ClassBackgroundColor #FFF7ED
+title HU-33 · Precio pagado con referencia\nDiagrama de secuencia
+autonumber
+actor "Almacenero" as U
+participant "Web de oficina" as UI
+participant "API Gateway" as GW
+participant "Servicio Compras" as SC
+database "BD · esquema compras" as BD
+U -> UI : agrega «Cemento Portland I»
+UI -> GW : GET promedio pagado del insumo en la obra
+GW -> SC : reenvía
+SC -> BD : recepciones del insumo
+SC --> GW : promedio ponderado (S/ 28.40)
+GW --> UI : promedio ponderado (S/ 28.40)
+UI --> U : campo precargado con S/ 28.40
+U -> UI : escribe S/ 33.90
+alt diferencia > porcentaje configurado
+  UI --> U : «El precio se sale de lo habitual» (advertencia)
+end
+U -> UI : «Registrar»
+UI -> GW : POST /api/v1/obras/{id}/compras (precio pagado)
+GW -> SC : reenvía
+SC -> BD : guarda la compra con el precio pagado
+SC --> GW : 201
+GW --> UI : 201
+@enduml

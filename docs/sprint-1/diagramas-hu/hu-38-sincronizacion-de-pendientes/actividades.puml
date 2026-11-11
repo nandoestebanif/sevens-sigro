@@ -1,0 +1,57 @@
+@startuml
+skinparam defaultFontName "DejaVu Sans"
+skinparam defaultFontSize 12
+skinparam shadowing false
+skinparam roundCorner 8
+skinparam ArrowColor #1F2A44
+skinparam ActivityBorderColor #1F2A44
+skinparam ActivityBackgroundColor #FFF7ED
+skinparam ActivityDiamondBackgroundColor #FEF3C7
+skinparam ActivityDiamondBorderColor #92400E
+skinparam SwimlaneTitleFontStyle bold
+skinparam SwimlaneTitleFontColor #1F2A44
+skinparam SwimlaneBorderColor #9CA3AF
+skinparam PartitionBorderColor #9CA3AF
+skinparam ParticipantBorderColor #1F2A44
+skinparam ParticipantBackgroundColor #FFF7ED
+skinparam ActorBorderColor #1F2A44
+skinparam ActorBackgroundColor #FFF7ED
+skinparam DatabaseBorderColor #1F2A44
+skinparam DatabaseBackgroundColor #E0E7FF
+skinparam SequenceLifeLineBorderColor #9CA3AF
+skinparam SequenceGroupBorderColor #C2410C
+skinparam SequenceGroupHeaderFontColor #C2410C
+skinparam StateBorderColor #1F2A44
+skinparam StateBackgroundColor #FFF7ED
+skinparam StateStartColor #1F2A44
+skinparam StateEndColor #1F2A44
+skinparam NoteBackgroundColor #F3F4F6
+skinparam NoteBorderColor #9CA3AF
+skinparam TitleFontSize 15
+skinparam TitleFontColor #C2410C
+skinparam ClassBorderColor #1F2A44
+skinparam ClassBackgroundColor #FFF7ED
+title HU-38 · Sincronización de pendientes\nDiagrama de actividades del sistema
+|App del almacenero|
+start
+:WorkManager detecta que volvió la señal;
+:Toma los movimientos «por enviar» de Room;
+repeat
+  :Envía el movimiento con su uuid_cliente;
+  |API (servicio Almacén)|
+  if (¿Ya existe ese uuid_cliente?) then (sí)
+    :Devuelve el resultado original\n(no duplica);
+  else (no)
+    if (¿Sin saldo o celular no autorizado?) then (sí)
+      :Responde 422 / 403 con el motivo;
+    else (no)
+      :Guarda con la hora del servidor\ny recalcula el saldo;
+    endif
+  endif
+  |App del almacenero|
+  :Marca «enviado» o «rechazado» con su motivo;
+repeat while (¿Quedan pendientes?) is (sí)
+-> no;
+:Muestra el saldo que devolvió el servidor;
+stop
+@enduml

@@ -1,0 +1,61 @@
+@startuml
+skinparam defaultFontName "DejaVu Sans"
+skinparam defaultFontSize 12
+skinparam shadowing false
+skinparam roundCorner 8
+skinparam ArrowColor #1F2A44
+skinparam ActivityBorderColor #1F2A44
+skinparam ActivityBackgroundColor #FFF7ED
+skinparam ActivityDiamondBackgroundColor #FEF3C7
+skinparam ActivityDiamondBorderColor #92400E
+skinparam SwimlaneTitleFontStyle bold
+skinparam SwimlaneTitleFontColor #1F2A44
+skinparam SwimlaneBorderColor #9CA3AF
+skinparam PartitionBorderColor #9CA3AF
+skinparam ParticipantBorderColor #1F2A44
+skinparam ParticipantBackgroundColor #FFF7ED
+skinparam ActorBorderColor #1F2A44
+skinparam ActorBackgroundColor #FFF7ED
+skinparam DatabaseBorderColor #1F2A44
+skinparam DatabaseBackgroundColor #E0E7FF
+skinparam SequenceLifeLineBorderColor #9CA3AF
+skinparam SequenceGroupBorderColor #C2410C
+skinparam SequenceGroupHeaderFontColor #C2410C
+skinparam StateBorderColor #1F2A44
+skinparam StateBackgroundColor #FFF7ED
+skinparam StateStartColor #1F2A44
+skinparam StateEndColor #1F2A44
+skinparam NoteBackgroundColor #F3F4F6
+skinparam NoteBorderColor #9CA3AF
+skinparam TitleFontSize 15
+skinparam TitleFontColor #C2410C
+skinparam ClassBorderColor #1F2A44
+skinparam ClassBackgroundColor #FFF7ED
+title HU-12 · Inicio de sesión\nDiagrama de secuencia
+autonumber
+actor "Administrador" as U
+participant "Web de oficina" as UI
+participant "API Gateway" as GW
+participant "Servicio Obras" as SO
+database "BD · esquema obras" as BD
+U -> UI : usuario y contraseña
+UI -> GW : POST /api/v1/auth/login
+GW -> SO : reenvía
+SO -> BD : usuario activo y hash Argon2id
+SO -> SO : verifica la contraseña\n(semáforo de 2, ADR-10)
+alt incorrecto
+  SO --> GW : 401
+  GW --> UI : 401
+  UI --> U : «Usuario o contraseña incorrectos»
+else correcto
+  SO --> GW : 200 JWT (8 h: sub, exp)
+  GW --> UI : 200 JWT (8 h: sub, exp)
+  UI -> GW : GET /api/v1/auth/yo (Bearer)
+  GW -> SO : reenvía
+  SO -> BD : roles por obra
+  SO --> GW : usuario y sus obras
+  GW --> UI : usuario y sus obras
+  UI --> U : abre sus obras
+end
+note over SO : El rol se verifica en cada petición, por obra;\nel token no lleva roles
+@enduml

@@ -1,0 +1,60 @@
+@startuml
+skinparam defaultFontName "DejaVu Sans"
+skinparam defaultFontSize 12
+skinparam shadowing false
+skinparam roundCorner 8
+skinparam ArrowColor #1F2A44
+skinparam ActivityBorderColor #1F2A44
+skinparam ActivityBackgroundColor #FFF7ED
+skinparam ActivityDiamondBackgroundColor #FEF3C7
+skinparam ActivityDiamondBorderColor #92400E
+skinparam SwimlaneTitleFontStyle bold
+skinparam SwimlaneTitleFontColor #1F2A44
+skinparam SwimlaneBorderColor #9CA3AF
+skinparam PartitionBorderColor #9CA3AF
+skinparam ParticipantBorderColor #1F2A44
+skinparam ParticipantBackgroundColor #FFF7ED
+skinparam ActorBorderColor #1F2A44
+skinparam ActorBackgroundColor #FFF7ED
+skinparam DatabaseBorderColor #1F2A44
+skinparam DatabaseBackgroundColor #E0E7FF
+skinparam SequenceLifeLineBorderColor #9CA3AF
+skinparam SequenceGroupBorderColor #C2410C
+skinparam SequenceGroupHeaderFontColor #C2410C
+skinparam StateBorderColor #1F2A44
+skinparam StateBackgroundColor #FFF7ED
+skinparam StateStartColor #1F2A44
+skinparam StateEndColor #1F2A44
+skinparam NoteBackgroundColor #F3F4F6
+skinparam NoteBorderColor #9CA3AF
+skinparam TitleFontSize 15
+skinparam TitleFontColor #C2410C
+skinparam ClassBorderColor #1F2A44
+skinparam ClassBackgroundColor #FFF7ED
+title HU-38 · Sincronización de pendientes\nDiagrama de secuencia
+autonumber
+participant "WorkManager" as WM
+database "Room (celular)" as RM
+participant "API Gateway" as GW
+participant "Servicio Almacén" as SA
+database "BD · esquema almacen" as BD
+WM -> RM : movimientos «por enviar»
+loop por cada movimiento
+  WM -> GW : POST /api/v1/obras/{id}/almacen/salidas\n(uuid_cliente, hora del celular)
+  GW -> SA : reenvía
+  SA -> BD : ¿existe uuid_cliente?
+  alt ya existe (reenvío)
+    SA --> GW : 200 resultado original
+    GW --> WM : 200 resultado original
+  else saldo insuficiente / celular no autorizado
+    SA --> GW : 422 / 403 con motivo
+    GW --> WM : 422 / 403 con motivo
+    WM -> RM : «rechazado» + motivo (no se pierde)
+  else válido
+    SA -> BD : INSERT movimiento (hora del servidor)
+    SA --> GW : 201 + saldo calculado por el servidor
+    GW --> WM : 201 + saldo calculado por el servidor
+    WM -> RM : «enviado»
+  end
+end
+@enduml

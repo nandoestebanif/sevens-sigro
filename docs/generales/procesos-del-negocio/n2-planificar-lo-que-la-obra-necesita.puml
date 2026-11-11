@@ -1,0 +1,51 @@
+@startuml
+skinparam defaultFontName "DejaVu Sans"
+skinparam defaultFontSize 12
+skinparam shadowing false
+skinparam roundCorner 8
+skinparam ArrowColor #1F2A44
+skinparam ActivityBorderColor #1F2A44
+skinparam ActivityBackgroundColor #FFF7ED
+skinparam ActivityDiamondBackgroundColor #FEF3C7
+skinparam ActivityDiamondBorderColor #92400E
+skinparam SwimlaneTitleFontStyle bold
+skinparam SwimlaneTitleFontColor #1F2A44
+skinparam SwimlaneBorderColor #9CA3AF
+skinparam PartitionBorderColor #9CA3AF
+skinparam ParticipantBorderColor #1F2A44
+skinparam ParticipantBackgroundColor #FFF7ED
+skinparam ActorBorderColor #1F2A44
+skinparam ActorBackgroundColor #FFF7ED
+skinparam DatabaseBorderColor #1F2A44
+skinparam DatabaseBackgroundColor #E0E7FF
+skinparam SequenceLifeLineBorderColor #9CA3AF
+skinparam SequenceGroupBorderColor #C2410C
+skinparam SequenceGroupHeaderFontColor #C2410C
+skinparam StateBorderColor #1F2A44
+skinparam StateBackgroundColor #FFF7ED
+skinparam StateStartColor #1F2A44
+skinparam StateEndColor #1F2A44
+skinparam NoteBackgroundColor #F3F4F6
+skinparam NoteBorderColor #9CA3AF
+skinparam TitleFontSize 15
+skinparam TitleFontColor #C2410C
+skinparam ClassBorderColor #1F2A44
+skinparam ClassBackgroundColor #FFF7ED
+title N2 · Planificar lo que la obra necesita\nDiagrama de actividades del negocio
+|Residente de obra|
+start
+:Exporta del S10 la relación de insumos,\nel análisis de precios unitarios y el reporte de recursos;
+:Establece el catálogo de insumos de la obra,\ncon un código único por insumo;
+|Almacenero|
+if (¿Aparece un insumo que no está en el catálogo?) then (sí)
+  :Lo registra con su criterio;
+  |Residente de obra|
+  :Lo revisa y lo corrige si hace falta;
+else (no)
+endif
+|Residente de obra|
+:Fija cuánto necesita la obra de cada insumo (el 100 %);
+:Expresa el acero en varillas por diámetro\n(la unidad en que se compra);
+:Define por insumo stock de seguridad,\npunto de reposición y nivel máximo;
+stop
+@enduml

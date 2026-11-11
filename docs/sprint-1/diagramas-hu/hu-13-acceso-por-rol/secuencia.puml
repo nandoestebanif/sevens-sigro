@@ -1,0 +1,68 @@
+@startuml
+skinparam defaultFontName "DejaVu Sans"
+skinparam defaultFontSize 12
+skinparam shadowing false
+skinparam roundCorner 8
+skinparam ArrowColor #1F2A44
+skinparam ActivityBorderColor #1F2A44
+skinparam ActivityBackgroundColor #FFF7ED
+skinparam ActivityDiamondBackgroundColor #FEF3C7
+skinparam ActivityDiamondBorderColor #92400E
+skinparam SwimlaneTitleFontStyle bold
+skinparam SwimlaneTitleFontColor #1F2A44
+skinparam SwimlaneBorderColor #9CA3AF
+skinparam PartitionBorderColor #9CA3AF
+skinparam ParticipantBorderColor #1F2A44
+skinparam ParticipantBackgroundColor #FFF7ED
+skinparam ActorBorderColor #1F2A44
+skinparam ActorBackgroundColor #FFF7ED
+skinparam DatabaseBorderColor #1F2A44
+skinparam DatabaseBackgroundColor #E0E7FF
+skinparam SequenceLifeLineBorderColor #9CA3AF
+skinparam SequenceGroupBorderColor #C2410C
+skinparam SequenceGroupHeaderFontColor #C2410C
+skinparam StateBorderColor #1F2A44
+skinparam StateBackgroundColor #FFF7ED
+skinparam StateStartColor #1F2A44
+skinparam StateEndColor #1F2A44
+skinparam NoteBackgroundColor #F3F4F6
+skinparam NoteBorderColor #9CA3AF
+skinparam TitleFontSize 15
+skinparam TitleFontColor #C2410C
+skinparam ClassBorderColor #1F2A44
+skinparam ClassBackgroundColor #FFF7ED
+title HU-13 · Acceso por rol\nDiagrama de secuencia
+autonumber
+actor "Administrador" as U
+participant "Web de oficina" as UI
+participant "API Gateway" as GW
+participant "Servicio Obras" as S
+database "BD · esquema obras" as BD
+U -> UI : Abre «Administración → Usuarios»
+U -> UI : Escribe nombre, usuario, contraseña inicial y rol
+U -> UI : Pulsa «Crear»
+UI -> GW : POST /api/v1/usuarios\nAuthorization: Bearer <JWT>
+GW -> S : reenvía la petición
+S -> BD : rol del usuario y asignación a la obra
+BD --> S : permisos
+alt sin permiso o sin asignación
+  S --> GW : 403 Prohibido
+  GW --> UI : 403
+  UI --> U : muestra «No tienes permiso en esta obra»
+else El rol no es almacenero, residente,\nadministrador ni gerente
+  S --> GW : 422 «Rol no válido»
+  GW --> UI : 422
+  UI --> U : muestra el motivo junto al campo
+else Ya existe ese usuario
+  S --> GW : 409 «Ese usuario ya existe»
+  GW --> UI : 409
+  UI --> U : muestra el motivo junto al campo
+else datos válidos
+  S -> BD : Guarda la contraseña con Argon2id (nunca en claro)
+  S -> BD : Crea el usuario «activo» con su rol
+  S --> GW : 201 Creado
+  GW --> UI : respuesta
+  UI --> U : Muestra el usuario en la lista
+end
+note over UI, BD : Dar de baja = POST /api/v1/usuarios/{id}/baja: cambia el estado, no borra
+@enduml

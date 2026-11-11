@@ -1,0 +1,76 @@
+@startuml
+skinparam defaultFontName "DejaVu Sans"
+skinparam defaultFontSize 12
+skinparam shadowing false
+skinparam roundCorner 8
+skinparam ArrowColor #1F2A44
+skinparam ActivityBorderColor #1F2A44
+skinparam ActivityBackgroundColor #FFF7ED
+skinparam ActivityDiamondBackgroundColor #FEF3C7
+skinparam ActivityDiamondBorderColor #92400E
+skinparam SwimlaneTitleFontStyle bold
+skinparam SwimlaneTitleFontColor #1F2A44
+skinparam SwimlaneBorderColor #9CA3AF
+skinparam PartitionBorderColor #9CA3AF
+skinparam ParticipantBorderColor #1F2A44
+skinparam ParticipantBackgroundColor #FFF7ED
+skinparam ActorBorderColor #1F2A44
+skinparam ActorBackgroundColor #FFF7ED
+skinparam DatabaseBorderColor #1F2A44
+skinparam DatabaseBackgroundColor #E0E7FF
+skinparam SequenceLifeLineBorderColor #9CA3AF
+skinparam SequenceGroupBorderColor #C2410C
+skinparam SequenceGroupHeaderFontColor #C2410C
+skinparam StateBorderColor #1F2A44
+skinparam StateBackgroundColor #FFF7ED
+skinparam StateStartColor #1F2A44
+skinparam StateEndColor #1F2A44
+skinparam NoteBackgroundColor #F3F4F6
+skinparam NoteBorderColor #9CA3AF
+skinparam TitleFontSize 15
+skinparam TitleFontColor #C2410C
+skinparam ClassBorderColor #1F2A44
+skinparam ClassBackgroundColor #FFF7ED
+title HU-41 · Ingreso sin compra\nDiagrama de actividades del sistema
+|Almacenero|
+start
+:Abre «Ingreso» y elige «Sin compra»;
+:Elige origen, insumo, cantidad y costo unitario;
+:Pulsa «Guardar»;
+|App del almacenero|
+if (¿Falta un dato obligatorio?) then (sí)
+:Marca el campo y no envía;
+stop
+else (no)
+endif
+:Envía POST /api/v1/obras/{id}/almacen/ingresos\ncon el token de sesión;
+|API (servicio Almacén)|
+:Verifica la sesión y el permiso\ndel rol en esa obra;
+if (¿Sin permiso o sin asignación?) then (sí)
+:Responde 403;
+stop
+else (no)
+endif
+if (¿El celular no está autorizado para la obra?) then (sí)
+:Responde 403 «Celular no autorizado»;
+stop
+else (no)
+endif
+if (¿Falta el origen o el costo unitario?) then (sí)
+:Responde 422 «El ingreso sin compra exige origen y costo unitario»;
+stop
+else (no)
+endif
+if (¿El origen es «saldo de otra obra»\ny esa obra está en SIGRO?) then (sí)
+:Responde 422 «Use el traslado entre obras (HU-42)»;
+stop
+else (no)
+endif
+:Guarda el ingreso con su origen, distinguible de una recepción;
+:Recalcula el costo promedio ponderado del insumo;
+|App del almacenero|
+:Muestra el ingreso enviado y el saldo que devolvió el servidor;
+|Almacenero|
+stop
+floating note right: Sin señal, el ingreso sigue el mismo camino que la salida: cola en Room (HU-37, HU-38)
+@enduml

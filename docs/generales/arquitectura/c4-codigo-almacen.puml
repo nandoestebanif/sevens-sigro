@@ -1,0 +1,93 @@
+@startuml
+skinparam defaultFontName "DejaVu Sans"
+skinparam defaultFontSize 12
+skinparam shadowing false
+skinparam roundCorner 8
+skinparam ArrowColor #1F2A44
+skinparam ActivityBorderColor #1F2A44
+skinparam ActivityBackgroundColor #FFF7ED
+skinparam ActivityDiamondBackgroundColor #FEF3C7
+skinparam ActivityDiamondBorderColor #92400E
+skinparam SwimlaneTitleFontStyle bold
+skinparam SwimlaneTitleFontColor #1F2A44
+skinparam SwimlaneBorderColor #9CA3AF
+skinparam PartitionBorderColor #9CA3AF
+skinparam ParticipantBorderColor #1F2A44
+skinparam ParticipantBackgroundColor #FFF7ED
+skinparam ActorBorderColor #1F2A44
+skinparam ActorBackgroundColor #FFF7ED
+skinparam DatabaseBorderColor #1F2A44
+skinparam DatabaseBackgroundColor #E0E7FF
+skinparam SequenceLifeLineBorderColor #9CA3AF
+skinparam SequenceGroupBorderColor #C2410C
+skinparam SequenceGroupHeaderFontColor #C2410C
+skinparam StateBorderColor #1F2A44
+skinparam StateBackgroundColor #FFF7ED
+skinparam StateStartColor #1F2A44
+skinparam StateEndColor #1F2A44
+skinparam NoteBackgroundColor #F3F4F6
+skinparam NoteBorderColor #9CA3AF
+skinparam TitleFontSize 15
+skinparam TitleFontColor #C2410C
+skinparam ClassBorderColor #1F2A44
+skinparam ClassBackgroundColor #FFF7ED
+title C4 · Nivel 4 (código) · Módulo Almacén del servicio de almacén y costo
+hide empty members
+package "almacen (dominio)" {
+  class Movimiento <<libro, solo INSERT>> {
+    id
+    uuid_cliente : UUID «único, idempotencia»
+    tipo : ingreso | salida | reverso
+    cantidad : decimal
+    costo_unitario : decimal «congelado»
+    fecha_dispositivo
+    fecha_servidor
+    motivo
+    reversa_a_id
+  }
+  class Recepcion {
+    id
+    compra_id
+    fecha
+  }
+  class Almacen {
+    id
+    obra_id
+    nombre
+  }
+  class CostoPromedio <<valor>> {
+    insumo_id
+    almacen_id
+    promedio : decimal
+    + recalcular(cantidad, costo)
+  }
+  class ServicioMovimientos <<servicio>> {
+    + registrar_salida(datos, actor)
+    + registrar_ingreso(datos, actor)
+    + revertir(movimiento_id, motivo)
+    - verificar_saldo()
+    - verificar_periodo()
+  }
+  class ConsultaStock <<servicio>> {
+    + stock(obra, almacen?) : saldo derivado
+    + kardex(obra, filtros)
+  }
+}
+package "obra (otro servicio)" {
+  class Periodo
+  class Dispositivo
+}
+package "compras (otro servicio)" {
+  class Compra
+}
+Almacen "1" -- "*" Movimiento
+Movimiento "0..1" --> "1" Movimiento : reversa_a >
+Recepcion "1" --> "1..*" Movimiento : genera ingresos >
+Recepcion ..> Compra : compra_id (sin FK entre esquemas)
+ServicioMovimientos ..> Movimiento : crea
+ServicioMovimientos ..> CostoPromedio : actualiza / congela
+ServicioMovimientos ..> Periodo : GET /interno/obras/{id}/periodos
+ServicioMovimientos ..> Dispositivo : POST /interno/autorizar
+ConsultaStock ..> Movimiento : suma (no hay campo saldo)
+note bottom of Movimiento : Reglas 1 a 4 del dominio: no se borra,\nel saldo se deriva, un reenvío no duplica,\ncosto promedio ponderado (NIC 2)
+@enduml

@@ -1,0 +1,61 @@
+@startuml
+skinparam defaultFontName "DejaVu Sans"
+skinparam defaultFontSize 12
+skinparam shadowing false
+skinparam roundCorner 8
+skinparam ArrowColor #1F2A44
+skinparam ActivityBorderColor #1F2A44
+skinparam ActivityBackgroundColor #FFF7ED
+skinparam ActivityDiamondBackgroundColor #FEF3C7
+skinparam ActivityDiamondBorderColor #92400E
+skinparam SwimlaneTitleFontStyle bold
+skinparam SwimlaneTitleFontColor #1F2A44
+skinparam SwimlaneBorderColor #9CA3AF
+skinparam PartitionBorderColor #9CA3AF
+skinparam ParticipantBorderColor #1F2A44
+skinparam ParticipantBackgroundColor #FFF7ED
+skinparam ActorBorderColor #1F2A44
+skinparam ActorBackgroundColor #FFF7ED
+skinparam DatabaseBorderColor #1F2A44
+skinparam DatabaseBackgroundColor #E0E7FF
+skinparam SequenceLifeLineBorderColor #9CA3AF
+skinparam SequenceGroupBorderColor #C2410C
+skinparam SequenceGroupHeaderFontColor #C2410C
+skinparam StateBorderColor #1F2A44
+skinparam StateBackgroundColor #FFF7ED
+skinparam StateStartColor #1F2A44
+skinparam StateEndColor #1F2A44
+skinparam NoteBackgroundColor #F3F4F6
+skinparam NoteBorderColor #9CA3AF
+skinparam TitleFontSize 15
+skinparam TitleFontColor #C2410C
+skinparam ClassBorderColor #1F2A44
+skinparam ClassBackgroundColor #FFF7ED
+title HU-35 · Recepción de la compra\nDiagrama de actividades del sistema
+|Almacenero|
+start
+:Abre la compra que llegó;
+|App del almacenero|
+:Propone la recepción total por defecto;
+|Almacenero|
+:Corrige la cantidad si llegó por partes;
+:Confirma la recepción;
+|API (servicio Almacén)|
+if (¿Recibe más de lo comprado de algún insumo?) then (sí)
+  :Responde 422 «No puede recibir más de lo comprado»;
+  stop
+else (no)
+endif
+:Guarda la recepción;
+:Genera el ingreso al almacén\npor la cantidad recibida;
+:Recalcula el costo promedio ponderado\n(sin IGV si es factura);
+:Actualiza pedido, recibido y pendiente;
+if (¿Queda pendiente?) then (sí)
+  :Compra «parcialmente recibida»;
+else (no)
+  :Compra «recibida»;
+endif
+|App del almacenero|
+:Muestra el stock que devolvió el servidor;
+stop
+@enduml

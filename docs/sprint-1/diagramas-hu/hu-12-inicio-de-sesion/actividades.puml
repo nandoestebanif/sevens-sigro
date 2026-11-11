@@ -1,0 +1,60 @@
+@startuml
+skinparam defaultFontName "DejaVu Sans"
+skinparam defaultFontSize 12
+skinparam shadowing false
+skinparam roundCorner 8
+skinparam ArrowColor #1F2A44
+skinparam ActivityBorderColor #1F2A44
+skinparam ActivityBackgroundColor #FFF7ED
+skinparam ActivityDiamondBackgroundColor #FEF3C7
+skinparam ActivityDiamondBorderColor #92400E
+skinparam SwimlaneTitleFontStyle bold
+skinparam SwimlaneTitleFontColor #1F2A44
+skinparam SwimlaneBorderColor #9CA3AF
+skinparam PartitionBorderColor #9CA3AF
+skinparam ParticipantBorderColor #1F2A44
+skinparam ParticipantBackgroundColor #FFF7ED
+skinparam ActorBorderColor #1F2A44
+skinparam ActorBackgroundColor #FFF7ED
+skinparam DatabaseBorderColor #1F2A44
+skinparam DatabaseBackgroundColor #E0E7FF
+skinparam SequenceLifeLineBorderColor #9CA3AF
+skinparam SequenceGroupBorderColor #C2410C
+skinparam SequenceGroupHeaderFontColor #C2410C
+skinparam StateBorderColor #1F2A44
+skinparam StateBackgroundColor #FFF7ED
+skinparam StateStartColor #1F2A44
+skinparam StateEndColor #1F2A44
+skinparam NoteBackgroundColor #F3F4F6
+skinparam NoteBorderColor #9CA3AF
+skinparam TitleFontSize 15
+skinparam TitleFontColor #C2410C
+skinparam ClassBorderColor #1F2A44
+skinparam ClassBackgroundColor #FFF7ED
+title HU-12 · Inicio de sesión\nDiagrama de actividades del sistema
+|Administrador|
+start
+:Abre SIGRO y escribe usuario y contraseña;
+|Web de oficina|
+:Envía POST /auth/login;
+|API (servicio Obras)|
+:Busca el usuario activo;
+:Verifica la contraseña con Argon2id\n(máximo 2 verificaciones a la vez, ADR-10);
+if (¿Usuario o contraseña incorrectos?) then (sí)
+  :Responde 401 «Usuario o contraseña incorrectos»;
+  stop
+else (no)
+endif
+:Emite un JWT de 8 horas (sub y exp);
+|Web de oficina|
+:Guarda la sesión y abre sus obras;
+|Administrador|
+:Trabaja; cada registro guarda su usuario;
+|Web de oficina|
+if (¿Venció la sesión?) then (sí)
+  :Renueva la sesión sin volver\na pedir la contraseña (criterio 3);
+  note right: Hoy el token dura 8 h y no se renueva:\nel criterio 3 está pendiente (Sprint 2)
+else (no)
+endif
+stop
+@enduml

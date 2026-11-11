@@ -1,0 +1,61 @@
+@startuml
+skinparam defaultFontName "DejaVu Sans"
+skinparam defaultFontSize 12
+skinparam shadowing false
+skinparam roundCorner 8
+skinparam ArrowColor #1F2A44
+skinparam ActivityBorderColor #1F2A44
+skinparam ActivityBackgroundColor #FFF7ED
+skinparam ActivityDiamondBackgroundColor #FEF3C7
+skinparam ActivityDiamondBorderColor #92400E
+skinparam SwimlaneTitleFontStyle bold
+skinparam SwimlaneTitleFontColor #1F2A44
+skinparam SwimlaneBorderColor #9CA3AF
+skinparam PartitionBorderColor #9CA3AF
+skinparam ParticipantBorderColor #1F2A44
+skinparam ParticipantBackgroundColor #FFF7ED
+skinparam ActorBorderColor #1F2A44
+skinparam ActorBackgroundColor #FFF7ED
+skinparam DatabaseBorderColor #1F2A44
+skinparam DatabaseBackgroundColor #E0E7FF
+skinparam SequenceLifeLineBorderColor #9CA3AF
+skinparam SequenceGroupBorderColor #C2410C
+skinparam SequenceGroupHeaderFontColor #C2410C
+skinparam StateBorderColor #1F2A44
+skinparam StateBackgroundColor #FFF7ED
+skinparam StateStartColor #1F2A44
+skinparam StateEndColor #1F2A44
+skinparam NoteBackgroundColor #F3F4F6
+skinparam NoteBorderColor #9CA3AF
+skinparam TitleFontSize 15
+skinparam TitleFontColor #C2410C
+skinparam ClassBorderColor #1F2A44
+skinparam ClassBackgroundColor #FFF7ED
+title HU-31 · Validación de RUC\nDiagrama de actividades del sistema
+|Almacenero|
+start
+:Escribe el RUC del proveedor\nal darlo de alta (HU-30);
+|Web de oficina|
+:Valida el dígito verificador\n(también sin conexión);
+if (¿Dígito verificador inválido?) then (sí)
+  :Marca «RUC no válido»;
+  stop
+else (no)
+endif
+|API (servicio Compras)|
+:Pide la consulta a Integraciones;
+|Integraciones|
+:Consulta SUNAT con tiempo límite;
+if (¿SUNAT respondió?) then (sí)
+  :Devuelve razón social y estado;
+  |API (servicio Compras)|
+  :Guarda el proveedor «validado»\ncon la razón social de SUNAT;
+else (no)
+  |API (servicio Compras)|
+  :Guarda el proveedor «por validar»;
+  :El registro de la compra continúa;
+endif
+|Web de oficina|
+:Muestra el estado y «Validar de nuevo»;
+stop
+@enduml

@@ -1,0 +1,68 @@
+@startuml
+skinparam defaultFontName "DejaVu Sans"
+skinparam defaultFontSize 12
+skinparam shadowing false
+skinparam roundCorner 8
+skinparam ArrowColor #1F2A44
+skinparam ActivityBorderColor #1F2A44
+skinparam ActivityBackgroundColor #FFF7ED
+skinparam ActivityDiamondBackgroundColor #FEF3C7
+skinparam ActivityDiamondBorderColor #92400E
+skinparam SwimlaneTitleFontStyle bold
+skinparam SwimlaneTitleFontColor #1F2A44
+skinparam SwimlaneBorderColor #9CA3AF
+skinparam PartitionBorderColor #9CA3AF
+skinparam ParticipantBorderColor #1F2A44
+skinparam ParticipantBackgroundColor #FFF7ED
+skinparam ActorBorderColor #1F2A44
+skinparam ActorBackgroundColor #FFF7ED
+skinparam DatabaseBorderColor #1F2A44
+skinparam DatabaseBackgroundColor #E0E7FF
+skinparam SequenceLifeLineBorderColor #9CA3AF
+skinparam SequenceGroupBorderColor #C2410C
+skinparam SequenceGroupHeaderFontColor #C2410C
+skinparam StateBorderColor #1F2A44
+skinparam StateBackgroundColor #FFF7ED
+skinparam StateStartColor #1F2A44
+skinparam StateEndColor #1F2A44
+skinparam NoteBackgroundColor #F3F4F6
+skinparam NoteBorderColor #9CA3AF
+skinparam TitleFontSize 15
+skinparam TitleFontColor #C2410C
+skinparam ClassBorderColor #1F2A44
+skinparam ClassBackgroundColor #FFF7ED
+title HU-19 · Requerimiento total\nDiagrama de actividades del sistema
+|Residente de obra|
+start
+:Abre «Importar APU y requerimiento»;
+:Sube el reporte de recursos del S10;
+:Pulsa «Importar»;
+|Web de oficina|
+if (¿Falta un dato obligatorio?) then (sí)
+:Marca el campo y no envía;
+stop
+else (no)
+endif
+:Envía POST /api/v1/obras/{id}/requerimiento/importar\ncon el token de sesión;
+|API (servicio Compras)|
+:Verifica la sesión y el permiso\ndel rol en esa obra;
+if (¿Sin permiso o sin asignación?) then (sí)
+:Responde 403;
+stop
+else (no)
+endif
+:Consulta a Integraciones:\nLee el reporte y devuelve el total por insumo;
+if (¿El archivo no es el reporte de recursos?) then (sí)
+:Responde 422 «No es el reporte de recursos del S10»;
+stop
+else (no)
+endif
+:Toma el total de cada insumo del reporte, sin recalcular;
+:Lo convierte a unidad de compra con el factor (HU-17);
+:Lo guarda como el 100 % de la obra;
+|Web de oficina|
+:Muestra el requerimiento por insumo en unidad de compra;
+|Residente de obra|
+stop
+floating note right: Ajuste con motivo: POST /requerimiento/{id}/ajustar · insumo agregado a mano: queda marcado como tal
+@enduml

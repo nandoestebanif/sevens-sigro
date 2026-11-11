@@ -1,0 +1,70 @@
+@startuml
+skinparam defaultFontName "DejaVu Sans"
+skinparam defaultFontSize 12
+skinparam shadowing false
+skinparam roundCorner 8
+skinparam ArrowColor #1F2A44
+skinparam ActivityBorderColor #1F2A44
+skinparam ActivityBackgroundColor #FFF7ED
+skinparam ActivityDiamondBackgroundColor #FEF3C7
+skinparam ActivityDiamondBorderColor #92400E
+skinparam SwimlaneTitleFontStyle bold
+skinparam SwimlaneTitleFontColor #1F2A44
+skinparam SwimlaneBorderColor #9CA3AF
+skinparam PartitionBorderColor #9CA3AF
+skinparam ParticipantBorderColor #1F2A44
+skinparam ParticipantBackgroundColor #FFF7ED
+skinparam ActorBorderColor #1F2A44
+skinparam ActorBackgroundColor #FFF7ED
+skinparam DatabaseBorderColor #1F2A44
+skinparam DatabaseBackgroundColor #E0E7FF
+skinparam SequenceLifeLineBorderColor #9CA3AF
+skinparam SequenceGroupBorderColor #C2410C
+skinparam SequenceGroupHeaderFontColor #C2410C
+skinparam StateBorderColor #1F2A44
+skinparam StateBackgroundColor #FFF7ED
+skinparam StateStartColor #1F2A44
+skinparam StateEndColor #1F2A44
+skinparam NoteBackgroundColor #F3F4F6
+skinparam NoteBorderColor #9CA3AF
+skinparam TitleFontSize 15
+skinparam TitleFontColor #C2410C
+skinparam ClassBorderColor #1F2A44
+skinparam ClassBackgroundColor #FFF7ED
+title HU-40 · Salida de material\nDiagrama de actividades del sistema
+|Almacenero|
+start
+:Abre «Registrar salida»;
+:Elige almacén, insumo y cantidad;
+:Elige motivo y quién retira;
+:Opcional: frente o cuadrilla de destino;
+:Pulsa «Registrar»;
+|App del almacenero|
+if (¿Falta almacén, insumo, cantidad,\nmotivo o quién retira?) then (sí)
+  :Marca el campo;
+  stop
+else (no)
+endif
+:Guarda en Room con uuid_cliente (HU-37);
+|API (servicio Almacén)|
+if (¿Celular no autorizado o fuera de su obra?) then (sí)
+  :Responde 403;
+  stop
+else (no)
+endif
+if (¿Fecha fuera del plazo o semana cerrada?) then (sí)
+  :Responde 422;
+  stop
+else (no)
+endif
+if (¿Supera el saldo de ese almacén?) then (sí)
+  :Responde 422 «Stock insuficiente»;
+  stop
+else (no)
+endif
+:Toma el costo promedio vigente y lo congela (HU-55);
+:Guarda la salida (no se edita ni se borra);
+|App del almacenero|
+:Muestra «enviado» y el saldo nuevo;
+stop
+@enduml

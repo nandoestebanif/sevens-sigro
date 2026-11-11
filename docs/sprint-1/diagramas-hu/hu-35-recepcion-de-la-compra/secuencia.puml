@@ -1,0 +1,63 @@
+@startuml
+skinparam defaultFontName "DejaVu Sans"
+skinparam defaultFontSize 12
+skinparam shadowing false
+skinparam roundCorner 8
+skinparam ArrowColor #1F2A44
+skinparam ActivityBorderColor #1F2A44
+skinparam ActivityBackgroundColor #FFF7ED
+skinparam ActivityDiamondBackgroundColor #FEF3C7
+skinparam ActivityDiamondBorderColor #92400E
+skinparam SwimlaneTitleFontStyle bold
+skinparam SwimlaneTitleFontColor #1F2A44
+skinparam SwimlaneBorderColor #9CA3AF
+skinparam PartitionBorderColor #9CA3AF
+skinparam ParticipantBorderColor #1F2A44
+skinparam ParticipantBackgroundColor #FFF7ED
+skinparam ActorBorderColor #1F2A44
+skinparam ActorBackgroundColor #FFF7ED
+skinparam DatabaseBorderColor #1F2A44
+skinparam DatabaseBackgroundColor #E0E7FF
+skinparam SequenceLifeLineBorderColor #9CA3AF
+skinparam SequenceGroupBorderColor #C2410C
+skinparam SequenceGroupHeaderFontColor #C2410C
+skinparam StateBorderColor #1F2A44
+skinparam StateBackgroundColor #FFF7ED
+skinparam StateStartColor #1F2A44
+skinparam StateEndColor #1F2A44
+skinparam NoteBackgroundColor #F3F4F6
+skinparam NoteBorderColor #9CA3AF
+skinparam TitleFontSize 15
+skinparam TitleFontColor #C2410C
+skinparam ClassBorderColor #1F2A44
+skinparam ClassBackgroundColor #FFF7ED
+title HU-35 · Recepción de la compra\nDiagrama de secuencia
+autonumber
+actor "Almacenero" as U
+participant "App del almacenero" as APP
+participant "API Gateway" as GW
+participant "Servicio Almacén" as SA
+participant "Servicio Compras" as SC
+database "BD · esquema almacen" as BD
+U -> APP : abre la compra
+APP -> GW : GET /api/v1/obras/{id}/almacen/compras/{c}/recepcion
+GW -> SA : reenvía
+SA -> SC : GET /interno/compras/{c}
+SC --> SA : líneas compradas
+SA --> GW : pedido, recibido y pendiente
+GW --> APP : pedido, recibido y pendiente
+APP --> U : propone recepción total
+U -> APP : confirma (60 de 100 bolsas)
+APP -> GW : POST /api/v1/obras/{id}/almacen/recepciones
+GW -> SA : reenvía
+alt recibe más de lo comprado
+  SA --> GW : 422
+  GW --> APP : 422
+else cantidades válidas
+  SA -> BD : recepción + ingreso (60 bls)
+  SA -> BD : recalcula el costo promedio ponderado
+  SA --> GW : 201 · pendiente 40 bls
+  GW --> APP : 201 · pendiente 40 bls
+  APP --> U : compra parcialmente recibida
+end
+@enduml

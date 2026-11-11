@@ -1,0 +1,66 @@
+@startuml
+skinparam defaultFontName "DejaVu Sans"
+skinparam defaultFontSize 12
+skinparam shadowing false
+skinparam roundCorner 8
+skinparam ArrowColor #1F2A44
+skinparam ActivityBorderColor #1F2A44
+skinparam ActivityBackgroundColor #FFF7ED
+skinparam ActivityDiamondBackgroundColor #FEF3C7
+skinparam ActivityDiamondBorderColor #92400E
+skinparam SwimlaneTitleFontStyle bold
+skinparam SwimlaneTitleFontColor #1F2A44
+skinparam SwimlaneBorderColor #9CA3AF
+skinparam PartitionBorderColor #9CA3AF
+skinparam ParticipantBorderColor #1F2A44
+skinparam ParticipantBackgroundColor #FFF7ED
+skinparam ActorBorderColor #1F2A44
+skinparam ActorBackgroundColor #FFF7ED
+skinparam DatabaseBorderColor #1F2A44
+skinparam DatabaseBackgroundColor #E0E7FF
+skinparam SequenceLifeLineBorderColor #9CA3AF
+skinparam SequenceGroupBorderColor #C2410C
+skinparam SequenceGroupHeaderFontColor #C2410C
+skinparam StateBorderColor #1F2A44
+skinparam StateBackgroundColor #FFF7ED
+skinparam StateStartColor #1F2A44
+skinparam StateEndColor #1F2A44
+skinparam NoteBackgroundColor #F3F4F6
+skinparam NoteBorderColor #9CA3AF
+skinparam TitleFontSize 15
+skinparam TitleFontColor #C2410C
+skinparam ClassBorderColor #1F2A44
+skinparam ClassBackgroundColor #FFF7ED
+title HU-07 · Importación del catálogo\nDiagrama de actividades del sistema
+|Residente de obra|
+start
+:Abre «Importar del S10»;
+:Sube el PDF «5.3 Relación de insumos»;
+|Web de oficina|
+:Envía el archivo (sin leerlo) a\nPOST /catalogo/importaciones-s10;
+|API (servicio Catálogo)|
+if (¿Pesa más de 15 MB o llegó vacío?) then (sí)
+  :Responde 413 / 422;
+  stop
+else (no)
+endif
+:Lee los códigos que ya existen;
+|Integraciones|
+:Abre el PDF con pdfplumber, en memoria;
+:Detecta obra, subpresupuesto y fecha;
+:Recorre cada línea: sección y fila de insumo;
+:Marca cada insumo «crear» o «actualizar»;
+:Pone en «fallidos» las filas que no entiende, con su motivo;
+|Web de oficina|
+:Muestra lo leído: filas, fallidas y total;
+|Residente de obra|
+if (¿Confirma?) then (sí)
+  |API (servicio Catálogo)|
+  :POST /catalogo/insumos/importar-s10:\ncrea los nuevos y actualiza los cambiados\n(el código es la clave);
+  :No toca ningún saldo;
+  |Web de oficina|
+  :Muestra creados, actualizados y sin cambios;
+else (no)
+endif
+stop
+@enduml

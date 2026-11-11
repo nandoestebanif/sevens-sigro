@@ -1,0 +1,70 @@
+@startuml
+skinparam defaultFontName "DejaVu Sans"
+skinparam defaultFontSize 12
+skinparam shadowing false
+skinparam roundCorner 8
+skinparam ArrowColor #1F2A44
+skinparam ActivityBorderColor #1F2A44
+skinparam ActivityBackgroundColor #FFF7ED
+skinparam ActivityDiamondBackgroundColor #FEF3C7
+skinparam ActivityDiamondBorderColor #92400E
+skinparam SwimlaneTitleFontStyle bold
+skinparam SwimlaneTitleFontColor #1F2A44
+skinparam SwimlaneBorderColor #9CA3AF
+skinparam PartitionBorderColor #9CA3AF
+skinparam ParticipantBorderColor #1F2A44
+skinparam ParticipantBackgroundColor #FFF7ED
+skinparam ActorBorderColor #1F2A44
+skinparam ActorBackgroundColor #FFF7ED
+skinparam DatabaseBorderColor #1F2A44
+skinparam DatabaseBackgroundColor #E0E7FF
+skinparam SequenceLifeLineBorderColor #9CA3AF
+skinparam SequenceGroupBorderColor #C2410C
+skinparam SequenceGroupHeaderFontColor #C2410C
+skinparam StateBorderColor #1F2A44
+skinparam StateBackgroundColor #FFF7ED
+skinparam StateStartColor #1F2A44
+skinparam StateEndColor #1F2A44
+skinparam NoteBackgroundColor #F3F4F6
+skinparam NoteBorderColor #9CA3AF
+skinparam TitleFontSize 15
+skinparam TitleFontColor #C2410C
+skinparam ClassBorderColor #1F2A44
+skinparam ClassBackgroundColor #FFF7ED
+title HU-62 · Registro del trabajador\nDiagrama de actividades del sistema
+|Almacenero|
+start
+:Abre «Trabajadores» y pulsa «Nuevo»;
+:Escribe nombre, documento, categoría y cuadrilla;
+:Pulsa «Guardar»;
+|App del almacenero|
+if (¿Falta un dato obligatorio?) then (sí)
+:Marca el campo y no envía;
+stop
+else (no)
+endif
+:Envía POST /api/v1/obras/{id}/trabajadores\ncon el token de sesión;
+|API (servicio Tareo)|
+:Verifica la sesión y el permiso\ndel rol en esa obra;
+if (¿Sin permiso o sin asignación?) then (sí)
+:Responde 403;
+stop
+else (no)
+endif
+if (¿Falta nombre, documento, categoría o cuadrilla?) then (sí)
+:Responde 422 «Complete los datos del trabajador»;
+stop
+else (no)
+endif
+if (¿Ese documento ya está en la obra?) then (sí)
+:Responde 409 «El trabajador ya está registrado»;
+stop
+else (no)
+endif
+:Crea el trabajador «activo» con su fecha de ingreso;
+|App del almacenero|
+:El trabajador aparece en la lista de asistencia;
+|Almacenero|
+stop
+floating note right: Retiro = POST /trabajadores/{id}/baja con fecha de salida: no se borra y sus jornadas se conservan
+@enduml
