@@ -192,6 +192,19 @@ def test_flujo_de_dispositivo_solicitar_autorizar_revocar(mundo, eq):
     assert post(mundo, f"/obras/{p}/dispositivos/{d}/revocar", eq["admin"], motivo="Otra vez").status_code == 409
 
 
+def test_cada_responsable_ve_solo_sus_celulares(mundo, eq):
+    p = eq["proyecto"]
+    assert get(mundo, f"/obras/{p}/dispositivos", eq["almacenero"]).status_code == 403   # la lista de todos no es suya
+    assert get(mundo, f"/obras/{p}/dispositivos/mios", eq["almacenero"]).json() == []
+    d = post(mundo, f"/obras/{p}/dispositivos", eq["almacenero"], identificador="android-AAAA-1111").json()["id"]
+    post(mundo, f"/obras/{p}/dispositivos", eq["ssoma"], identificador="android-BBBB-2222")
+    mios = get(mundo, f"/obras/{p}/dispositivos/mios", eq["almacenero"]).json()
+    assert [(x["identificador"], x["estado"]) for x in mios] == [("android-AAAA-1111", "pendiente")]
+    post(mundo, f"/obras/{p}/dispositivos/{d}/autorizar", eq["admin"])
+    assert get(mundo, f"/obras/{p}/dispositivos/mios", eq["almacenero"]).json()[0]["estado"] == "activo"
+    assert get(mundo, f"/obras/{p}/dispositivos/mios", eq["residente"]).status_code == 403   # el residente no tiene celular de registro
+
+
 def test_un_dispositivo_activo_por_responsable(mundo, eq):
     p = eq["proyecto"]
     d1 = post(mundo, f"/obras/{p}/dispositivos", eq["almacenero"], identificador="android-AAAA-1111").json()["id"]

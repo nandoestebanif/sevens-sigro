@@ -67,6 +67,7 @@ La API ya recibe salidas, recepciones y stock (servicio almacén, migración 001
 | Compras por recibir | `GET /obras/{id}/compras?estado=registrada` | |
 | Pendiente de una compra | `GET /obras/{id}/almacen/compras/{compra_id}/recepcion` | Se une a las líneas de la compra por orden (ambas vienen por `compra_detalle.id`); si no calzan, no se adivina |
 | Entrada de compra | `POST /obras/{id}/almacen/recepciones` | Cuerpo exacto de `RecepcionIn`: `lineas: null` = todo lo pendiente; si no, `[{insumo_id, cantidad}]`; `motivo_exceso` solo si se pasa lo requerido (HU-36) |
+| Mi celular (HU-15) | `GET /obras/{id}/dispositivos/mios` | Solo los celulares de quien pregunta. El servidor dice `activo`; la app lo muestra como «Autorizado». Si hay otro celular activo del mismo usuario, avisa que el administrador debe revocarlo |
 | Aviso de lo requerido (HU-36) | `POST /obras/{id}/almacen/recepciones/verificacion` | Mismo cuerpo que la recepción (`compra_id`, `lineas`); no guarda nada. Un 404 sin código (servidor viejo) no bloquea |
 | Ingreso sin compra | `POST /obras/{id}/almacen/ingresos` | Cuerpo exacto de `IngresoIn`; `origen` con los valores de `ORIGENES`; `costo_unitario` por unidad del S10 |
 | Stock | `GET /obras/{id}/almacen/stock` | Se guarda la última respuesta (tabla `stock_guardado`) para verla sin señal |

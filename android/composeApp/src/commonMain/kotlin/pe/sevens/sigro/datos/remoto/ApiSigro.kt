@@ -224,6 +224,10 @@ class ApiSigro(
     suspend fun dispositivos(servidor: String, obraId: Int): List<DispositivoDto> =
         llamar { http.get(url(servidor, "/obras/$obraId/dispositivos")) }
 
+    /** HU-15: solo los celulares de quien pregunta en esta obra (el almacenero no puede listar los de todos). */
+    suspend fun misDispositivos(servidor: String, obraId: Int): List<DispositivoDto> =
+        llamar { http.get(url(servidor, "/obras/$obraId/dispositivos/mios")) }
+
     suspend fun solicitarDispositivo(servidor: String, obraId: Int, identificador: String): DispositivoDto =
         llamar { http.post(url(servidor, "/obras/$obraId/dispositivos")) { cuerpo(DispositivoIn(identificador)) } }
 

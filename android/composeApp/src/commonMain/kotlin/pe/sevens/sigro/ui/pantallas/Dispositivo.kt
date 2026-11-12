@@ -33,6 +33,7 @@ import org.koin.compose.viewmodel.koinViewModel
 import pe.sevens.sigro.dominio.ErrorSigro
 import pe.sevens.sigro.dominio.EstadoDispositivo
 import pe.sevens.sigro.dominio.RepositorioDispositivo
+import pe.sevens.sigro.ui.componentes.AvisoNaranja
 import pe.sevens.sigro.ui.componentes.AvisoRojo
 import pe.sevens.sigro.ui.componentes.BotonNegro
 import pe.sevens.sigro.ui.componentes.Etiqueta
@@ -106,6 +107,12 @@ fun PantallaDispositivo(obraId: Int, alVolver: () -> Unit, obraNombre: String? =
             }
         }
         AnimatedVisibility(e.error != null) { AvisoRojo(e.error.orEmpty()) }
+        if (e.dispositivo?.otroCelularActivo == true && e.dispositivo?.estado != EstadoDispositivo.AUTORIZADO) {
+            AvisoNaranja(
+                "Tu usuario ya tiene otro celular autorizado en esta obra (por ejemplo, si reinstalaste la app cambia el código). " +
+                    "Pide al administrador que, en la web, revoque el anterior y autorice este.",
+            )
+        }
         if (e.puedePedir) {
             BotonNegro("Pedir autorización", { vm.solicitar(obraId) }, icono = Icons.Filled.VerifiedUser, colorIcono = Paleta.NaranjaVivo, cargando = e.cargando)
         }

@@ -34,6 +34,7 @@ persona está asignada.
 | Asignar un rol a una persona | — | — | — | R | — |
 | Asignar personas a una obra | — | — | C | R | — |
 | Autorizar un dispositivo de registro | — | — | C | R | — |
+| Ver el estado de su propio celular | C | C | — | — | — |
 | **Catálogo de insumos** | | | | | |
 | Importar el catálogo desde el S10 | — | — | R | R | — |
 | Registrar un insumo estandarizado | R | — | R | R | — |
@@ -48,6 +49,7 @@ persona está asignada.
 | **Compras y recepciones** | | | | | |
 | Consultar y registrar proveedores | R | — | R | R | C |
 | Registrar la compra y su comprobante | — | — | R | R | C |
+| Consultar las compras para recibirlas | C | — | R | R | C |
 | Registrar la recepción de la compra | R | — | C | C | C |
 | **Movimiento de almacén** | | | | | |
 | Registrar ingreso de material sin compra | R | — | C | C | C |
