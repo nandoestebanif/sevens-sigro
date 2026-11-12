@@ -146,21 +146,21 @@ fun <T> Opciones(
     texto: (T) -> String,
     alElegir: (T) -> Unit,
     modifier: Modifier = Modifier,
-    colorActivo: Color = Paleta.Tinta,
+    colorActivo: Color = Paleta.Principal,
 ) {
     FlowRow(modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         opciones.forEach { o ->
             val activa = o == elegida
             Box(
                 Modifier.heightIn(min = 44.dp)
-                    .background(if (activa) colorActivo else Color.White.copy(alpha = 0.8f), RoundedCornerShape(22.dp))
+                    .background(if (activa) colorActivo else Paleta.Superficie.copy(alpha = 0.8f), RoundedCornerShape(22.dp))
                     .border(1.dp, if (activa) colorActivo else Paleta.BordeCampo, RoundedCornerShape(22.dp))
                     .clickable(role = Role.RadioButton) { alElegir(o) }
                     .semantics { selected = activa }
                     .padding(horizontal = 16.dp, vertical = 10.dp),
                 contentAlignment = Alignment.Center,
             ) {
-                Text(texto(o), fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = if (activa) Color.White else Paleta.Tinta)
+                Text(texto(o), fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = if (activa) Paleta.SobrePrincipal else Paleta.Tinta)
             }
         }
     }
@@ -171,11 +171,11 @@ fun <T> Opciones(
 fun Contador(etiqueta: String, valor: Int, alMenos: () -> Unit, alMas: () -> Unit, modifier: Modifier = Modifier) {
     Row(modifier, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
         Text(etiqueta, fontSize = 13.sp, color = Paleta.Texto3)
-        IconButton(onClick = alMenos, modifier = Modifier.size(44.dp).background(Color.White.copy(alpha = 0.85f), CircleShape)) {
+        IconButton(onClick = alMenos, modifier = Modifier.size(44.dp).background(Paleta.Superficie.copy(alpha = 0.85f), CircleShape)) {
             Icon(Icons.Filled.Remove, contentDescription = "Menos $etiqueta", tint = Paleta.Tinta, modifier = Modifier.size(18.dp))
         }
         Text("$valor", fontSize = 18.sp, fontWeight = FontWeight.ExtraBold, color = Paleta.Tinta, modifier = Modifier.widthIn(min = 22.dp))
-        IconButton(onClick = alMas, modifier = Modifier.size(44.dp).background(Color.White.copy(alpha = 0.85f), CircleShape)) {
+        IconButton(onClick = alMas, modifier = Modifier.size(44.dp).background(Paleta.Superficie.copy(alpha = 0.85f), CircleShape)) {
             Icon(Icons.Filled.Add, contentDescription = "Más $etiqueta", tint = Paleta.Tinta, modifier = Modifier.size(18.dp))
         }
     }

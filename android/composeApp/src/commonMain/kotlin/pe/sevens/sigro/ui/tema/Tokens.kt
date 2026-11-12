@@ -1,40 +1,74 @@
 package pe.sevens.sigro.ui.tema
 
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.Color
+
+/**
+ * Claro, oscuro o como el celular. `oscuro` es estado de Compose: cambiarlo vuelve a pintar todo lo que leyó
+ * un color de [Paleta]. Lo fija `App()` según la preferencia guardada y el tema del sistema.
+ */
+object Apariencia {
+    var modo by mutableStateOf(ModoTema.SISTEMA)
+    var oscuro by mutableStateOf(false)
+}
+
+enum class ModoTema(val texto: String) { SISTEMA("Como el celular"), CLARO("Claro"), OSCURO("Oscuro") }
 
 /*
  * Fichas técnicas del diseño aprobado (android/diseno/LEEME.md, «estilo B claro moderno + vidrio»).
- * Un solo lugar para los valores: si el lienzo cambia, se cambia aquí.
+ * Un solo lugar para los valores: si el lienzo cambia, se cambia aquí. Cada ficha tiene su valor claro y su
+ * valor oscuro. Oscuro = negro puro (bien en pantallas OLED) con vidrio claro translúcido encima; el texto es gris
+ * muy claro y no blanco puro, para que no encandile.
  */
 object Paleta {
+    private inline fun c(claro: Long, oscuro: Long) = Color(if (Apariencia.oscuro) oscuro else claro)
+
     // Texto
-    val Tinta = Color(0xFF111827)          // principal y botón negro
-    val Texto2 = Color(0xFF374151)         // secundario fuerte
-    val Texto3 = Color(0xFF4B5563)         // secundario
-    val Pizarra = Color(0xFF475569)        // trazos de los planos
-    val Gris = Color(0xFF9CA3AF)           // botón deshabilitado, chevrones
+    val Tinta get() = c(0xFF111827, 0xFFE7E7EA)          // principal y botón principal
+    val Texto2 get() = c(0xFF374151, 0xFFC4C4CA)         // secundario fuerte
+    val Texto3 get() = c(0xFF4B5563, 0xFF9C9CA4)         // secundario
+    val Pizarra get() = c(0xFF475569, 0xFF6B6B73)        // trazos de los planos
+    val Gris get() = c(0xFF9CA3AF, 0xFF3A3A40)           // botón deshabilitado, chevrones
+    /** Lo que va encima de un relleno [Tinta]. */
+    val SobreTinta get() = c(0xFFFFFFFF, 0xFF000000)
+    /** Relleno del botón principal y de la opción elegida: negro en claro, naranja en oscuro (un blanco encandila). */
+    val Principal get() = c(0xFF111827, 0xFFFB923C)
+    val SobrePrincipal get() = c(0xFFFFFFFF, 0xFF1C0A02)
 
     // Acento
-    val Naranja = Color(0xFFC2410C)
-    val NaranjaClaro = Color(0xFFFFEDD5)
-    val NaranjaOscuro = Color(0xFF9A3412)
-    val NaranjaVivo = Color(0xFFFB923C)    // íconos sobre negro, manchas del fondo
-    val Ambar = Color(0xFFB45309)          // cifra «por enviar»
-    val Rojo = Color(0xFFB91C1C)           // cifra «rechazada»
+    val Naranja get() = c(0xFFC2410C, 0xFFFB923C)
+    val NaranjaClaro get() = c(0xFFFFEDD5, 0xFF2A1206)
+    val NaranjaOscuro get() = c(0xFF9A3412, 0xFFFDBA74)
+    val NaranjaTexto get() = c(0xFF7C2D12, 0xFFFED7AA)   // texto sobre NaranjaClaro
+    val NaranjaVivo get() = c(0xFFFB923C, 0xFF3B1503)    // íconos sobre el botón principal (en oscuro el botón es naranja)
+    /** Lo que va encima de un relleno [Naranja] o [Ambar]. */
+    val SobreAcento get() = c(0xFFFFFFFF, 0xFF1C0A02)
+    val Ambar get() = c(0xFFB45309, 0xFFFCD34D)          // cifra «por enviar»
+    val Rojo get() = c(0xFFB91C1C, 0xFFFCA5A5)           // cifra «rechazada»
 
     // Estados (siempre con ícono + palabra)
-    val PendienteTexto = Color(0xFF92400E); val PendienteFondo = Color(0xFFFEF3C7)
-    val EnviadoTexto = Color(0xFF166534); val EnviadoFondo = Color(0xFFDCFCE7)
-    val RechazadoTexto = Color(0xFF991B1B); val RechazadoFondo = Color(0xFFFEE2E2)
-    val ErrorTexto = Color(0xFF7F1D1D)
+    val PendienteTexto get() = c(0xFF92400E, 0xFFFCD34D); val PendienteFondo get() = c(0xFFFEF3C7, 0xFF2B1A02)
+    val EnviadoTexto get() = c(0xFF166534, 0xFF86EFAC); val EnviadoFondo get() = c(0xFFDCFCE7, 0xFF06200F)
+    val RechazadoTexto get() = c(0xFF991B1B, 0xFFFCA5A5); val RechazadoFondo get() = c(0xFFFEE2E2, 0xFF2A0707)
+    val ErrorTexto get() = c(0xFF7F1D1D, 0xFFFECACA)
+    val AvisoTexto get() = c(0xFF78350F, 0xFFFDE68A)     // texto del aviso ámbar (HU-36)
+    val AvisoFondo get() = c(0xFFFEF3C7, 0xFF241703)
 
-    // Fondo base y vidrio
-    val FondoBase = Color(0xFFEDF1F6)
-    val Noche = Color(0xFF1E293B)          // franja de la ilustración en Entrar y Elegir obra
-    val Vidrio = Color.White.copy(alpha = 0.58f)
-    val VidrioFuerte = Color.White.copy(alpha = 0.78f)
-    val BordeVidrio = Color.White.copy(alpha = 0.75f)
-    val BordeVidrioFuerte = Color.White.copy(alpha = 0.85f)
-    val BordeCampo = Tinta.copy(alpha = 0.14f)
-    val Separador = Tinta.copy(alpha = 0.07f)
+    // Fondo, superficies y vidrio
+    val FondoBase get() = c(0xFFEDF1F6, 0xFF000000)
+    /** Superficie opaca (listas, opciones, píldoras): blanca en claro, pizarra en oscuro. */
+    val Superficie get() = c(0xFFFFFFFF, 0xFF161618)
+    val SuperficieSuave get() = c(0xFFF3F4F6, 0xFF1F1F23)
+    val Noche get() = c(0xFF1E293B, 0xFF000000)          // franja de la ilustración en Entrar y Elegir obra
+    val Vidrio get() = if (Apariencia.oscuro) Color.White.copy(alpha = 0.07f) else Color.White.copy(alpha = 0.58f)
+    val VidrioFuerte get() = if (Apariencia.oscuro) Color.White.copy(alpha = 0.11f) else Color.White.copy(alpha = 0.78f)
+    val BordeVidrio get() = if (Apariencia.oscuro) Color.White.copy(alpha = 0.12f) else Color.White.copy(alpha = 0.75f)
+    val BordeVidrioFuerte get() = if (Apariencia.oscuro) Color.White.copy(alpha = 0.18f) else Color.White.copy(alpha = 0.85f)
+    val BordeCampo get() = Tinta.copy(alpha = if (Apariencia.oscuro) 0.22f else 0.14f)
+    val Separador get() = Tinta.copy(alpha = if (Apariencia.oscuro) 0.12f else 0.07f)
+    /** Lo que estaba en gris pizarra fijo (íconos neutros, textos de apoyo). */
+    val Neutro get() = c(0xFF334155, 0xFFC4C4CA)
+    val NeutroSuave get() = c(0xFF64748B, 0xFF8E8E96)
 }

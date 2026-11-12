@@ -90,7 +90,7 @@ class PantallasSprint2Test {
 
     @Test
     fun stockNoSeCalculaEnElCelular() {
-        assertEquals("[lo calcula el servidor]", saldoParaMostrar(null, "bolsas"), "regla 2: sin saldo del servidor no hay número")
+        assertEquals("—", saldoParaMostrar(null, "bolsas"), "regla 2: sin saldo del servidor no hay número")
         assertEquals("38 bolsas", saldoParaMostrar("38", "bolsas"))
     }
 

@@ -18,7 +18,13 @@ import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.runtime.LaunchedEffect
 import org.koin.compose.KoinContext
+import org.koin.compose.koinInject
+import pe.sevens.sigro.dominio.RepositorioPreferencias
+import pe.sevens.sigro.ui.tema.Apariencia
+import pe.sevens.sigro.ui.tema.ModoTema
 import org.koin.compose.viewmodel.koinViewModel
 import pe.sevens.sigro.plataforma.ManejarAtras
 import pe.sevens.sigro.ui.pantallas.Destino
@@ -40,6 +46,7 @@ import pe.sevens.sigro.ui.pantallas.PantallaEntrar
 import pe.sevens.sigro.ui.pantallas.PantallaInicio
 import pe.sevens.sigro.ui.pantallas.PantallaObras
 import pe.sevens.sigro.ui.pantallas.PantallaPendientes
+import pe.sevens.sigro.ui.pantallas.PantallaPerfil
 import pe.sevens.sigro.ui.pantallas.PantallaSalida
 import pe.sevens.sigro.ui.pantallas.RaizViewModel
 import pe.sevens.sigro.ui.tema.TemaSigro
@@ -48,7 +55,17 @@ import pe.sevens.sigro.ui.tema.TemaSigro
 @Composable
 fun App() {
     KoinContext {
-        TemaSigro {
+        val preferencias: RepositorioPreferencias = koinInject()
+        LaunchedEffect(Unit) {
+            preferencias.tema()?.let { t -> ModoTema.entries.firstOrNull { it.name == t }?.let { Apariencia.modo = it } }
+        }
+        val delSistema = isSystemInDarkTheme()
+        Apariencia.oscuro = when (Apariencia.modo) {
+            ModoTema.SISTEMA -> delSistema
+            ModoTema.CLARO -> false
+            ModoTema.OSCURO -> true
+        }
+        TemaSigro(oscuro = Apariencia.oscuro) {
             val raiz: RaizViewModel = koinViewModel()
             val estado by raiz.estado.collectAsState()
             // Al entrar, la capa «el plano se dibuja» de PantallaEntrar se desvanece y crece 6 % (0,6 s)
@@ -95,7 +112,10 @@ private fun Navegacion(e: EstadoRaiz.Dentro) {
         when (d) {
             Destino.Inicio -> PantallaInicio(e.sesion, e.obra, irA = irA)
             Destino.Salida -> PantallaSalida(e.obra.id, alVolver = volver)
-            Destino.Pendientes -> PantallaPendientes(e.obra.id, alVolver = volver)
+            is Destino.SalidaDe -> PantallaSalida(e.obra.id, alVolver = volver, base = d.base)
+            Destino.Pendientes -> PantallaPendientes(e.obra.id, alVolver = volver, alCorregir = { irA(Destino.SalidaDe(it)) })
+            Destino.Rechazados -> PantallaPendientes(e.obra.id, alVolver = volver, soloRechazados = true, alCorregir = { irA(Destino.SalidaDe(it)) })
+            Destino.Perfil -> PantallaPerfil(e.sesion, e.obra, alVolver = volver, alCelular = { irA(Destino.Dispositivo) })
             Destino.Dispositivo -> PantallaDispositivo(e.obra.id, alVolver = volver, obraNombre = e.obra.nombre)
             Destino.Catalogo -> PantallaCatalogo(alVolver = volver, alAbrir = { irA(Destino.Ficha(it)) }, alNuevo = { irA(Destino.InsumoNuevo) })
             is Destino.Ficha -> PantallaFichaInsumo(d.insumo, alVolver = volver, alVerStock = { irA(Destino.Stock) })
