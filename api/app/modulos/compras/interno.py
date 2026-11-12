@@ -47,4 +47,12 @@ def parametros(obra_id: int, s: Session = Depends(obtener_sesion, scope="functio
                     "WHERE proyecto_id = :p", p=obra_id)
 
 
+@interno.get("/obras/{obra_id}/requerido")
+def requerido(obra_id: int, s: Session = Depends(obtener_sesion, scope="function")):
+    """HU-36: lo requerido por el S10 para cada insumo de la obra, en la unidad del S10 y con los ajustes motivados ya
+    aplicados (la cantidad solo cambia con un ajuste). Almacén lo pregunta aquí: no lee el esquema `compras`."""
+    return filas(s, "SELECT insumo_id, cantidad_planificada AS requerido FROM compras.requerimiento "
+                    "WHERE proyecto_id = :p ORDER BY insumo_id", p=obra_id)
+
+
 routers = [interno]
