@@ -173,3 +173,45 @@ class TestFlujoCompletoConElUsuarioDeLaAplicacion:
         c("UPDATE obra.periodo SET estado='cerrado', cerrado_en=now(), cerrado_por=%s WHERE proyecto_id=%s AND numero=1", (res, p))
         c("UPDATE obra.asignacion SET fecha_retiro=now(), retirado_por=%s WHERE usuario_id=%s AND proyecto_id=%s", (adm, alm, p))
         assert c("SELECT estado FROM obra.dispositivo WHERE id=%s", (d,)).fetchone()["estado"] == "revocado"
+
+
+# ============================================================ cada servicio tiene lo mismo que la aplicación en SU esquema
+SERVICIO_DE_ESQUEMA = {"obra": "obras", "catalogo": "catalogo", "compras": "compras", "tareo": "tareo"}
+
+
+class TestPrivilegiosPorServicio:
+    """La migración 0009 copió una sola vez los privilegios de `sigro_app` a cada rol de servicio. Toda tabla o columna que se
+    agrega después hay que concederla a los dos (el servicio recibe «permiso denegado» si no): esta prueba lo vigila."""
+
+    @pytest.mark.parametrize("esquema", sorted(SERVICIO_DE_ESQUEMA))
+    def test_el_rol_del_servicio_tiene_en_cada_tabla_lo_que_tiene_sigro_app(self, db, esquema):
+        rol = f"sigro_svc_{SERVICIO_DE_ESQUEMA[esquema]}"
+        faltan = []
+        for t in tablas_de(db, esquema):
+            for priv in ("SELECT", "INSERT", "UPDATE", "DELETE"):
+                if db.execute("SELECT has_table_privilege('sigro_app', %s, %s) AS p", (t, priv)).fetchone()["p"] and \
+                        not db.execute("SELECT has_table_privilege(%s, %s, %s) AS p", (rol, t, priv)).fetchone()["p"]:
+                    faltan.append(f"{t} {priv}")
+            esq, nom = t.split(".")
+            for c in db.execute("SELECT column_name FROM information_schema.columns WHERE table_schema=%s AND table_name=%s", (esq, nom)):
+                for priv in ("SELECT", "INSERT", "UPDATE"):
+                    if db.execute("SELECT has_column_privilege('sigro_app', %s, %s, %s) AS p", (t, c["column_name"], priv)).fetchone()["p"] and \
+                            not db.execute("SELECT has_column_privilege(%s, %s, %s, %s) AS p", (rol, t, c["column_name"], priv)).fetchone()["p"]:
+                        faltan.append(f"{t}.{c['column_name']} {priv}")
+        assert faltan == [], f"{rol} no tiene lo que sigro_app sí: {faltan}"
+
+    @pytest.mark.parametrize("esquema", sorted(SERVICIO_DE_ESQUEMA))
+    def test_y_nunca_tiene_mas_que_la_aplicacion(self, db, esquema):
+        rol = f"sigro_svc_{SERVICIO_DE_ESQUEMA[esquema]}"
+        de_mas = []
+        for t in tablas_de(db, esquema):
+            for priv in ("DELETE", "TRUNCATE", "REFERENCES", "TRIGGER"):
+                if db.execute("SELECT has_table_privilege(%s, %s, %s) AS p", (rol, t, priv)).fetchone()["p"]:
+                    de_mas.append(f"{t} {priv}")
+        assert de_mas == [], f"{rol} tiene privilegios que ni la aplicación tiene: {de_mas}"
+
+
+def tablas_de(db, esquema):
+    return [f"{r['table_schema']}.{r['table_name']}" for r in db.execute(
+        "SELECT table_schema, table_name FROM information_schema.tables WHERE table_type IN ('BASE TABLE', 'VIEW') AND table_schema = %s ORDER BY 2",
+        (esquema,))]
