@@ -262,3 +262,28 @@ para diagnóstico.
 endpoints síncronos (`SIGRO_HILOS`, 60): una petición de almacén ocupa un hilo y su `/interno/autorizar` otro. Con
 `POOL_MAX=3`, 20 logins a la vez hacen fila por conexión (y cada uno la retiene mientras espera su turno de argon2):
 con 0,1 CPU el último puede tardar varios segundos, dentro de los 10 s de `pool_timeout`.
+
+
+## ADR-11 · Dónde viven los comprobantes de compra (12/11/2026) · HU-34, HU-61
+
+**Contexto.** Cada compra lleva su factura, boleta o guía (JPG, PNG o PDF). El comprobante es evidencia contable: no se
+borra ni se reemplaza (estado E12). Hace falta un lugar para los bytes en el ambiente de pruebas (un solo servicio
+gratuito, sin disco persistente) y un camino claro hacia producción.
+
+**Decisión (D15).** Hoy los bytes van a Neon, en `compras.compra_adjunto_contenido` (`bytea`), una tabla aparte de los
+metadatos para que listar compras nunca los arrastre. La columna `compra_adjunto.almacenamiento` (`'bd'` | `'s3'`) deja
+escrito dónde está cada archivo, de modo que migrar a S3/R2 sea copiar y cambiar la marca, sin tocar la API.
+Máximo **10 MB** por archivo (límite de la base y de la API); el tipo se decide por la firma del contenido, no por la
+extensión. Cada archivo guarda su sha256 y la descarga lo recalcula y compara (409 `comprobante_alterado` si difiere).
+
+**Anulación, no borrado.** `anulado_por`, `anulado_en` y `motivo_anulacion` van juntos o ninguno; una vez anulado no
+se deshace (`SIGRO-A1`); el archivo anulado sigue listado y descargable. Para corregir se anula y se sube el correcto.
+El mismo archivo (misma huella) no se vuelve a adjuntar a la misma compra, ni siquiera tras anularlo.
+
+**Alcance.** Las cuatro rutas buscan la compra con la obra de la petición: el comprobante de otra obra da 404.
+
+**Alternativas descartadas.** Disco local de Render (se pierde en cada despliegue); S3/R2 ya (otra cuenta y otras
+credenciales para un volumen de decenas de archivos al mes); base64 en la fila de la compra (infla cada consulta).
+
+**Consecuencias.** La base de pruebas crece con los archivos; a 10 MB y ~30 compras al mes cabe holgado en el plan
+gratuito de Neon, pero se vigila. Revertir 0015 con comprobantes guardados se rechaza a propósito: exportar primero.
