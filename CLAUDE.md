@@ -51,6 +51,26 @@ lo declara.
 10. **Nada se borra, tampoco las personas.** Un trabajador que se retira se da de baja con
     su fecha de salida; sus jornadas registradas se conservan.
 
+## Reglas precisadas en el Sprint 2
+
+- **Comprobante de compra (HU-34).** JPG, PNG o PDF, hasta **10 MB**; el tipo lo decide la firma del archivo, no la extensión.
+  No se borra ni se reemplaza: se **anula con motivo** (autor y fecha) y se sube el correcto; el anulado sigue listado y
+  descargable. El mismo archivo (misma huella sha256) no se adjunta dos veces a una compra. Los bytes viven en Neon
+  (`compra_adjunto_contenido`) hasta pasar a S3/R2 (ADR-11).
+- **Costo del ingreso sin compra (HU-41).** Va en la **misma unidad que la cantidad** (por bolsa, por m³, por varilla); el
+  servidor guarda ambos en la unidad del S10 usando el factor de conversión. El cliente nunca convierte.
+- **Fecha de corte (HU-56, 57, 58).** `AAAA-MM-DD` (fin de ese día) o `AAAA-MM-DDTHH:MM`, en **hora de Lima**; un corte futuro se
+  ajusta a «ahora» y la respuesta lo dice. Todas las cifras de una respuesta comparten el mismo corte.
+- **Inventario valorizado (HU-56).** Valor = Σ sentido × cantidad × costo de los movimientos hasta el corte; valor / cantidad es el
+  promedio ponderado vigente. Se reconstruye del libro: no hay saldo guardado.
+- **Tablero de gasto (HU-58).** Recibido, consumido y en stock salen del libro de Almacén; si no cuadran entre sí o contra el modelo
+  de costo (eventos), la respuesta marca `por_conciliar` en vez de mostrarlas como definitivas. Las horas hombre no se valorizan
+  hasta tener la tarifa por categoría (HU-65).
+- **Desviación (HU-57).** Lo esperado a la fecha es lo planificado repartido de forma lineal en el plazo de la obra. La desviación
+  en importe se parte en efecto cantidad y efecto precio. Lo consumido que el S10 no planificó va aparte y no entra en los totales.
+- **Permisos por servicio.** Toda tabla o columna nueva se concede a `sigro_app` **y** al rol del servicio (`sigro_svc_*`): la 0009
+  copió los privilegios una sola vez. Una prueba lo vigila.
+
 ## Stack y arquitectura
 
 | Pieza | Tecnología |

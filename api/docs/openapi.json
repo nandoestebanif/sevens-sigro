@@ -934,6 +934,60 @@
     "x-servicio": "obras"
    }
   },
+  "/api/v1/obras/{obra_id}/dispositivos/mios": {
+   "get": {
+    "tags": [
+     "obra"
+    ],
+    "summary": "Mis Dispositivos",
+    "description": "HU-15: el almacenero o el SSOMA ve SOLO sus celulares en esta obra (pendiente, activo o revocado), para que la app\nsepa si el suyo ya está autorizado. Listar los de todos sigue siendo del administrador y del residente.",
+    "operationId": "mis_dispositivos_api_v1_obras__obra_id__dispositivos_mios_get",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "obra_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "minimum": 1,
+       "title": "Obra Id"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "type": "array",
+         "items": {
+          "$ref": "#/components/schemas/DispositivoOut"
+         },
+         "title": "Response Mis Dispositivos Api V1 Obras  Obra Id  Dispositivos Mios Get"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    },
+    "x-servicio": "obras"
+   }
+  },
   "/api/v1/obras/{obra_id}/dispositivos/{dispositivo_id}/autorizar": {
    "post": {
     "tags": [
@@ -2015,6 +2069,67 @@
     "x-servicio": "compras"
    }
   },
+  "/api/v1/obras/{obra_id}/compras/precio-referencia": {
+   "get": {
+    "tags": [
+     "compras"
+    ],
+    "summary": "Precio Referencia",
+    "description": "HU-33: el promedio ponderado pagado del insumo en esta obra, para precargar el precio y avisar si se sale de lo\nhabitual. Lo recalcula el sistema con cada recepción y nunca se edita a mano.",
+    "operationId": "precio_referencia_api_v1_obras__obra_id__compras_precio_referencia_get",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "obra_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "minimum": 1,
+       "title": "Obra Id"
+      }
+     },
+     {
+      "name": "insumo",
+      "in": "query",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "minLength": 1,
+       "maxLength": 30,
+       "title": "Insumo"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/PrecioReferenciaOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    },
+    "x-servicio": "compras"
+   }
+  },
   "/api/v1/obras/{obra_id}/compras/{compra_id}": {
    "get": {
     "tags": [
@@ -2394,6 +2509,280 @@
        "application/json": {
         "schema": {
          "$ref": "#/components/schemas/SolicitudOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    },
+    "x-servicio": "compras"
+   }
+  },
+  "/api/v1/obras/{obra_id}/compras/{compra_id}/comprobantes": {
+   "post": {
+    "tags": [
+     "compras · comprobantes"
+    ],
+    "summary": "Subir Comprobante",
+    "description": "Sube un comprobante a la compra. El tipo se decide por el contenido (firma del archivo), no por la extensión.\n\n413 si pasa de 10 MB · 415 si no es PDF/JPG/PNG · 422 si llega vacío · 409 si la compra está anulada o si ese mismo\narchivo (misma huella) ya está adjunto a la compra.",
+    "operationId": "subir_comprobante_api_v1_obras__obra_id__compras__compra_id__comprobantes_post",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "compra_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Compra Id"
+      }
+     },
+     {
+      "name": "obra_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "minimum": 1,
+       "title": "Obra Id"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "multipart/form-data": {
+       "schema": {
+        "$ref": "#/components/schemas/Body_subir_comprobante_api_v1_obras__obra_id__compras__compra_id__comprobantes_post"
+       }
+      }
+     }
+    },
+    "responses": {
+     "201": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ComprobanteOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    },
+    "x-servicio": "compras"
+   },
+   "get": {
+    "tags": [
+     "compras · comprobantes"
+    ],
+    "summary": "Listar Comprobantes",
+    "description": "Los vigentes primero y luego los anulados (con su motivo): nada desaparece de la lista.",
+    "operationId": "listar_comprobantes_api_v1_obras__obra_id__compras__compra_id__comprobantes_get",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "compra_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Compra Id"
+      }
+     },
+     {
+      "name": "obra_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "minimum": 1,
+       "title": "Obra Id"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "type": "array",
+         "items": {
+          "$ref": "#/components/schemas/ComprobanteOut"
+         },
+         "title": "Response Listar Comprobantes Api V1 Obras  Obra Id  Compras  Compra Id  Comprobantes Get"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    },
+    "x-servicio": "compras"
+   }
+  },
+  "/api/v1/obras/{obra_id}/compras/{compra_id}/comprobantes/{adjunto_id}": {
+   "get": {
+    "tags": [
+     "compras · comprobantes"
+    ],
+    "summary": "Descargar Comprobante",
+    "description": "El archivo original, tal como se adjuntó (HU-34 c3, HU-61). También se descarga el anulado: no se pierde.\nAntes de entregarlo se recalcula la huella y se compara con la guardada.",
+    "operationId": "descargar_comprobante_api_v1_obras__obra_id__compras__compra_id__comprobantes__adjunto_id__get",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "compra_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Compra Id"
+      }
+     },
+     {
+      "name": "adjunto_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Adjunto Id"
+      }
+     },
+     {
+      "name": "obra_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "minimum": 1,
+       "title": "Obra Id"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    },
+    "x-servicio": "compras"
+   }
+  },
+  "/api/v1/obras/{obra_id}/compras/{compra_id}/comprobantes/{adjunto_id}/anulacion": {
+   "post": {
+    "tags": [
+     "compras · comprobantes"
+    ],
+    "summary": "Anular Comprobante",
+    "description": "Anula el comprobante con su motivo (obligatorio). No se borra ni se reemplaza: queda en la lista como anulado.",
+    "operationId": "anular_comprobante_api_v1_obras__obra_id__compras__compra_id__comprobantes__adjunto_id__anulacion_post",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "compra_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Compra Id"
+      }
+     },
+     {
+      "name": "adjunto_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Adjunto Id"
+      }
+     },
+     {
+      "name": "obra_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "minimum": 1,
+       "title": "Obra Id"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/AnularIn"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ComprobanteOut"
         }
        }
       }
@@ -2979,6 +3368,261 @@
           "$ref": "#/components/schemas/ParametroOut"
          },
          "title": "Response Historial Parametros Api V1 Obras  Obra Id  Parametros Reposicion  Insumo Id  Historial Get"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    },
+    "x-servicio": "compras"
+   }
+  },
+  "/api/v1/obras/{obra_id}/partidas/importar-apu": {
+   "post": {
+    "tags": [
+     "compras · partidas y APU"
+    ],
+    "summary": "Importar Apu",
+    "description": "Guarda partida → recurso → cantidad por unidad. Repetir la importación no duplica ni pisa.",
+    "operationId": "importar_apu_api_v1_obras__obra_id__partidas_importar_apu_post",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "obra_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "minimum": 1,
+       "title": "Obra Id"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/ImportarApuIn"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ResultadoApuOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    },
+    "x-servicio": "compras"
+   }
+  },
+  "/api/v1/obras/{obra_id}/partidas": {
+   "get": {
+    "tags": [
+     "compras · partidas y APU"
+    ],
+    "summary": "Ver Partidas",
+    "operationId": "ver_partidas_api_v1_obras__obra_id__partidas_get",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "obra_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "minimum": 1,
+       "title": "Obra Id"
+      }
+     },
+     {
+      "name": "q",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string",
+         "maxLength": 100
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Q"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "type": "array",
+         "items": {
+          "$ref": "#/components/schemas/PartidaOut"
+         },
+         "title": "Response Ver Partidas Api V1 Obras  Obra Id  Partidas Get"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    },
+    "x-servicio": "compras"
+   }
+  },
+  "/api/v1/obras/{obra_id}/partidas/{partida_id}/recursos": {
+   "get": {
+    "tags": [
+     "compras · partidas y APU"
+    ],
+    "summary": "Ver Recursos De Partida",
+    "operationId": "ver_recursos_de_partida_api_v1_obras__obra_id__partidas__partida_id__recursos_get",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "partida_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Partida Id"
+      }
+     },
+     {
+      "name": "obra_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "minimum": 1,
+       "title": "Obra Id"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "type": "array",
+         "items": {
+          "$ref": "#/components/schemas/RecursoPartidaOut"
+         },
+         "title": "Response Ver Recursos De Partida Api V1 Obras  Obra Id  Partidas  Partida Id  Recursos Get"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    },
+    "x-servicio": "compras"
+   }
+  },
+  "/api/v1/obras/{obra_id}/insumos/{insumo_id}/partidas": {
+   "get": {
+    "tags": [
+     "compras · partidas y APU"
+    ],
+    "summary": "Partidas Que Usan El Insumo",
+    "description": "Trazabilidad inversa: en qué partidas de la obra se gasta este insumo.",
+    "operationId": "partidas_que_usan_el_insumo_api_v1_obras__obra_id__insumos__insumo_id__partidas_get",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "insumo_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Insumo Id"
+      }
+     },
+     {
+      "name": "obra_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "minimum": 1,
+       "title": "Obra Id"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "type": "array",
+         "items": {
+          "$ref": "#/components/schemas/PartidaOut"
+         },
+         "title": "Response Partidas Que Usan El Insumo Api V1 Obras  Obra Id  Insumos  Insumo Id  Partidas Get"
         }
        }
       }
@@ -3603,7 +4247,7 @@
      "almacén"
     ],
     "summary": "Registrar Ingreso",
-    "description": "Origen declarado y costo unitario obligatorios; queda distinguible (tipo `ingreso_sin_compra`) de una recepción.\n«Saldo de otra obra» solo si esa obra no está en SIGRO (D5): si está, se usa el traslado (HU-42).",
+    "description": "Origen declarado y costo unitario obligatorios; queda distinguible (tipo `ingreso_sin_compra`) de una recepción.\n**Unidad del costo**: va en la misma unidad que la cantidad (`unidad`; si se omite, la del S10). Ej. acero: 100 var a\nS/ 35.40 la varilla → el libro guarda 712 kg a S/ 4.971910 el kg; 712 kg a S/ 4.97 el kg es lo mismo, sin factor.\n«Saldo de otra obra» solo si esa obra no está en SIGRO (D5): si está, se usa el traslado (HU-42).",
     "operationId": "registrar_ingreso_api_v1_obras__obra_id__almacen_ingresos_post",
     "security": [
      {
@@ -3708,6 +4352,66 @@
        "application/json": {
         "schema": {
          "$ref": "#/components/schemas/MovimientoOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    },
+    "x-servicio": "almacen"
+   }
+  },
+  "/api/v1/obras/{obra_id}/almacen/recepciones/verificacion": {
+   "post": {
+    "tags": [
+     "almacén"
+    ],
+    "summary": "Verificar Recepcion",
+    "description": "HU-36: avisa ANTES de guardar si lo que se va a recibir pasa lo requerido. No guarda nada; avisa, no bloquea (regla 7):\nsi hay exceso, `POST /recepciones` pide `motivo_exceso`.",
+    "operationId": "verificar_recepcion_api_v1_obras__obra_id__almacen_recepciones_verificacion_post",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "obra_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "minimum": 1,
+       "title": "Obra Id"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/VerificacionIn"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/VerificacionOut"
         }
        }
       }
@@ -4386,6 +5090,7 @@
      "costo"
     ],
     "summary": "Gasto",
+    "description": "HU-58. Cinco cifras con su definición y UNA sola fecha de corte. Recibido, consumido y en stock salen del libro de\nAlmacén (el mismo cálculo del inventario, HU-56); comprado de Compras y las horas de Tareo. Si no cuadran entre sí, la\nrespuesta lo marca (`por_conciliar`) en vez de mostrar números que se contradicen.",
     "operationId": "gasto_api_v1_obras__obra_id__costo_gasto_get",
     "security": [
      {
@@ -4402,6 +5107,24 @@
        "minimum": 1,
        "title": "Obra Id"
       }
+     },
+     {
+      "name": "corte",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "AAAA-MM-DD o AAAA-MM-DDTHH:MM, hora de Lima; por defecto, ahora",
+       "title": "Corte"
+      },
+      "description": "AAAA-MM-DD o AAAA-MM-DDTHH:MM, hora de Lima; por defecto, ahora"
      }
     ],
     "responses": {
@@ -4411,6 +5134,188 @@
        "application/json": {
         "schema": {
          "$ref": "#/components/schemas/GastoOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    },
+    "x-servicio": "costo"
+   }
+  },
+  "/api/v1/obras/{obra_id}/costo/inventario": {
+   "get": {
+    "tags": [
+     "costo"
+    ],
+    "summary": "Inventario",
+    "description": "Capital detenido en almacén: por insumo, cantidad × costo promedio ponderado a la fecha de corte (HU-56). Se\nreconstruye del libro de movimientos en Almacén; aquí solo se agrupa y se calcula el peso de cada insumo.",
+    "operationId": "inventario_api_v1_obras__obra_id__costo_inventario_get",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "obra_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "minimum": 1,
+       "title": "Obra Id"
+      }
+     },
+     {
+      "name": "almacen",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "string",
+       "description": "`todos` (consolidado de la obra) o el id de un almacén",
+       "default": "todos",
+       "title": "Almacen"
+      },
+      "description": "`todos` (consolidado de la obra) o el id de un almacén"
+     },
+     {
+      "name": "corte",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "AAAA-MM-DD o AAAA-MM-DDTHH:MM, hora de Lima; por defecto, ahora",
+       "title": "Corte"
+      },
+      "description": "AAAA-MM-DD o AAAA-MM-DDTHH:MM, hora de Lima; por defecto, ahora"
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/InventarioOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    },
+    "x-servicio": "costo"
+   }
+  },
+  "/api/v1/obras/{obra_id}/costo/desviacion": {
+   "get": {
+    "tags": [
+     "costo"
+    ],
+    "summary": "Desviacion",
+    "description": "HU-57. Por insumo: consumo real (cantidad e importe al costo congelado) contra lo planificado por el S10, en cantidad,\nimporte y porcentaje, comparado con el avance del plazo. Los insumos consumidos que el S10 no planificó van aparte.",
+    "operationId": "desviacion_api_v1_obras__obra_id__costo_desviacion_get",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "obra_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "minimum": 1,
+       "title": "Obra Id"
+      }
+     },
+     {
+      "name": "orden",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "string",
+       "description": "importe (por defecto) | porcentaje | cantidad | codigo",
+       "default": "importe",
+       "title": "Orden"
+      },
+      "description": "importe (por defecto) | porcentaje | cantidad | codigo"
+     },
+     {
+      "name": "corte",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "AAAA-MM-DD o AAAA-MM-DDTHH:MM, hora de Lima; por defecto, ahora",
+       "title": "Corte"
+      },
+      "description": "AAAA-MM-DD o AAAA-MM-DDTHH:MM, hora de Lima; por defecto, ahora"
+     },
+     {
+      "name": "tolerancia",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "number",
+         "maximum": 100.0,
+         "minimum": 0.0
+        },
+        {
+         "type": "string",
+         "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+        }
+       ],
+       "description": "% de desviación que aún se lee «en rango»",
+       "default": "10",
+       "title": "Tolerancia"
+      },
+      "description": "% de desviación que aún se lee «en rango»"
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/DesviacionOut"
         }
        }
       }
@@ -5971,6 +6876,21 @@
     ],
     "title": "AvanceOut"
    },
+   "Body_subir_comprobante_api_v1_obras__obra_id__compras__compra_id__comprobantes_post": {
+    "properties": {
+     "archivo": {
+      "type": "string",
+      "contentMediaType": "application/octet-stream",
+      "title": "Archivo",
+      "description": "Factura, boleta o guía: PDF, JPG o PNG, hasta 10 MB."
+     }
+    },
+    "type": "object",
+    "required": [
+     "archivo"
+    ],
+    "title": "Body_subir_comprobante_api_v1_obras__obra_id__compras__compra_id__comprobantes_post"
+   },
    "CompraIn": {
     "properties": {
      "proveedor_id": {
@@ -6061,6 +6981,34 @@
       "type": "string",
       "title": "Proveedor Razon Social"
      },
+     "proveedor_estado": {
+      "type": "string",
+      "enum": [
+       "validado",
+       "sin_validar",
+       "con_alerta_sunat",
+       "de_baja"
+      ],
+      "title": "Proveedor Estado",
+      "default": "sin_validar"
+     },
+     "proveedor_alerta_sunat": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Proveedor Alerta Sunat"
+     },
+     "comprobantes_vigentes": {
+      "type": "integer",
+      "title": "Comprobantes Vigentes",
+      "description": "HU-34/HU-61: cuántos comprobantes vigentes tiene; 0 = «sin comprobante» en el listado.",
+      "default": 0
+     },
      "tipo_comprobante": {
       "type": "string",
       "title": "Tipo Comprobante"
@@ -6118,6 +7066,14 @@
       "type": "array",
       "title": "Lineas"
      },
+     "advertencias": {
+      "items": {
+       "type": "string"
+      },
+      "type": "array",
+      "title": "Advertencias",
+      "default": []
+     },
      "registrado_por": {
       "type": "integer",
       "title": "Registrado Por"
@@ -6147,6 +7103,127 @@
     ],
     "title": "CompraOut"
    },
+   "ComprobanteOut": {
+    "properties": {
+     "id": {
+      "type": "integer",
+      "title": "Id"
+     },
+     "compra_id": {
+      "type": "integer",
+      "title": "Compra Id"
+     },
+     "nombre": {
+      "type": "string",
+      "title": "Nombre"
+     },
+     "tipo_mime": {
+      "type": "string",
+      "enum": [
+       "application/pdf",
+       "image/jpeg",
+       "image/png"
+      ],
+      "title": "Tipo Mime"
+     },
+     "tamano_bytes": {
+      "type": "integer",
+      "title": "Tamano Bytes"
+     },
+     "sha256": {
+      "type": "string",
+      "title": "Sha256"
+     },
+     "estado": {
+      "type": "string",
+      "enum": [
+       "vigente",
+       "anulado"
+      ],
+      "title": "Estado"
+     },
+     "subido_por": {
+      "type": "integer",
+      "title": "Subido Por"
+     },
+     "subido_en": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Subido En"
+     },
+     "anulado_por": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Anulado Por"
+     },
+     "anulado_en": {
+      "anyOf": [
+       {
+        "type": "string",
+        "format": "date-time"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Anulado En"
+     },
+     "motivo_anulacion": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Motivo Anulacion"
+     }
+    },
+    "type": "object",
+    "required": [
+     "id",
+     "compra_id",
+     "nombre",
+     "tipo_mime",
+     "tamano_bytes",
+     "sha256",
+     "estado",
+     "subido_por",
+     "subido_en"
+    ],
+    "title": "ComprobanteOut",
+    "description": "HU-34. `estado`: vigente | anulado (E12). La huella sha256 prueba que el archivo no cambió desde que se adjuntó."
+   },
+   "FallidoApuOut": {
+    "properties": {
+     "partida_codigo": {
+      "type": "string",
+      "title": "Partida Codigo"
+     },
+     "insumo_codigo": {
+      "type": "string",
+      "title": "Insumo Codigo"
+     },
+     "motivo": {
+      "type": "string",
+      "title": "Motivo"
+     }
+    },
+    "type": "object",
+    "required": [
+     "partida_codigo",
+     "insumo_codigo",
+     "motivo"
+    ],
+    "title": "FallidoApuOut"
+   },
    "FallidoOut": {
     "properties": {
      "insumo_codigo": {
@@ -6164,6 +7241,64 @@
      "motivo"
     ],
     "title": "FallidoOut"
+   },
+   "FilaApu": {
+    "properties": {
+     "partida_codigo": {
+      "type": "string",
+      "maxLength": 40,
+      "minLength": 1,
+      "title": "Partida Codigo"
+     },
+     "partida_descripcion": {
+      "type": "string",
+      "maxLength": 300,
+      "minLength": 1,
+      "title": "Partida Descripcion"
+     },
+     "partida_unidad": {
+      "type": "string",
+      "maxLength": 20,
+      "minLength": 1,
+      "title": "Partida Unidad"
+     },
+     "insumo_codigo": {
+      "type": "string",
+      "maxLength": 30,
+      "minLength": 1,
+      "title": "Insumo Codigo"
+     },
+     "cantidad_por_unidad": {
+      "anyOf": [
+       {
+        "type": "number",
+        "exclusiveMinimum": 0.0
+       },
+       {
+        "type": "string",
+        "pattern": "^(?!^[-+.]*$)[+-]?0*(?:\\d{0,12}|(?=[\\d.]{1,19}0*$)\\d{0,12}\\.\\d{0,6}0*$)"
+       }
+      ],
+      "title": "Cantidad Por Unidad"
+     },
+     "unidad": {
+      "type": "string",
+      "maxLength": 20,
+      "minLength": 1,
+      "title": "Unidad"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "partida_codigo",
+     "partida_descripcion",
+     "partida_unidad",
+     "insumo_codigo",
+     "cantidad_por_unidad",
+     "unidad"
+    ],
+    "title": "FilaApu"
    },
    "FilaRequerimiento": {
     "properties": {
@@ -6208,6 +7343,25 @@
      "precio"
     ],
     "title": "FilaRequerimiento"
+   },
+   "ImportarApuIn": {
+    "properties": {
+     "filas": {
+      "items": {
+       "$ref": "#/components/schemas/FilaApu"
+      },
+      "type": "array",
+      "maxItems": 20000,
+      "minItems": 1,
+      "title": "Filas"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "filas"
+    ],
+    "title": "ImportarApuIn"
    },
    "ImportarRequerimientoIn": {
     "properties": {
@@ -6267,6 +7421,20 @@
        }
       ],
       "title": "Precio Unitario"
+     },
+     "nota_precio": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 300,
+        "minLength": 1
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Nota Precio",
+      "description": "HU-33: nota opcional si el precio se sale de lo habitual (no es obligatoria, D13)."
      }
     },
     "additionalProperties": false,
@@ -6302,6 +7470,34 @@
       "type": "string",
       "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
       "title": "Precio Unitario"
+     },
+     "precio_referencia": {
+      "anyOf": [
+       {
+        "type": "string",
+        "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Precio Referencia"
+     },
+     "fuera_de_lo_habitual": {
+      "type": "boolean",
+      "title": "Fuera De Lo Habitual",
+      "default": false
+     },
+     "nota_precio": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Nota Precio"
      }
     },
     "type": "object",
@@ -6515,6 +7711,107 @@
     ],
     "title": "ParametroOut"
    },
+   "PartidaOut": {
+    "properties": {
+     "id": {
+      "type": "integer",
+      "title": "Id"
+     },
+     "codigo": {
+      "type": "string",
+      "title": "Codigo"
+     },
+     "descripcion": {
+      "type": "string",
+      "title": "Descripcion"
+     },
+     "unidad": {
+      "type": "string",
+      "title": "Unidad"
+     },
+     "recursos": {
+      "type": "integer",
+      "title": "Recursos"
+     }
+    },
+    "type": "object",
+    "required": [
+     "id",
+     "codigo",
+     "descripcion",
+     "unidad",
+     "recursos"
+    ],
+    "title": "PartidaOut"
+   },
+   "PrecioReferenciaOut": {
+    "properties": {
+     "insumo_codigo": {
+      "type": "string",
+      "title": "Insumo Codigo"
+     },
+     "unidad_compra": {
+      "type": "string",
+      "title": "Unidad Compra"
+     },
+     "promedio_ponderado": {
+      "anyOf": [
+       {
+        "type": "string",
+        "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Promedio Ponderado"
+     },
+     "unidad_s10": {
+      "type": "string",
+      "title": "Unidad S10"
+     },
+     "promedio_s10": {
+      "anyOf": [
+       {
+        "type": "string",
+        "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Promedio S10"
+     },
+     "factor_conversion": {
+      "type": "string",
+      "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+      "title": "Factor Conversion"
+     },
+     "cantidad_recibida_s10": {
+      "type": "string",
+      "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+      "title": "Cantidad Recibida S10"
+     },
+     "limite_pct": {
+      "type": "string",
+      "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+      "title": "Limite Pct"
+     }
+    },
+    "type": "object",
+    "required": [
+     "insumo_codigo",
+     "unidad_compra",
+     "promedio_ponderado",
+     "unidad_s10",
+     "promedio_s10",
+     "factor_conversion",
+     "cantidad_recibida_s10",
+     "limite_pct"
+    ],
+    "title": "PrecioReferenciaOut",
+    "description": "HU-33. Con qué se compara el precio que se va a pagar. Todo sin IGV."
+   },
    "ProveedorIn": {
     "properties": {
      "ruc": {
@@ -6557,9 +7854,34 @@
       "enum": [
        "validado",
        "sin_validar",
+       "con_alerta_sunat",
        "de_baja"
       ],
       "title": "Estado"
+     },
+     "alerta_sunat": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Alerta Sunat",
+      "description": "HU-31: estado y condición que informó SUNAT cuando no es activo y habido."
+     },
+     "consultado_en": {
+      "anyOf": [
+       {
+        "type": "string",
+        "format": "date-time"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Consultado En"
      },
      "compras_registradas": {
       "type": "integer",
@@ -6599,6 +7921,45 @@
      "ultima_compra"
     ],
     "title": "ProveedorOut"
+   },
+   "RecursoPartidaOut": {
+    "properties": {
+     "insumo_id": {
+      "type": "integer",
+      "title": "Insumo Id"
+     },
+     "insumo_codigo": {
+      "type": "string",
+      "title": "Insumo Codigo"
+     },
+     "descripcion": {
+      "type": "string",
+      "title": "Descripcion"
+     },
+     "unidad_s10": {
+      "type": "string",
+      "title": "Unidad S10"
+     },
+     "cantidad_por_unidad": {
+      "type": "string",
+      "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+      "title": "Cantidad Por Unidad"
+     },
+     "unidad": {
+      "type": "string",
+      "title": "Unidad"
+     }
+    },
+    "type": "object",
+    "required": [
+     "insumo_id",
+     "insumo_codigo",
+     "descripcion",
+     "unidad_s10",
+     "cantidad_por_unidad",
+     "unidad"
+    ],
+    "title": "RecursoPartidaOut"
    },
    "RequerimientoOut": {
     "properties": {
@@ -6650,6 +8011,45 @@
      "costo_planificado"
     ],
     "title": "RequerimientoOut"
+   },
+   "ResultadoApuOut": {
+    "properties": {
+     "partidas_creadas": {
+      "type": "integer",
+      "title": "Partidas Creadas"
+     },
+     "recursos_creados": {
+      "type": "integer",
+      "title": "Recursos Creados"
+     },
+     "sin_cambios": {
+      "type": "integer",
+      "title": "Sin Cambios"
+     },
+     "fallidos": {
+      "items": {
+       "$ref": "#/components/schemas/FallidoApuOut"
+      },
+      "type": "array",
+      "title": "Fallidos"
+     },
+     "advertencias": {
+      "items": {
+       "type": "string"
+      },
+      "type": "array",
+      "title": "Advertencias"
+     }
+    },
+    "type": "object",
+    "required": [
+     "partidas_creadas",
+     "recursos_creados",
+     "sin_cambios",
+     "fallidos",
+     "advertencias"
+    ],
+    "title": "ResultadoApuOut"
    },
    "ResultadoRequerimientoOut": {
     "properties": {
@@ -7838,6 +9238,17 @@
       ],
       "title": "Saldo"
      },
+     "recepcion_motivo_exceso": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Recepcion Motivo Exceso"
+     },
      "revertido_por_id": {
       "anyOf": [
        {
@@ -8781,6 +10192,166 @@
     "title": "TrasladoIn",
     "description": "HU-42. Destino: otro almacén de esta obra u otra obra (donde quien registra también esté asignado, regla 9)."
    },
+   "VerificacionIn": {
+    "properties": {
+     "compra_id": {
+      "type": "integer",
+      "minimum": 1.0,
+      "title": "Compra Id"
+     },
+     "lineas": {
+      "anyOf": [
+       {
+        "items": {
+         "$ref": "#/components/schemas/LineaCantidad"
+        },
+        "type": "array",
+        "maxItems": 500,
+        "minItems": 1
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Lineas"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "compra_id"
+    ],
+    "title": "VerificacionIn",
+    "description": "HU-36. Lo mismo que se va a recibir (misma compra y mismas líneas que `RecepcionIn`), para avisar ANTES de guardar."
+   },
+   "VerificacionLineaOut": {
+    "properties": {
+     "insumo_id": {
+      "type": "integer",
+      "title": "Insumo Id"
+     },
+     "insumo_codigo": {
+      "type": "string",
+      "title": "Insumo Codigo"
+     },
+     "unidad": {
+      "type": "string",
+      "title": "Unidad"
+     },
+     "requerido": {
+      "anyOf": [
+       {
+        "type": "string",
+        "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Requerido"
+     },
+     "ya_recibido": {
+      "type": "string",
+      "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+      "title": "Ya Recibido"
+     },
+     "con_esta": {
+      "type": "string",
+      "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+      "title": "Con Esta"
+     },
+     "exceso": {
+      "anyOf": [
+       {
+        "type": "string",
+        "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Exceso"
+     },
+     "excede": {
+      "type": "boolean",
+      "title": "Excede"
+     }
+    },
+    "type": "object",
+    "required": [
+     "insumo_id",
+     "insumo_codigo",
+     "unidad",
+     "requerido",
+     "ya_recibido",
+     "con_esta",
+     "exceso",
+     "excede"
+    ],
+    "title": "VerificacionLineaOut",
+    "description": "Todo en la unidad del S10, que es la del requerimiento y la de los movimientos."
+   },
+   "VerificacionOut": {
+    "properties": {
+     "compra_id": {
+      "type": "integer",
+      "title": "Compra Id"
+     },
+     "hay_exceso": {
+      "type": "boolean",
+      "title": "Hay Exceso"
+     },
+     "lineas": {
+      "items": {
+       "$ref": "#/components/schemas/VerificacionLineaOut"
+      },
+      "type": "array",
+      "title": "Lineas"
+     }
+    },
+    "type": "object",
+    "required": [
+     "compra_id",
+     "hay_exceso",
+     "lineas"
+    ],
+    "title": "VerificacionOut"
+   },
+   "AlmacenValorizadoOut": {
+    "properties": {
+     "almacen_id": {
+      "type": "integer",
+      "title": "Almacen Id"
+     },
+     "almacen": {
+      "type": "string",
+      "title": "Almacen"
+     },
+     "insumos": {
+      "type": "integer",
+      "title": "Insumos"
+     },
+     "valor": {
+      "type": "string",
+      "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+      "title": "Valor"
+     },
+     "porcentaje": {
+      "type": "string",
+      "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+      "title": "Porcentaje"
+     }
+    },
+    "type": "object",
+    "required": [
+     "almacen_id",
+     "almacen",
+     "insumos",
+     "valor",
+     "porcentaje"
+    ],
+    "title": "AlmacenValorizadoOut"
+   },
    "CifraOut": {
     "properties": {
      "clave": {
@@ -8848,6 +10419,220 @@
     },
     "type": "object",
     "title": "DatosIn"
+   },
+   "DesviacionInsumoOut": {
+    "properties": {
+     "insumo_codigo": {
+      "type": "string",
+      "title": "Insumo Codigo"
+     },
+     "descripcion": {
+      "type": "string",
+      "title": "Descripcion"
+     },
+     "unidad": {
+      "type": "string",
+      "title": "Unidad"
+     },
+     "tipo": {
+      "type": "string",
+      "title": "Tipo"
+     },
+     "planificado_cantidad": {
+      "type": "string",
+      "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+      "title": "Planificado Cantidad"
+     },
+     "precio_planificado": {
+      "type": "string",
+      "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+      "title": "Precio Planificado"
+     },
+     "planificado_importe": {
+      "type": "string",
+      "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+      "title": "Planificado Importe"
+     },
+     "esperado_cantidad": {
+      "type": "string",
+      "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+      "title": "Esperado Cantidad"
+     },
+     "esperado_importe": {
+      "type": "string",
+      "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+      "title": "Esperado Importe"
+     },
+     "consumido_cantidad": {
+      "type": "string",
+      "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+      "title": "Consumido Cantidad"
+     },
+     "consumido_importe": {
+      "type": "string",
+      "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+      "title": "Consumido Importe"
+     },
+     "costo_real": {
+      "anyOf": [
+       {
+        "type": "string",
+        "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Costo Real"
+     },
+     "consumido_pct_planificado": {
+      "type": "string",
+      "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+      "title": "Consumido Pct Planificado"
+     },
+     "ritmo_pt": {
+      "type": "string",
+      "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+      "title": "Ritmo Pt"
+     },
+     "desviacion_cantidad": {
+      "type": "string",
+      "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+      "title": "Desviacion Cantidad"
+     },
+     "desviacion_importe": {
+      "type": "string",
+      "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+      "title": "Desviacion Importe"
+     },
+     "desviacion_pct": {
+      "anyOf": [
+       {
+        "type": "string",
+        "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Desviacion Pct"
+     },
+     "efecto_cantidad": {
+      "type": "string",
+      "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+      "title": "Efecto Cantidad"
+     },
+     "efecto_precio": {
+      "type": "string",
+      "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+      "title": "Efecto Precio"
+     },
+     "lectura": {
+      "type": "string",
+      "title": "Lectura"
+     }
+    },
+    "type": "object",
+    "required": [
+     "insumo_codigo",
+     "descripcion",
+     "unidad",
+     "tipo",
+     "planificado_cantidad",
+     "precio_planificado",
+     "planificado_importe",
+     "esperado_cantidad",
+     "esperado_importe",
+     "consumido_cantidad",
+     "consumido_importe",
+     "costo_real",
+     "consumido_pct_planificado",
+     "ritmo_pt",
+     "desviacion_cantidad",
+     "desviacion_importe",
+     "desviacion_pct",
+     "efecto_cantidad",
+     "efecto_precio",
+     "lectura"
+    ],
+    "title": "DesviacionInsumoOut"
+   },
+   "DesviacionOut": {
+    "properties": {
+     "declaracion": {
+      "type": "string",
+      "title": "Declaracion"
+     },
+     "aviso": {
+      "type": "string",
+      "title": "Aviso"
+     },
+     "supuesto": {
+      "type": "string",
+      "title": "Supuesto"
+     },
+     "moneda": {
+      "type": "string",
+      "title": "Moneda"
+     },
+     "corte": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Corte"
+     },
+     "avance_plazo_pct": {
+      "type": "string",
+      "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+      "title": "Avance Plazo Pct"
+     },
+     "tolerancia_pct": {
+      "type": "string",
+      "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+      "title": "Tolerancia Pct"
+     },
+     "orden": {
+      "type": "string",
+      "title": "Orden"
+     },
+     "totales": {
+      "$ref": "#/components/schemas/TotalesDesviacionOut"
+     },
+     "insumos": {
+      "items": {
+       "$ref": "#/components/schemas/DesviacionInsumoOut"
+      },
+      "type": "array",
+      "title": "Insumos"
+     },
+     "no_planificados": {
+      "items": {
+       "$ref": "#/components/schemas/NoPlanificadoOut"
+      },
+      "type": "array",
+      "title": "No Planificados"
+     },
+     "no_planificados_importe": {
+      "type": "string",
+      "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+      "title": "No Planificados Importe"
+     }
+    },
+    "type": "object",
+    "required": [
+     "declaracion",
+     "aviso",
+     "supuesto",
+     "moneda",
+     "corte",
+     "avance_plazo_pct",
+     "tolerancia_pct",
+     "orden",
+     "totales",
+     "insumos",
+     "no_planificados",
+     "no_planificados_importe"
+    ],
+    "title": "DesviacionOut"
    },
    "EventoIn": {
     "properties": {
@@ -8944,12 +10729,40 @@
       "type": "string",
       "title": "Moneda"
      },
+     "corte": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Corte"
+     },
      "cifras": {
       "items": {
        "$ref": "#/components/schemas/CifraOut"
       },
       "type": "array",
       "title": "Cifras"
+     },
+     "otros_movimientos": {
+      "anyOf": [
+       {
+        "type": "string",
+        "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Otros Movimientos"
+     },
+     "por_conciliar": {
+      "type": "boolean",
+      "title": "Por Conciliar"
+     },
+     "conciliacion": {
+      "items": {
+       "type": "string"
+      },
+      "type": "array",
+      "title": "Conciliacion"
      },
      "por_familia": {
       "items": {
@@ -8967,7 +10780,11 @@
      "declaracion",
      "criterio",
      "moneda",
+     "corte",
      "cifras",
+     "otros_movimientos",
+     "por_conciliar",
+     "conciliacion",
      "por_familia",
      "horas_hombre"
     ],
@@ -9065,6 +10882,217 @@
      "referencia"
     ],
     "title": "HechoIn"
+   },
+   "InsumoValorizadoOut": {
+    "properties": {
+     "insumo_codigo": {
+      "type": "string",
+      "title": "Insumo Codigo"
+     },
+     "descripcion": {
+      "type": "string",
+      "title": "Descripcion"
+     },
+     "unidad": {
+      "type": "string",
+      "title": "Unidad"
+     },
+     "tipo": {
+      "type": "string",
+      "title": "Tipo"
+     },
+     "cantidad": {
+      "type": "string",
+      "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+      "title": "Cantidad"
+     },
+     "costo_promedio": {
+      "anyOf": [
+       {
+        "type": "string",
+        "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Costo Promedio"
+     },
+     "valor": {
+      "type": "string",
+      "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+      "title": "Valor"
+     },
+     "porcentaje": {
+      "type": "string",
+      "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+      "title": "Porcentaje"
+     },
+     "ultimo_movimiento_en": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Ultimo Movimiento En"
+     }
+    },
+    "type": "object",
+    "required": [
+     "insumo_codigo",
+     "descripcion",
+     "unidad",
+     "tipo",
+     "cantidad",
+     "costo_promedio",
+     "valor",
+     "porcentaje",
+     "ultimo_movimiento_en"
+    ],
+    "title": "InsumoValorizadoOut"
+   },
+   "InventarioOut": {
+    "properties": {
+     "declaracion": {
+      "type": "string",
+      "title": "Declaracion"
+     },
+     "criterio": {
+      "type": "string",
+      "title": "Criterio"
+     },
+     "moneda": {
+      "type": "string",
+      "title": "Moneda"
+     },
+     "almacen": {
+      "type": "string",
+      "title": "Almacen"
+     },
+     "corte": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Corte"
+     },
+     "corte_ajustado": {
+      "type": "boolean",
+      "title": "Corte Ajustado",
+      "default": false
+     },
+     "valor_total": {
+      "type": "string",
+      "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+      "title": "Valor Total"
+     },
+     "por_almacen": {
+      "items": {
+       "$ref": "#/components/schemas/AlmacenValorizadoOut"
+      },
+      "type": "array",
+      "title": "Por Almacen"
+     },
+     "por_insumo": {
+      "items": {
+       "$ref": "#/components/schemas/InsumoValorizadoOut"
+      },
+      "type": "array",
+      "title": "Por Insumo"
+     }
+    },
+    "type": "object",
+    "required": [
+     "declaracion",
+     "criterio",
+     "moneda",
+     "almacen",
+     "corte",
+     "valor_total",
+     "por_almacen",
+     "por_insumo"
+    ],
+    "title": "InventarioOut"
+   },
+   "NoPlanificadoOut": {
+    "properties": {
+     "insumo_codigo": {
+      "type": "string",
+      "title": "Insumo Codigo"
+     },
+     "descripcion": {
+      "type": "string",
+      "title": "Descripcion"
+     },
+     "unidad": {
+      "type": "string",
+      "title": "Unidad"
+     },
+     "tipo": {
+      "type": "string",
+      "title": "Tipo"
+     },
+     "consumido_cantidad": {
+      "type": "string",
+      "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+      "title": "Consumido Cantidad"
+     },
+     "consumido_importe": {
+      "type": "string",
+      "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+      "title": "Consumido Importe"
+     }
+    },
+    "type": "object",
+    "required": [
+     "insumo_codigo",
+     "descripcion",
+     "unidad",
+     "tipo",
+     "consumido_cantidad",
+     "consumido_importe"
+    ],
+    "title": "NoPlanificadoOut"
+   },
+   "TotalesDesviacionOut": {
+    "properties": {
+     "planificado_importe": {
+      "type": "string",
+      "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+      "title": "Planificado Importe"
+     },
+     "esperado_importe": {
+      "type": "string",
+      "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+      "title": "Esperado Importe"
+     },
+     "consumido_importe": {
+      "type": "string",
+      "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+      "title": "Consumido Importe"
+     },
+     "desviacion_importe": {
+      "type": "string",
+      "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+      "title": "Desviacion Importe"
+     },
+     "desviacion_pct": {
+      "anyOf": [
+       {
+        "type": "string",
+        "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Desviacion Pct"
+     }
+    },
+    "type": "object",
+    "required": [
+     "planificado_importe",
+     "esperado_importe",
+     "consumido_importe",
+     "desviacion_importe",
+     "desviacion_pct"
+    ],
+    "title": "TotalesDesviacionOut"
    }
   }
  }
