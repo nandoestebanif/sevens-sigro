@@ -8,7 +8,7 @@
 
 export type Rol = 'almacenero' | 'ssoma' | 'residente' | 'administrador' | 'gerente'
 
-export type EstadoProveedor = 'validado' | 'sin_validar' | 'de_baja'
+export type EstadoProveedor = 'validado' | 'sin_validar' | 'con_alerta_sunat' | 'de_baja'
 
 export interface Proveedor {
   id: string

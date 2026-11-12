@@ -49,3 +49,27 @@ def desviacion_pct(precio_sin_igv: Decimal, referencia: Decimal | None) -> Decim
 def fuera_de_lo_habitual(desviacion: Decimal | None, limite_pct: Decimal) -> bool:
     """Avisa, no bloquea (D13): fuera si se aparta MÁS que el límite, hacia arriba o hacia abajo."""
     return desviacion is not None and abs(desviacion) > Decimal(str(limite_pct))
+
+
+# --------------------------------------------------------------------------- HU-31: qué dice SUNAT del proveedor
+ESTADOS_VALIDACION = ("validado", "sin_validar", "con_alerta_sunat")
+
+
+def clasificar_consulta_sunat(ruc: str, respuesta) -> tuple[str, str | None, str | None]:
+    """(estado, alerta_sunat, advertencia). Función pura: no consulta red ni base.
+
+    - DNI (8 dígitos) y RUC con dígito verificador malo: nunca se consultan; quedan «sin_validar» (por validar).
+    - SUNAT/Integraciones no responden (`respuesta is None`): «sin_validar», se reintenta; no bloquea.
+    - SUNAT responde y es activo y habido: «validado».
+    - SUNAT responde y NO es activo y habido: «con_alerta_sunat» con lo que informó; **avisa, no bloquea** (D12).
+    """
+    if len(ruc) == 8:
+        return "sin_validar", None, "Es un DNI (persona natural): queda sin validar; solo los RUC se validan en SUNAT."
+    if not ruc_valido(ruc):
+        return "sin_validar", None, "El dígito verificador del RUC no coincide: revisa que esté bien escrito."
+    if respuesta is None:
+        return "sin_validar", None, "No se pudo consultar a SUNAT; el proveedor queda por validar y se puede reintentar."
+    if respuesta.apto_para_comprar:
+        return "validado", None, None
+    alerta = f"{respuesta.estado_sunat} / {respuesta.condicion}"
+    return "con_alerta_sunat", alerta, f"SUNAT lo informa {alerta}: puedes comprarle, pero la compra queda marcada para el residente."
