@@ -204,11 +204,11 @@ private val grua by lazy { svg("M335 60l30-30M365 30v220M345 30h40") }
 @Composable
 private fun FranjaObra(modifier: Modifier) {
     Canvas(modifier.clipToBounds().semantics { contentDescription = "Ilustración: edificio en construcción" }) {
-        drawRect(Color(0xFF334155))
+        drawRect(Paleta.Neutro)
         val k = size.width / 390f
         withTransform({ scale(k, k, Offset.Zero); translate(0f, 40f) }) {
             drawRect(Paleta.Noche, Offset(0f, 250f), Size(390f, 200f))
-            listOf(edificioIzq, edificioDer, grua).forEach { drawPath(it, Color(0xFF64748B), style = Stroke(3f)) }
+            listOf(edificioIzq, edificioDer, grua).forEach { drawPath(it, Paleta.NeutroSuave, style = Stroke(3f)) }
         }
         drawRect(Brush.verticalGradient(0f to Color(0x59111827), 0.6f to Color(0x8C111827), 1f to Color(0xD9111827)))
     }
@@ -241,7 +241,7 @@ private fun Perfil(sesion: Sesion, porEnviar: Int, modifier: Modifier) {
 @Composable
 private fun RowScope.Dato(valor: String, etiqueta: String, color: Color) {
     Column(
-        Modifier.weight(1f).background(Color.White.copy(alpha = 0.7f), RoundedCornerShape(16.dp)).padding(horizontal = 12.dp, vertical = 10.dp),
+        Modifier.weight(1f).background(Paleta.Superficie.copy(alpha = 0.7f), RoundedCornerShape(16.dp)).padding(horizontal = 12.dp, vertical = 10.dp),
         verticalArrangement = Arrangement.spacedBy(2.dp),
     ) {
         Text(valor, fontSize = 18.sp, fontWeight = FontWeight.ExtraBold, color = color)
@@ -291,7 +291,7 @@ private fun TarjetaObra(o: ObraAsignada, celular: CelularEnObra, primera: Boolea
         horizontalArrangement = Arrangement.spacedBy(14.dp),
     ) {
         Box(
-            Modifier.size(48.dp).background(if (primera) Paleta.NaranjaClaro else Color(0xFFF3F4F6), RoundedCornerShape(16.dp)),
+            Modifier.size(48.dp).background(if (primera) Paleta.NaranjaClaro else Paleta.SuperficieSuave, RoundedCornerShape(16.dp)),
             contentAlignment = Alignment.Center,
         ) {
             Icon(Icons.Filled.Apartment, contentDescription = null, tint = if (primera) Paleta.Naranja else Paleta.Texto3, modifier = Modifier.size(24.dp))

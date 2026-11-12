@@ -12,6 +12,8 @@ import pe.sevens.sigro.datos.repositorio.RepositorioCatalogoImpl
 import pe.sevens.sigro.datos.repositorio.RepositorioDispositivoImpl
 import pe.sevens.sigro.datos.repositorio.RepositorioInsumosImpl
 import pe.sevens.sigro.datos.repositorio.RepositorioObraImpl
+import pe.sevens.sigro.datos.repositorio.RepositorioPreferenciasImpl
+import pe.sevens.sigro.dominio.RepositorioPreferencias
 import pe.sevens.sigro.datos.repositorio.RepositorioRegistrosImpl
 import pe.sevens.sigro.datos.repositorio.RepositorioTrabajadoresImpl
 import pe.sevens.sigro.datos.repositorio.RepositorioSalidasImpl
@@ -80,6 +82,7 @@ val moduloDatos = module {
     single<RepositorioInsumos> { RepositorioInsumosImpl(get(), get(), get()) }
     single<RepositorioTrabajadores> { RepositorioTrabajadoresImpl(get(), get(), get()) }
     single<RepositorioObra> { RepositorioObraImpl(get(), get()) }
+    single<RepositorioPreferencias> { RepositorioPreferenciasImpl(get()) }
     single { get<BaseDatosSigro>().stock() }
     single<RepositorioStock> { RepositorioStockImpl(get(), get(), get()) }
 }
@@ -89,7 +92,7 @@ val moduloPresentacion = module {
     viewModel { EntrarViewModel(get()) }
     viewModel { InicioViewModel(get(), get(), get(), get()) }
     viewModel { SalidaViewModel(get(), get(), get(), get(), get(), get()) }
-    viewModel { PerfilViewModel(get(), get(), get()) }
+    viewModel { PerfilViewModel(get(), get(), get(), get()) }
     viewModel { PendientesViewModel(get(), get()) }
     viewModel { DispositivoViewModel(get()) }
     viewModel { ObrasViewModel(get(), get(), get()) }

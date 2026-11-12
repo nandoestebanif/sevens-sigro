@@ -48,13 +48,17 @@ import pe.sevens.sigro.dominio.ErrorSigro
 import pe.sevens.sigro.dominio.ObraAsignada
 import pe.sevens.sigro.dominio.RepositorioCatalogo
 import pe.sevens.sigro.dominio.RepositorioDispositivo
+import pe.sevens.sigro.dominio.RepositorioPreferencias
 import pe.sevens.sigro.dominio.RepositorioSesion
 import pe.sevens.sigro.dominio.Sesion
 import pe.sevens.sigro.dominio.Texto
 import pe.sevens.sigro.ui.componentes.BotonNegro
+import pe.sevens.sigro.ui.componentes.Opciones
 import pe.sevens.sigro.ui.componentes.PantallaVidrio
 import pe.sevens.sigro.ui.componentes.TarjetaVidrio
 import pe.sevens.sigro.ui.componentes.planoCelular
+import pe.sevens.sigro.ui.tema.Apariencia
+import pe.sevens.sigro.ui.tema.ModoTema
 import pe.sevens.sigro.ui.tema.Paleta
 
 /*
@@ -73,6 +77,7 @@ class PerfilViewModel(
     private val sesiones: RepositorioSesion,
     private val catalogo: RepositorioCatalogo,
     private val dispositivo: RepositorioDispositivo,
+    private val preferencias: RepositorioPreferencias? = null,
 ) : ViewModel() {
     private val _e = MutableStateFlow(EstadoPerfil())
     val estado = _e.asStateFlow()
@@ -93,6 +98,12 @@ class PerfilViewModel(
                 _e.update { it.copy(actualizando = false, mensaje = if (x.esTransitorio) "Sin señal: se actualiza cuando vuelva" else x.message) }
             }
         }
+    }
+
+    /** Claro, oscuro o como el celular: se aplica al instante y queda guardado en el celular. */
+    fun tema(m: ModoTema) {
+        Apariencia.modo = m
+        viewModelScope.launch { runCatching { preferencias?.guardarTema(m.name) } }
     }
 
     fun cambiarDeObra() = viewModelScope.launch { sesiones.cambiarDeObra() }
@@ -140,6 +151,11 @@ fun PantallaPerfil(
                 }
             }
             e.mensaje?.let { Text(it, fontSize = 13.sp, color = Paleta.Texto2) }
+        }
+
+        TarjetaVidrio {
+            Text("Apariencia", fontSize = 13.sp, color = Paleta.Texto3)
+            Opciones(ModoTema.entries, Apariencia.modo, { it.texto }, vm::tema)
         }
 
         Spacer(Modifier.size(4.dp))

@@ -112,9 +112,11 @@ import pe.sevens.sigro.plataforma.ManejarAtras
 import pe.sevens.sigro.plataforma.Plataforma
 import pe.sevens.sigro.recursos.Res
 import pe.sevens.sigro.recursos.sevens_logo
+import pe.sevens.sigro.recursos.sevens_logo_blanco
 import pe.sevens.sigro.ui.componentes.FondoPlano
 import pe.sevens.sigro.ui.componentes.planoInicio
 import pe.sevens.sigro.ui.componentes.vidrio
+import pe.sevens.sigro.ui.tema.Apariencia
 import pe.sevens.sigro.ui.tema.Paleta
 
 data class EstadoInicio(
@@ -232,7 +234,7 @@ fun PantallaInicio(
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Image(
-                    painterResource(Res.drawable.sevens_logo), contentDescription = "SEVEN'S Ingenieros SAC",
+                    painterResource(if (Apariencia.oscuro) Res.drawable.sevens_logo_blanco else Res.drawable.sevens_logo), contentDescription = "SEVEN'S Ingenieros SAC",
                     modifier = Modifier.height(64.dp).offset(x = (-4).dp),
                 )
                 Spacer(Modifier.weight(1f))
@@ -374,7 +376,7 @@ private fun RowScope.Acceso(icono: ImageVector, texto: String, principal: Boolea
             else Modifier.size(62.dp).vidrio(forma, sombra = 6.dp),
             contentAlignment = Alignment.Center,
         ) {
-            Icon(icono, contentDescription = null, tint = if (principal) Color.White else Paleta.Naranja, modifier = Modifier.size(26.dp))
+            Icon(icono, contentDescription = null, tint = if (principal) Paleta.SobreAcento else Paleta.Naranja, modifier = Modifier.size(26.dp))
         }
         Text(texto, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Paleta.Tinta)
         if (!habilitado) Text("Pronto", fontSize = 11.sp, color = Paleta.Texto3, modifier = Modifier.offset(y = (-6).dp))
@@ -444,14 +446,14 @@ private fun RowScope.ItemBarra(
             ),
             contentAlignment = Alignment.Center,
         ) {
-            Icon(icono, contentDescription = null, tint = if (activo) Color.White else Paleta.Texto3, modifier = Modifier.size(22.dp))
+            Icon(icono, contentDescription = null, tint = if (activo) Paleta.SobreAcento else Paleta.Texto3, modifier = Modifier.size(22.dp))
             if (insignia > 0) {
                 Box(
                     Modifier.align(Alignment.TopEnd).offset(x = (-10).dp).size(18.dp)
-                        .background(Paleta.Ambar, CircleShape).border(2.dp, Color.White, CircleShape),
+                        .background(Paleta.Ambar, CircleShape).border(2.dp, Paleta.Superficie, CircleShape),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Text(if (insignia > 9) "9+" else "$insignia", fontSize = 10.sp, fontWeight = FontWeight.ExtraBold, color = Color.White)
+                    Text(if (insignia > 9) "9+" else "$insignia", fontSize = 10.sp, fontWeight = FontWeight.ExtraBold, color = Paleta.SobreAcento)
                 }
             }
         }
@@ -499,7 +501,7 @@ private fun HojaMas(irA: (Destino) -> Unit, alCerrar: () -> Unit) {
 private fun RowScope.OpcionMas(icono: ImageVector, texto: String, centrada: Boolean = false, alPulsar: (() -> Unit)?) {
     val pronto = alPulsar == null
     Column(
-        Modifier.weight(1f).alpha(if (pronto) 0.55f else 1f).background(Color.White, RoundedCornerShape(20.dp))
+        Modifier.weight(1f).alpha(if (pronto) 0.55f else 1f).background(Paleta.Superficie, RoundedCornerShape(20.dp))
             .clickable(enabled = !pronto, role = Role.Button) { alPulsar?.invoke() }
             .heightIn(min = 44.dp)
             .padding(horizontal = if (centrada) 8.dp else 14.dp, vertical = if (centrada) 12.dp else 14.dp)
