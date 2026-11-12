@@ -40,24 +40,18 @@ def _redondear(x: Decimal) -> Decimal:
 _SQL_PROV = (
     "SELECT p.id, p.ruc, p.razon_social, "
     "CASE WHEN p.estado = 'baja' THEN 'de_baja' ELSE p.estado_validacion END AS estado, "
+    "p.alerta_sunat, p.consultado_en, "
     "(SELECT count(*) FROM compras.compra c WHERE c.proveedor_id = p.id AND c.estado = 'registrada') AS compras_registradas, "
     "(SELECT max(c.fecha) FROM compras.compra c WHERE c.proveedor_id = p.id AND c.estado = 'registrada') AS ultima_compra "
     "FROM compras.proveedor p "
 )
 
 
-def _validar_en_sunat(ruc: str) -> tuple[bool, str | None]:
-    """(validado, advertencia). Si SUNAT/el micro no responden, queda sin validar y NO se bloquea (HU-31)."""
-    if len(ruc) == 8:       # D-C5: persona natural con DNI. No es un RUC: no se consulta a SUNAT y queda sin validar.
-        return False, "Es un DNI (persona natural): queda sin validar; solo los RUC se validan en SUNAT."
-    if not ruc_valido(ruc):
-        return False, "El dígito verificador del RUC no coincide: revisa que esté bien escrito."
-    r = integraciones.consultar_ruc(ruc)
-    if r is None:
-        return False, "No se pudo consultar a SUNAT; el proveedor queda sin validar."
-    if not r.apto_para_comprar:
-        return False, f"SUNAT lo informa {r.estado_sunat} / {r.condicion}; queda sin validar."
-    return True, None
+def _consultar(ruc: str) -> tuple[str, str | None, str | None, bool]:
+    """(estado, alerta, advertencia, sunat_respondio). Solo se llama a SUNAT si el documento es un RUC bien escrito."""
+    respuesta = integraciones.consultar_ruc(ruc) if len(ruc) == 11 and ruc_valido(ruc) else None
+    estado, alerta, advertencia = dom.clasificar_consulta_sunat(ruc, respuesta)
+    return estado, alerta, advertencia, respuesta is not None
 
 
 @proveedores.get("", response_model=list[e.ProveedorOut])
@@ -80,12 +74,13 @@ def listar_proveedores(
 
 @proveedores.post("", response_model=e.ProveedorOut, status_code=201)
 def crear_proveedor(datos: e.ProveedorIn, a: Actor = Depends(exigir_en_alguna_obra("proveedor.registrar"))):
-    validado, advertencia = _validar_en_sunat(datos.ruc)
+    estado, alerta, advertencia, respondio = _consultar(datos.ruc)
     r = fila(
         a.sesion,
-        "INSERT INTO compras.proveedor (ruc, razon_social, estado_validacion, validado_en) "
-        "VALUES (:r, :n, CASE WHEN :v THEN 'validado' ELSE 'sin_validar' END, CASE WHEN :v THEN now() END) RETURNING id",
-        r=datos.ruc, n=datos.razon_social, v=validado,
+        "INSERT INTO compras.proveedor (ruc, razon_social, estado_validacion, validado_en, alerta_sunat, consultado_en) "
+        "VALUES (:r, :n, CAST(:e AS text), CASE WHEN CAST(:e AS text) = 'validado' THEN now() END, CAST(:al AS text), "
+        "CASE WHEN :ok THEN now() END) RETURNING id",
+        r=datos.ruc, n=datos.razon_social, e=estado, al=alerta, ok=respondio,
     )
     out = fila(a.sesion, _SQL_PROV + "WHERE p.id = :i", i=r["id"])
     out["advertencia"] = advertencia
@@ -98,11 +93,16 @@ def validar_proveedor(proveedor_id: int, a: Actor = Depends(exigir_en_alguna_obr
     p = fila(a.sesion, "SELECT ruc, estado, estado_validacion FROM compras.proveedor WHERE id = :i", i=proveedor_id)
     if p is None:
         raise ErrorSigro(404, "no_existe", "Ese proveedor no existe.")
-    validado, advertencia = _validar_en_sunat(p["ruc"])
-    if validado and p["estado_validacion"] != "validado":
+    estado, alerta, advertencia, respondio = _consultar(p["ruc"])
+    if respondio:
+        # SUNAT contestó: el estado se actualiza en cualquier sentido (validado ⇄ con alerta) y se anota cuándo se consultó.
         a.sesion.execute(
-            text("UPDATE compras.proveedor SET estado_validacion = 'validado', validado_en = now() WHERE id = :i"), {"i": proveedor_id}
+            text("UPDATE compras.proveedor SET estado_validacion = CAST(:e AS text), alerta_sunat = CAST(:al AS text), "
+                 "consultado_en = now(), validado_en = CASE WHEN CAST(:e AS text) = 'validado' THEN now() END WHERE id = :i"),
+            {"e": estado, "al": alerta, "i": proveedor_id},
         )
+    elif p["estado_validacion"] == "validado":
+        advertencia = "No se pudo consultar a SUNAT; el proveedor conserva su última validación."
     out = fila(a.sesion, _SQL_PROV + "WHERE p.id = :i", i=proveedor_id)
     out["advertencia"] = advertencia
     return out
@@ -122,7 +122,9 @@ def dar_de_baja_proveedor(proveedor_id: int, a: Actor = Depends(exigir_en_alguna
 
 # ------------------------------------------------------------------ compras (HU-32)
 _SQL_COMPRA = (
-    "SELECT c.id, c.proveedor_id, p.razon_social AS proveedor_razon_social, c.tipo_comprobante, c.numero_comprobante, "
+    "SELECT c.id, c.proveedor_id, p.razon_social AS proveedor_razon_social, "
+    "CASE WHEN p.estado = 'baja' THEN 'de_baja' ELSE p.estado_validacion END AS proveedor_estado, "
+    "p.alerta_sunat AS proveedor_alerta_sunat, c.tipo_comprobante, c.numero_comprobante, "
     "c.fecha, c.moneda, c.estado, c.motivo_anulacion, c.solicitud_id, c.base_imponible, c.igv, c.total, "
     "c.registrado_por, c.creado_en "
     "FROM compras.compra c JOIN compras.proveedor p ON p.id = c.proveedor_id "
@@ -192,6 +194,11 @@ def registrar_compra(datos: e.CompraIn, a: Actor = Depends(exigir("compra.regist
     factor_sin_igv = (base / bruto) if bruto else Decimal(1)
     insumos = catalogo
     filas_detalle, advertencias = [], []
+    prov = fila(s, "SELECT estado_validacion, alerta_sunat FROM compras.proveedor WHERE id = :i", i=datos.proveedor_id)
+    if prov and prov["estado_validacion"] == "con_alerta_sunat":      # D12: avisa, no bloquea
+        advertencias.append(f"SUNAT informa al proveedor {prov['alerta_sunat']}: la compra se registró y queda marcada para el residente.")
+    elif prov and prov["estado_validacion"] == "sin_validar":
+        advertencias.append("El proveedor aún está por validar en SUNAT: la compra se registró y se puede reintentar la validación.")
     try:
         pagado = _promedios_pagados(a.obra_id)
     except ErrorSigro:                          # avisa, no bloquea (D13): sin almacén la compra se registra sin comparar

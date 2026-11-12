@@ -25,7 +25,9 @@ class ProveedorOut(BaseModel):
     id: int
     ruc: str
     razon_social: str
-    estado: Literal["validado", "sin_validar", "de_baja"]
+    estado: Literal["validado", "sin_validar", "con_alerta_sunat", "de_baja"]
+    alerta_sunat: str | None = Field(None, description="HU-31: estado y condición que informó SUNAT cuando no es activo y habido.")
+    consultado_en: datetime | None = None
     compras_registradas: int
     ultima_compra: date | None
     advertencia: str | None = None
@@ -93,6 +95,8 @@ class CompraOut(BaseModel):
     id: int
     proveedor_id: int
     proveedor_razon_social: str
+    proveedor_estado: Literal["validado", "sin_validar", "con_alerta_sunat", "de_baja"] = "sin_validar"
+    proveedor_alerta_sunat: str | None = None
     tipo_comprobante: str
     numero_comprobante: str
     fecha: date

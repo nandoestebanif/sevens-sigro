@@ -40,6 +40,20 @@ class TestProveedor:
             db.execute("INSERT INTO compras.proveedor (ruc, razon_social, estado_validacion) VALUES (%s, 'X SAC', 'validado')",
                        (ruc_nuevo(),))
 
+    def test_con_alerta_sunat_y_su_motivo_van_juntos(self, db, f):
+        """HU-31: la base sostiene con_alerta_sunat ⇔ alerta_sunat informada (y no vacía)."""
+        with rechaza(db, CHECK, "ck_proveedor_alerta_sunat"):
+            db.execute("INSERT INTO compras.proveedor (ruc, razon_social, estado_validacion) VALUES (%s, 'X SAC', 'con_alerta_sunat')",
+                       (ruc_nuevo(),))
+        with rechaza(db, CHECK, "ck_proveedor_alerta_sunat"):
+            db.execute("INSERT INTO compras.proveedor (ruc, razon_social, estado_validacion, alerta_sunat) "
+                       "VALUES (%s, 'X SAC', 'sin_validar', 'BAJA / NO HABIDO')", (ruc_nuevo(),))
+        with rechaza(db, CHECK, "ck_proveedor_alerta_sunat"):
+            db.execute("INSERT INTO compras.proveedor (ruc, razon_social, estado_validacion, alerta_sunat) "
+                       "VALUES (%s, 'X SAC', 'con_alerta_sunat', '  ')", (ruc_nuevo(),))
+        db.execute("INSERT INTO compras.proveedor (ruc, razon_social, estado_validacion, alerta_sunat) "
+                   "VALUES (%s, 'X SAC', 'con_alerta_sunat', 'BAJA / NO HABIDO')", (ruc_nuevo(),))
+
     def test_la_base_y_el_dominio_coinciden_en_que_es_un_ruc_valido(self, db):
         muestras = ["20606456892", "20606456893", "10456789015", "20100070970", "20", "", "20606456892 ", "abcdefghijk"]
         for m in muestras:

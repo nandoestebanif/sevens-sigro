@@ -30,6 +30,8 @@ class Proveedor(Base):
     razon_social: Mapped[str] = mapped_column(Text)
     estado_validacion: Mapped[str] = mapped_column(Text, server_default="sin_validar")
     validado_en: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    alerta_sunat: Mapped[str | None] = mapped_column(Text)
+    consultado_en: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     estado: Mapped[str] = mapped_column(Text, server_default="activo")
     fecha_baja: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     creado_en: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

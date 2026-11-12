@@ -24,7 +24,8 @@ import { Chips, Encabezado, Fondo, Pildora, Vidrio } from '../ui/vidrio'
 
 const ESTADO: Record<EstadoProveedor, { texto: string; tono: TonoChip }> = {
   validado: { texto: 'Validado en SUNAT', tono: 'bien' },
-  sin_validar: { texto: 'Sin validar', tono: 'aviso' },
+  sin_validar: { texto: 'Por validar', tono: 'aviso' },
+  con_alerta_sunat: { texto: 'Con alerta SUNAT', tono: 'aviso' },
   de_baja: { texto: 'De baja', tono: 'neutro' },
 }
 
