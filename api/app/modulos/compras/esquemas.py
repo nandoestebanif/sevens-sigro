@@ -97,6 +97,7 @@ class CompraOut(BaseModel):
     proveedor_razon_social: str
     proveedor_estado: Literal["validado", "sin_validar", "con_alerta_sunat", "de_baja"] = "sin_validar"
     proveedor_alerta_sunat: str | None = None
+    comprobantes_vigentes: int = Field(0, description="HU-34/HU-61: cuántos comprobantes vigentes tiene; 0 = «sin comprobante» en el listado.")
     tipo_comprobante: str
     numero_comprobante: str
     fecha: date
@@ -109,6 +110,22 @@ class CompraOut(BaseModel):
     advertencias: list[str] = []
     registrado_por: int
     creado_en: datetime
+
+
+class ComprobanteOut(BaseModel):
+    """HU-34. `estado`: vigente | anulado (E12). La huella sha256 prueba que el archivo no cambió desde que se adjuntó."""
+    id: int
+    compra_id: int
+    nombre: str
+    tipo_mime: Literal["application/pdf", "image/jpeg", "image/png"]
+    tamano_bytes: int
+    sha256: str
+    estado: Literal["vigente", "anulado"]
+    subido_por: int
+    subido_en: datetime
+    anulado_por: int | None = None
+    anulado_en: datetime | None = None
+    motivo_anulacion: str | None = None
 
 
 class AnularIn(Estricto):
