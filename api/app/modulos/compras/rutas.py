@@ -124,7 +124,9 @@ def dar_de_baja_proveedor(proveedor_id: int, a: Actor = Depends(exigir_en_alguna
 _SQL_COMPRA = (
     "SELECT c.id, c.proveedor_id, p.razon_social AS proveedor_razon_social, "
     "CASE WHEN p.estado = 'baja' THEN 'de_baja' ELSE p.estado_validacion END AS proveedor_estado, "
-    "p.alerta_sunat AS proveedor_alerta_sunat, c.tipo_comprobante, c.numero_comprobante, "
+    "p.alerta_sunat AS proveedor_alerta_sunat, "
+    "(SELECT count(*) FROM compras.compra_adjunto j WHERE j.compra_id = c.id AND j.anulado_en IS NULL) AS comprobantes_vigentes, "
+    "c.tipo_comprobante, c.numero_comprobante, "
     "c.fecha, c.moneda, c.estado, c.motivo_anulacion, c.solicitud_id, c.base_imponible, c.igv, c.total, "
     "c.registrado_por, c.creado_en "
     "FROM compras.compra c JOIN compras.proveedor p ON p.id = c.proveedor_id "
