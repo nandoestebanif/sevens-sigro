@@ -15,8 +15,8 @@ import { ErrorApi } from './error'
 import { conReintentos, type OpcionesReintento } from './reintentos'
 import { faltaFactor } from './unidades'
 import type {
-  AvanceInsumo, Compra, InsumoCatalogo, InsumoMaestro, LineaCompra, Obra, ObraActiva, ParametroReposicion, Proveedor,
-  ResultadoRequerimiento, Semana, TipoComprobante,
+  AvanceInsumo, Compra, EstadoCompra, InsumoCatalogo, InsumoMaestro, LineaCompra, LineaRecepcion,
+  Obra, ObraActiva, ParametroReposicion, Proveedor, ResultadoRequerimiento, Semana, TipoComprobante,
 } from './tipos'
 
 export const API_URL: string = (import.meta.env.VITE_API_URL ?? '').replace(/\/$/, '')
@@ -208,7 +208,9 @@ interface InsumoApi {
   factorConversion: string; tipo: string; activo: boolean; verificado: boolean
 }
 let idPorCodigo = new Map<string, number>()
+let codigoPorId = new Map<number, string>()
 let descPorCodigo = new Map<string, string>()
+let descPorId = new Map<number, string>()
 const aMaestro = (i: InsumoApi): InsumoMaestro => ({
   codigo: i.codigo, nombre: i.descripcion, um: i.unidadCompra,
   medida: '', marca: '', // la API guarda la descripción completa; marca y precio no son del catálogo
@@ -218,7 +220,9 @@ const aMaestro = (i: InsumoApi): InsumoMaestro => ({
 async function todos(): Promise<InsumoApi[]> {
   const xs = await pedir<InsumoApi[]>('GET', '/catalogo/insumos')
   idPorCodigo = new Map(xs.map((x) => [x.codigo, x.id]))
+  codigoPorId = new Map(xs.map((x) => [x.id, x.codigo]))
   descPorCodigo = new Map(xs.map((x) => [x.codigo, x.descripcion]))
+  descPorId = new Map(xs.map((x) => [x.id, x.descripcion]))
   return xs
 }
 async function idDe(codigo: string): Promise<number> {
@@ -316,24 +320,44 @@ export const reposicionHttp = {
     return pedir<ResultadoRequerimiento>('POST', `/obras/${await obraId()}/requerimiento/importar`, { filas })
   },
 }
-/* ── compras (HU-32) ── */
+/* ── compras (HU-32) y recepción (HU-35) ── */
 interface CompraApi {
   id: number; proveedorId: number; proveedorRazonSocial: string
+  comprobantesVigentes?: number
   tipoComprobante: TipoComprobante; numeroComprobante: string; fecha: string
-  estado: string; totales: { base: string; igv: string; total: string }
+  estado: 'registrada' | 'anulada'; totales: { base: string; igv: string; total: string }
   lineas: { insumoCodigo: string; descripcion: string; cantidad: string; unidadCompra: string; precioUnitario: string }[]
 }
-const aCompra = (c: CompraApi, oId: string): Compra => ({
+interface RecepcionLineaApi {
+  insumoId: number; unidadCompra: string; pedido: string; recibido: string; pendiente: string
+}
+function estadoRecepcionDeCompra(lineas: RecepcionLineaApi[]): EstadoCompra {
+  if (!lineas.length) return 'registrada'
+  const recibido = lineas.reduce((s, l) => s + num(l.recibido), 0)
+  const pendiente = lineas.reduce((s, l) => s + num(l.pendiente), 0)
+  if (recibido <= 0) return 'registrada'
+  return pendiente <= 0 ? 'recibida' : 'recibida_parcial'
+}
+const aCompra = (c: CompraApi, oId: string, estado?: EstadoCompra): Compra => ({
   id: String(c.id), obraId: oId, proveedorId: String(c.proveedorId),
   proveedorRazonSocial: c.proveedorRazonSocial, tipoComprobante: c.tipoComprobante,
-  numeroComprobante: c.numeroComprobante, fecha: c.fecha, estado: 'registrada',
+  numeroComprobante: c.numeroComprobante, fecha: c.fecha,
+  estado: estado ?? (c.estado === 'anulada' ? 'anulada' : 'registrada'),
   lineas: c.lineas.map((l) => ({
     insumoId: l.insumoCodigo, descripcion: l.descripcion, unidadCompra: l.unidadCompra,
     cantidad: num(l.cantidad), precioUnitario: num(l.precioUnitario),
   })),
   totales: { base: num(c.totales.base), igv: num(c.totales.igv), total: num(c.totales.total) },
-  adjunto: false,
+  adjunto: (c.comprobantesVigentes ?? 0) > 0,
 })
+const nuevoUuid = () =>
+  typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+    ? crypto.randomUUID()
+    : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+        const r = (Math.random() * 16) | 0
+        return (c === 'x' ? r : (r & 0x3) | 0x8).toString(16)
+      })
+
 export const comprasHttp = {
   async registrar(d: { proveedorId: string; tipoComprobante: TipoComprobante; numeroComprobante: string; fecha: string; lineas: LineaCompra[] }): Promise<Compra> {
     if (!d.proveedorId) throw new ErrorApi('proveedor', 'Elige el proveedor de la compra.')
@@ -354,6 +378,59 @@ export const comprasHttp = {
   },
   async listar(): Promise<Compra[]> {
     const oId = await obraId()
-    return (await pedir<CompraApi[]>('GET', `/obras/${oId}/compras`)).map((c) => aCompra(c, oId))
+    const cs = await pedir<CompraApi[]>('GET', `/obras/${oId}/compras`)
+    const estados = await Promise.allSettled(
+      cs.map((c) => c.estado === 'anulada'
+        ? Promise.resolve<EstadoCompra>('anulada')
+        : pedir<RecepcionLineaApi[]>('GET', `/obras/${oId}/almacen/compras/${c.id}/recepcion`).then(estadoRecepcionDeCompra)),
+    )
+    return cs.map((c, i) => {
+      const r = estados[i]
+      return aCompra(c, oId, r.status === 'fulfilled' ? r.value : (c.estado === 'anulada' ? 'anulada' : 'registrada'))
+    })
+  },
+}
+
+export const recepcionHttp = {
+  async detalle(compraId: string): Promise<LineaRecepcion[]> {
+    const cId = Number(compraId)
+    if (!Number.isInteger(cId) || cId < 1) throw new ErrorApi('no_existe', 'Esa compra no existe.')
+    const oId = await obraId()
+    const [lineasRec, compra] = await Promise.all([
+      pedir<RecepcionLineaApi[]>('GET', `/obras/${oId}/almacen/compras/${cId}/recepcion`),
+      pedir<CompraApi>('GET', `/obras/${oId}/compras/${cId}`),
+    ])
+    if (lineasRec.some((l) => !codigoPorId.has(l.insumoId))) {
+      await todos()
+    }
+    const porCodigo = new Map(compra.lineas.map((l) => [l.insumoCodigo, l]))
+    return lineasRec.map((l) => {
+      const cod = codigoPorId.get(l.insumoId)
+      const lc = cod ? porCodigo.get(cod) : undefined
+      return {
+        insumoId: String(l.insumoId),
+        descripcion: lc?.descripcion ?? descPorId.get(l.insumoId) ?? `Insumo #${l.insumoId}`,
+        unidadCompra: l.unidadCompra,
+        precioUnitario: lc ? num(lc.precioUnitario) : 0,
+        pedido: num(l.pedido),
+        recibido: num(l.recibido),
+        pendiente: num(l.pendiente),
+      }
+    })
+  },
+  async registrar(compraId: string, lineas: { insumoId: string; cantidad: number }[]): Promise<void> {
+    const cId = Number(compraId)
+    if (!Number.isInteger(cId) || cId < 1) throw new ErrorApi('no_existe', 'Esa compra no existe.')
+    const conCantidad = lineas.filter((l) => l.cantidad > 0)
+    if (!conCantidad.length) throw new ErrorApi('vacia', 'La recepción necesita al menos una cantidad mayor a cero.')
+    const oId = await obraId()
+    await pedir('POST', `/obras/${oId}/almacen/recepciones`, {
+      uuidCliente: nuevoUuid(),
+      compraId: cId,
+      lineas: conCantidad.map((l) => ({
+        insumoId: Number(l.insumoId),
+        cantidad: l.cantidad,
+      })),
+    })
   },
 }
