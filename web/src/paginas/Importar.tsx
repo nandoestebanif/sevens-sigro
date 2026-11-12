@@ -148,7 +148,7 @@ export function Importar() {
               style={{ display: 'none' }}
               onChange={(e) => { setArchivo(e.target.files?.[0] ?? null); setResultado(null); setError('') }}
             />
-            <div style={{ border: '2px dashed var(--accion)', borderRadius: 22, background: 'var(--marca-tinte)', padding: 'clamp(14px, 3vw, 22px)', display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 14 }}>
+            <div style={{ border: '2px dashed var(--accion)', borderRadius: 22, background: 'var(--marca-tinte)', padding: 'clamp(14px, calc(3vw / var(--escala, 1)), 22px)', display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 14 }}>
               <span aria-hidden style={{ width: 52, height: 60, borderRadius: 10, background: 'var(--tarjeta)', border: '1px solid var(--campo-borde)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 800, color: 'var(--grave)', flex: 'none' }}>PDF</span>
               <span style={{ flex: '1 1 160px', minWidth: 0, display: 'flex', flexDirection: 'column', gap: 3 }}>
                 <span style={{ fontSize: 15, fontWeight: 800, overflowWrap: 'anywhere' }}>{archivo ? archivo.name : 'Elige la Relación de insumos'}</span>
@@ -188,7 +188,7 @@ export function Importar() {
                 <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--tinta-2)' }}>Total del reporte</span>
                 <span style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
                   <span style={{ fontSize: 16, fontWeight: 700, color: 'var(--tinta-2)' }}>S/</span>
-                  <span className="n" style={{ fontSize: 'clamp(28px, 4vw, 38px)', fontWeight: 800 }}>{n(r.resumen.parcial_total, 2)}</span>
+                  <span className="n" style={{ fontSize: 'clamp(28px, calc(4vw / var(--escala, 1)), 38px)', fontWeight: 800 }}>{n(r.resumen.parcial_total, 2)}</span>
                 </span>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 10 }}>
                   {tipos.map((t) => (

@@ -144,7 +144,7 @@ export function Encabezado({ titulo, sub, acciones }: { titulo: ReactNode; sub?:
   return (
     <header style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'flex-end', justifyContent: 'space-between', gap: 14, padding: '8px 4px 0' }}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 4, minWidth: 0 }}>
-        <h1 style={{ fontSize: 'clamp(26px, 4vw, 34px)', fontWeight: 800, letterSpacing: '-0.03em' }}>{titulo}</h1>
+        <h1 style={{ fontSize: 'clamp(26px, calc(4vw / var(--escala, 1)), 34px)', fontWeight: 800, letterSpacing: '-0.03em' }}>{titulo}</h1>
         {sub && <p style={{ fontSize: 15, color: 'var(--tinta-2)', lineHeight: 1.45 }}>{sub}</p>}
       </div>
       {acciones && <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 10 }}>{acciones}</div>}

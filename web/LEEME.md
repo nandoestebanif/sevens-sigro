@@ -39,3 +39,23 @@ ninguna pantalla cambia.
   unidad de compra). Fase y crítico llegan en el Sprint 2 (HU-20, HU-28); recibido y consumido, con almacén.
 - **Parámetros de reposición (HU-25):** pantalla nueva (menú «Control de la obra»): stock de seguridad y punto de
   reposición por insumo, cambio con historial y el rechazo del servidor cuando el punto es menor que el colchón.
+
+### 05/11 · Administración (HU-13, HU-14, HU-15 y almacenes)
+
+Sección **«Administración»** del menú, visible solo para quien es **administrador de la obra activa**. Esconderla
+es comodidad: la API verifica el rol en cada petición y, si no corresponde, responde 403 y la pantalla lo dice.
+Va solo contra la API real (`src/api/administracion.ts`, con el mismo `pedir` de `http.ts`); sin `VITE_API_URL`
+la pantalla avisa que necesita el servidor y no muestra datos de ejemplo.
+
+| Pestaña | Qué hace | Endpoints |
+|---|---|---|
+| Celulares (HU-15) | Persona, código, estado y fechas. **Autorizar** un pendiente; **Revocar** uno autorizado con motivo obligatorio. Si la persona ya tiene otro celular autorizado (409 `uq_dispositivo_activo_por_usuario`), lo explica y ofrece «Revocar el anterior y autorizar este» | `GET/POST /obras/{id}/dispositivos…/autorizar · …/revocar` |
+| Usuarios (HU-13) | Lista (activos y de baja), alta con clave temporal (si es débil, el mensaje de la API va bajo el campo) y **baja** con confirmación: nada se borra | `GET/POST /usuarios · POST /usuarios/{id}/baja` |
+| Asignaciones (HU-14) | Asignar usuario a la obra activa con su rol y retirarlo (queda con fecha); ver también las retiradas | `GET/POST /obras/{id}/asignaciones · …/{id}/retiro` |
+| Almacenes | Lista y alta (central o de frente) | `GET/POST /obras/{id}/almacenes` |
+
+Pruebas unitarias con **Vitest** (`npm test`, solo `src/**/*.test.ts`): reglas de pantalla y llamadas a la API con
+`fetch` simulado. Las de punta a punta siguen en `e2e/` con Playwright.
+
+**Pedido a Adiel:** `fecha_baja` en `UsuarioOut`. La base la guarda al dar de baja, pero la API no la devuelve: la
+pantalla muestra «De baja» y mostrará «De baja desde dd/mm/aaaa» en cuanto llegue (ya lee `fecha_baja`).
