@@ -6,17 +6,41 @@ import org.koin.dsl.module
 import pe.sevens.sigro.datos.local.BaseDatosSigro
 import pe.sevens.sigro.datos.remoto.ApiSigro
 import pe.sevens.sigro.datos.remoto.jsonSigro
+import pe.sevens.sigro.datos.repositorio.BovedaSesion
+import pe.sevens.sigro.datos.repositorio.Credenciales
 import pe.sevens.sigro.datos.repositorio.RepositorioCatalogoImpl
 import pe.sevens.sigro.datos.repositorio.RepositorioDispositivoImpl
+import pe.sevens.sigro.datos.repositorio.RepositorioInsumosImpl
+import pe.sevens.sigro.datos.repositorio.RepositorioObraImpl
+import pe.sevens.sigro.datos.repositorio.RepositorioRegistrosImpl
+import pe.sevens.sigro.datos.repositorio.RepositorioTrabajadoresImpl
 import pe.sevens.sigro.datos.repositorio.RepositorioSalidasImpl
 import pe.sevens.sigro.datos.repositorio.RepositorioSesionImpl
+import pe.sevens.sigro.datos.repositorio.RepositorioStockImpl
 import pe.sevens.sigro.dominio.RepositorioCatalogo
 import pe.sevens.sigro.dominio.RepositorioDispositivo
+import pe.sevens.sigro.dominio.RepositorioInsumos
+import pe.sevens.sigro.dominio.RepositorioObra
+import pe.sevens.sigro.dominio.RepositorioRegistros
+import pe.sevens.sigro.dominio.RepositorioTrabajadores
 import pe.sevens.sigro.dominio.RepositorioSalidas
 import pe.sevens.sigro.dominio.RepositorioSesion
+import pe.sevens.sigro.dominio.RepositorioStock
+import pe.sevens.sigro.ui.pantallas.AsistenciaViewModel
+import pe.sevens.sigro.ui.pantallas.CatalogoViewModel
+import pe.sevens.sigro.ui.pantallas.EntradaViewModel
+import pe.sevens.sigro.ui.pantallas.IngresoSinCompraViewModel
+import pe.sevens.sigro.ui.pantallas.CierreViewModel
+import pe.sevens.sigro.ui.pantallas.ConteoViewModel
+import pe.sevens.sigro.ui.pantallas.StockViewModel
+import pe.sevens.sigro.ui.pantallas.TrasladoViewModel
+import pe.sevens.sigro.ui.pantallas.TrabajadorNuevoViewModel
+import pe.sevens.sigro.ui.pantallas.TrabajadoresViewModel
 import pe.sevens.sigro.ui.pantallas.DispositivoViewModel
+import pe.sevens.sigro.ui.pantallas.InsumoNuevoViewModel
 import pe.sevens.sigro.ui.pantallas.EntrarViewModel
 import pe.sevens.sigro.ui.pantallas.InicioViewModel
+import pe.sevens.sigro.ui.pantallas.ObrasViewModel
 import pe.sevens.sigro.ui.pantallas.PendientesViewModel
 import pe.sevens.sigro.ui.pantallas.RaizViewModel
 import pe.sevens.sigro.ui.pantallas.SalidaViewModel
@@ -29,28 +53,55 @@ import pe.sevens.sigro.ui.pantallas.SalidaViewModel
  * La UI pide interfaces del dominio, nunca clases de Ktor o de Room.
  */
 
-/** Lo que cada plataforma provee: HttpClient, BaseDatosSigro y ProgramadorSincronizacion. */
+/**
+ * Lo que cada plataforma provee: HttpClient (con el token de [BovedaSesion]), BaseDatosSigro,
+ * ProgramadorSincronizacion y AlmacenSeguro (Keystore en Android, Keychain en iOS).
+ */
 expect val moduloPlataforma: Module
 
 val moduloDatos = module {
     single { jsonSigro }
-    single { ApiSigro(get(), get()) }
     single { get<BaseDatosSigro>().ajustes() }
+    single { BovedaSesion(get(), get()) }
+    single { Credenciales(get(), get()) }
+    // Un 401 cierra la sesión (vuelve a «Entrar») sin tocar las colas.
+    single { val boveda = get<BovedaSesion>(); ApiSigro(get(), get()) { boveda.cerrarSesion() } }
     single { get<BaseDatosSigro>().salidas() }
     single { get<BaseDatosSigro>().insumos() }
-    single<RepositorioSesion> { RepositorioSesionImpl(get(), get()) }
+    single<RepositorioSesion> { RepositorioSesionImpl(get(), get(), get()) }
     single<RepositorioCatalogo> { RepositorioCatalogoImpl(get(), get(), get()) }
     single<RepositorioSalidas> { RepositorioSalidasImpl(get(), get(), get()) }
     single<RepositorioDispositivo> { RepositorioDispositivoImpl(get(), get()) }
+    // Sprint 2
+    single { get<BaseDatosSigro>().registros() }
+    single { get<BaseDatosSigro>().trabajadores() }
+    single<RepositorioRegistros> { RepositorioRegistrosImpl(get(), get(), get()) }
+    single<RepositorioInsumos> { RepositorioInsumosImpl(get(), get(), get()) }
+    single<RepositorioTrabajadores> { RepositorioTrabajadoresImpl(get(), get(), get()) }
+    single<RepositorioObra> { RepositorioObraImpl(get(), get()) }
+    single { get<BaseDatosSigro>().stock() }
+    single<RepositorioStock> { RepositorioStockImpl(get(), get(), get()) }
 }
 
 val moduloPresentacion = module {
     viewModel { RaizViewModel(get()) }
     viewModel { EntrarViewModel(get()) }
     viewModel { InicioViewModel(get(), get(), get(), get()) }
-    viewModel { SalidaViewModel(get(), get(), get()) }
-    viewModel { PendientesViewModel(get()) }
+    viewModel { SalidaViewModel(get(), get(), get(), get()) }
+    viewModel { PendientesViewModel(get(), get()) }
     viewModel { DispositivoViewModel(get()) }
+    viewModel { ObrasViewModel(get(), get(), get()) }
+    viewModel { CatalogoViewModel(get()) }
+    viewModel { InsumoNuevoViewModel(get()) }
+    viewModel { TrabajadoresViewModel(get(), get()) }
+    viewModel { TrabajadorNuevoViewModel(get()) }
+    viewModel { AsistenciaViewModel(get(), get(), get()) }
+    viewModel { StockViewModel(get()) }
+    viewModel { EntradaViewModel(get(), get(), get()) }
+    viewModel { IngresoSinCompraViewModel(get(), get(), get(), get()) }
+    viewModel { TrasladoViewModel(get(), get(), get()) }
+    viewModel { ConteoViewModel(get(), get(), get()) }
+    viewModel { CierreViewModel(get(), get()) }
 }
 
 fun modulosSigro(): List<Module> = listOf(moduloPlataforma, moduloDatos, moduloPresentacion)

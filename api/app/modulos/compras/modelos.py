@@ -9,7 +9,7 @@ from datetime import date, datetime
 from decimal import Decimal
 
 from sqlalchemy import (
-    BigInteger, CHAR, Date, DateTime, ForeignKey, ForeignKeyConstraint, Identity, Index, Integer,
+    BigInteger, Boolean, CHAR, Date, DateTime, ForeignKey, ForeignKeyConstraint, Identity, Index, Integer,
     Numeric, Text, UniqueConstraint, func, text,
 )
 from sqlalchemy.orm import Mapped, mapped_column
@@ -44,6 +44,7 @@ class Compra(Base):
         ForeignKeyConstraint(["solicitud_id", "proyecto_id"], ["compras.solicitud.id", "compras.solicitud.proyecto_id"],
                              name="fk_compra_solicitud_id_solicitud"),
         Index("ix_compra_proyecto_id_fecha", "proyecto_id", text("fecha DESC")),
+        Index("ix_compra_proveedor_registrada", "proveedor_id", "fecha", postgresql_where=text("estado = 'registrada'")),   # 0011
         Index("ix_compra_proveedor_id", "proveedor_id"),
         Index("ix_compra_solicitud_id", "solicitud_id", postgresql_where=text("solicitud_id IS NOT NULL")),
         {"schema": "compras"},
@@ -82,6 +83,10 @@ class CompraDetalle(Base):
     cantidad: Mapped[Decimal] = mapped_column(Numeric(18, 4))
     unidad: Mapped[str] = mapped_column(Text)
     precio_unitario: Mapped[Decimal] = mapped_column(Numeric(18, 4))
+    # HU-33 (0013): con qué promedio se comparó el precio pagado y si se salió de lo habitual
+    precio_referencia: Mapped[Decimal | None] = mapped_column(Numeric(18, 6))
+    fuera_de_lo_habitual: Mapped[bool] = mapped_column(Boolean, server_default=text("false"))
+    nota_precio: Mapped[str | None] = mapped_column(Text)
 
 
 class CompraAdjunto(Base):
@@ -137,6 +142,7 @@ class SolicitudLinea(Base):
         Index("uq_solicitud_linea_solicitud_insumo", "solicitud_id", "insumo_id", unique=True,
               postgresql_where=text("insumo_id IS NOT NULL")),
         Index("ix_solicitud_linea_insumo_id", "insumo_id", postgresql_where=text("insumo_id IS NOT NULL")),
+        Index("ix_solicitud_linea_solicitud_id", "solicitud_id"),      # migración 0011
         {"schema": "compras"},
     )
 
@@ -196,3 +202,38 @@ class ParametroReposicion(Base):
     punto_reposicion: Mapped[Decimal] = mapped_column(Numeric(18, 4))
     registrado_por: Mapped[int] = mapped_column(BigInteger, ForeignKey("obra.usuario.id", name="fk_parametro_reposicion_registrado_por_usuario"))
     vigente_desde: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class Partida(Base):
+    """Partida del presupuesto de una obra (HU-16, migración 0012). Se identifica por código Y descripción."""
+    __tablename__ = "partida"
+    __table_args__ = (
+        UniqueConstraint("proyecto_id", "id", name="uq_partida_proyecto_id_id"),
+        Index("uq_partida_codigo_descripcion", "proyecto_id", "codigo", text("lower(btrim(descripcion))"), unique=True),
+        {"schema": "compras"},
+    )
+
+    id: Mapped[int] = mapped_column(BigInteger, Identity(always=True), primary_key=True)
+    proyecto_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("obra.proyecto.id", name="fk_partida_proyecto_id_proyecto"))
+    codigo: Mapped[str] = mapped_column(Text)
+    descripcion: Mapped[str] = mapped_column(Text)
+    unidad: Mapped[str] = mapped_column(Text)
+    creado_por: Mapped[int] = mapped_column(BigInteger, ForeignKey("obra.usuario.id", name="fk_partida_creado_por_usuario"))
+    creado_en: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class PartidaRecurso(Base):
+    """Cuánto de un insumo exige una unidad de la partida, en unidad del S10 (HU-16, migración 0012)."""
+    __tablename__ = "partida_recurso"
+    __table_args__ = (
+        UniqueConstraint("partida_id", "insumo_id", name="uq_partida_recurso_partida_id_insumo_id"),
+        Index("ix_partida_recurso_insumo_id", "insumo_id"),
+        {"schema": "compras"},
+    )
+
+    id: Mapped[int] = mapped_column(BigInteger, Identity(always=True), primary_key=True)
+    partida_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("compras.partida.id", name="fk_partida_recurso_partida_id_partida"))
+    insumo_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("catalogo.insumo.id", name="fk_partida_recurso_insumo_id_insumo"))
+    cantidad_por_unidad: Mapped[Decimal] = mapped_column(Numeric(18, 6))
+    unidad: Mapped[str] = mapped_column(Text)
+    creado_en: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

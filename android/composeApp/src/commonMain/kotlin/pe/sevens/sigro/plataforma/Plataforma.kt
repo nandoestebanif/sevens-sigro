@@ -15,6 +15,9 @@ expect object Plataforma {
 
     /** «28/10 14:05» en la zona del celular. */
     fun formatearHora(ms: Long): String
+
+    /** «2026-11-01» en la zona del celular: la fecha de la jornada (HU-63) y de ingreso (HU-62). */
+    fun fechaIso(ms: Long): String
 }
 
 /** Botón «atrás» del sistema (Android). En iOS el gesto lo maneja la barra superior. */
@@ -24,3 +27,11 @@ expect fun ManejarAtras(activo: Boolean, alVolver: () -> Unit)
 /** «Reducir movimiento» del sistema: con él encendido, las animaciones del diseño se apagan. */
 @Composable
 expect fun reducirMovimiento(): Boolean
+
+/**
+ * El vidrio va sin desenfoque (blanco 82–90 %, el respaldo que el diseño ya permite): en celulares de
+ * gama baja (Android «low RAM») y con «reducir movimiento». Desenfocar cada tarjeta en cada cuadro es
+ * lo más caro de la interfaz (docs/rendimiento-app.md).
+ */
+@Composable
+expect fun vidrioSinDesenfoque(): Boolean

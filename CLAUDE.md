@@ -61,7 +61,7 @@ lo declara.
 | Web de oficina | React 18 · TypeScript · Vite |
 | Integraciones | Microservicio FastAPI aparte (importación del S10, consulta de RUC en SUNAT) |
 | Notificaciones | Microservicio FastAPI aparte con patrón outbox (avisos a residente y administrador · ADR-07, propuesto) |
-| Despliegue | Nube gestionada, PostgreSQL administrado, APK por enlace |
+| Despliegue | Nube gestionada, PostgreSQL administrado, APK por enlace. **Pruebas (ADR-10):** un solo servicio gratuito `sigro-api` en Render con todas las apps en un proceso Python, cada una con su puerto y su usuario de base (`api/Dockerfile.pruebas`, por el límite de 512 MB); producción, un contenedor por servicio |
 
 **Arquitectura de microservicios (ADR-09).** La web y la app entran solo por el **gateway** (`/api/v1`).
 Detrás hay un servicio por dominio, cada uno con su proceso, su imagen Docker, su esquema y su usuario de base:
@@ -72,7 +72,8 @@ Detrás hay un servicio por dominio, cada uno con su proceso, su imagen Docker, 
 | **catalogo** | código único de insumo, factor de conversión, importación del S10 | `catalogo` |
 | **compras** | proveedores, compras, solicitudes, requerimiento, reposición | `compras` |
 | **tareo** | trabajadores y asistencia | `tareo` |
-| **almacen**, **costo** | movimientos, saldo, kárdex, costo promedio (por construir con el mismo patrón) | `almacen`, `costo` |
+| **almacen** | libro de movimientos (salidas, ingresos, recepciones, traslados, reversos, conteos), saldo y kárdex derivados, costo promedio ponderado **por almacén** congelado en cada salida (migración 0010) | `almacen` |
+| **costo** | gasto en recursos de la obra: modelo de lectura que recibe por eventos (outbox, destino `integracion`) los hechos valorizados de almacén (0010) | `costo` |
 | **integraciones** · **notificaciones** · **relevo** | S10/SUNAT/RENIEC · avisos · entrega del outbox | — · propia · `outbox` |
 
 Reglas: **nadie lee la base de otro servicio** (la base lo impide por permisos); lo ajeno se pide por la API
@@ -165,5 +166,5 @@ probada con datos inventados **no está terminada**.
 | `docs/flujo-de-trabajo.md` | Git, ramas, PR y pruebas |
 | `equipo/*.md` | Qué le toca a cada uno |
 | `docs/plan-claude-code.md` | **Plan de trabajo vigente para Claude Code** (orden de tareas y criterios de hecho) |
-| `docs/despliegue-pruebas.md` · `render.yaml` | Ambiente de pruebas (HT-01) en Render + Neon |
+| `docs/despliegue-pruebas.md` · `render.yaml` | Ambiente de pruebas (HT-01) en Render + Neon, en un nodo (ADR-10), y cómo pasar a él sin perder variables |
 | `docs/diagramas/c4/` | Arquitectura C4: C1 contexto, C2 contenedores, C3 componentes (compras y app) |

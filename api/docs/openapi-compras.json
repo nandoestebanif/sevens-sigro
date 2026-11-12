@@ -31,7 +31,7 @@
      "compras · proveedores"
     ],
     "summary": "Listar Proveedores",
-    "description": "HU-29: se busca por razón social o por RUC. Un proveedor de baja no aparece para compras nuevas.",
+    "description": "HU-29: se busca por razón social o por RUC. Un proveedor de baja no aparece para compras nuevas.\n`limite`/`desde` son opcionales: sin ellos llegan todos, como siempre.",
     "operationId": "listar_proveedores_api_v1_proveedores_get",
     "security": [
      {
@@ -59,6 +59,39 @@
        "default": false,
        "title": "Solo Para Comprar"
       }
+     },
+     {
+      "name": "limite",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "integer",
+         "maximum": 500,
+         "minimum": 1
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "Opcional: tamaño de página. Sin él, la lista completa.",
+       "title": "Limite"
+      },
+      "description": "Opcional: tamaño de página. Sin él, la lista completa."
+     },
+     {
+      "name": "desde",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "integer",
+       "minimum": 0,
+       "description": "Opcional: cuántas filas saltar (usa X-Siguiente-Desde de la respuesta anterior).",
+       "default": 0,
+       "title": "Desde"
+      },
+      "description": "Opcional: cuántas filas saltar (usa X-Siguiente-Desde de la respuesta anterior)."
      }
     ],
     "responses": {
@@ -342,6 +375,39 @@
        ],
        "title": "Proveedor Id"
       }
+     },
+     {
+      "name": "limite",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "integer",
+         "maximum": 500,
+         "minimum": 1
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "Opcional: tamaño de página. Sin él, la lista completa.",
+       "title": "Limite"
+      },
+      "description": "Opcional: tamaño de página. Sin él, la lista completa."
+     },
+     {
+      "name": "desde",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "integer",
+       "minimum": 0,
+       "description": "Opcional: cuántas filas saltar (usa X-Siguiente-Desde de la respuesta anterior).",
+       "default": 0,
+       "title": "Desde"
+      },
+      "description": "Opcional: cuántas filas saltar (usa X-Siguiente-Desde de la respuesta anterior)."
      }
     ],
     "responses": {
@@ -576,6 +642,39 @@
        "minimum": 1,
        "title": "Obra Id"
       }
+     },
+     {
+      "name": "limite",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "integer",
+         "maximum": 500,
+         "minimum": 1
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "Opcional: tamaño de página. Sin él, la lista completa.",
+       "title": "Limite"
+      },
+      "description": "Opcional: tamaño de página. Sin él, la lista completa."
+     },
+     {
+      "name": "desde",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "integer",
+       "minimum": 0,
+       "description": "Opcional: cuántas filas saltar (usa X-Siguiente-Desde de la respuesta anterior).",
+       "default": 0,
+       "title": "Desde"
+      },
+      "description": "Opcional: cuántas filas saltar (usa X-Siguiente-Desde de la respuesta anterior)."
      }
     ],
     "responses": {
@@ -1069,6 +1168,72 @@
     }
    }
   },
+  "/api/v1/obras/{obra_id}/avance": {
+   "get": {
+    "tags": [
+     "compras · requerimiento y reposición"
+    ],
+    "summary": "Avance",
+    "description": "HU-23: requerido, comprado, recibido, consumido y saldo por comprar de cada insumo del requerimiento, en unidad de\ncompra, con su porcentaje sobre el requerimiento total. Lo que depende de almacén se declara en `pendiente`.",
+    "operationId": "avance_api_v1_obras__obra_id__avance_get",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "obra_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "minimum": 1,
+       "title": "Obra Id"
+      }
+     },
+     {
+      "name": "q",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string",
+         "maxLength": 100
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Q"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/AvanceOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
   "/api/v1/obras/{obra_id}/parametros-reposicion": {
    "post": {
     "tags": [
@@ -1239,6 +1404,177 @@
      }
     }
    }
+  },
+  "/interno/compras/{compra_id}": {
+   "get": {
+    "tags": [
+     "interno"
+    ],
+    "summary": "Compra",
+    "description": "Cabecera y líneas. `factor_sin_igv` = base imponible / suma de líneas: lleva el precio de cada línea a su valor\nsin IGV tanto si los precios lo incluían como si no (D-C3). El IGV recuperable no es costo del insumo (NIC 2).",
+    "operationId": "compra_interno_compras__compra_id__get",
+    "parameters": [
+     {
+      "name": "compra_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Compra Id"
+      }
+     },
+     {
+      "name": "x-servicio-token",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "X-Servicio-Token"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/interno/obras/{obra_id}/comprado": {
+   "get": {
+    "tags": [
+     "interno"
+    ],
+    "summary": "Comprado",
+    "description": "HU-58 «Comprado»: valor de las compras registradas (las anuladas no cuentan, D-R2), sin y con IGV.",
+    "operationId": "comprado_interno_obras__obra_id__comprado_get",
+    "parameters": [
+     {
+      "name": "obra_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Obra Id"
+      }
+     },
+     {
+      "name": "x-servicio-token",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "X-Servicio-Token"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/interno/obras/{obra_id}/parametros-reposicion": {
+   "get": {
+    "tags": [
+     "interno"
+    ],
+    "summary": "Parametros",
+    "description": "HU-43: el punto de reposición vigente de cada insumo (en unidad de compra), para señalar lo que está por debajo.",
+    "operationId": "parametros_interno_obras__obra_id__parametros_reposicion_get",
+    "parameters": [
+     {
+      "name": "obra_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Obra Id"
+      }
+     },
+     {
+      "name": "x-servicio-token",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "X-Servicio-Token"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
   }
  },
  "components": {
@@ -1328,6 +1664,146 @@
      "motivo"
     ],
     "title": "AnularIn"
+   },
+   "AvanceFilaOut": {
+    "properties": {
+     "insumo_id": {
+      "type": "integer",
+      "title": "Insumo Id"
+     },
+     "insumo_codigo": {
+      "type": "string",
+      "title": "Insumo Codigo"
+     },
+     "descripcion": {
+      "type": "string",
+      "title": "Descripcion"
+     },
+     "unidad_compra": {
+      "type": "string",
+      "title": "Unidad Compra"
+     },
+     "requerido": {
+      "type": "string",
+      "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+      "title": "Requerido"
+     },
+     "comprado": {
+      "type": "string",
+      "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+      "title": "Comprado"
+     },
+     "recibido": {
+      "anyOf": [
+       {
+        "type": "string",
+        "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Recibido"
+     },
+     "consumido": {
+      "anyOf": [
+       {
+        "type": "string",
+        "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Consumido"
+     },
+     "saldo_por_comprar": {
+      "type": "string",
+      "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+      "title": "Saldo Por Comprar"
+     },
+     "pct_comprado": {
+      "type": "string",
+      "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+      "title": "Pct Comprado"
+     },
+     "pct_recibido": {
+      "anyOf": [
+       {
+        "type": "string",
+        "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Pct Recibido"
+     },
+     "pct_consumido": {
+      "anyOf": [
+       {
+        "type": "string",
+        "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Pct Consumido"
+     }
+    },
+    "type": "object",
+    "required": [
+     "insumo_id",
+     "insumo_codigo",
+     "descripcion",
+     "unidad_compra",
+     "requerido",
+     "comprado",
+     "recibido",
+     "consumido",
+     "saldo_por_comprar",
+     "pct_comprado",
+     "pct_recibido",
+     "pct_consumido"
+    ],
+    "title": "AvanceFilaOut"
+   },
+   "AvanceOut": {
+    "properties": {
+     "unidad": {
+      "type": "string",
+      "const": "unidad_compra",
+      "title": "Unidad",
+      "default": "unidad_compra"
+     },
+     "base_porcentaje": {
+      "type": "string",
+      "const": "requerimiento_total",
+      "title": "Base Porcentaje",
+      "default": "requerimiento_total"
+     },
+     "pendiente": {
+      "items": {
+       "type": "string"
+      },
+      "type": "array",
+      "title": "Pendiente"
+     },
+     "filas": {
+      "items": {
+       "$ref": "#/components/schemas/AvanceFilaOut"
+      },
+      "type": "array",
+      "title": "Filas"
+     }
+    },
+    "type": "object",
+    "required": [
+     "pendiente",
+     "filas"
+    ],
+    "title": "AvanceOut"
    },
    "CompraIn": {
     "properties": {

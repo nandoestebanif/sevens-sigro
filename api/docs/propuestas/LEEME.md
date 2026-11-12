@@ -1,12 +1,19 @@
 # Propuesta 0010 · microservicios almacén y costo (modelo físico)
 
-**Estado:** borrador para Adiel (solo él crea migraciones). No está en `migraciones/versions/`, así que Alembic no la aplica.
-**Archivo:** `api/migraciones/propuestas/0010_almacen_y_costo.py` · **Diagrama:** `fisico-almacen-costo.png`
+**Estado: APROBADA** por Víctor Adiel Luján (PO) el **01/11/2026** con la opción recomendada de cada decisión, y
+convertida en la migración real `api/migraciones/versions/0010_almacen_y_costo.py` (escrita por Claude Code a pedido de
+Fernando Istaña). `probar_0010.py` y `diagrama_0010.py` se retiraron: sus escenarios viven ahora en la suite
+(`pruebas/test_api_almacen.py`, `pruebas/test_almacen_costo_0010.py`). Este archivo y el diagrama quedan como historia
+de la decisión; lo vigente está en `api/LEEME.md`.
 
-```bash
-python docs/propuestas/probar_0010.py     # base temporal: 0009 → 0010 → baja a 0009 → 0010, y 16 escenarios
-python docs/propuestas/diagrama_0010.py   # su diagrama físico, con el mismo generador que el modelo oficial
-```
+| # | Decisión | Opción tomada (01/11/2026) |
+|---|---|---|
+| 1 | Promedio por almacén o por obra | **Por almacén** (regla 4). HU-55 corregida en `docs/historias-sprint-1.md` |
+| 2 | Outbox solo para avisos | Columna **`destino`** (`aviso` · `integracion`); el CHECK de destinatarios solo aplica a `aviso` |
+| 3 | Dispositivo autorizado | `POST /interno/autorizar` acepta **`dispositivo`**; obras responde **403 `dispositivo_no_autorizado`** |
+| 4 | Periodo cerrado | **Solo reversos**, validado por almacén con `/interno/obras/{id}/periodos` |
+| 5 | HU-41 «saldo de otra obra» | Solo si esa obra **no** está en SIGRO (almacén pregunta a obras); cita HU-40→HU-42 corregida |
+| 6 | Límites conocidos | Documentados en la migración (candado con id `int`; promedio a 6 decimales) |
 
 ## Qué propone
 

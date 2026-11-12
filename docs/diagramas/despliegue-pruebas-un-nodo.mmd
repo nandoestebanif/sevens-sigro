@@ -1,0 +1,46 @@
+%% SIGRO · Despliegue · vista PRUEBAS (ADR-10): un solo nodo gratuito en Render, un proceso por microservicio.
+%% Fuentes: render.yaml, api/Dockerfile.pruebas, infra/un_nodo/supervisor.py (PUERTOS). Producción: despliegue-produccion.mmd
+flowchart LR
+  subgraph Clientes["Dispositivos de los usuarios"]
+    WEB["Web de oficina<br/>navegador"]
+    APP["App del almacenero<br/>Android · iOS · cola sin señal"]
+  end
+
+  subgraph Render["Render · plan gratuito · región ohio"]
+    direction LR
+    SW["sigro-web · sitio estático<br/>rewrite /api/* y /salud/* → sigro-api"]
+    subgraph Nodo["sigro-api · UN contenedor · 512 MB · supervisor reinicia el proceso que se cae"]
+      direction LR
+      GW["gateway<br/>0.0.0.0:$PORT · única puerta pública<br/>/salud/servicios con caché de 30 s"]
+      subgraph Dominio["un PROCESO por microservicio · 127.0.0.1 · sin Cloudflare"]
+        direction TB
+        OB["obras :8001<br/>identidad · autoriza a los demás"]
+        CA["catalogo :8002"]
+        CO["compras :8003"]
+        TA["tareo :8004"]
+        AL["almacen :8005"]
+        CS["costo :8006"]
+      end
+      subgraph Apoyo["procesos de apoyo"]
+        direction TB
+        IN["integraciones :8007"]
+        NO["notificaciones :8008"]
+        RE["relevo (outbox)"]
+      end
+    end
+  end
+
+  subgraph Neon["Neon · aws-us-east-2 (Ohio)"]
+    PG[("PostgreSQL · un esquema y un usuario por servicio<br/>sigro_obras · sigro_catalogo · sigro_compras · sigro_tareo<br/>sigro_almacen · sigro_costo · sigro_relevo")]
+  end
+  FAC[("Factiliza · RUC · DNI")]
+
+  WEB -->|"HTTPS · mismo dominio"| SW
+  SW -->|"rewrite"| GW
+  APP -->|"HTTPS · JWT"| GW
+  GW -->|"http://127.0.0.1:800x"| Dominio
+  Dominio -->|"cada proceso con SU usuario<br/>(SIGRO_DB_&lt;SERVICIO&gt;)"| PG
+  RE -->|"sigro_relevo"| PG
+  RE -.->|"eventos → costo · avisos → notificaciones"| Dominio
+  Dominio -.->|"RUC · S10"| IN
+  IN --> FAC

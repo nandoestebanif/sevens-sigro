@@ -1,0 +1,3 @@
+# 03/11/2026 · un nodo (ADR-10) EN LOCAL: supervisor + 10 procesos nativos en Windows 11, PostgreSQL 16.15 local.
+# No es Render: sin Cloudflare ni red a Neon. Arranque en frío: /salud/servicios 200 a los 10,2 s del arranque.
+11:20:44 un-nodo-frio #1 200 dns=0.000049 tcp=0.001234 tls=0.000000 ttfb=0.071581 total=0.071955 ray= st=[gw;dur=68.8, gw-up;dur=68.3, obras;dur=60.5, obras-db;dur=7.7;desc="2 consultas", obras-db-con;dur=0.0;desc="0 conexiones nuevas", obras-interno;dur=0.0;desc="0 llamadas"]

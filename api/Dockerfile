@@ -1,6 +1,6 @@
 # Una imagen por microservicio, desde el mismo código: cada una conserva SOLO lo suyo.
 #   docker build --build-arg SERVICIO=compras -t sigro-compras ./api
-# SERVICIO: obras | catalogo | compras | tareo | gateway | relevo | migrador
+# SERVICIO: obras | catalogo | compras | tareo | almacen | costo | gateway | relevo | migrador
 FROM python:3.13-slim
 ARG SERVICIO=obras
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 SIGRO_SERVICIO=${SERVICIO}

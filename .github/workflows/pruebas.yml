@@ -54,3 +54,121 @@ jobs:
       - run: pip install -r requirements.txt pytest
       - name: Pruebas de Notificaciones
         run: python -m pytest -q
+
+  # ADR-10 · el contenedor «todo en uno» del ambiente de pruebas (UN proceso Python con todas las apps): se construye,
+  # arranca con el MISMO tope de memoria que Render gratis (512 MB), pasa la prueba de humo por el gateway y la carga
+  # de 20 logins + 20 GET /obras a la vez. Falla si el pico de RSS pasa de 300 MB o si el contenedor murió (OOM).
+  un-nodo:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: sigro_owner
+          POSTGRES_PASSWORD: sigro_owner_dev
+          POSTGRES_DB: sigro
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U sigro_owner"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: api/requirements.txt
+      - run: pip install -r api/requirements.txt pdfplumber==0.11.4 "certifi>=2026.10.19" pytest
+      - name: Notificaciones e integraciones con las versiones de la API (en el proceso único comparten venv)
+        run: |
+          (cd notificaciones && python -m pytest -q -p no:cacheprovider)
+          (cd integraciones && SERVICIO_TOKEN=t python -c "
+          from fastapi.testclient import TestClient
+          import main
+          c = TestClient(main.app)
+          with open('../insumos-cliente/5.3. Relacion de insumos.pdf', 'rb') as f:
+              r = c.post('/s10/relacion-insumos', files={'archivo': ('r.pdf', f, 'application/pdf')}, headers={'X-Servicio-Token': 't'})
+          res = r.json()['resumen']
+          print(r.status_code, res['leidos'], res['parcial_total'])
+          assert r.status_code == 200 and res['leidos'] == 284 and res['fallidos'] == 0
+          ")
+      - name: Claves de un solo uso (enmascaradas)
+        run: |
+          for s in OBRAS CATALOGO COMPRAS TAREO ALMACEN COSTO RELEVO ADMIN JWT SERVICIO; do
+            v=$(openssl rand -hex 24)Aa9    # la del administrador exige mayúsculas, minúsculas y número
+            echo "::add-mask::$v"; echo "CLAVE_$s=$v" >> "$GITHUB_ENV"
+          done
+      - name: Migrar, un usuario por servicio y datos reales del cliente
+        working-directory: api
+        env:
+          SIGRO_DATABASE_URL: postgresql+psycopg://sigro_owner:sigro_owner_dev@127.0.0.1:5432/sigro
+          SIGRO_OWNER_DSN: postgresql://sigro_owner:sigro_owner_dev@127.0.0.1:5432/sigro
+        run: |
+          for s in OBRAS CATALOGO COMPRAS TAREO ALMACEN COSTO RELEVO; do v="CLAVE_$s"; export "SIGRO_CLAVE_$s=${!v}"; done
+          sh ../infra/migrar.sh
+          H=127.0.0.1:5432/sigro
+          SIGRO_APP_DATABASE_URL="postgresql+psycopg://sigro_catalogo:${CLAVE_CATALOGO}@$H" python -m semillas.cargar_catalogo semillas/catalogo-cliente.json
+          SIGRO_APP_DATABASE_URL="postgresql+psycopg://sigro_compras:${CLAVE_COMPRAS}@$H" python -m semillas.cargar_proveedores semillas/proveedores-cliente.json
+          SIGRO_APP_DATABASE_URL="postgresql+psycopg://sigro_obras:${CLAVE_OBRAS}@$H" SIGRO_ADMIN_CLAVE="$CLAVE_ADMIN" \
+            python -m app.cli primer-admin --usuario adminhumo --nombre "Administrador humo" \
+            --obra "Multifamiliar Flores" --inicio 2026-10-19 --fin 2027-10-17
+      - name: Construir api/Dockerfile.pruebas
+        run: docker build -f api/Dockerfile.pruebas -t sigro-api .
+      - name: Arrancar con 512 MB, como Render gratis
+        run: |
+          H=127.0.0.1:5432/sigro
+          docker run -d --name sigro-api --network host --memory 512m --memory-swap 512m \
+            -e PORT=10000 -e SIGRO_ENTORNO=pruebas -e SIGRO_JWT_SECRET="${CLAVE_JWT}${CLAVE_JWT}" \
+            -e SIGRO_SERVICIO_TOKEN="$CLAVE_SERVICIO" -e SIGRO_UN_NODO_EXTRAS=1 \
+            -e SIGRO_DB_OBRAS="postgresql+psycopg://sigro_obras:${CLAVE_OBRAS}@$H" \
+            -e SIGRO_DB_CATALOGO="postgresql+psycopg://sigro_catalogo:${CLAVE_CATALOGO}@$H" \
+            -e SIGRO_DB_COMPRAS="postgresql+psycopg://sigro_compras:${CLAVE_COMPRAS}@$H" \
+            -e SIGRO_DB_TAREO="postgresql+psycopg://sigro_tareo:${CLAVE_TAREO}@$H" \
+            -e SIGRO_DB_ALMACEN="postgresql+psycopg://sigro_almacen:${CLAVE_ALMACEN}@$H" \
+            -e SIGRO_DB_COSTO="postgresql+psycopg://sigro_costo:${CLAVE_COSTO}@$H" \
+            -e SIGRO_DB_RELEVO="postgresql+psycopg://sigro_relevo:${CLAVE_RELEVO}@$H" \
+            sigro-api
+          echo "ARRANQUE=$(date +%s.%N)" >> "$GITHUB_ENV"
+      - name: Prueba de humo por el gateway
+        env:
+          SIGRO_BASE: http://127.0.0.1:10000
+          SIGRO_ADMIN_USUARIO: adminhumo
+        run: SIGRO_ADMIN_CLAVE="$CLAVE_ADMIN" python infra/un_nodo/humo.py
+      - name: Carga con 512 MB (20 logins + 20 GET /obras a la vez), pico de RSS < 300 MB
+        env:
+          SIGRO_BASE: http://127.0.0.1:10000
+          SIGRO_ADMIN_USUARIO: adminhumo
+        run: SIGRO_ADMIN_CLAVE="$CLAVE_ADMIN" python infra/un_nodo/carga.py | tee -a "$GITHUB_STEP_SUMMARY"
+      - name: Memoria real de cada proceso (Linux, con el tope de 512 MB)
+        if: always()
+        run: |
+          sleep 20   # el relevo entrega lo pendiente
+          docker exec sigro-api /opt/venv-api/bin/python -c "
+          import os
+          filas = []
+          for pid in filter(str.isdigit, os.listdir('/proc')):
+              try:
+                  cmd = open(f'/proc/{pid}/comm').read().strip() + ' · ' + open(f'/proc/{pid}/cmdline', 'rb').read().replace(b'\0', b' ').decode().strip()[:70]
+                  rss = next(int(l.split()[1]) for l in open(f'/proc/{pid}/status') if l.startswith('VmRSS'))
+                  pss = sum(int(l.split()[1]) for l in open(f'/proc/{pid}/smaps_rollup') if l.startswith('Pss:'))
+              except Exception:
+                  continue
+              filas.append((pss, rss, pid, cmd[:90]))
+          print('| proceso | RSS MB | PSS MB |'); print('|---|--:|--:|')
+          for pss, rss, pid, cmd in sorted(filas, reverse=True):
+              print(f'| {cmd} | {rss/1024:.1f} | {pss/1024:.1f} |')
+          print(f'| **total** | {sum(f[1] for f in filas)/1024:.1f} | **{sum(f[0] for f in filas)/1024:.1f}** |')
+          " | tee -a "$GITHUB_STEP_SUMMARY"
+          docker stats --no-stream --format "contenedor: {{.MemUsage}} ({{.MemPerc}})" sigro-api | tee -a "$GITHUB_STEP_SUMMARY"
+      - name: El proceso sigue vivo (sin OOM ni caída)
+        if: always()
+        run: |
+          docker logs sigro-api > un-nodo.log 2>&1
+          grep -E "^\[sigro.un_nodo\]" un-nodo.log
+          estado=$(docker inspect -f 'vivo={{.State.Running}} oom={{.State.OOMKilled}} salida={{.State.ExitCode}}' sigro-api)
+          echo "$estado" | tee -a "$GITHUB_STEP_SUMMARY"
+          [ "$estado" = "vivo=true oom=false salida=0" ]
+          ! grep -q "se detiene todo el proceso" un-nodo.log
+      - name: Log del contenedor si algo falló
+        if: failure()
+        run: tail -n 200 un-nodo.log || docker logs sigro-api 2>&1 | tail -n 200

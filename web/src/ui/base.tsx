@@ -3,7 +3,7 @@
    Todo estilo sale de los tokens. Las pantallas componen con estas piezas y no
    escriben colores ni radios a mano.
    ───────────────────────────────────────────────────────────────────────── */
-import { type CSSProperties, type ReactNode } from 'react'
+import { type CSSProperties, type KeyboardEvent, type ReactNode, useEffect, useId, useRef } from 'react'
 
 export function Tarjeta({ children, relleno = true, estilo }: {
   children: ReactNode
@@ -117,7 +117,7 @@ export function Campo({ etiqueta, valor, enCambio, marcador, error, autoFoco, id
         onChange={(e) => enCambio(e.target.value)}
         className="campo"
         aria-invalid={error ? true : undefined}
-        style={{ height: 44, borderColor: error ? 'var(--grave)' : undefined, opacity: deshabilitado ? 0.6 : 1 }}
+        style={{ width: '100%', minWidth: 0, height: 44, borderColor: error ? 'var(--grave)' : undefined, opacity: deshabilitado ? 0.6 : 1 }}
       />
       {error && <span style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--grave)' }}>{error}</span>}
     </div>
@@ -170,45 +170,86 @@ export function Vacio({ titulo, detalle }: { titulo: string; detalle: string }) 
   )
 }
 
-export function Modal({ titulo, children, enCerrar }: {
+/** Lo que puede recibir foco dentro de un modal, en el orden del documento. */
+const ENFOCABLES = 'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+
+/**
+ * Modal accesible y del tamaño de la pantalla:
+ * - centrado, como máximo 90 % del alto (÷ escala: con zoom, vh crece) y con scroll SOLO en el contenido;
+ *   el título y la X quedan siempre a la vista;
+ * - se cierra con Esc, con la X o tocando fuera;
+ * - el foco entra al primer campo, queda atrapado dentro (Tab y Mayús+Tab dan la vuelta) y al cerrar
+ *   vuelve a donde estaba (el botón que lo abrió).
+ */
+export function Modal({ titulo, children, enCerrar, ancho = 440 }: {
   titulo: string
   children: ReactNode
   enCerrar: () => void
+  ancho?: number
 }) {
+  const caja = useRef<HTMLDivElement>(null)
+  const idTitulo = useId()
+  const cerrar = useRef(enCerrar)
+  cerrar.current = enCerrar
+
+  useEffect(() => {
+    const antes = document.activeElement as HTMLElement | null
+    const cuerpo = caja.current?.querySelector<HTMLElement>('[data-modal-cuerpo]')
+    const primero = cuerpo?.querySelector<HTMLElement>(ENFOCABLES) ?? caja.current?.querySelector<HTMLElement>(ENFOCABLES)
+    ;(primero ?? caja.current)?.focus()
+    return () => { if (antes && document.contains(antes)) antes.focus() }
+  }, [])
+
+  const teclas = (e: KeyboardEvent<HTMLDivElement>) => {
+    if (e.key === 'Escape') { e.stopPropagation(); cerrar.current(); return }
+    if (e.key !== 'Tab' || !caja.current) return
+    const lista = [...caja.current.querySelectorAll<HTMLElement>(ENFOCABLES)].filter((x) => x.offsetParent !== null)
+    if (!lista.length) { e.preventDefault(); return }
+    const [a, z] = [lista[0], lista[lista.length - 1]]
+    if (e.shiftKey && (document.activeElement === a || !caja.current.contains(document.activeElement))) { e.preventDefault(); z.focus() }
+    else if (!e.shiftKey && document.activeElement === z) { e.preventDefault(); a.focus() }
+  }
+
   return (
     <div
-      role="dialog"
-      aria-modal="true"
-      aria-label={titulo}
       className="velo"
       style={{
-        position: 'fixed', inset: 0, background: 'var(--velo)',
+        position: 'fixed', inset: 0, background: 'var(--velo)', padding: 16,
         display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50,
       }}
       onClick={enCerrar}
     >
       <div
+        ref={caja}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={idTitulo}
+        tabIndex={-1}
+        onKeyDown={teclas}
         onClick={(e) => e.stopPropagation()}
         className="modal-caja vidrio-fuerte"
         style={{
-          width: 440, maxWidth: 'calc(100vw - 32px)', maxHeight: 'calc(100vh - 32px)', overflowY: 'auto',
+          width: ancho, maxWidth: 'calc(100vw / var(--escala, 1) - 32px)',
+          maxHeight: 'calc(90vh / var(--escala, 1))',
+          display: 'flex', flexDirection: 'column', overflow: 'hidden', outline: 'none',
           borderRadius: 'var(--radio-vidrio)', boxShadow: 'var(--vidrio-sombra-alta)',
-          padding: '22px 24px',
         }}
       >
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-          <h2 style={{ fontSize: 18, fontWeight: 800, letterSpacing: '-0.01em' }}>{titulo}</h2>
+        <div style={{ flex: 'none', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, padding: '20px 24px 14px', borderBottom: '1px solid var(--linea)' }}>
+          <h2 id={idTitulo} style={{ fontSize: 18, fontWeight: 800, letterSpacing: '-0.01em', minWidth: 0 }}>{titulo}</h2>
           <button
             type="button"
             onClick={enCerrar}
             aria-label="Cerrar"
-            className="foco-vidrio"
-            style={{ width: 44, height: 44, borderRadius: 22, border: 0, background: 'transparent', fontSize: 18, cursor: 'pointer', color: 'var(--tinta-2)' }}
+            title="Cerrar (Esc)"
+            className="modal-cerrar"
           >
             ✕
           </button>
         </div>
-        {children}
+        <div data-modal-cuerpo style={{ flex: '1 1 auto', minHeight: 0, overflowY: 'auto', overscrollBehavior: 'contain', padding: '16px 22px 20px' }}>
+          {children}
+        </div>
       </div>
     </div>
   )
