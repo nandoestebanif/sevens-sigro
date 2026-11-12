@@ -166,7 +166,8 @@ class RepositorioRegistrosImpl(
         fun resumen(r: RegistroAlmacen): Pair<String, String> = when (r) {
             is RegistroAlmacen.Entrada -> "Entrada · ${r.compra.proveedor}" to
                 (if (r.todo) "Llegó todo lo pendiente · " else "") +
-                r.recibido.joinToString(" · ") { (l, c) -> "${cant(c)} ${l.unidad} ${l.descripcion}" }
+                r.recibido.joinToString(" · ") { (l, c) -> "${cant(c)} ${l.unidad} ${l.descripcion}" } +
+                (r.motivoExceso?.let { " · pasa lo requerido: $it" } ?: "")
             is RegistroAlmacen.IngresoSinCompra -> r.linea.insumo.descripcion to
                 "${cant(r.linea.cantidad)} ${r.linea.insumo.unidad} · ${r.origen.legible} · S/ ${cant(r.costoUnitario)} c/u"
             is RegistroAlmacen.Traslado -> "Traslado a ${r.obraDestino}" to
@@ -188,6 +189,8 @@ class RepositorioRegistrosImpl(
                     put("dispositivo", dispositivo)
                     put("compra_id", r.compra.id)
                     put("almacen_id", r.almacenId)
+                    // HU-36: solo si se pasa lo requerido (si no, el cuerpo queda igual que antes de HU-36)
+                    r.motivoExceso?.let { put("motivo_exceso", it) }
                     if (r.todo) {
                         put("lineas", JsonNull)
                     } else {

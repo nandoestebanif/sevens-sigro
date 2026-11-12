@@ -203,6 +203,12 @@ private object ObraFalsa : RepositorioObra {
         ),
     )
     override suspend fun obrasDestino(obraId: Int) = listOf(ObraAsignada(2, "[Otra obra registrada en SIGRO]", ""))
+
+    /** HU-36 · el ejemplo del lienzo (Entrada · «Pasa lo requerido»): requerido 60, ya recibido 55, con esta 65. */
+    override suspend fun verificarRecepcion(obraId: Int, compraId: Int, lineas: List<Pair<Int, String>>?) =
+        pe.sevens.sigro.dominio.VerificacionRecepcion(
+            true, listOf(pe.sevens.sigro.dominio.ExcesoLinea(3, insumo("CLAVOS").codigo, "kg", "60", "55", "65", "5", excede = true)),
+        )
 }
 
 private val sinProgramar = object : ProgramadorSincronizacion { override fun programar() {} }
@@ -219,10 +225,10 @@ private object StockFalso : pe.sevens.sigro.dominio.RepositorioStock {
     }
 }
 
-private fun capturar(dir: File, nombre: String, oscuro: Boolean = false, ms: Int = 1500, preparar: () -> Unit = {}, contenido: @Composable () -> Unit) {
+private fun capturar(dir: File, nombre: String, oscuro: Boolean = false, ms: Int = 1500, alto: Int = 892, preparar: () -> Unit = {}, contenido: @Composable () -> Unit) {
     preparar()
     Thread.sleep(400) // los ViewModel actualizan su estado en el hilo principal de Swing
-    ImageComposeScene(width = 412 * 2, height = 892 * 2, density = Density(2f)) {
+    ImageComposeScene(width = 412 * 2, height = alto * 2, density = Density(2f)) {
         TemaSigro(oscuro = oscuro) { contenido() }
     }.use { escena ->
         var t = 0L
@@ -299,6 +305,11 @@ fun main(args: Array<String>) {
     capturar(dir, "18-entrada", preparar = { entrada.cargar(1); Thread.sleep(300); entrada.estado.value.compras.firstOrNull()?.let { entrada.elegir(1, it) }; Thread.sleep(300); entrada.alternarModo(); entrada.recibido(0, "6") }) {
         PantallaEntrada(1, {}, entrada)
     }
+    val exceso = EntradaViewModel(ObraFalsa, registros, sinProgramar)
+    capturar(dir, "18b-entrada-pasa-lo-requerido", alto = 1500, preparar = {
+        exceso.cargar(1); Thread.sleep(300); exceso.estado.value.compras.firstOrNull()?.let { exceso.elegir(1, it) }; Thread.sleep(300)
+        exceso.guardar(1); Thread.sleep(300); exceso.motivo(pe.sevens.sigro.dominio.MotivoExceso.S10_CORTO)
+    }) { PantallaEntrada(1, {}, exceso) }
     val ingreso = IngresoSinCompraViewModel(CatalogoFalso, ObraFalsa, registros, sinProgramar)
     capturar(dir, "19-ingreso-sin-compra", preparar = { ingreso.origen(pe.sevens.sigro.dominio.OrigenIngreso.OTRA_OBRA); ingreso.elegir(insumo("ARENA GRUESA")); ingreso.cantidad("1,5"); ingreso.guardar(1) }) {
         PantallaIngresoSinCompra(1, {}, ingreso)
