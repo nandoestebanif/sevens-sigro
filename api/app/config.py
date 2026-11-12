@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass
+from decimal import Decimal
 
 from app import contexto
 
@@ -46,6 +47,7 @@ class Config:
     servicio_token: str | None
     intentos_max: int
     bloqueo_minutos: int
+    limite_precio_pct: Decimal = Decimal("10")   # HU-33: cuánto puede apartarse el precio del promedio (D13)
 
     @property
     def database_url(self) -> str:
@@ -76,4 +78,5 @@ def cargar() -> Config:
         servicio_token=os.environ.get("SIGRO_SERVICIO_TOKEN") or None,
         intentos_max=int(os.environ.get("SIGRO_INTENTOS_MAX", "5")),
         bloqueo_minutos=int(os.environ.get("SIGRO_BLOQUEO_MINUTOS", "15")),
+        limite_precio_pct=Decimal(os.environ.get("SIGRO_LIMITE_PRECIO_PCT", "10")),
     )

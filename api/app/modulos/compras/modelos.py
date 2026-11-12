@@ -9,7 +9,7 @@ from datetime import date, datetime
 from decimal import Decimal
 
 from sqlalchemy import (
-    BigInteger, CHAR, Date, DateTime, ForeignKey, ForeignKeyConstraint, Identity, Index, Integer,
+    BigInteger, Boolean, CHAR, Date, DateTime, ForeignKey, ForeignKeyConstraint, Identity, Index, Integer,
     Numeric, Text, UniqueConstraint, func, text,
 )
 from sqlalchemy.orm import Mapped, mapped_column
@@ -83,6 +83,10 @@ class CompraDetalle(Base):
     cantidad: Mapped[Decimal] = mapped_column(Numeric(18, 4))
     unidad: Mapped[str] = mapped_column(Text)
     precio_unitario: Mapped[Decimal] = mapped_column(Numeric(18, 4))
+    # HU-33 (0013): con qué promedio se comparó el precio pagado y si se salió de lo habitual
+    precio_referencia: Mapped[Decimal | None] = mapped_column(Numeric(18, 6))
+    fuera_de_lo_habitual: Mapped[bool] = mapped_column(Boolean, server_default=text("false"))
+    nota_precio: Mapped[str | None] = mapped_column(Text)
 
 
 class CompraAdjunto(Base):

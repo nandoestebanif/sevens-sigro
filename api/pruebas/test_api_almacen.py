@@ -462,3 +462,65 @@ def test_recibido_y_consumido_por_insumo_para_el_avance(mundo, ob):
     post(mundo, f"/obras/{ob['proyecto']}/almacen/movimientos/{s['id']}/reverso", ob["almacenero"], uuid_cliente=str(uuid.uuid4()), motivo="mal")
     r = internos.json_de("almacen", "GET", f"/interno/obras/{ob['proyecto']}/recibido-consumido")
     assert [(x["insumo_id"], D(str(x["recibido"])), D(str(x["consumido"]))) for x in r] == [(ob["cem"], D("40"), D("5"))]
+
+
+# ═══════════════════════════════════ HU-33 precio pagado contra lo habitual (se apoya en las recepciones)
+def _registrar_compra(mundo, ob, codigo, cantidad, unidad, precio, numero, **linea_extra):
+    prov = mundo.f.proveedor(validado=True)
+    return post(mundo, f"/obras/{ob['proyecto']}/compras", ob["residente"], proveedor_id=prov, tipo_comprobante="factura",
+                numero_comprobante=numero, fecha="2026-10-21",
+                lineas=[{"insumo_codigo": codigo, "cantidad": str(cantidad), "unidad_compra": unidad, "precio_unitario": str(precio),
+                         **linea_extra}])
+
+
+def test_sin_recepciones_no_hay_precio_habitual_y_nada_se_marca(mundo, ob):
+    r = get(mundo, f"/obras/{ob['proyecto']}/compras/precio-referencia", ob["residente"], insumo="0221000000")
+    assert r.status_code == 200, r.text
+    assert r.json()["promedio_ponderado"] is None and D(r.json()["limite_pct"]) == D("10")
+    c = _registrar_compra(mundo, ob, "0221000000", 100, "bls", "29.23", "F001-7001")
+    assert c.status_code == 201, c.text
+    l = c.json()["lineas"][0]
+    assert l["precio_referencia"] is None and l["fuera_de_lo_habitual"] is False and c.json()["advertencias"] == []
+
+
+def test_el_precio_habitual_es_el_promedio_pagado_sin_igv_y_se_marca_lo_que_se_sale(mundo, ob):
+    assert _recibir(mundo, ob, _compra(mundo, ob, ob["cem"], 400, "29.23")).status_code == 201   # 29.23 con IGV = 24.77 sin IGV
+    ref = get(mundo, f"/obras/{ob['proyecto']}/compras/precio-referencia", ob["residente"], insumo="0221000000").json()
+    assert D(ref["promedio_ponderado"]).quantize(D("0.01")) == D("24.77") and D(ref["cantidad_recibida_s10"]) == D("400")
+    dentro = _registrar_compra(mundo, ob, "0221000000", 100, "bls", "30.00", "F001-7002")       # +2.6 %: dentro
+    assert dentro.status_code == 201 and dentro.json()["lineas"][0]["fuera_de_lo_habitual"] is False
+    caro = _registrar_compra(mundo, ob, "0221000000", 100, "bls", "33.90", "F001-7003", nota_precio="Subió en todo el mercado")
+    assert caro.status_code == 201, caro.text                                                     # +16 %: avisa, no bloquea (D13)
+    l = caro.json()["lineas"][0]
+    assert l["fuera_de_lo_habitual"] is True and l["nota_precio"] == "Subió en todo el mercado"
+    assert D(l["precio_referencia"]).quantize(D("0.01")) == D("24.77") and D(l["precio_unitario"]) == D("33.90")  # se guarda lo pagado
+    assert len(caro.json()["advertencias"]) == 1 and "0221000000" in caro.json()["advertencias"][0]
+    visto = get(mundo, f"/obras/{ob['proyecto']}/compras/{caro.json()['id']}", ob["gerente"]).json()["lineas"][0]
+    assert visto["fuera_de_lo_habitual"] is True                                                 # el gerente también lo ve
+
+
+def test_el_acero_se_compara_en_varillas_aunque_el_almacen_lleve_kg(mundo, ob):
+    c = _compra(mundo, ob, ob["acero"], 100, "35.40", unidad="var", base=D("3000.00"), total=D("3540.00"))   # 30.00 sin IGV por varilla
+    assert _recibir(mundo, ob, c).status_code == 201
+    ref = get(mundo, f"/obras/{ob['proyecto']}/compras/precio-referencia", ob["residente"], insumo="0203020004").json()
+    assert ref["unidad_compra"] == "var" and ref["unidad_s10"] == "kg"
+    assert D(ref["promedio_ponderado"]).quantize(D("0.01")) == D("30.00")                        # no 4.21 (por kg)
+    igual = _registrar_compra(mundo, ob, "0203020004", 50, "var", "35.40", "F001-7004")
+    assert igual.json()["lineas"][0]["fuera_de_lo_habitual"] is False
+
+
+def test_un_ingreso_sin_compra_no_cambia_el_precio_habitual(mundo, ob):
+    assert _recibir(mundo, ob, _compra(mundo, ob, ob["cem"], 100, "29.50")).status_code == 201
+    antes = get(mundo, f"/obras/{ob['proyecto']}/compras/precio-referencia", ob["residente"], insumo="0221000000").json()
+    assert ingreso(mundo, ob, 10, "99.00").status_code == 201                                     # sobrante: no se le pagó a nadie
+    despues = get(mundo, f"/obras/{ob['proyecto']}/compras/precio-referencia", ob["residente"], insumo="0221000000").json()
+    assert despues["promedio_ponderado"] == antes["promedio_ponderado"]
+
+
+def test_el_motor_no_acepta_una_marca_sin_referencia_ni_una_nota_vacia(mundo, ob):
+    import psycopg
+    prov = mundo.f.proveedor()
+    c = mundo.f.compra(ob["proyecto"], prov, ob["residente"])
+    with pytest.raises(psycopg.errors.CheckViolation):
+        mundo.f.q1("INSERT INTO compras.compra_detalle (compra_id, insumo_id, cantidad, unidad, precio_unitario, fuera_de_lo_habitual) "
+                   "VALUES (%s, %s, 1, 'bls', 1, true) RETURNING id", (c, ob["cem"]))

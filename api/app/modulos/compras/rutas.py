@@ -14,12 +14,14 @@ from fastapi import APIRouter, Depends, Query, Response
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
-from app import eventos, integraciones
+from app import contexto, eventos, integraciones, internos
 from app.dependencias import Actor, exigir, exigir_en_alguna_obra
 from app.errores import ErrorSigro
 from app.paginacion import Pagina, paginacion
 from app.modulos.compras import esquemas as e
 from app.modulos.compras import catalogo_cliente
+from app.config import cargar
+from app.modulos.compras import dominio as dom
 from app.modulos.compras.dominio import ruc_valido
 from app.sql import fila, filas
 
@@ -133,7 +135,8 @@ def _compra_out(s: Session, filas_compra: list[dict]) -> list[dict]:
     ids = [c["id"] for c in filas_compra]
     lineas = filas(
         s,
-        "SELECT d.compra_id, d.insumo_id, d.cantidad, d.unidad AS unidad_compra, d.precio_unitario "
+        "SELECT d.compra_id, d.insumo_id, d.cantidad, d.unidad AS unidad_compra, d.precio_unitario, "
+        "d.precio_referencia, d.fuera_de_lo_habitual, d.nota_precio "
         "FROM compras.compra_detalle d WHERE d.compra_id = ANY(:ids) ORDER BY d.id",
         ids=ids,
     )
@@ -161,7 +164,8 @@ def registrar_compra(datos: e.CompraIn, a: Actor = Depends(exigir("compra.regist
     """
     s = a.sesion
     codigos = [l.insumo_codigo.upper() for l in datos.lineas]
-    por_codigo = {k: v["id"] for k, v in catalogo_cliente.por_codigo(codigos, solo_activos=True).items()}
+    catalogo = catalogo_cliente.por_codigo(codigos, solo_activos=True)
+    por_codigo = {k: v["id"] for k, v in catalogo.items()}
     faltan = [c for c in codigos if c not in por_codigo]
     if faltan:
         raise ErrorSigro(422, "insumo_no_existe", f"No existen en el catálogo (o están inactivos): {', '.join(faltan)}.")
@@ -184,16 +188,57 @@ def registrar_compra(datos: e.CompraIn, a: Actor = Depends(exigir("compra.regist
         p=a.obra_id, pv=datos.proveedor_id, t=datos.tipo_comprobante, n=datos.numero_comprobante.upper(), f=datos.fecha,
         m=datos.moneda, b=base, i=igv, tt=total, u=a.usuario_id, sol=datos.solicitud_id,
     )
+    # HU-33: cada línea se compara, sin IGV y en unidad de compra, con el promedio pagado del insumo en esta obra
+    factor_sin_igv = (base / bruto) if bruto else Decimal(1)
+    insumos = catalogo
+    filas_detalle, advertencias = [], []
+    try:
+        pagado = _promedios_pagados(a.obra_id)
+    except ErrorSigro:                          # avisa, no bloquea (D13): sin almacén la compra se registra sin comparar
+        pagado = {}
+        advertencias.append("No se pudo consultar el precio habitual (servicio de almacén); la compra se registró sin compararlo.")
+    limite = cargar().limite_precio_pct
+    for l, codigo in zip(datos.lineas, codigos):
+        ins = insumos[codigo]
+        ref = dom.referencia_en_unidad_de_compra(pagado.get(ins["id"], {}).get("promedio_pagado"), ins["factor_conversion"])
+        desv = dom.desviacion_pct(l.precio_unitario * factor_sin_igv, ref)
+        fuera = dom.fuera_de_lo_habitual(desv, limite)
+        if fuera:
+            advertencias.append(f"{codigo}: el precio se aparta {desv:+} % del promedio pagado en la obra "
+                                f"(S/ {ref.quantize(CENTAVO)} sin IGV por {l.unidad_compra}); queda marcado para el residente.")
+        filas_detalle.append({"c": c["id"], "i": ins["id"], "q": l.cantidad, "u": l.unidad_compra, "pr": l.precio_unitario,
+                              "ref": ref, "f": fuera, "n": l.nota_precio})
     # todas las líneas en un solo executemany (antes: un INSERT por línea)
     s.execute(
         text(
-            "INSERT INTO compras.compra_detalle (compra_id, insumo_id, cantidad, unidad, precio_unitario) "
-            "VALUES (:c, :i, :q, :u, :pr)"
+            "INSERT INTO compras.compra_detalle (compra_id, insumo_id, cantidad, unidad, precio_unitario, precio_referencia, "
+            "fuera_de_lo_habitual, nota_precio) VALUES (:c, :i, :q, :u, :pr, :ref, :f, :n)"
         ),
-        [{"c": c["id"], "i": por_codigo[codigo], "q": l.cantidad, "u": l.unidad_compra, "pr": l.precio_unitario}
-         for l, codigo in zip(datos.lineas, codigos)],
+        filas_detalle,
     )
-    return _compra_out(s, filas(s, _SQL_COMPRA + "WHERE c.id = :i", i=c["id"]))[0]
+    out = _compra_out(s, filas(s, _SQL_COMPRA + "WHERE c.id = :i", i=c["id"]))[0]
+    out["advertencias"] = advertencias
+    return out
+
+
+def _promedios_pagados(obra_id: int) -> dict[int, dict]:
+    """Lo pagado lo sabe almacén (cada recepción congela su costo sin IGV); compras no lee el esquema `almacen`."""
+    return {r["insumo_id"]: r for r in internos.json_de(contexto.ALMACEN, "GET", f"/interno/obras/{obra_id}/costo-pagado")}
+
+
+@compras.get("/compras/precio-referencia", response_model=e.PrecioReferenciaOut)
+def precio_referencia(insumo: str = Query(min_length=1, max_length=30), a: Actor = Depends(exigir("compra.consultar"))):
+    """HU-33: el promedio ponderado pagado del insumo en esta obra, para precargar el precio y avisar si se sale de lo
+    habitual. Lo recalcula el sistema con cada recepción y nunca se edita a mano."""
+    ins = catalogo_cliente.por_codigo([insumo]).get(insumo.upper())
+    if not ins:
+        raise ErrorSigro(404, "insumo_no_existe", f"No existe el insumo {insumo} en el catálogo.")
+    p = _promedios_pagados(a.obra_id).get(ins["id"], {})
+    prom = Decimal(str(p["promedio_pagado"])) if p.get("promedio_pagado") is not None else None
+    return {"insumo_codigo": ins["codigo"], "unidad_compra": ins.get("unidad_compra") or ins.get("unidad_s10"),
+            "promedio_ponderado": dom.referencia_en_unidad_de_compra(prom, ins["factor_conversion"]),
+            "unidad_s10": ins.get("unidad_s10"), "promedio_s10": prom, "factor_conversion": ins["factor_conversion"],
+            "cantidad_recibida_s10": Decimal(str(p.get("cantidad") or 0)), "limite_pct": cargar().limite_precio_pct}
 
 
 @compras.get("/compras", response_model=list[e.CompraOut])

@@ -106,6 +106,7 @@ Las migraciones corren con el usuario DUEÑO. Cada servicio se conecta con SU us
 | 0009 | **microservicios** (ADR-09): un rol por servicio (`sigro_svc_*`) con permisos solo sobre su esquema; 3 validaciones entre esquemas pasan a `SECURITY DEFINER` |
 | 0011 | **índices de rendimiento** (adoptada por Adiel el 03/11/2026): `upper(codigo)` del insumo, compra registrada por proveedor y fecha, línea de solicitud por solicitud |
 | 0012 | **partidas y APU** (HU-16): `compras.partida` y `compras.partida_recurso`, libros de solo agregar; concedidas también a `sigro_svc_compras` |
+| 0013 | **precio contra lo habitual** (HU-33): `compras.compra_detalle` gana `precio_referencia`, `fuera_de_lo_habitual` y `nota_precio` (el límite, hoy 10 %, se configura con `SIGRO_LIMITE_PRECIO_PCT`); autorizada por el PO el 12/11 |
 
 ## Modelo físico y diagramas (`api/docs/`)
 
