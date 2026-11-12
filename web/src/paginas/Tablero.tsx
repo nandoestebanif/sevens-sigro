@@ -35,7 +35,8 @@ export function Tablero() {
   const [r, setR] = useState<ResumenTablero | null>(null)
   const [soloDesviados, setSoloDesviados] = useState(false)
   useEffect(() => {
-    api.resumenTablero().then(setR)
+    // «sigro-panel-listo»: la entrada a la obra (App.tsx) espera a que el panel tenga sus cifras para mostrarse
+    api.resumenTablero().then(setR).finally(() => window.dispatchEvent(new Event('sigro-panel-listo')))
   }, [])
 
   if (!r) {
