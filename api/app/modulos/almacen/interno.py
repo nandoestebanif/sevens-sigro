@@ -89,4 +89,24 @@ def resumen_valorizado(obra_id: int, corte: datetime | None = Query(None), s: Se
     return r
 
 
+@interno.get("/obras/{obra_id}/consumo-por-insumo")
+def consumo_por_insumo(obra_id: int, corte: datetime | None = Query(None), s: Session = Depends(obtener_sesion, scope="function")):
+    """HU-57: por insumo, lo consumido (salidas, netas de sus reversos) hasta la fecha de corte: cantidad en la unidad del
+    S10 e importe al costo promedio congelado en cada salida (R4). Solo insumos con consumo distinto de cero."""
+    ahora = datetime.now(timezone.utc)
+    if corte is not None and corte.tzinfo is None:
+        corte = corte.replace(tzinfo=timezone.utc)
+    efectivo = min(corte, ahora) if corte is not None else ahora
+    rows = filas(s, """
+        SELECT m.insumo_id, i.codigo AS insumo_codigo, i.descripcion, i.unidad, i.tipo,
+               -sum(m.sentido * m.cantidad) AS cantidad,
+               round(-sum(m.sentido * m.cantidad * m.costo_unitario), 2) AS importe
+          FROM almacen.movimiento m LEFT JOIN almacen.movimiento o ON o.id = m.revierte_a_id
+          JOIN almacen.insumo_ref i ON i.id = m.insumo_id
+         WHERE m.proyecto_id = :p AND m.fecha_servidor <= :c AND coalesce(o.tipo, m.tipo) = 'salida'
+         GROUP BY m.insumo_id, i.codigo, i.descripcion, i.unidad, i.tipo
+        HAVING sum(m.sentido * m.cantidad) <> 0 ORDER BY i.codigo""", p=obra_id, c=efectivo)
+    return {"corte": efectivo, "filas": rows}
+
+
 routers = [interno]
