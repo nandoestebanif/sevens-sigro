@@ -190,7 +190,7 @@ class SalidaViewModel(
 
 /* Lienzo Salida.dc.html y Guardada.dc.html, pasados al vidrio sobre el fondo de estanterías. */
 
-private val NaranjaTexto = Color(0xFF7C2D12)
+private val NaranjaTexto get() = Paleta.NaranjaTexto
 
 @Composable
 fun PantallaSalida(obraId: Int, alVolver: () -> Unit, base: SalidaRegistrada? = null, vm: SalidaViewModel = koinViewModel()) {
@@ -227,9 +227,9 @@ fun PantallaSalida(obraId: Int, alVolver: () -> Unit, base: SalidaRegistrada? = 
                             finalIcono = { Icon(Icons.Filled.Search, contentDescription = null, tint = Paleta.Texto3, modifier = Modifier.padding(end = 10.dp)) },
                         )
                         if (e.resultados.isNotEmpty()) {
-                            Column(Modifier.fillMaxWidth().background(Color.White.copy(alpha = 0.9f), RoundedCornerShape(20.dp))) {
+                            Column(Modifier.fillMaxWidth().background(Paleta.Superficie.copy(alpha = 0.9f), RoundedCornerShape(20.dp))) {
                                 e.resultados.take(8).forEachIndexed { i, ins ->
-                                    if (i > 0) Box(Modifier.fillMaxWidth().height(1.dp).background(Color(0xFFE2E8F0)))
+                                    if (i > 0) Box(Modifier.fillMaxWidth().height(1.dp).background(Paleta.Separador))
                                     Column(
                                         Modifier.fillMaxWidth().clickable { vm.elegir(ins) }.heightIn(min = 60.dp)
                                             .padding(horizontal = 16.dp, vertical = 10.dp),
@@ -281,7 +281,7 @@ private fun Sugerencias(opciones: List<String>, actual: String, alElegir: (Strin
     Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         visibles.forEach { o ->
             Box(
-                Modifier.heightIn(min = 44.dp).background(Color.White.copy(alpha = 0.85f), RoundedCornerShape(22.dp))
+                Modifier.heightIn(min = 44.dp).background(Paleta.Superficie.copy(alpha = 0.85f), RoundedCornerShape(22.dp))
                     .border(1.dp, Paleta.BordeCampo, RoundedCornerShape(22.dp))
                     .clickable(onClickLabel = "Usar «$o»") { alElegir(o) }
                     .padding(horizontal = 14.dp, vertical = 10.dp),

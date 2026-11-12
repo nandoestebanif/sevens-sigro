@@ -87,7 +87,7 @@ private fun chip(estado: String?): ChipCelular = when (estado) {
     "autorizado" -> ChipCelular(Icons.Filled.CheckCircle, Paleta.EnviadoTexto, Paleta.EnviadoFondo)
     "pendiente", EstadoDispositivo.YA_SOLICITADO -> ChipCelular(Icons.Filled.Schedule, Paleta.PendienteTexto, Paleta.PendienteFondo)
     "revocado" -> ChipCelular(Icons.Filled.ErrorOutline, Paleta.RechazadoTexto, Paleta.RechazadoFondo)
-    else -> ChipCelular(Icons.Filled.HelpOutline, Color(0xFF334155), Color(0xFFE2E8F0))
+    else -> ChipCelular(Icons.Filled.HelpOutline, Paleta.Neutro, Paleta.Separador)
 }
 
 @Composable
@@ -136,7 +136,7 @@ fun PantallaDispositivo(obraId: Int, alVolver: () -> Unit, obraNombre: String? =
         TarjetaVidrio {
             Text(
                 "El administrador lo autoriza desde la web, en Administración. Mientras no esté autorizado, las salidas no se registran.",
-                fontSize = 15.sp, lineHeight = 22.sp, color = Color(0xFF7C2D12),
+                fontSize = 15.sp, lineHeight = 22.sp, color = Paleta.NaranjaTexto,
             )
         }
     }

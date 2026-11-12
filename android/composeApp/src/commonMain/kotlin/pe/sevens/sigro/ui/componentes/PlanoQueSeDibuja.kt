@@ -44,6 +44,8 @@ import org.jetbrains.compose.resources.painterResource
 import pe.sevens.sigro.plataforma.reducirMovimiento
 import pe.sevens.sigro.recursos.Res
 import pe.sevens.sigro.recursos.sevens_logo
+import pe.sevens.sigro.recursos.sevens_logo_blanco
+import pe.sevens.sigro.ui.tema.Apariencia
 import pe.sevens.sigro.ui.tema.Paleta
 
 private val CurvaTrazo = CubicBezierEasing(0.45f, 0f, 0.2f, 1f)
@@ -104,7 +106,7 @@ fun CapaPlanoQueSeDibuja(modifier: Modifier = Modifier) {
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
-                Image(painterResource(Res.drawable.sevens_logo), contentDescription = "SEVEN'S Ingenieros SAC", modifier = Modifier.width(210.dp))
+                Image(painterResource(if (Apariencia.oscuro) Res.drawable.sevens_logo_blanco else Res.drawable.sevens_logo), contentDescription = "SEVEN'S Ingenieros SAC", modifier = Modifier.width(210.dp))
                 Text("Preparando tu obra…", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Paleta.Pizarra)
             }
         }

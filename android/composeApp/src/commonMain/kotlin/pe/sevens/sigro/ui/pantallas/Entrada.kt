@@ -278,7 +278,7 @@ private fun AvisoExceso(e: EstadoEntrada, compra: CompraParaRecibir, vm: Entrada
     val v = e.exceso ?: return
     val nombres = compra.lineas.filter { it.insumoId != null }.associate { it.insumoId!! to Texto.nombre(it.descripcion) }
     Column(
-        Modifier.fillMaxWidth().background(Color(0xFFFEF3C7), RoundedCornerShape(18.dp)).padding(14.dp)
+        Modifier.fillMaxWidth().background(Paleta.AvisoFondo, RoundedCornerShape(18.dp)).padding(14.dp)
             .semantics { liveRegion = LiveRegionMode.Polite },
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
@@ -287,16 +287,16 @@ private fun AvisoExceso(e: EstadoEntrada, compra: CompraParaRecibir, vm: Entrada
             if (excedidas.size == 1) "${nombres[excedidas[0].insumoId] ?: excedidas[0].insumoCodigo} pasa lo requerido en el S10 en " +
                 "${ExcesoRequerido.fmt(excedidas[0].exceso)} ${excedidas[0].unidad}"
             else "${excedidas.size} insumos pasan lo requerido en el S10",
-            fontSize = 15.sp, fontWeight = FontWeight.Bold, color = Color(0xFF92400E),
+            fontSize = 15.sp, fontWeight = FontWeight.Bold, color = Paleta.PendienteTexto,
         )
         excedidas.forEach { l ->
-            Text(ExcesoRequerido.detalle(l, nombres[l.insumoId] ?: l.insumoCodigo), fontSize = 13.sp, lineHeight = 18.sp, color = Color(0xFF78350F))
+            Text(ExcesoRequerido.detalle(l, nombres[l.insumoId] ?: l.insumoCodigo), fontSize = 13.sp, lineHeight = 18.sp, color = Paleta.AvisoTexto)
         }
         Text(
             "Puedes seguir: entra al stock al costo de la compra y queda marcado con tu motivo para el residente.",
-            fontSize = 13.sp, lineHeight = 18.sp, color = Color(0xFF78350F),
+            fontSize = 13.sp, lineHeight = 18.sp, color = Paleta.AvisoTexto,
         )
-        Text("¿Por qué se necesita más de lo requerido?", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF78350F))
+        Text("¿Por qué se necesita más de lo requerido?", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = Paleta.AvisoTexto)
         Opciones(MotivoExceso.entries, e.motivo, { it.legible }, vm::motivo)
         if (e.motivo == MotivoExceso.OTRO) {
             CampoVidrio(e.motivoDetalle, vm::motivoDetalle, "Motivo", error = e.errores[EntradaViewModel.ERROR_MOTIVO])
@@ -333,7 +333,7 @@ fun PantallaEntrada(obraId: Int, alVolver: () -> Unit, vm: EntradaViewModel = ko
                 e.aviso?.let { Text(it, fontSize = 15.sp, lineHeight = 21.sp, color = Paleta.Texto2) }
                 e.compras.forEach { c ->
                     Column(
-                        Modifier.fillMaxWidth().background(Color.White.copy(alpha = 0.8f), RoundedCornerShape(18.dp))
+                        Modifier.fillMaxWidth().background(Paleta.Superficie.copy(alpha = 0.8f), RoundedCornerShape(18.dp))
                             .clickable(onClickLabel = "Recibir esta compra") { vm.elegir(obraId, c) }.heightIn(min = 60.dp).padding(14.dp)
                             .semantics(mergeDescendants = true) {},
                         verticalArrangement = Arrangement.spacedBy(2.dp),

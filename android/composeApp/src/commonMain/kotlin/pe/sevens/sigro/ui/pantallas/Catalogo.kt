@@ -346,7 +346,7 @@ fun PantallaInsumoNuevo(alVolver: () -> Unit, alAbrir: (FichaInsumo) -> Unit, vm
                 Text("Ya están en el catálogo", fontSize = 13.sp, color = Paleta.Texto3)
                 e.parecidos.forEach { p ->
                     Row(
-                        Modifier.fillMaxWidth().background(Color.White.copy(alpha = 0.8f), RoundedCornerShape(16.dp))
+                        Modifier.fillMaxWidth().background(Paleta.Superficie.copy(alpha = 0.8f), RoundedCornerShape(16.dp))
                             .clickable(onClickLabel = "Usar este insumo") { alAbrir(p) }.heightIn(min = 52.dp).padding(12.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {

@@ -62,6 +62,7 @@ import dev.chrisbanes.haze.hazeEffect
 import dev.chrisbanes.haze.hazeSource
 import dev.chrisbanes.haze.rememberHazeState
 import pe.sevens.sigro.plataforma.vidrioSinDesenfoque
+import pe.sevens.sigro.ui.tema.Apariencia
 import pe.sevens.sigro.ui.tema.Paleta
 import pe.sevens.sigro.ui.tema.TemaSigro
 
@@ -75,19 +76,20 @@ import pe.sevens.sigro.ui.tema.TemaSigro
 /** El fondo de plano de la pantalla: lo que el vidrio desenfoca. Null fuera de [FondoPlano]. */
 val LocalHaze = staticCompositionLocalOf<HazeState?> { null }
 
-private val EstiloVidrio = HazeStyle(
+// Funciones y no valores: el estilo sigue al tema (claro u oscuro) cada vez que se pinta.
+private val EstiloVidrio: HazeStyle get() = HazeStyle(
     backgroundColor = Paleta.FondoBase,
     tint = HazeTint(Paleta.Vidrio),
     blurRadius = 18.dp,
     noiseFactor = 0f,
-    fallbackTint = HazeTint(Color.White.copy(alpha = 0.82f)),
+    fallbackTint = HazeTint(Paleta.Superficie.copy(alpha = 0.82f)),
 )
-private val EstiloVidrioFuerte = HazeStyle(
+private val EstiloVidrioFuerte: HazeStyle get() = HazeStyle(
     backgroundColor = Paleta.FondoBase,
     tint = HazeTint(Paleta.VidrioFuerte),
     blurRadius = 22.dp,
     noiseFactor = 0f,
-    fallbackTint = HazeTint(Color.White.copy(alpha = 0.9f)),
+    fallbackTint = HazeTint(Paleta.Superficie.copy(alpha = 0.9f)),
 )
 
 /** Pantalla en estilo vidrio: tema claro siempre (el diseño no tiene versión oscura) y su plano de fondo. */
@@ -100,10 +102,10 @@ fun FondoPlano(
     // Sin desenfoque no hay fuente de Haze: vidrio() ve LocalHaze = null y pinta el blanco de respaldo.
     val haze = if (vidrioSinDesenfoque()) null else rememberHazeState()
     val medidor = rememberTextMeasurer()
-    TemaSigro(oscuro = false) {
+    TemaSigro(oscuro = Apariencia.oscuro) {
         Box(modifier.fillMaxSize().background(Paleta.FondoBase)) {
             // El plano acompaña, no compite: al 55 % el texto sobre él gana contraste y la pantalla se lee más limpia.
-            Canvas(Modifier.fillMaxSize().graphicsLayer { alpha = 0.55f }.then(if (haze != null) Modifier.hazeSource(haze) else Modifier)) { plano(medidor) }
+            Canvas(Modifier.fillMaxSize().graphicsLayer { alpha = if (Apariencia.oscuro) 0.16f else 0.55f }.then(if (haze != null) Modifier.hazeSource(haze) else Modifier)) { plano(medidor) }
             CompositionLocalProvider(LocalHaze provides haze) { contenido() }
         }
     }
@@ -121,7 +123,7 @@ fun Modifier.vidrio(forma: Shape, fuerte: Boolean = false, sombra: Dp = 10.dp): 
         // desenfoque no se distingue a la vista y cada tarjeta procesa ~9 veces menos píxeles por cuadro.
         recorte.hazeEffect(haze, if (fuerte) EstiloVidrioFuerte else EstiloVidrio) { inputScale = HazeInputScale.Auto }
     } else {
-        recorte.background(Color.White.copy(alpha = if (fuerte) 0.9f else 0.82f))
+        recorte.background(Paleta.Superficie.copy(alpha = if (fuerte) 0.9f else 0.82f))
     }
     return relleno.border(1.dp, if (fuerte) Paleta.BordeVidrioFuerte else Paleta.BordeVidrio, forma)
 }
@@ -133,7 +135,7 @@ fun BotonNegro(
     alPulsar: () -> Unit,
     modifier: Modifier = Modifier,
     icono: ImageVector? = null,
-    colorIcono: Color = Color.White,
+    colorIcono: Color = Paleta.SobreTinta,
     habilitado: Boolean = true,
     cargando: Boolean = false,
     contorno: Boolean = false,
@@ -142,7 +144,7 @@ fun BotonNegro(
     val m = modifier.fillMaxWidth().height(58.dp)
     val contenido: @Composable () -> Unit = {
         if (cargando) {
-            CircularProgressIndicator(Modifier.size(22.dp), strokeWidth = 2.5.dp, color = if (contorno) Paleta.Tinta else Color.White)
+            CircularProgressIndicator(Modifier.size(22.dp), strokeWidth = 2.5.dp, color = if (contorno) Paleta.Tinta else Paleta.SobreTinta)
             Spacer(Modifier.width(12.dp))
         } else if (icono != null) {
             Icon(icono, contentDescription = null, tint = if (contorno) Paleta.Tinta else colorIcono, modifier = Modifier.size(22.dp))
@@ -162,8 +164,8 @@ fun BotonNegro(
             modifier = m.shadow(if (habilitado) 12.dp else 0.dp, forma, spotColor = Paleta.Tinta.copy(alpha = 0.4f)),
             shape = forma,
             colors = ButtonDefaults.buttonColors(
-                containerColor = Paleta.Tinta, contentColor = Color.White,
-                disabledContainerColor = Paleta.Gris, disabledContentColor = Color.White,
+                containerColor = Paleta.Tinta, contentColor = Paleta.SobreTinta,
+                disabledContainerColor = Paleta.Gris, disabledContentColor = Paleta.SobreTinta,
             ),
         ) { contenido() }
     }
@@ -208,14 +210,14 @@ fun CampoVidrio(
             decorationBox = { campo ->
                 Row(
                     Modifier.fillMaxWidth().height(56.dp)
-                        .background(Color.White.copy(alpha = 0.65f), RoundedCornerShape(14.dp))
+                        .background(Paleta.Superficie.copy(alpha = 0.65f), RoundedCornerShape(14.dp))
                         .border(if (enfocado || error != null) 2.dp else 1.dp, borde, RoundedCornerShape(14.dp))
                         .padding(start = 16.dp, end = if (finalIcono != null) 4.dp else 16.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Box(Modifier.weight(1f)) {
                         if (valor.isEmpty() && marcador != null) {
-                            Text(marcador, style = MaterialTheme.typography.bodyLarge, color = Paleta.Gris)
+                            Text(marcador, style = MaterialTheme.typography.bodyLarge, color = Paleta.NeutroSuave)
                         }
                         campo()
                     }
@@ -235,7 +237,7 @@ fun CampoVidrio(
 @Composable
 fun AvisoNaranja(mensaje: String, modifier: Modifier = Modifier) {
     Text(
-        mensaje, fontSize = 15.sp, lineHeight = 21.sp, color = Color(0xFF7C2D12),
+        mensaje, fontSize = 15.sp, lineHeight = 21.sp, color = Paleta.NaranjaTexto,
         modifier = modifier.fillMaxWidth().background(Paleta.NaranjaClaro, RoundedCornerShape(14.dp)).padding(14.dp),
     )
 }

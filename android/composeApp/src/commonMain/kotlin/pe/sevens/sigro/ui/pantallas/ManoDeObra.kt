@@ -162,13 +162,13 @@ fun PantallaTrabajadores(obraId: Int, obraNombre: String, alVolver: () -> Unit, 
         ) {
             Icon(Icons.Filled.EventAvailable, contentDescription = null, tint = Paleta.NaranjaVivo, modifier = Modifier.size(28.dp))
             Column(Modifier.weight(1f)) {
-                Text("Asistencia de hoy", fontSize = 17.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                Text("Asistencia de hoy", fontSize = 17.sp, fontWeight = FontWeight.Bold, color = Paleta.SobreTinta)
                 Text(
                     if (faltan == 0 && r.activos.isNotEmpty()) "Registrada para todos" else "Falta registrar · $faltan ${if (faltan == 1) "trabajador" else "trabajadores"}",
-                    fontSize = 14.sp, color = Color.White.copy(alpha = 0.8f),
+                    fontSize = 14.sp, color = Paleta.SobreTinta.copy(alpha = 0.8f),
                 )
             }
-            Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null, tint = Color.White)
+            Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null, tint = Paleta.SobreTinta)
         }
         e.aviso?.let { AvisoNaranja(it) }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -213,7 +213,7 @@ private fun FilaTrabajador(t: Trabajador, deBaja: Boolean) {
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Box(Modifier.size(40.dp).background(if (deBaja) Color(0xFFF3F4F6) else Paleta.NaranjaClaro, CircleShape), contentAlignment = Alignment.Center) {
+        Box(Modifier.size(40.dp).background(if (deBaja) Paleta.SuperficieSuave else Paleta.NaranjaClaro, CircleShape), contentAlignment = Alignment.Center) {
             Text(iniciales(t.nombre), fontSize = 14.sp, fontWeight = FontWeight.ExtraBold, color = if (deBaja) Paleta.Texto3 else Paleta.NaranjaOscuro)
         }
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
@@ -223,7 +223,7 @@ private fun FilaTrabajador(t: Trabajador, deBaja: Boolean) {
                 fontSize = 13.sp, color = Paleta.Texto3, maxLines = 2,
             )
         }
-        if (deBaja) Etiqueta("De baja", Paleta.Texto3, Color(0xFFF3F4F6)) else Etiqueta(t.categoriaLegible, Paleta.NaranjaOscuro, Paleta.NaranjaClaro)
+        if (deBaja) Etiqueta("De baja", Paleta.Texto3, Paleta.SuperficieSuave) else Etiqueta(t.categoriaLegible, Paleta.NaranjaOscuro, Paleta.NaranjaClaro)
     }
 }
 
@@ -372,9 +372,9 @@ class AsistenciaViewModel(
 }
 
 private val ColoresEstado = mapOf(
-    EstadoAsistencia.PRESENTE to Color(0xFF166534),
-    EstadoAsistencia.AUSENTE to Color(0xFF991B1B),
-    EstadoAsistencia.PERMISO to Color(0xFF92400E),
+    EstadoAsistencia.PRESENTE to Paleta.EnviadoTexto,
+    EstadoAsistencia.AUSENTE to Paleta.RechazadoTexto,
+    EstadoAsistencia.PERMISO to Paleta.PendienteTexto,
 )
 
 @OptIn(ExperimentalLayoutApi::class)
@@ -454,7 +454,7 @@ fun PantallaAsistencia(obraId: Int, alVolver: () -> Unit, alRegistros: () -> Uni
 
 @Composable
 private fun RowScope.Mini(valor: Int, etiqueta: String, color: Color) {
-    Column(Modifier.weight(1f).background(Color.White.copy(alpha = 0.7f), RoundedCornerShape(16.dp)).padding(10.dp).semantics(mergeDescendants = true) {}) {
+    Column(Modifier.weight(1f).background(Paleta.Superficie.copy(alpha = 0.7f), RoundedCornerShape(16.dp)).padding(10.dp).semantics(mergeDescendants = true) {}) {
         Text("$valor", fontSize = 20.sp, fontWeight = FontWeight.ExtraBold, color = color)
         Text(etiqueta, fontSize = 12.sp, color = Paleta.Texto3)
     }

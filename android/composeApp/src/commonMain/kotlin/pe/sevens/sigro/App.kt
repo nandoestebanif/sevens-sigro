@@ -18,7 +18,13 @@ import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.runtime.LaunchedEffect
 import org.koin.compose.KoinContext
+import org.koin.compose.koinInject
+import pe.sevens.sigro.dominio.RepositorioPreferencias
+import pe.sevens.sigro.ui.tema.Apariencia
+import pe.sevens.sigro.ui.tema.ModoTema
 import org.koin.compose.viewmodel.koinViewModel
 import pe.sevens.sigro.plataforma.ManejarAtras
 import pe.sevens.sigro.ui.pantallas.Destino
@@ -49,7 +55,17 @@ import pe.sevens.sigro.ui.tema.TemaSigro
 @Composable
 fun App() {
     KoinContext {
-        TemaSigro {
+        val preferencias: RepositorioPreferencias = koinInject()
+        LaunchedEffect(Unit) {
+            preferencias.tema()?.let { t -> ModoTema.entries.firstOrNull { it.name == t }?.let { Apariencia.modo = it } }
+        }
+        val delSistema = isSystemInDarkTheme()
+        Apariencia.oscuro = when (Apariencia.modo) {
+            ModoTema.SISTEMA -> delSistema
+            ModoTema.CLARO -> false
+            ModoTema.OSCURO -> true
+        }
+        TemaSigro(oscuro = Apariencia.oscuro) {
             val raiz: RaizViewModel = koinViewModel()
             val estado by raiz.estado.collectAsState()
             // Al entrar, la capa «el plano se dibuja» de PantallaEntrar se desvanece y crece 6 % (0,6 s)

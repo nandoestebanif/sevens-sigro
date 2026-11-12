@@ -153,10 +153,10 @@ fun ElegirInsumo(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text(Texto.nombre(elegido.descripcion), fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF7C2D12))
-                Text("${elegido.codigo} · en ${Texto.unidad(elegido.unidad)}", fontSize = 13.sp, color = Color(0xFF7C2D12))
+                Text(Texto.nombre(elegido.descripcion), fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = Paleta.NaranjaTexto)
+                Text("${elegido.codigo} · en ${Texto.unidad(elegido.unidad)}", fontSize = 13.sp, color = Paleta.NaranjaTexto)
             }
-            IconButton(onClick = alQuitar) { Icon(Icons.Filled.Close, contentDescription = "Cambiar insumo", tint = Color(0xFF7C2D12)) }
+            IconButton(onClick = alQuitar) { Icon(Icons.Filled.Close, contentDescription = "Cambiar insumo", tint = Paleta.NaranjaTexto) }
         }
         return
     }
@@ -165,7 +165,7 @@ fun ElegirInsumo(
         finalIcono = { Icon(Icons.Filled.Search, contentDescription = null, tint = Paleta.Texto3, modifier = Modifier.padding(end = 10.dp)) },
     )
     if (estado.resultados.isNotEmpty()) {
-        Column(Modifier.fillMaxWidth().background(Color.White.copy(alpha = 0.9f), RoundedCornerShape(18.dp))) {
+        Column(Modifier.fillMaxWidth().background(Paleta.Superficie.copy(alpha = 0.9f), RoundedCornerShape(18.dp))) {
             estado.resultados.take(6).forEachIndexed { i, ins ->
                 if (i > 0) Separador()
                 Column(

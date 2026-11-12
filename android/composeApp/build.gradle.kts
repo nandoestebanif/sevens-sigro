@@ -79,8 +79,8 @@ android {
         applicationId = "pe.sevens.sigro"
         minSdk = 26
         targetSdk = 35
-        versionCode = 3
-        versionName = "0.3.0-sprint2"
+        versionCode = 4
+        versionName = "0.4.0-sprint2"
         // SQLite empaquetado (Room KMP) trae su .so por ABI (~2 MB cada una). x86 de 32 bits no existe en
         // celulares; x86_64 se queda para el emulador.
         ndk { abiFilters += listOf("arm64-v8a", "armeabi-v7a", "x86_64") }

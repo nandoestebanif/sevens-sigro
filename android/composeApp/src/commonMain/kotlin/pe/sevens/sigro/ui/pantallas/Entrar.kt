@@ -163,7 +163,7 @@ fun PantallaEntrar(vm: EntrarViewModel = koinViewModel()) {
                 ) {
                     Text(
                         "Ingresa para registrar las entradas y salidas de material de tu obra",
-                        fontSize = 16.sp, lineHeight = 22.sp, color = Color(0xFF334155),
+                        fontSize = 16.sp, lineHeight = 22.sp, color = Paleta.Neutro,
                         textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth(),
                     )
                     CampoVidrio(
@@ -181,7 +181,7 @@ fun PantallaEntrar(vm: EntrarViewModel = koinViewModel()) {
                                 Icon(
                                     if (verClave) Icons.Filled.VisibilityOff else Icons.Filled.Visibility,
                                     contentDescription = if (verClave) "Ocultar clave" else "Mostrar clave",
-                                    tint = Color(0xFF64748B),
+                                    tint = Paleta.NeutroSuave,
                                 )
                             }
                         },
@@ -263,10 +263,10 @@ private fun Heroe(modifier: Modifier) {
         Canvas(Modifier.fillMaxSize().semantics { contentDescription = "Ilustración: trabajador con casco frente a un edificio en construcción" }) {
             val sx = size.width / 390f
             val sy = size.height / 470f
-            drawRect(Color(0xFF334155))
+            drawRect(Paleta.Neutro)
             withTransform({ scale(sx, sy, Offset.Zero) }) {
                 drawRect(Paleta.Noche, Offset(0f, 250f), Size(390f, 220f))
-                val gris = Color(0xFF64748B)
+                val gris = Paleta.NeutroSuave
                 listOf(edificioIzq, edificioDer, grua).forEach { drawPath(it, gris, style = Stroke(3f)) }
                 drawCircle(Paleta.Tinta, 34f, Offset(250f, 250f))
                 drawPath(cuerpo, Paleta.Tinta)
