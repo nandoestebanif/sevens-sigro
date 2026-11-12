@@ -77,11 +77,73 @@ def test_proveedor_activo_y_habido_en_sunat_queda_validado(mundo, eq, sunat):
     assert fila["validado_en"] is not None
 
 
-def test_proveedor_dado_de_baja_en_sunat_se_registra_sin_validar_con_aviso(mundo, eq, sunat):
+def test_proveedor_no_activo_o_no_habido_queda_con_alerta_sunat_y_se_registra(mundo, eq, sunat):
+    """HU-31 / D12: SUNAT respondió que no está activo y habido → «con alerta SUNAT». Avisa, no bloquea."""
     ruc = ruc_nuevo()
     sunat["valor"] = ruc_sunat(ruc, apto=False, estado="BAJA DEFINITIVA", condicion="NO HABIDO")
     p = proveedor(mundo, eq, ruc)
-    assert p["estado"] == "sin_validar" and "BAJA DEFINITIVA" in p["advertencia"]
+    assert p["estado"] == "con_alerta_sunat" and p["alerta_sunat"] == "BAJA DEFINITIVA / NO HABIDO"
+    assert "BAJA DEFINITIVA" in p["advertencia"] and p["consultado_en"] is not None
+    fila = mundo.f.c.execute("SELECT validado_en FROM compras.proveedor WHERE id=%s", (p["id"],)).fetchone()
+    assert fila["validado_en"] is None                   # no está validado
+
+
+def test_la_compra_a_un_proveedor_con_alerta_sunat_se_permite_y_queda_marcada(mundo, eq, sunat):
+    ruc = ruc_nuevo()
+    sunat["valor"] = ruc_sunat(ruc, apto=False, estado="SUSPENSION TEMPORAL", condicion="HABIDO")
+    p = proveedor(mundo, eq, ruc)
+    r = comprar(mundo, eq, p)
+    assert r.status_code == 201, r.text
+    c = r.json()
+    assert c["proveedor_estado"] == "con_alerta_sunat" and c["proveedor_alerta_sunat"] == "SUSPENSION TEMPORAL / HABIDO"
+    assert any("SUNAT informa" in x for x in c["advertencias"])
+    # y el listado de compras también la trae marcada (la ve el residente)
+    lista = get(mundo, f"/obras/{eq['proyecto']}/compras", eq["residente"]).json()
+    assert [x["proveedor_estado"] for x in lista if x["id"] == c["id"]] == ["con_alerta_sunat"]
+
+
+def test_la_compra_a_un_proveedor_por_validar_tambien_avisa_y_no_bloquea(mundo, eq, sunat):
+    sunat["valor"] = None
+    p = proveedor(mundo, eq)
+    r = comprar(mundo, eq, p)
+    assert r.status_code == 201 and r.json()["proveedor_estado"] == "sin_validar"
+    assert any("por validar" in x for x in r.json()["advertencias"])
+
+
+def test_revalidar_cambia_el_estado_en_los_dos_sentidos(mundo, eq, sunat):
+    ruc = ruc_nuevo()
+    sunat["valor"] = ruc_sunat(ruc, apto=False, estado="BAJA DE OFICIO", condicion="NO HABIDO")
+    p = proveedor(mundo, eq, ruc)
+    assert p["estado"] == "con_alerta_sunat"
+    sunat["valor"] = ruc_sunat(ruc)                      # regularizó su situación
+    rr = post(mundo, f"/proveedores/{p['id']}/validar", eq["admin"])
+    assert rr.status_code == 200, rr.text
+    r = rr.json()
+    assert r["estado"] == "validado" and r["alerta_sunat"] is None and r["advertencia"] is None
+    sunat["valor"] = ruc_sunat(ruc, apto=False, estado="ACTIVO", condicion="NO HABIDO")      # y volvió a caer
+    r = post(mundo, f"/proveedores/{p['id']}/validar", eq["admin"]).json()
+    assert r["estado"] == "con_alerta_sunat" and r["alerta_sunat"] == "ACTIVO / NO HABIDO"
+    fila = mundo.f.c.execute("SELECT validado_en FROM compras.proveedor WHERE id=%s", (p["id"],)).fetchone()
+    assert fila["validado_en"] is None
+
+
+def test_si_sunat_no_responde_al_revalidar_el_proveedor_conserva_su_estado(mundo, eq, sunat):
+    ruc = ruc_nuevo()
+    sunat["valor"] = ruc_sunat(ruc, apto=False, estado="BAJA", condicion="NO HABIDO")
+    p = proveedor(mundo, eq, ruc)
+    sunat["valor"] = None
+    r = post(mundo, f"/proveedores/{p['id']}/validar", eq["admin"]).json()
+    assert r["estado"] == "con_alerta_sunat" and "No se pudo consultar" in r["advertencia"]
+
+
+def test_clasificar_consulta_sunat_cubre_las_cuatro_ramas_sin_base():
+    from app.modulos.compras.dominio import clasificar_consulta_sunat as k
+    ok = ruc_sunat(RUC_SEVENS)
+    assert k(RUC_SEVENS, ok)[:2] == ("validado", None)
+    assert k(RUC_SEVENS, ruc_sunat(RUC_SEVENS, apto=False, estado="BAJA", condicion="NO HABIDO"))[:2] == ("con_alerta_sunat", "BAJA / NO HABIDO")
+    assert k(RUC_SEVENS, None)[0] == "sin_validar"
+    assert k("20606456893", ok)[0] == "sin_validar"      # dígito malo: nunca se consulta
+    assert k("12345678", ok)[0] == "sin_validar"         # DNI
 
 
 def test_ruc_con_digito_verificador_malo_no_se_consulta_y_queda_sin_validar(mundo, eq, sunat):

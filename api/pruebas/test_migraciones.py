@@ -99,7 +99,7 @@ def test_cada_migracion_declara_su_vuelta_atras():
     from pathlib import Path
     versiones = Path(__file__).resolve().parents[1] / "migraciones" / "versions"
     archivos = sorted(versiones.glob("0*.py"))
-    assert len(archivos) == 13
+    assert len(archivos) >= 14      # la 0014 es la última de HU-31; suma una más con cada migración
     for archivo in archivos:
         cuerpo = archivo.read_text(encoding="utf-8").split("def downgrade()", 1)[1]
         assert "op.execute" in cuerpo, f"{archivo.name} no revierte nada"
