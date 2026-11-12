@@ -18,7 +18,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { ErrorApi, api } from '../api/cliente'
 import type { Compra, EstadoCompra, InsumoCatalogo, LineaCompra, LineaRecepcion, Proveedor, TipoComprobante, VerificacionRecepcion } from '../api/tipos'
 import { Campo, Chip, Modal, Vacio, type TonoChip } from '../ui/base'
-import { Aviso, Chips, Encabezado, Fondo, Pildora, TituloSeccion, Vidrio } from '../ui/vidrio'
+import { Aviso, Chips, Encabezado, Fondo, Pildora, TituloSeccion } from '../ui/vidrio'
 import { BuscarOpcion } from '../ui/BuscarOpcion'
 import { usaApiReal } from '../api/http'
 import { desvioPct, precios, type PrecioReferencia } from '../api/oficina'
@@ -306,53 +306,7 @@ export function Compras() {
       </Chips>
 
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 18, alignItems: 'flex-start' }}>
-        <Vidrio estilo={{ flex: '999 1 560px', display: 'flex', flexDirection: 'column', gap: 12 }} etiqueta="Compras registradas">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 12, flexWrap: 'wrap' }}>
-            <TituloSeccion>Compras registradas</TituloSeccion>
-            <span style={{ fontSize: 13, color: 'var(--tinta-2)' }}>una compra admite varias recepciones hasta completar lo comprado</span>
-          </div>
-          {avisoRecepcion && <Aviso tono="bien" rol="status">{avisoRecepcion}</Aviso>}
-          {compras.length === 0 ? (
-            <Vacio titulo="Todavía no hay compras" detalle="Las que registres aparecerán aquí con su estado de recepción." />
-          ) : (
-            <div style={{ overflowX: 'auto' }}>
-              <table className="tabla-vidrio" style={{ minWidth: 640 }}>
-                <thead>
-                  <tr>
-                    <th>Comprobante</th><th>Fecha</th><th className="n">Insumos</th><th className="n">Total S/</th>
-                    <th>Recepción</th><th aria-label="Acción" />
-                  </tr>
-                </thead>
-                <tbody>
-                  {compras.map((c) => (
-                    <tr key={c.id}>
-                      <td style={{ minWidth: 220 }}>
-                        <div className="n" style={{ fontWeight: 700, textAlign: 'left' }}>
-                          {c.tipoComprobante === 'factura' ? 'Factura' : 'Boleta'} {c.numeroComprobante}
-                        </div>
-                        <div style={{ fontSize: 12.5, color: 'var(--tinta-2)', marginTop: 2 }}>{c.proveedorRazonSocial}</div>
-                      </td>
-                      <td className="n" style={{ whiteSpace: 'nowrap' }}>{c.fecha}</td>
-                      <td className="n">{c.lineas.length} {c.lineas.length === 1 ? 'insumo' : 'insumos'}</td>
-                      <td className="n" style={{ fontWeight: 800, whiteSpace: 'nowrap' }}>{soles(c.totales.total)}</td>
-                      <td><Chip tono={ESTADO_COMPRA[c.estado].tono}>{ESTADO_COMPRA[c.estado].texto}</Chip></td>
-                      <td style={{ textAlign: 'right', width: 100 }}>
-                        {c.estado !== 'recibida' && c.estado !== 'anulada' && (
-                          <Pildora tipo="secundario" chica enClic={() => setRecibiendo(c)}>Recibir</Pildora>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-          <span style={{ fontSize: 13, color: 'var(--tinta-2)', lineHeight: 1.5 }}>
-            Una compra no se edita. El IGV se guarda aparte porque no es costo del insumo (NIC 2).
-          </span>
-        </Vidrio>
-
-        <aside className="vidrio-fuerte" aria-label="Registrar la compra" style={{ flex: '1 1 380px', minWidth: 0, borderRadius: 'var(--radio-vidrio)', padding: '20px 22px', display: 'flex', flexDirection: 'column', gap: 14, boxShadow: 'var(--vidrio-sombra-alta)' }}>
+        <section className="vidrio-fuerte" aria-label="Registrar la compra" style={{ flex: '999 1 560px', minWidth: 0, borderRadius: 'var(--radio-vidrio)', padding: '20px 22px', display: 'flex', flexDirection: 'column', gap: 14, boxShadow: 'var(--vidrio-sombra-alta)' }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
             <TituloSeccion>Registrar la compra</TituloSeccion>
             <p style={{ fontSize: 13, color: 'var(--tinta-2)', lineHeight: 1.5 }}>
@@ -492,6 +446,42 @@ export function Compras() {
           </Pildora>
           <span style={{ fontSize: 12.5, color: 'var(--tinta-2)' }}>
             Esto no mueve el stock: el material entra al almacén con la recepción.
+          </span>
+        </section>
+
+        {/* lo principal es registrar; las compras ya registradas van al costado, compactas, para recibirlas */}
+        <aside className="vidrio" aria-label="Compras registradas" style={{ flex: '1 1 340px', minWidth: 0, borderRadius: 'var(--radio-vidrio)', padding: '18px 18px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <TituloSeccion>Compras registradas{compras.length ? ` · ${compras.length}` : ''}</TituloSeccion>
+            <span style={{ fontSize: 12.5, color: 'var(--tinta-2)' }}>una compra admite varias recepciones hasta completar lo comprado</span>
+          </div>
+          {avisoRecepcion && <Aviso tono="bien" rol="status">{avisoRecepcion}</Aviso>}
+          {compras.length === 0 ? (
+            <Vacio titulo="Todavía no hay compras" detalle="Las que registres aparecerán aquí con su estado de recepción." />
+          ) : (
+            <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column' }}>
+              {compras.map((c) => (
+                <li key={c.id} style={{ padding: '10px 2px', borderTop: '1px solid var(--separador)', display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8 }}>
+                    <span className="n" style={{ fontWeight: 700 }}>{c.tipoComprobante === 'factura' ? 'Factura' : 'Boleta'} {c.numeroComprobante}</span>
+                    <span className="n" style={{ fontWeight: 800, whiteSpace: 'nowrap' }}>S/ {soles(c.totales.total)}</span>
+                  </div>
+                  <span style={{ fontSize: 12.5, color: 'var(--tinta-2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={c.proveedorRazonSocial}>{c.proveedorRazonSocial}</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                    <span className="n" style={{ fontSize: 12.5, color: 'var(--tinta-2)' }}>{c.fecha} · {c.lineas.length} {c.lineas.length === 1 ? 'insumo' : 'insumos'}</span>
+                    <Chip tono={ESTADO_COMPRA[c.estado].tono}>{ESTADO_COMPRA[c.estado].texto}</Chip>
+                    {c.estado !== 'recibida' && c.estado !== 'anulada' && (
+                      <span style={{ marginLeft: 'auto' }}>
+                        <Pildora tipo="secundario" chica etiqueta={`Recibir la compra ${c.numeroComprobante}`} enClic={() => setRecibiendo(c)}>Recibir</Pildora>
+                      </span>
+                    )}
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+          <span style={{ fontSize: 12.5, color: 'var(--tinta-2)', lineHeight: 1.5 }}>
+            Una compra no se edita. El IGV se guarda aparte porque no es costo del insumo (NIC 2).
           </span>
         </aside>
       </div>
