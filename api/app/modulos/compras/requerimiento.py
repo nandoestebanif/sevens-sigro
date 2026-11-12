@@ -59,6 +59,16 @@ class RequerimientoOut(BaseModel):
     cantidad_planificada: Decimal
     precio_planificado: Decimal
     costo_planificado: Decimal
+    origen: Literal["s10", "manual"] = "s10"      # T-340: lo importado del S10 o lo agregado a mano
+    motivo_alta: str | None = None                # solo en lo agregado a mano
+
+
+class AgregarIn(Estricto):
+    """T-340: un insumo que el S10 no trae. Debe existir en el catálogo (código único, regla 8) y no estar ya planificado."""
+    insumo_codigo: str = Field(min_length=1, max_length=30)
+    cantidad: Decimal = Field(gt=0, max_digits=18, decimal_places=4)
+    precio: Decimal = Field(ge=0, max_digits=18, decimal_places=4)
+    motivo: str = Field(min_length=3, max_length=300)
 
 
 class AjusteIn(Estricto):
@@ -136,7 +146,7 @@ def _id_por_codigo(codigo: str) -> int | None:
 
 
 # ------------------------------------------------------------------ requerimiento (HU-19)
-_REQ = ("SELECT r.id, r.insumo_id, r.cantidad_planificada, "
+_REQ = ("SELECT r.id, r.insumo_id, r.cantidad_planificada, r.origen, r.motivo_alta, "
         "r.precio_planificado, round(r.cantidad_planificada * r.precio_planificado, 2) AS costo_planificado "
         "FROM compras.requerimiento r ")
 _CAMPOS_REQ = ("codigo", "descripcion", "unidad_s10")
@@ -190,6 +200,27 @@ def importar_requerimiento(d: ImportarRequerimientoIn, a: Actor = Depends(exigir
 def ver_requerimiento(q: str | None = Query(None, max_length=100), a: Actor = Depends(exigir("requerimiento.consultar"))):
     rows = _con_insumo(filas(a.sesion, _REQ + "WHERE r.proyecto_id = :p", p=a.obra_id), _CAMPOS_REQ, (q or "").strip() or None)
     return sorted(rows, key=lambda r: r["insumo_codigo"])
+
+
+@router.post("/requerimiento", response_model=RequerimientoOut, status_code=201)
+def agregar_al_requerimiento(d: AgregarIn, a: Actor = Depends(exigir("requerimiento.agregar"))):
+    """T-340: agrega a mano un insumo que el S10 no trae, con su motivo. Queda marcado como «manual» para siempre;
+    quién y cuándo los guarda la fila. Si el insumo ya está planificado, no se duplica: eso es un ajuste de su cantidad."""
+    ins_id = _id_por_codigo(d.insumo_codigo)
+    if ins_id is None:
+        raise ErrorSigro(422, "insumo_desconocido",
+                         f"El insumo {d.insumo_codigo} no está en el catálogo. Regístralo primero en «Catálogo de insumos».")
+    nuevo = fila(
+        a.sesion,
+        "INSERT INTO compras.requerimiento (proyecto_id, insumo_id, cantidad_planificada, precio_planificado, creado_por, "
+        "origen, motivo_alta) VALUES (:p, :i, :c, :pr, :u, 'manual', :m) "
+        "ON CONFLICT (proyecto_id, insumo_id) DO NOTHING RETURNING id",
+        p=a.obra_id, i=ins_id, c=d.cantidad, pr=d.precio, u=a.usuario_id, m=d.motivo,
+    )
+    if nuevo is None:
+        raise ErrorSigro(409, "ya_planificado",
+                         f"{d.insumo_codigo} ya está en el requerimiento de la obra: corrige su cantidad con un ajuste y su motivo.")
+    return _req_de_la_obra(a, nuevo["id"])
 
 
 def _req_de_la_obra(a: Actor, req_id: int) -> dict:

@@ -187,6 +187,8 @@ class Requerimiento(Base):
     precio_planificado: Mapped[Decimal] = mapped_column(Numeric(18, 4))
     creado_por: Mapped[int] = mapped_column(BigInteger, ForeignKey("obra.usuario.id", name="fk_requerimiento_creado_por_usuario"))
     creado_en: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    origen: Mapped[str] = mapped_column(Text, server_default=text("'s10'"))        # 0017 · T-340: 's10' o 'manual'
+    motivo_alta: Mapped[str | None] = mapped_column(Text)                          # obligatorio si es manual
 
 
 class RequerimientoAjuste(Base):

@@ -319,14 +319,15 @@ def test_proveedor_inexistente(mundo, eq):
     assert r.status_code == 422
 
 
-def test_solo_residente_y_admin_registran_el_gerente_consulta(mundo, eq, sunat):
+def test_residente_admin_y_almacenero_registran_el_gerente_consulta(mundo, eq, sunat):
     p = proveedor(mundo, eq)
     assert comprar(mundo, eq, p, numero="F001-1", quien="residente").status_code == 201
     assert comprar(mundo, eq, p, numero="F001-2", quien="admin").status_code == 201
-    for rol in ("almacenero", "ssoma", "gerente"):
+    assert comprar(mundo, eq, p, numero="F001-4", quien="almacenero").status_code == 201    # CR-05 (PO, 13/11)
+    for rol in ("ssoma", "gerente"):
         assert comprar(mundo, eq, p, numero="F001-3", quien=rol).status_code == 403, rol
     for rol in ("residente", "admin", "gerente", "almacenero"):    # el almacenero las ve para recibirlas (HU-35)
-        assert len(get(mundo, f"/obras/{eq['proyecto']}/compras", eq[rol]).json()) == 2, rol
+        assert len(get(mundo, f"/obras/{eq['proyecto']}/compras", eq[rol]).json()) == 3, rol
     assert get(mundo, f"/obras/{eq['proyecto']}/compras", eq["ssoma"]).status_code == 403
 
 
