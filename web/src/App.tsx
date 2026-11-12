@@ -66,6 +66,7 @@ const Compras = lazy(() => import('./paginas/Compras').then((m) => ({ default: m
 const Importar = lazy(() => import('./paginas/Importar').then((m) => ({ default: m.Importar })))
 const Movimientos = lazy(() => import('./paginas/Movimientos').then((m) => ({ default: m.Movimientos })))
 const Semana = lazy(() => import('./paginas/Semana').then((m) => ({ default: m.Semana })))
+const Requerimiento = lazy(() => import('./paginas/Requerimiento').then((m) => ({ default: m.Requerimiento })))
 const Obras = lazy(() => import('./paginas/Obra').then((m) => ({ default: m.Obras })))
 const Parametros = lazy(() => import('./paginas/Parametros').then((m) => ({ default: m.Parametros })))
 const Proveedores = lazy(() => import('./paginas/Proveedores').then((m) => ({ default: m.Proveedores })))
@@ -110,6 +111,7 @@ const GRUPOS: { rotulo: string; items: { ruta: string; nombre: string; icono: ke
     items: [
       { ruta: '/obra', nombre: 'Crear la obra', icono: 'obra' },
       { ruta: '/importar', nombre: 'Importar del S10', icono: 'importar' },
+      { ruta: '/requerimiento', nombre: 'Requerimiento', icono: 'importar' },
     ],
   },
   {
@@ -138,7 +140,9 @@ const GRUPOS: { rotulo: string; items: { ruta: string; nombre: string; icono: ke
   },
   {
     rotulo: 'Catálogo',
-    items: [{ ruta: '/catalogo', nombre: 'Catálogo de insumos', icono: 'catalogo' }],
+    items: [
+      { ruta: '/catalogo', nombre: 'Catálogo de insumos', icono: 'catalogo' },
+    ],
   },
 ]
 
@@ -486,6 +490,7 @@ function Sistema({ preparando = false, nombreObra = '', alTerminar }: {
             <Route path="/catalogo" element={<Catalogo />} />
             <Route path="/movimientos" element={<Movimientos />} />
             <Route path="/semana" element={<Semana />} />
+            <Route path="/requerimiento" element={<Requerimiento />} />
             <Route path="/importar" element={<Importar />} />
             <Route path="/obra" element={<Obras />} />
             <Route path="/parametros" element={<Parametros />} />

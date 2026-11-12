@@ -20,6 +20,8 @@ import type { Compra, EstadoCompra, InsumoCatalogo, LineaCompra, LineaRecepcion,
 import { Campo, Chip, Modal, Vacio, type TonoChip } from '../ui/base'
 import { Aviso, Chips, Encabezado, Fondo, Pildora, TituloSeccion, Vidrio } from '../ui/vidrio'
 import { BuscarOpcion } from '../ui/BuscarOpcion'
+import { usaApiReal } from '../api/http'
+import { desvioPct, precios, type PrecioReferencia } from '../api/oficina'
 import { AltaProveedor } from './Proveedores'
 
 /* HU-35: el estado lo deriva el servidor de las recepciones; aquí solo se pinta */
@@ -213,6 +215,23 @@ export function Compras() {
   const [cantidad, setCantidad] = useState('')
   const [precio, setPrecio] = useState('')
   const [lineas, setLineas] = useState<LineaCompra[]>([])
+  // HU-33 · T-282/T-283: promedio pagado en la obra para comparar el precio (avisa, no bloquea: D13)
+  const [ref, setRef] = useState<PrecioReferencia | null>(null)
+  const [nota, setNota] = useState('')
+  useEffect(() => {
+    setRef(null); setNota('')
+    if (!usaApiReal || !insumoId) return
+    let vivo = true
+    precios.referencia(insumoId).then((r) => {
+      if (!vivo) return
+      setRef(r)
+      // se precarga el promedio (con IGV, como se escribe el precio) solo si aún no se escribió nada
+      if (r.promedio !== null) setPrecio((p) => (p.trim() ? p : (r.promedio! * 1.18).toFixed(2)))
+    }).catch(() => { /* sin referencia no se compara: no se inventa */ })
+    return () => { vivo = false }
+  }, [insumoId])
+  const desvio = desvioPct(Number(String(precio).replace(',', '.')), ref?.promedio ?? null)
+  const fuera = desvio !== null && ref !== null && Math.abs(desvio) > ref.limitePct
 
   const [error, setError] = useState<string | null>(null)
   const [exito, setExito] = useState<Compra | null>(null)
@@ -244,7 +263,9 @@ export function Compras() {
     setLineas((ls) => [...ls, {
       insumoId: ins.id, descripcion: ins.descripcion, unidadCompra: ins.unidadCompra,
       cantidad: cant, precioUnitario: prec,
+      ...(fuera ? { fueraDeLoHabitual: true, notaPrecio: nota.trim() || undefined } : {}),
     }])
+    setNota('')
     setInsumoId('')
     setInsumoTexto('')
     setCantidad('')
@@ -400,6 +421,30 @@ export function Compras() {
             </div>
           </div>
 
+          {ref && (
+            <p style={{ fontSize: 13, color: 'var(--tinta-2)', margin: 0 }}>
+              {ref.promedio === null
+                ? 'Aún no se recibió este insumo en la obra: no hay precio habitual con qué comparar.'
+                : <>Promedio pagado en la obra: <strong>S/ {soles(ref.promedio)}</strong> sin IGV (≈ S/ {soles(ref.promedio * 1.18)} con IGV) por {ref.unidadCompra}
+                  {desvio !== null && <> · este precio: {desvio > 0 ? '+' : ''}{desvio.toLocaleString('es-PE')} %</>}</>}
+            </p>
+          )}
+          {fuera && ref && (
+            <Aviso tono="aviso" rol="status">
+              <strong>Este precio se aparta más de ±{ref.limitePct} % de lo habitual.</strong> Se puede registrar igual; la línea
+              quedará marcada. Si quieres, deja una nota (opcional):
+              <input
+                aria-label="Nota sobre el precio (opcional)"
+                value={nota}
+                maxLength={300}
+                onChange={(e) => setNota(e.target.value)}
+                placeholder="p. ej. alza del proveedor por escasez"
+                className="campo"
+                style={{ display: 'block', width: '100%', height: 40, marginTop: 8, padding: '0 10px', fontSize: 14, boxSizing: 'border-box' }}
+              />
+            </Aviso>
+          )}
+
           {/* líneas agregadas */}
           {lineas.length > 0 && (
             <div style={{ display: 'flex', flexDirection: 'column' }}>
@@ -407,7 +452,8 @@ export function Compras() {
                 <div key={`${l.insumoId}-${i}`} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', borderBottom: '1px solid var(--separador)', fontSize: 14 }}>
                   <span style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
                     <span style={{ fontWeight: 700 }}>{l.descripcion}</span>
-                    <span className="n" style={{ fontSize: 13, color: 'var(--tinta-2)' }}>{l.cantidad} {l.unidadCompra} × S/ {soles(l.precioUnitario)}</span>
+                    <span className="n" style={{ fontSize: 13, color: 'var(--tinta-2)' }}>{l.cantidad} {l.unidadCompra} × S/ {soles(l.precioUnitario)}
+                      {l.fueraDeLoHabitual && <> · <span style={{ color: 'var(--aviso)', fontWeight: 700 }}>fuera de lo habitual</span>{l.notaPrecio ? ` («${l.notaPrecio}»)` : ''}</>}</span>
                   </span>
                   <span className="n" style={{ fontWeight: 700, whiteSpace: 'nowrap' }}>S/ {soles(l.cantidad * l.precioUnitario)}</span>
                   <button
