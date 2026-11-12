@@ -221,7 +221,25 @@ def test_avance_en_unidad_de_compra_con_porcentaje_sobre_el_requerimiento(mundo,
     assert a["requerido"] == "5106.3202" and a["comprado"] == "1000.0000" and a["pct_comprado"] == "19.58"
 
 
-def test_avance_declara_lo_que_depende_de_almacen_en_vez_de_inventarlo(mundo, eq):
+def test_avance_sin_movimientos_trae_recibido_y_consumido_en_cero(mundo, eq):
+    """Almacén responde y no hay movimientos: 0 es un dato real, no un hueco."""
+    importar(mundo, eq, [fila("0221000000")])
+    d = get(mundo, f"/obras/{eq['proyecto']}/avance", eq["gerente"]).json()
+    assert d["pendiente"] == []
+    f0 = d["filas"][0]
+    assert (f0["recibido"], f0["consumido"], f0["pct_recibido"], f0["pct_consumido"]) == ("0.0000", "0.0000", "0.00", "0.00")
+
+
+def test_avance_declara_lo_que_depende_de_almacen_si_no_responde_en_vez_de_inventarlo(mundo, eq, monkeypatch):
+    from app import internos
+    from app.errores import ErrorSigro
+    real = internos.json_de
+
+    def almacen_caido(servicio, metodo, ruta, **kw):
+        if servicio == "almacen":
+            raise ErrorSigro(503, "servicio_no_disponible", "almacén no respondió")
+        return real(servicio, metodo, ruta, **kw)
+    monkeypatch.setattr(internos, "json_de", almacen_caido)
     importar(mundo, eq, [fila("0221000000")])
     d = get(mundo, f"/obras/{eq['proyecto']}/avance", eq["gerente"]).json()
     assert d["pendiente"] and "almacén" in d["pendiente"][0]

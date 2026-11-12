@@ -491,6 +491,22 @@ def test_recibido_y_consumido_por_insumo_para_el_avance(mundo, ob):
     assert [(x["insumo_id"], D(str(x["recibido"])), D(str(x["consumido"]))) for x in r] == [(ob["cem"], D("40"), D("5"))]
 
 
+def test_el_avance_de_compras_trae_lo_recibido_y_consumido_de_almacen_en_unidad_de_compra(mundo, ob):
+    """HU-23 de punta a punta: compras pide a almacén (API interna) y convierte a unidad de compra; netos de reversos."""
+    mundo.f.q1("INSERT INTO compras.requerimiento (proyecto_id, insumo_id, cantidad_planificada, precio_planificado, creado_por) "
+               "VALUES (%s, %s, 200, 29.23, %s) RETURNING id", (ob["proyecto"], ob["cem"], ob["admin"]))
+    c = _compra(mundo, ob, ob["cem"], 40, "11.80")
+    post(mundo, f"/obras/{ob['proyecto']}/almacen/recepciones", ob["almacenero"], uuid_cliente=str(uuid.uuid4()), compra_id=c)
+    s = salida(mundo, ob, 15).json()
+    salida(mundo, ob, 5)
+    post(mundo, f"/obras/{ob['proyecto']}/almacen/movimientos/{s['id']}/reverso", ob["almacenero"], uuid_cliente=str(uuid.uuid4()), motivo="mal")
+    d = get(mundo, f"/obras/{ob['proyecto']}/avance", ob["residente"]).json()
+    assert d["pendiente"] == []
+    f0 = d["filas"][0]
+    assert (f0["requerido"], f0["recibido"], f0["consumido"], f0["pct_recibido"], f0["pct_consumido"]) == \
+        ("200.0000", "40.0000", "5.0000", "20.00", "2.50")
+
+
 # ═══════════════════════════════════ HU-33 precio pagado contra lo habitual (se apoya en las recepciones)
 def _registrar_compra(mundo, ob, codigo, cantidad, unidad, precio, numero, **linea_extra):
     prov = mundo.f.proveedor(validado=True)

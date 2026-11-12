@@ -13,6 +13,7 @@ from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 from sqlalchemy import text
 
+from app import contexto, internos
 from app.dependencias import Actor, exigir
 from app.errores import ErrorSigro
 from app.modulos.compras import catalogo_cliente
@@ -284,9 +285,14 @@ def a_unidad_compra(cantidad_s10: Decimal, factor: Decimal) -> Decimal:
 
 
 def recibido_y_consumido(obra_id: int) -> dict[int, tuple[Decimal, Decimal]] | None:
-    """Lo recibido y lo consumido por insumo (en unidad del S10) es dato de almacén. Sin la migración 0010 no existe:
-    devuelve None y el avance lo declara como pendiente en vez de inventarlo."""
-    return None
+    """Lo recibido y lo consumido por insumo (en unidad del S10) es dato de almacén: se pide a su API interna (ADR-09,
+    nadie lee el esquema de otro). Si almacén no responde, devuelve None y el avance lo declara como pendiente en vez de
+    inventarlo (un 0 parecería un dato)."""
+    try:
+        filas_almacen = internos.json_de(contexto.ALMACEN, "GET", f"/interno/obras/{obra_id}/recibido-consumido")
+    except ErrorSigro:
+        return None
+    return {int(x["insumo_id"]): (Decimal(str(x["recibido"])), Decimal(str(x["consumido"]))) for x in filas_almacen}
 
 
 @router.get("/avance", response_model=AvanceOut)
@@ -313,7 +319,7 @@ def avance(q: str | None = Query(None, max_length=100), a: Actor = Depends(exigi
                        "pct_comprado": porcentaje(com, req), "pct_recibido": porcentaje(rec, req),
                        "pct_consumido": porcentaje(con, req)})
     pendiente = [] if almacen is not None else [
-        "recibido y consumido: dependen de los movimientos de almacén (migración 0010, servicio almacen); hoy llegan vacíos"]
+        "recibido y consumido: los da el servicio almacén, que no respondió; vuelve a consultar en un momento"]
     return AvanceOut(pendiente=pendiente, filas=sorted(salida, key=lambda r: r["insumo_codigo"]))
 
 
