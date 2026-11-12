@@ -1,7 +1,7 @@
 /* HU-35 · HU-36 · HU-43 · HU-45 · HU-23: la web traduce, el servidor calcula. Rutas, cuerpos y conversión de
    código ↔ id con fetch simulado (la API real se probó aparte, de punta a punta, contra PostgreSQL). */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { almacenHttp, avanceHttp, idMovimiento, recepcionHttp } from './http'
+import { almacenHttp, avanceHttp, idMovimiento, recepcionHttp, semanaHttp } from './http'
 
 type Pedido = { url: string; metodo: string; cuerpo: any }
 let pedidos: Pedido[] = []
@@ -116,5 +116,22 @@ describe('avance (HU-23)', () => {
     })
     const [a] = await avanceHttp.porInsumo()
     expect(a).toMatchObject({ codigo: 'SIGRO-00001', planificadoCantidad: 100, compradoCantidad: 80, compradoPct: 80, saldoPorComprar: 20, sinDatoAlmacen: true })
+  })
+})
+
+describe('movimiento semanal (HU-44)', () => {
+  it('pide la semana elegida y pinta lo que manda el servidor, sin sumar en la web', async () => {
+    servidor({
+      ...OBRAS,
+      'GET /api/v1/obras/1/almacen/semana': {
+        periodo_id: 9, numero: 4, fecha_inicio: '2026-11-09', fecha_fin: '2026-11-15', estado: 'abierto', criterio: 'Semana = periodo',
+        filas: [{ almacen_id: 1, almacen: 'Almacén central', insumo_id: 1, insumo_codigo: 'SIGRO-00001', descripcion: 'CEMENTO', unidad: 'bls',
+          saldo_inicial: '70.0000', entradas: '50.0000', salidas: '-18.0000', saldo_final: '138.0000' }],
+      },
+    })
+    const r = await semanaHttp.reporte(4)
+    expect(pedidos[pedidos.length - 1].url).toBe('/api/v1/obras/1/almacen/semana?numero=4')
+    expect(r).toMatchObject({ numero: 4, inicio: '2026-11-09', cerrada: false,
+      filas: [{ insumoId: 'SIGRO-00001', almacen: 'Almacén central', saldoInicial: 70, entradas: 50, salidas: -18, saldoFinal: 138 }] })
   })
 })
