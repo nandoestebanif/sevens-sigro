@@ -77,7 +77,7 @@ private data class ChipCelular(val icono: ImageVector, val color: Color, val fon
 
 private fun chip(estado: String?): ChipCelular = when (estado) {
     "autorizado" -> ChipCelular(Icons.Filled.CheckCircle, Paleta.EnviadoTexto, Paleta.EnviadoFondo)
-    "pendiente" -> ChipCelular(Icons.Filled.Schedule, Paleta.PendienteTexto, Paleta.PendienteFondo)
+    "pendiente", EstadoDispositivo.YA_SOLICITADO -> ChipCelular(Icons.Filled.Schedule, Paleta.PendienteTexto, Paleta.PendienteFondo)
     "revocado" -> ChipCelular(Icons.Filled.ErrorOutline, Paleta.RechazadoTexto, Paleta.RechazadoFondo)
     else -> ChipCelular(Icons.Filled.HelpOutline, Color(0xFF334155), Color(0xFFE2E8F0))
 }

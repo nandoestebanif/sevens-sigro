@@ -1,6 +1,7 @@
 package pe.sevens.sigro.ui.pantallas
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -13,6 +14,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -29,6 +33,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 import org.koin.compose.viewmodel.koinViewModel
 import pe.sevens.sigro.dominio.EstadoEnvio
+import pe.sevens.sigro.dominio.HoraLima
 import pe.sevens.sigro.dominio.RegistroLocal
 import pe.sevens.sigro.dominio.RepositorioRegistros
 import pe.sevens.sigro.dominio.RepositorioSalidas
@@ -38,6 +43,7 @@ import pe.sevens.sigro.ui.componentes.AvisoRojo
 import pe.sevens.sigro.ui.componentes.BotonNegro
 import pe.sevens.sigro.ui.componentes.ChipEstado
 import pe.sevens.sigro.ui.componentes.PantallaVidrio
+import pe.sevens.sigro.ui.componentes.Separador
 import pe.sevens.sigro.ui.componentes.TarjetaVidrio
 import pe.sevens.sigro.ui.componentes.planoRegistros
 import pe.sevens.sigro.ui.tema.Paleta
@@ -60,7 +66,44 @@ data class FilaRegistro(
     val motivoRechazo: String?,
     val nota: String?,
     val intentos: Int,
+    /** A1: datos de la salida para el detalle (en la cola general van dentro de `titulo` y `detalle`). */
+    val insumo: String? = null,
+    val motivo: String? = null,
+    val quienRetira: String? = null,
+    /** A1: lo que dijo el servidor al recibirlo. */
+    val registradoPor: String? = null,
+    val fechaServidor: String? = null,
 )
+
+private fun EstadoEnvio.legible() = when (this) {
+    EstadoEnvio.PENDIENTE -> "Por enviar"
+    EstadoEnvio.ENVIADO -> "Enviado"
+    EstadoEnvio.RECHAZADO -> "Rechazado"
+}
+
+/**
+ * A1 · «registró: <nombre> · <fecha del servidor en hora de Lima>». Solo si está enviado y el servidor dio su
+ * hora: la del celular no vale para auditar (HU-38).
+ */
+fun lineaRegistro(f: FilaRegistro): String? {
+    if (f.estado != EstadoEnvio.ENVIADO) return null
+    val fecha = HoraLima.deIso(f.fechaServidor) ?: return null
+    return "registró: ${f.registradoPor ?: "—"} · $fecha"
+}
+
+/** A1 · Detalle al tocar un registro: etiqueta → valor, en el orden en que se muestra. */
+fun detalleRegistro(f: FilaRegistro): List<Pair<String, String>> = buildList {
+    add("Tipo" to f.tipo)
+    add("Insumo" to (f.insumo ?: f.titulo))
+    f.cantidad?.let { add("Cantidad" to it) }
+    f.motivo?.let { add("Motivo" to it) }
+    f.quienRetira?.let { add("Quién retira" to it) }
+    if (f.insumo == null) add("Detalle" to f.detalle)
+    add("Estado" to f.estado.legible())
+    f.motivoRechazo?.let { add("Motivo del rechazo" to it) }
+    add("Hora en el celular" to Plataforma.formatearHora(f.horaMs))
+    lineaRegistro(f)?.let { add("Servidor" to it) }
+}
 
 /** Une las dos colas, lo más reciente primero. No suma ni calcula nada de stock (regla 2). */
 fun unirRegistros(salidas: List<SalidaRegistrada>, registros: List<RegistroLocal>): List<FilaRegistro> =
@@ -69,9 +112,14 @@ fun unirRegistros(salidas: List<SalidaRegistrada>, registros: List<RegistroLocal
             it.uuidCliente, "Salida", it.insumo.descripcion, "${it.cantidad} ${it.insumo.unidad}",
             "${it.motivo} · retira ${it.quienRetira}" + (it.frente?.let { f -> " · $f" } ?: ""),
             it.horaDispositivoMs, it.estado, it.motivoRechazo, it.nota, it.intentos,
+            insumo = it.insumo.descripcion, motivo = it.motivo, quienRetira = it.quienRetira,
+            registradoPor = it.registradoPor, fechaServidor = it.fechaServidor,
         )
     } + registros.map {
-        FilaRegistro(it.uuidCliente, it.tipo.legible, it.titulo, null, it.detalle, it.horaDispositivoMs, it.estado, it.motivoRechazo, it.nota, it.intentos)
+        FilaRegistro(
+            it.uuidCliente, it.tipo.legible, it.titulo, null, it.detalle, it.horaDispositivoMs, it.estado, it.motivoRechazo, it.nota, it.intentos,
+            registradoPor = it.registradoPor, fechaServidor = it.fechaServidor,
+        )
     }).sortedByDescending { it.horaMs }
 
 class PendientesViewModel(private val salidas: RepositorioSalidas, private val registros: RepositorioRegistros) : ViewModel() {
@@ -109,13 +157,17 @@ fun PantallaPendientes(obraId: Int, alVolver: () -> Unit, vm: PendientesViewMode
                 Text("Las salidas, la asistencia y los registros de almacén que guardes aparecen aquí con su estado de envío.", fontSize = 15.sp, lineHeight = 21.sp, color = Paleta.Texto2)
             }
         }
-        lista.forEach { Fila(it) }
+        var abierto by rememberSaveable { mutableStateOf<String?>(null) }
+        lista.forEach { f -> Fila(f, abierto == f.clave) { abierto = if (abierto == f.clave) null else f.clave } }
     }
 }
 
 @Composable
-private fun Fila(f: FilaRegistro) {
-    TarjetaVidrio(Modifier.semantics(mergeDescendants = true) {}) {
+private fun Fila(f: FilaRegistro, abierto: Boolean, alTocar: () -> Unit) {
+    TarjetaVidrio(
+        Modifier.clickable(onClickLabel = if (abierto) "Ocultar detalle" else "Ver detalle", onClick = alTocar)
+            .semantics(mergeDescendants = true) {},
+    ) {
         Row(verticalAlignment = Alignment.Top) {
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(f.tipo.uppercase(), fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.6.sp, color = Paleta.Naranja)
@@ -143,6 +195,18 @@ private fun Fila(f: FilaRegistro) {
                 fontSize = 13.sp, lineHeight = 18.sp, color = Paleta.PendienteTexto,
                 modifier = Modifier.fillMaxWidth().background(Paleta.PendienteFondo, RoundedCornerShape(12.dp)).padding(10.dp),
             )
+        }
+        if (!abierto) {
+            lineaRegistro(f)?.let { Text(it, fontSize = 13.sp, color = Paleta.Texto3) }
+        } else {
+            // A1: el detalle completo del registro, con lo que dijo el servidor.
+            Separador()
+            detalleRegistro(f).forEach { (etiqueta, valor) ->
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text(etiqueta, fontSize = 13.sp, color = Paleta.Texto3, modifier = Modifier.weight(0.38f))
+                    Text(valor, fontSize = 14.sp, lineHeight = 19.sp, color = Paleta.Tinta, modifier = Modifier.weight(0.62f))
+                }
+            }
         }
     }
 }

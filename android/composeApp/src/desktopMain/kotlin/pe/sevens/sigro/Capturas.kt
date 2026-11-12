@@ -207,6 +207,18 @@ private object ObraFalsa : RepositorioObra {
 
 private val sinProgramar = object : ProgramadorSincronizacion { override fun programar() {} }
 
+/** Stock de ejemplo para la captura: cantidades [marcador] que no vienen de la obra real. */
+private object StockFalso : pe.sevens.sigro.dominio.RepositorioStock {
+    override suspend fun stock(obraId: Int): pe.sevens.sigro.dominio.StockObra {
+        val filas = listOf("CEMENTO PORTLAND TIPO I", "ARENA GRUESA").map { insumo(it) }.mapIndexed { i, x ->
+            pe.sevens.sigro.dominio.FilaStock(1, "Almacén principal", x.id, x.codigo, x.descripcion, x.unidad, "${10 * (i + 1)}.0000", i == 0)
+        }
+        return pe.sevens.sigro.dominio.StockObra(
+            "2026-11-05T17:20:00Z", filas, filas.map { it.copy(almacenId = null, almacen = null) }, emptyList(), 0L, desdeCelular = false,
+        )
+    }
+}
+
 private fun capturar(dir: File, nombre: String, oscuro: Boolean = false, ms: Int = 1500, preparar: () -> Unit = {}, contenido: @Composable () -> Unit) {
     preparar()
     Thread.sleep(400) // los ViewModel actualizan su estado en el hilo principal de Swing
@@ -281,13 +293,13 @@ fun main(args: Array<String>) {
     capturar(dir, "16-asistencia", preparar = { asis.cargar(1); Thread.sleep(300); asis.extra(1, 2); asis.estado(4, pe.sevens.sigro.dominio.EstadoAsistencia.AUSENTE) }) {
         PantallaAsistencia(1, {}, {}, asis)
     }
-    val stock = StockViewModel(CatalogoFalso, ObraFalsa)
-    capturar(dir, "17-stock", preparar = { stock.cargar(1); stock.buscador.buscar("cemento") }) { PantallaStock(1, {}, stock) }
+    val stock = StockViewModel(StockFalso)
+    capturar(dir, "17-stock", preparar = { stock.cargar(1); Thread.sleep(300) }) { PantallaStock(1, {}, stock) }
     val entrada = EntradaViewModel(ObraFalsa, registros, sinProgramar)
     capturar(dir, "18-entrada", preparar = { entrada.cargar(1); Thread.sleep(300); entrada.estado.value.compras.firstOrNull()?.let { entrada.elegir(1, it) }; Thread.sleep(300); entrada.alternarModo(); entrada.recibido(0, "6") }) {
         PantallaEntrada(1, {}, entrada)
     }
-    val ingreso = IngresoSinCompraViewModel(CatalogoFalso, ObraFalsa, registros)
+    val ingreso = IngresoSinCompraViewModel(CatalogoFalso, ObraFalsa, registros, sinProgramar)
     capturar(dir, "19-ingreso-sin-compra", preparar = { ingreso.origen(pe.sevens.sigro.dominio.OrigenIngreso.OTRA_OBRA); ingreso.elegir(insumo("ARENA GRUESA")); ingreso.cantidad("1,5"); ingreso.guardar(1) }) {
         PantallaIngresoSinCompra(1, {}, ingreso)
     }
