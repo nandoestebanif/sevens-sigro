@@ -238,6 +238,33 @@ def test_ingreso_sin_compra_exige_origen_y_costo_y_saldo_de_otra_obra_solo_si_no
     assert r.status_code == 201 and r.json()["tipo"] == "ingreso_sin_compra" and r.json()["origen"] == "saldo_otra_obra"
 
 
+def test_el_costo_del_ingreso_va_en_la_unidad_de_la_cantidad_y_el_acero_no_se_infla_7_veces(mundo, ob):
+    """HU-41 / T-303: 100 varillas a S/ 35.40 la varilla = 712 kg = S/ 3 540. Antes el libro guardaba 712 kg a S/ 35.40 el kg."""
+    r = ingreso(mundo, ob, 100, "35.40", insumo=ob["acero"], unidad="var")
+    assert r.status_code == 201, r.text
+    m = r.json()
+    assert D(m["cantidad"]) == D("712") and m["unidad"] == "kg" and D(m["costo_unitario"]) == D("4.971910")
+    assert D(m["importe"]) == D("3540.00")
+    s = stock(mundo, ob)["consolidado"][0]
+    assert D(s["valor"]) == D("3540.00") and D(s["cantidad"]) == D("712")
+    # lo mismo dicho en kilos: 712 kg a S/ 4.97191 el kg; sin `unidad` es la del S10 y el costo no se toca
+    r2 = ingreso(mundo, ob, 712, "4.97191", insumo=ob["acero"])
+    assert r2.status_code == 201 and D(r2.json()["costo_unitario"]) == D("4.97191") and D(r2.json()["importe"]) == D("3540.00")
+
+
+def test_el_costo_en_una_unidad_que_el_insumo_no_tiene_se_rechaza(mundo, ob):
+    r = ingreso(mundo, ob, 5, 20, insumo=ob["acero"], unidad="m3")
+    assert r.status_code == 422 and r.json()["codigo"] == "unidad_invalida"
+
+
+def test_el_ingreso_sin_compra_se_distingue_de_la_recepcion_en_el_kardex_y_un_reenvio_no_duplica(mundo, ob):
+    uid = str(uuid.uuid4())
+    assert ingreso(mundo, ob, 10, 20, uuid_cliente=uid, origen="prestamo").status_code == 201
+    assert ingreso(mundo, ob, 10, 20, uuid_cliente=uid, origen="prestamo").status_code == 200          # R3
+    k = get(mundo, f"/obras/{ob['proyecto']}/almacen/kardex", ob["gerente"], insumo_id=ob["cem"]).json()
+    assert [(x["tipo"], x["origen"]) for x in k] == [("ingreso_sin_compra", "prestamo")] and D(stock(mundo, ob)["consolidado"][0]["cantidad"]) == 10
+
+
 # ═══════════════════════════════════ HU-35 recepción de compra
 def _compra(mundo, ob, insumo, cantidad, precio, unidad="bls", base=None, total=None):
     prov = mundo.f.proveedor()

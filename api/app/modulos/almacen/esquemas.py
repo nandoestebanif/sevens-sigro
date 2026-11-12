@@ -42,7 +42,7 @@ class IngresoIn(DesdeDispositivo):
     insumo_id: int = Field(ge=1)
     cantidad: Decimal = Cantidad
     unidad: str | None = Field(None, max_length=20)
-    costo_unitario: Decimal = Field(gt=0, max_digits=18, decimal_places=6)   # por unidad del S10, sin IGV
+    costo_unitario: Decimal = Field(gt=0, max_digits=18, decimal_places=6)   # sin IGV, en la MISMA unidad que `cantidad` (`unidad`; por defecto la del S10)
     origen: Literal[ORIGENES]  # type: ignore[valid-type]
     origen_detalle: str | None = Field(None, max_length=300)                 # «otro» y «saldo de otra obra» lo exigen
 
