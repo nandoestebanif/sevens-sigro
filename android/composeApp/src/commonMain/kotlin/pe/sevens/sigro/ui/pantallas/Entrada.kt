@@ -35,6 +35,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import org.koin.compose.viewmodel.koinViewModel
+import pe.sevens.sigro.dominio.Texto
 import pe.sevens.sigro.dominio.AlmacenObra
 import pe.sevens.sigro.dominio.CompraParaRecibir
 import pe.sevens.sigro.dominio.ErrorSigro
@@ -275,7 +276,7 @@ class EntradaViewModel(
 @Composable
 private fun AvisoExceso(e: EstadoEntrada, compra: CompraParaRecibir, vm: EntradaViewModel) {
     val v = e.exceso ?: return
-    val nombres = compra.lineas.filter { it.insumoId != null }.associate { it.insumoId!! to it.descripcion }
+    val nombres = compra.lineas.filter { it.insumoId != null }.associate { it.insumoId!! to Texto.nombre(it.descripcion) }
     Column(
         Modifier.fillMaxWidth().background(Color(0xFFFEF3C7), RoundedCornerShape(18.dp)).padding(14.dp)
             .semantics { liveRegion = LiveRegionMode.Polite },
@@ -314,7 +315,7 @@ fun PantallaEntrada(obraId: Int, alVolver: () -> Unit, vm: EntradaViewModel = ko
     val almacen by vm.almacen.estado.collectAsState()
     LaunchedEffect(obraId) { vm.cargar(obraId) }
 
-    PantallaVidrio("Entrada", plano = { planoEntrada(it) }, alVolver = alVolver, subtitulo = "Recibe lo que llegó de una compra") {
+    PantallaVidrio("Entrada", plano = { planoEntrada(it) }, alVolver = alVolver, subtitulo = "Lo que llegó de una compra") {
         if (e.guardada) {
             GuardadoEnCelular(
                 "Entrada guardada",
@@ -338,7 +339,7 @@ fun PantallaEntrada(obraId: Int, alVolver: () -> Unit, vm: EntradaViewModel = ko
                         verticalArrangement = Arrangement.spacedBy(2.dp),
                     ) {
                         Text(c.proveedor, fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Paleta.Tinta)
-                        Text("${c.comprobante} · ${c.fecha} · ${c.lineas.size} ${if (c.lineas.size == 1) "insumo" else "insumos"}", fontSize = 13.sp, color = Paleta.Texto3)
+                        Text("${c.comprobante} · ${Texto.fecha(c.fecha)} · ${c.lineas.size} ${if (c.lineas.size == 1) "insumo" else "insumos"}", fontSize = 13.sp, color = Paleta.Texto3)
                     }
                 }
                 if (!e.cargando && e.compras.isEmpty()) TextButton(onClick = { vm.cargar(obraId) }) { Text("Volver a intentar", color = Paleta.Naranja, fontWeight = FontWeight.Bold) }
@@ -347,12 +348,12 @@ fun PantallaEntrada(obraId: Int, alVolver: () -> Unit, vm: EntradaViewModel = ko
         }
         TarjetaVidrio {
             Text("Compra", fontSize = 13.sp, color = Paleta.Texto3)
-            Text("${compra.proveedor} · ${compra.fecha}", fontSize = 17.sp, fontWeight = FontWeight.Bold, color = Paleta.Tinta)
+            Text("${compra.proveedor} · ${Texto.fecha(compra.fecha)}", fontSize = 17.sp, fontWeight = FontWeight.Bold, color = Paleta.Tinta)
             Text("${compra.comprobante} · ${compra.lineas.size} insumos", fontSize = 14.sp, color = Paleta.Texto2)
             TextButton(onClick = vm::cambiarCompra) { Text("Cambiar de compra", color = Paleta.Naranja, fontWeight = FontWeight.Bold) }
             ElegirAlmacenObra(almacen, { vm.elegirAlmacen(obraId, it) })
         }
-        if (compra.recibidaCompleta) AvisoNaranja("El servidor dice que esta compra ya se recibió completa.")
+        if (compra.recibidaCompleta) AvisoNaranja("Esta compra ya se recibió completa.")
         if (e.consultando) CircularProgressIndicator(color = Paleta.Naranja)
         FormularioAlmacen {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -363,15 +364,15 @@ fun PantallaEntrada(obraId: Int, alVolver: () -> Unit, vm: EntradaViewModel = ko
             }
             compra.lineas.forEachIndexed { i, l ->
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text(l.descripcion, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = Paleta.Tinta)
+                    Text(Texto.nombre(l.descripcion), fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = Paleta.Tinta)
                     Text(
-                        "Pedido ${l.cantidad} ${l.unidad} · " + (l.pendiente?.let { "pendiente $it" } ?: "pendiente: se ve con señal"),
+                        "Pedido ${Texto.cantidadConUnidad(l.cantidad, l.unidad)} · " + (l.pendiente?.let { "faltan ${Texto.cantidad(it)}" } ?: "lo que falta se ve con señal"),
                         fontSize = 13.sp, color = Paleta.Texto3,
                     )
                     if (e.llegoTodo) {
-                        Text("Recibido: ${e.recibido[i].orEmpty()} ${l.unidad}", fontSize = 15.sp, color = Paleta.Tinta)
+                        Text("Recibido: ${Texto.cantidadConUnidad(e.recibido[i].orEmpty(), l.unidad)}", fontSize = 15.sp, color = Paleta.Tinta)
                     } else {
-                        CampoVidrio(e.recibido[i].orEmpty(), { vm.recibido(i, it) }, "Recibido", teclado = KeyboardType.Decimal, sufijo = l.unidad, error = e.errores[i])
+                        CampoVidrio(e.recibido[i].orEmpty(), { vm.recibido(i, it) }, "Recibido", teclado = KeyboardType.Decimal, sufijo = Texto.unidad(l.unidad), error = e.errores[i])
                     }
                 }
             }
@@ -383,18 +384,13 @@ fun PantallaEntrada(obraId: Int, alVolver: () -> Unit, vm: EntradaViewModel = ko
             )
             AvisoExceso(e, compra, vm)
             if (!e.puedeParcial && !e.consultando) {
-                Text("Para recibir solo una parte hace falta señal: el servidor dice cuánto queda pendiente.", fontSize = 13.sp, lineHeight = 18.sp, color = Paleta.Texto3)
+                Text("Para recibir solo una parte hace falta señal (para saber cuánto falta).", fontSize = 13.sp, lineHeight = 18.sp, color = Paleta.Texto3)
             }
-        }
-        TarjetaVidrio {
-            PasoAlmacen("3", "Foto de la guía de remisión")
-            Marcador("Foto de la guía: llega con la cámara del celular (recomendada, no obligatoria)")
         }
         e.errores[-1]?.let { AvisoRojo(it) }
         BotonNegro(
             if (e.exceso != null) "Guardar con el motivo" else "Guardar entrada", { vm.guardar(obraId) },
             icono = Icons.Filled.Save, colorIcono = Paleta.NaranjaVivo, cargando = e.guardando || e.verificando,
         )
-        AvisoNaranja("El costo de la entrada sale de la compra y lo calcula el servidor (costo promedio ponderado).")
     }
 }

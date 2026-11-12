@@ -26,6 +26,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import org.koin.compose.viewmodel.koinViewModel
+import pe.sevens.sigro.dominio.Texto
 import pe.sevens.sigro.dominio.Insumo
 import pe.sevens.sigro.dominio.LineaAlmacen
 import pe.sevens.sigro.dominio.MotivoDiferencia
@@ -116,7 +117,7 @@ fun PantallaConteo(obraId: Int, alVolver: () -> Unit, vm: ConteoViewModel = koin
     val b by vm.buscador.estado.collectAsState()
     LaunchedEffect(obraId) { vm.cargar(obraId) }
 
-    PantallaVidrio("Conteo físico", plano = { planoConteo(it) }, alVolver = alVolver, subtitulo = "Almacén de la obra · ${e.fecha}") {
+    PantallaVidrio("Conteo físico", plano = { planoConteo(it) }, alVolver = alVolver, subtitulo = "Almacén de la obra · ${Texto.fecha(e.fecha)}") {
         if (e.guardado) {
             GuardadoEnCelular(
                 "Conteo guardado", "El conteo de ${e.lineas.size} ${if (e.lineas.size == 1) "insumo" else "insumos"} quedó en el celular con su código único.",

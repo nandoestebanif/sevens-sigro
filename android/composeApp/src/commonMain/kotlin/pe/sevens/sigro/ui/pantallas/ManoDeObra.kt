@@ -48,6 +48,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import org.koin.compose.viewmodel.koinViewModel
+import pe.sevens.sigro.dominio.Texto
 import pe.sevens.sigro.dominio.Asistencia
 import pe.sevens.sigro.dominio.Categoria
 import pe.sevens.sigro.dominio.ErrorSigro
@@ -297,7 +298,7 @@ fun PantallaTrabajadorNuevo(obraId: Int, alVolver: () -> Unit, vm: TrabajadorNue
         }
         TarjetaVidrio {
             CampoVidrio(e.documento, vm::documento, "DNI *", teclado = KeyboardType.Number, error = e.errores["documento"], marcador = "8 dígitos")
-            Marcador("Consulta RENIEC: llega con el servicio de integraciones. Por ahora escribe el nombre a mano")
+            
             CampoVidrio(e.nombre, vm::nombre, "Nombres y apellidos *", error = e.errores["nombre"])
             Text("Categoría *", fontSize = 14.sp, color = Paleta.Texto3)
             Opciones(Categoria.entries, e.categoria, { it.legible }, vm::categoria, colorActivo = Paleta.Naranja)
@@ -383,12 +384,12 @@ fun PantallaAsistencia(obraId: Int, alVolver: () -> Unit, alRegistros: () -> Uni
     LaunchedEffect(obraId) { vm.cargar(obraId) }
     val r = remember(e.porMarcar) { Asistencia.resumir(e.porMarcar) }
 
-    PantallaVidrio("Asistencia", plano = { planoAsistencia(it) }, alVolver = alVolver, subtitulo = "Un registro por trabajador y día") {
+    PantallaVidrio("Asistencia", plano = { planoAsistencia(it) }, alVolver = alVolver, subtitulo = "Uno por trabajador y día") {
         TarjetaVidrio {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
-                    Text("Hoy · ${e.fecha}", fontSize = 17.sp, fontWeight = FontWeight.Bold, color = Paleta.Tinta)
-                    Text("El servidor verifica que la fecha esté dentro del plazo de la obra.", fontSize = 13.sp, color = Paleta.Texto3)
+                    Text("Hoy · ${Texto.fecha(e.fecha)}", fontSize = 17.sp, fontWeight = FontWeight.Bold, color = Paleta.Tinta)
+                    
                 }
             }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {

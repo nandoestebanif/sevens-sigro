@@ -40,6 +40,7 @@ import pe.sevens.sigro.ui.pantallas.PantallaEntrar
 import pe.sevens.sigro.ui.pantallas.PantallaInicio
 import pe.sevens.sigro.ui.pantallas.PantallaObras
 import pe.sevens.sigro.ui.pantallas.PantallaPendientes
+import pe.sevens.sigro.ui.pantallas.PantallaPerfil
 import pe.sevens.sigro.ui.pantallas.PantallaSalida
 import pe.sevens.sigro.ui.pantallas.RaizViewModel
 import pe.sevens.sigro.ui.tema.TemaSigro
@@ -95,7 +96,10 @@ private fun Navegacion(e: EstadoRaiz.Dentro) {
         when (d) {
             Destino.Inicio -> PantallaInicio(e.sesion, e.obra, irA = irA)
             Destino.Salida -> PantallaSalida(e.obra.id, alVolver = volver)
-            Destino.Pendientes -> PantallaPendientes(e.obra.id, alVolver = volver)
+            is Destino.SalidaDe -> PantallaSalida(e.obra.id, alVolver = volver, base = d.base)
+            Destino.Pendientes -> PantallaPendientes(e.obra.id, alVolver = volver, alCorregir = { irA(Destino.SalidaDe(it)) })
+            Destino.Rechazados -> PantallaPendientes(e.obra.id, alVolver = volver, soloRechazados = true, alCorregir = { irA(Destino.SalidaDe(it)) })
+            Destino.Perfil -> PantallaPerfil(e.sesion, e.obra, alVolver = volver, alCelular = { irA(Destino.Dispositivo) })
             Destino.Dispositivo -> PantallaDispositivo(e.obra.id, alVolver = volver, obraNombre = e.obra.nombre)
             Destino.Catalogo -> PantallaCatalogo(alVolver = volver, alAbrir = { irA(Destino.Ficha(it)) }, alNuevo = { irA(Destino.InsumoNuevo) })
             is Destino.Ficha -> PantallaFichaInsumo(d.insumo, alVolver = volver, alVerStock = { irA(Destino.Stock) })
