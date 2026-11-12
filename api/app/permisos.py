@@ -33,13 +33,14 @@ ACCIONES: dict[str, frozenset[str]] = {
     # --- compras
     "proveedor.registrar": frozenset({ALMACENERO, RESIDENTE, ADMIN}),
     "proveedor.consultar": frozenset({ALMACENERO, RESIDENTE, ADMIN, GERENTE}),
-    "compra.registrar": frozenset({RESIDENTE, ADMIN}),
-    "compra.consultar": frozenset({ALMACENERO, RESIDENTE, ADMIN, GERENTE}),  # HU-35: el almacenero ve lo que va a recibir (CR-05: no la registra)
+    "compra.registrar": frozenset({ALMACENERO, RESIDENTE, ADMIN}),       # CR-05 (PO, 13/11): el almacenero también la registra, como dice el Sprint Backlog
+    "compra.consultar": frozenset({ALMACENERO, RESIDENTE, ADMIN, GERENTE}),  # HU-35: el almacenero ve lo que va a recibir
     "solicitud.emitir": frozenset({RESIDENTE}),
     "solicitud.consultar": frozenset({RESIDENTE, ADMIN, GERENTE}),
     # --- requerimiento, saldo por comprar y reposición (HU-19, HU-24, HU-25)
     "requerimiento.importar": frozenset({RESIDENTE, ADMIN}),
     "requerimiento.ajustar": frozenset({RESIDENTE, ADMIN}),
+    "requerimiento.agregar": frozenset({RESIDENTE, ADMIN}),               # T-340: insumo que el S10 no trae, con motivo
     "requerimiento.consultar": frozenset({RESIDENTE, ADMIN, GERENTE}),
     # --- partidas y análisis de precios unitarios (HU-16)
     "partida.importar": frozenset({RESIDENTE, ADMIN}),
