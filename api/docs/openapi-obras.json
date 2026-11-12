@@ -934,6 +934,59 @@
     }
    }
   },
+  "/api/v1/obras/{obra_id}/dispositivos/mios": {
+   "get": {
+    "tags": [
+     "obra"
+    ],
+    "summary": "Mis Dispositivos",
+    "description": "HU-15: el almacenero o el SSOMA ve SOLO sus celulares en esta obra (pendiente, activo o revocado), para que la app\nsepa si el suyo ya está autorizado. Listar los de todos sigue siendo del administrador y del residente.",
+    "operationId": "mis_dispositivos_api_v1_obras__obra_id__dispositivos_mios_get",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "obra_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "minimum": 1,
+       "title": "Obra Id"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "type": "array",
+         "items": {
+          "$ref": "#/components/schemas/DispositivoOut"
+         },
+         "title": "Response Mis Dispositivos Api V1 Obras  Obra Id  Dispositivos Mios Get"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
   "/api/v1/obras/{obra_id}/dispositivos/{dispositivo_id}/autorizar": {
    "post": {
     "tags": [

@@ -90,7 +90,7 @@
      "almacén"
     ],
     "summary": "Registrar Ingreso",
-    "description": "Origen declarado y costo unitario obligatorios; queda distinguible (tipo `ingreso_sin_compra`) de una recepción.\n«Saldo de otra obra» solo si esa obra no está en SIGRO (D5): si está, se usa el traslado (HU-42).",
+    "description": "Origen declarado y costo unitario obligatorios; queda distinguible (tipo `ingreso_sin_compra`) de una recepción.\n**Unidad del costo**: va en la misma unidad que la cantidad (`unidad`; si se omite, la del S10). Ej. acero: 100 var a\nS/ 35.40 la varilla → el libro guarda 712 kg a S/ 4.971910 el kg; 712 kg a S/ 4.97 el kg es lo mismo, sin factor.\n«Saldo de otra obra» solo si esa obra no está en SIGRO (D5): si está, se usa el traslado (HU-42).",
     "operationId": "registrar_ingreso_api_v1_obras__obra_id__almacen_ingresos_post",
     "security": [
      {
@@ -194,6 +194,65 @@
        "application/json": {
         "schema": {
          "$ref": "#/components/schemas/MovimientoOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/obras/{obra_id}/almacen/recepciones/verificacion": {
+   "post": {
+    "tags": [
+     "almacén"
+    ],
+    "summary": "Verificar Recepcion",
+    "description": "HU-36: avisa ANTES de guardar si lo que se va a recibir pasa lo requerido. No guarda nada; avisa, no bloquea (regla 7):\nsi hay exceso, `POST /recepciones` pide `motivo_exceso`.",
+    "operationId": "verificar_recepcion_api_v1_obras__obra_id__almacen_recepciones_verificacion_post",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "obra_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "minimum": 1,
+       "title": "Obra Id"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/VerificacionIn"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/VerificacionOut"
         }
        }
       }
@@ -911,6 +970,285 @@
      }
     }
    }
+  },
+  "/interno/obras/{obra_id}/costo-pagado": {
+   "get": {
+    "tags": [
+     "interno"
+    ],
+    "summary": "Costo Pagado",
+    "description": "HU-33: por insumo, el promedio ponderado de lo PAGADO en esta obra, en la unidad del S10 y sin IGV: suma de\ncantidad × costo de los ingresos por compra, entre la cantidad, netos de sus reversos. Solo cuentan las recepciones\n(no los ingresos sin compra ni los traslados): es lo que se pagó a proveedores.",
+    "operationId": "costo_pagado_interno_obras__obra_id__costo_pagado_get",
+    "parameters": [
+     {
+      "name": "obra_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Obra Id"
+      }
+     },
+     {
+      "name": "x-servicio-token",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "X-Servicio-Token"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/interno/obras/{obra_id}/saldos-valorizados": {
+   "get": {
+    "tags": [
+     "interno"
+    ],
+    "summary": "Saldos Valorizados",
+    "description": "HU-56: por almacén e insumo, el saldo y su valor A LA FECHA DE CORTE, reconstruidos del libro (R2): solo cuentan los\nmovimientos con `fecha_servidor <= corte`. Valor = Σ sentido × cantidad × costo (cada salida lleva su promedio\ncongelado, R4), de modo que valor / cantidad es el costo promedio ponderado vigente en ese instante. Sin `corte`\n(o con uno futuro) es «ahora». Se omiten los pares con saldo cero. Además de las filas devuelve los almacenes de la\nobra, para que quien consulta pueda distinguir «sin stock» de «ese almacén no es de esta obra».",
+    "operationId": "saldos_valorizados_interno_obras__obra_id__saldos_valorizados_get",
+    "parameters": [
+     {
+      "name": "obra_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Obra Id"
+      }
+     },
+     {
+      "name": "corte",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string",
+         "format": "date-time"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Corte"
+      }
+     },
+     {
+      "name": "x-servicio-token",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "X-Servicio-Token"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/interno/obras/{obra_id}/resumen-valorizado": {
+   "get": {
+    "tags": [
+     "interno"
+    ],
+    "summary": "Resumen Valorizado",
+    "description": "HU-58: recibido, consumido y en stock de la obra A LA FECHA DE CORTE, valorizados desde el libro (sin IGV).\n`recibido` = ingresos (con y sin compra) y `consumido` = salidas, ambos netos de sus reversos (un reverso cuenta como\nel movimiento que corrige); `otros` = traslados entre obras y ajustes de conteo, que también mueven el stock.\nSiempre se cumple recibido − consumido + otros = en_stock: si no, algo del libro está mal.",
+    "operationId": "resumen_valorizado_interno_obras__obra_id__resumen_valorizado_get",
+    "parameters": [
+     {
+      "name": "obra_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Obra Id"
+      }
+     },
+     {
+      "name": "corte",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string",
+         "format": "date-time"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Corte"
+      }
+     },
+     {
+      "name": "x-servicio-token",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "X-Servicio-Token"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/interno/obras/{obra_id}/consumo-por-insumo": {
+   "get": {
+    "tags": [
+     "interno"
+    ],
+    "summary": "Consumo Por Insumo",
+    "description": "HU-57: por insumo, lo consumido (salidas, netas de sus reversos) hasta la fecha de corte: cantidad en la unidad del\nS10 e importe al costo promedio congelado en cada salida (R4). Solo insumos con consumo distinto de cero.",
+    "operationId": "consumo_por_insumo_interno_obras__obra_id__consumo_por_insumo_get",
+    "parameters": [
+     {
+      "name": "obra_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Obra Id"
+      }
+     },
+     {
+      "name": "corte",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string",
+         "format": "date-time"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Corte"
+      }
+     },
+     {
+      "name": "x-servicio-token",
+      "in": "header",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "X-Servicio-Token"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
   }
  },
  "components": {
@@ -1546,6 +1884,17 @@
        }
       ],
       "title": "Saldo"
+     },
+     "recepcion_motivo_exceso": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Recepcion Motivo Exceso"
      },
      "revertido_por_id": {
       "anyOf": [
@@ -2529,6 +2878,131 @@
      "type"
     ],
     "title": "ValidationError"
+   },
+   "VerificacionIn": {
+    "properties": {
+     "compra_id": {
+      "type": "integer",
+      "minimum": 1.0,
+      "title": "Compra Id"
+     },
+     "lineas": {
+      "anyOf": [
+       {
+        "items": {
+         "$ref": "#/components/schemas/LineaCantidad"
+        },
+        "type": "array",
+        "maxItems": 500,
+        "minItems": 1
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Lineas"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "compra_id"
+    ],
+    "title": "VerificacionIn",
+    "description": "HU-36. Lo mismo que se va a recibir (misma compra y mismas líneas que `RecepcionIn`), para avisar ANTES de guardar."
+   },
+   "VerificacionLineaOut": {
+    "properties": {
+     "insumo_id": {
+      "type": "integer",
+      "title": "Insumo Id"
+     },
+     "insumo_codigo": {
+      "type": "string",
+      "title": "Insumo Codigo"
+     },
+     "unidad": {
+      "type": "string",
+      "title": "Unidad"
+     },
+     "requerido": {
+      "anyOf": [
+       {
+        "type": "string",
+        "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Requerido"
+     },
+     "ya_recibido": {
+      "type": "string",
+      "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+      "title": "Ya Recibido"
+     },
+     "con_esta": {
+      "type": "string",
+      "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+      "title": "Con Esta"
+     },
+     "exceso": {
+      "anyOf": [
+       {
+        "type": "string",
+        "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Exceso"
+     },
+     "excede": {
+      "type": "boolean",
+      "title": "Excede"
+     }
+    },
+    "type": "object",
+    "required": [
+     "insumo_id",
+     "insumo_codigo",
+     "unidad",
+     "requerido",
+     "ya_recibido",
+     "con_esta",
+     "exceso",
+     "excede"
+    ],
+    "title": "VerificacionLineaOut",
+    "description": "Todo en la unidad del S10, que es la del requerimiento y la de los movimientos."
+   },
+   "VerificacionOut": {
+    "properties": {
+     "compra_id": {
+      "type": "integer",
+      "title": "Compra Id"
+     },
+     "hay_exceso": {
+      "type": "boolean",
+      "title": "Hay Exceso"
+     },
+     "lineas": {
+      "items": {
+       "$ref": "#/components/schemas/VerificacionLineaOut"
+      },
+      "type": "array",
+      "title": "Lineas"
+     }
+    },
+    "type": "object",
+    "required": [
+     "compra_id",
+     "hay_exceso",
+     "lineas"
+    ],
+    "title": "VerificacionOut"
    }
   },
   "securitySchemes": {
