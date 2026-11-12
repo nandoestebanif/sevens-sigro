@@ -5,13 +5,15 @@
    - Lo planificado viene del S10 (Importar). Ajustar una cantidad no la pisa:
      el servidor guarda la anterior, la nueva, el motivo, quién y cuándo.
    - Solo residente y administrador ajustan (lo decide el servidor, regla 9).
-   - Agregar a mano un insumo que el S10 no trae (T-340) todavía no tiene
-     endpoint: se pidió a backend; aquí no se simula.
+   - T-340: agregar a mano un insumo que el S10 no trae, con su motivo. Debe
+     existir en el catálogo; si ya está planificado, se ajusta (no se duplica).
+     La línea queda marcada «Agregado a mano» para siempre.
    ───────────────────────────────────────────────────────────────────────── */
 import { useEffect, useMemo, useState } from 'react'
-import { ErrorApi } from '../api/cliente'
+import { ErrorApi, api as cliente } from '../api/cliente'
 import { usaApiReal } from '../api/http'
 import { requerimiento as api, type Ajuste, type LineaRequerimiento } from '../api/oficina'
+import type { InsumoCatalogo } from '../api/tipos'
 import { Campo, Chip, Modal, Vacio } from '../ui/base'
 import { Chips, Encabezado, Fondo, Pildora, TituloSeccion, Vidrio } from '../ui/vidrio'
 
@@ -72,11 +74,75 @@ function AjustarLinea({ l, enCerrar, enListo }: { l: LineaRequerimiento; enCerra
   )
 }
 
+/* ── T-340: insumo que el S10 no trae ── */
+function AgregarInsumo({ yaPlanificados, enCerrar, enListo }: { yaPlanificados: Set<string>; enCerrar: () => void; enListo: () => void }) {
+  const [insumos, setInsumos] = useState<InsumoCatalogo[]>([])
+  const [texto, setTexto] = useState('')
+  const [cantidad, setCantidad] = useState('')
+  const [precio, setPrecio] = useState('')
+  const [motivo, setMotivo] = useState('')
+  const [error, setError] = useState('')
+  const [guardando, setGuardando] = useState(false)
+  useEffect(() => { cliente.listarInsumos().then(setInsumos).catch(() => setInsumos([])) }, [])
+  const codigo = texto.split(' · ')[0].trim()
+  const elegido = insumos.find((i) => i.codigo === codigo)
+  const disponibles = useMemo(() => insumos.filter((i) => !yaPlanificados.has(i.codigo)), [insumos, yaPlanificados])
+  const cant = Number(cantidad.replace(',', '.'))
+  const pre = Number((precio || '0').replace(',', '.'))
+
+  const guardar = async () => {
+    setError('')
+    if (!elegido) { setError('Elige un insumo del catálogo. Si no existe, regístralo primero en «Catálogo de insumos».'); return }
+    if (yaPlanificados.has(elegido.codigo)) { setError('Ese insumo ya está planificado: usa «Ajustar» en su línea.'); return }
+    if (!(cant > 0)) { setError('La cantidad debe ser mayor que cero.'); return }
+    if (!(pre >= 0)) { setError('El precio no puede ser negativo.'); return }
+    if (motivo.trim().length < 3) { setError('Sin motivo no se agrega: escribe por qué hace falta.'); return }
+    setGuardando(true)
+    try { await api.agregar(elegido.codigo, cant, pre, motivo); enListo() }
+    catch (e) { setError(e instanceof ErrorApi ? e.message : 'No se pudo agregar.') }
+    finally { setGuardando(false) }
+  }
+
+  return (
+    <Modal titulo="Agregar un insumo no planificado" enCerrar={enCerrar} ancho={560}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <p style={{ fontSize: 13, color: 'var(--tinta-2)', lineHeight: 1.5 }}>
+          Para lo que el S10 no trae. Queda marcado como agregado a mano, con tu nombre, la fecha y el motivo. Cantidad y precio van en la unidad del S10.
+        </p>
+        <div>
+          <label htmlFor="r-ins" style={{ fontSize: 13, fontWeight: 600, color: 'var(--tinta-2)' }}>Insumo del catálogo</label>
+          <input id="r-ins" list="r-catalogo" className="campo" value={texto} onChange={(e) => setTexto(e.target.value)}
+            placeholder="Escribe código o nombre…" style={{ height: 44, padding: '0 14px', fontSize: 15, borderRadius: 14, width: '100%', marginTop: 6 }} />
+          <datalist id="r-catalogo">
+            {disponibles.map((i) => <option key={i.id} value={`${i.codigo} · ${i.descripcion}`} />)}
+          </datalist>
+        </div>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'flex-end' }}>
+          <div style={{ flex: '1 1 140px' }}><Campo id="r-acant" etiqueta="Cantidad (unidad del S10)" valor={cantidad} enCambio={setCantidad} marcador="0" /></div>
+          <div style={{ flex: '1 1 140px' }}><Campo id="r-apre" etiqueta="Precio unitario (S/)" valor={precio} enCambio={setPrecio} marcador="0.00" /></div>
+        </div>
+        <Campo id="r-amot" etiqueta="Motivo" valor={motivo} enCambio={setMotivo} marcador="p. ej. partida adicional aprobada por el residente" />
+        {elegido && cant > 0 && pre >= 0 && (
+          <p style={{ fontSize: 13, color: 'var(--tinta-2)' }}>
+            Costo planificado: <strong>S/ {(cant * pre).toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong>
+          </p>
+        )}
+        {error && <p role="alert" style={{ fontSize: 13, color: 'var(--grave)', fontWeight: 600 }}>{error}</p>}
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, justifyContent: 'flex-end' }}>
+          <Pildora tipo="secundario" enClic={enCerrar}>Cancelar</Pildora>
+          <Pildora enClic={guardar} deshabilitado={guardando}>{guardando ? 'Agregando…' : 'Agregar al requerimiento'}</Pildora>
+        </div>
+      </div>
+    </Modal>
+  )
+}
+
 export function Requerimiento() {
   const [xs, setXs] = useState<LineaRequerimiento[] | null>(null)
   const [error, setError] = useState('')
   const [q, setQ] = useState('')
   const [editando, setEditando] = useState<LineaRequerimiento | null>(null)
+  const [agregando, setAgregando] = useState(false)
   const cargar = () => api.listar().then(setXs).catch((e) => setError(e instanceof ErrorApi ? e.message : 'No se pudo cargar el requerimiento.'))
   useEffect(() => { if (usaApiReal) cargar() }, [])
 
@@ -89,10 +155,12 @@ export function Requerimiento() {
     <>
       <Fondo dibujo="importar" />
       <div className="pagina" style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
-        <Encabezado titulo="Requerimiento de la obra" sub="Lo planificado en el S10, insumo por insumo. Ajustar no borra: queda la cantidad anterior, la nueva, el motivo y quién." />
+        <Encabezado titulo="Requerimiento de la obra" sub="Lo planificado en el S10, insumo por insumo. Ajustar no borra: queda la cantidad anterior, la nueva, el motivo y quién."
+          acciones={usaApiReal ? <Pildora enClic={() => setAgregando(true)}>Agregar insumo no planificado</Pildora> : undefined} />
         <Chips>
           <Chip tono="neutro">Viene del S10 (Importar)</Chip>
           <Chip tono="neutro">Cada ajuste deja rastro</Chip>
+          {xs && xs.some((l) => l.manual) && <Chip tono="aviso">{xs.filter((l) => l.manual).length} agregado(s) a mano</Chip>}
         </Chips>
         {!usaApiReal ? (
           <Vidrio><Vacio titulo="Necesita el servidor" detalle="Configura VITE_API_URL e ingresa con tu usuario: el requerimiento no se simula." /></Vidrio>
@@ -111,7 +179,13 @@ export function Requerimiento() {
                       <tbody>
                         {visibles.map((l) => (
                           <tr key={l.id}>
-                            <td><strong>{l.descripcion}</strong><div style={{ fontSize: 12, color: 'var(--tinta-2)' }}>SKU {l.codigo}</div></td>
+                            <td>
+                              <strong>{l.descripcion}</strong>
+                              <div style={{ fontSize: 12, color: 'var(--tinta-2)' }}>
+                                SKU {l.codigo}
+                                {l.manual && <> · <span title={l.motivoAlta ?? ''} style={{ color: 'var(--aviso)', fontWeight: 600 }}>Agregado a mano</span>: {l.motivoAlta}</>}
+                              </div>
+                            </td>
                             <td className="n">{n(l.cantidad)} {l.unidad}</td>
                             <td className="n">S/ {l.precio.toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                             <td style={{ textAlign: 'right' }}><Pildora tipo="secundario" chica etiqueta={`Ajustar ${l.descripcion}`} enClic={() => setEditando(l)}>Ajustar</Pildora></td>
@@ -123,6 +197,8 @@ export function Requerimiento() {
                 )}
           </Vidrio>
         )}
+        {agregando && <AgregarInsumo yaPlanificados={new Set((xs ?? []).map((l) => l.codigo))} enCerrar={() => setAgregando(false)}
+          enListo={() => { setAgregando(false); cargar() }} />}
         {editando && <AjustarLinea l={editando} enCerrar={() => setEditando(null)} enListo={() => { setEditando(null); cargar() }} />}
       </div>
     </>

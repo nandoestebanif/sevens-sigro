@@ -29,19 +29,29 @@ export const proveedores = {
 /* ── HU-19 · T-339: ajustar lo planificado deja el antes, el después, el motivo y quién ── */
 export interface LineaRequerimiento {
   id: number; codigo: string; descripcion: string; unidad: string; cantidad: number; precio: number
+  manual: boolean            // T-340: agregado a mano (no vino del S10)
+  motivoAlta: string | null
 }
 export interface Ajuste { cantidadAnterior: number; cantidadNueva: number; motivo: string; ajustadoPor: number; ajustadoEn: string }
 interface RequerimientoApi {
   id: number; insumoCodigo: string; descripcion: string; unidadS10: string; cantidadPlanificada: string; precioPlanificado: string
+  origen?: 's10' | 'manual'; motivoAlta?: string | null
 }
+const linea = (r: RequerimientoApi): LineaRequerimiento => ({
+  id: r.id, codigo: r.insumoCodigo, descripcion: r.descripcion, unidad: r.unidadS10,
+  cantidad: num(r.cantidadPlanificada), precio: num(r.precioPlanificado),
+  manual: r.origen === 'manual', motivoAlta: r.motivoAlta ?? null,
+})
 interface AjusteApi { cantidadAnterior: string; cantidadNueva: string; motivo: string; ajustadoPor: number; ajustadoEn: string }
 export const requerimiento = {
   async listar(): Promise<LineaRequerimiento[]> {
     const xs = await pedir<RequerimientoApi[]>('GET', `/obras/${await obraId()}/requerimiento`)
-    return xs.map((r) => ({
-      id: r.id, codigo: r.insumoCodigo, descripcion: r.descripcion, unidad: r.unidadS10,
-      cantidad: num(r.cantidadPlanificada), precio: num(r.precioPlanificado),
-    }))
+    return xs.map(linea)
+  },
+  /** T-340: un insumo que el S10 no trae. Debe estar en el catálogo; si ya está planificado, el servidor responde 409. */
+  async agregar(codigo: string, cantidad: number, precio: number, motivo: string): Promise<LineaRequerimiento> {
+    return linea(await pedir<RequerimientoApi>('POST', `/obras/${await obraId()}/requerimiento`,
+      { insumoCodigo: codigo.trim(), cantidad, precio, motivo: motivo.trim() }))
   },
   async ajustar(id: number, cantidad: number, motivo: string): Promise<void> {
     await pedir('POST', `/obras/${await obraId()}/requerimiento/${id}/ajustar`, { cantidad, motivo: motivo.trim() })
