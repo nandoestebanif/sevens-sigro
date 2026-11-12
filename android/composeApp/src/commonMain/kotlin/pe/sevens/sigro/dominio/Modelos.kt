@@ -85,19 +85,22 @@ data class NuevaSalida(
 /**
  * Estado del celular frente a la obra (HU-15).
  * `visible = false`: el usuario no puede listar los dispositivos (403, solo el administrador puede), así que
- * NO se sabe si ya lo pidió: no se dice «Sin solicitar». Falta en la API `GET /obras/{id}/dispositivos/mio`.
+ * NO se sabe si ya lo pidió: no se dice «Sin solicitar» (solo con un servidor sin `GET …/dispositivos/mios`).
+ * `otroCelularActivo`: la persona ya tiene OTRO celular autorizado en la obra (p. ej. reinstaló la app y cambió el
+ * código). Regla 5: uno por responsable; el administrador revoca el anterior y autoriza este.
  */
 data class EstadoDispositivo(
     val identificador: String,
     val estado: String?, // null: aún no se pidió autorización desde este celular (si `visible`)
     val visible: Boolean = true,
+    val otroCelularActivo: Boolean = false,
 ) {
     val estadoLegible: String
         get() = when {
             !visible && estado == null -> "Estado no disponible para tu usuario"
             estado == null -> "Sin solicitar"
             estado == "pendiente" -> "Pendiente de autorizar"
-            estado == "autorizado" -> "Autorizado"
+            estado == AUTORIZADO -> "Autorizado"
             estado == "revocado" -> "Revocado"
             estado == YA_SOLICITADO -> "Ya solicitado (pendiente o autorizado)"
             else -> estado
@@ -106,6 +109,7 @@ data class EstadoDispositivo(
     companion object {
         /** El servidor respondió 409 al pedir: este celular ya estaba registrado en la obra. */
         const val YA_SOLICITADO = "ya_solicitado"
+        const val AUTORIZADO = "autorizado"
     }
 }
 
