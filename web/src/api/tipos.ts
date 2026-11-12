@@ -40,7 +40,7 @@ export interface LineaCompra {
   precioUnitario: number
 }
 
-export type EstadoCompra = 'registrada' | 'recibida_parcial' | 'recibida'
+export type EstadoCompra = 'registrada' | 'recibida_parcial' | 'recibida' | 'anulada'
 
 export type TipoComprobante = 'factura' | 'boleta'
 
