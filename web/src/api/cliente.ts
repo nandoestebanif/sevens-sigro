@@ -14,7 +14,7 @@
 // los 284 insumos del S10 solo los usa el cliente simulado: van en su propio trozo, fuera del arranque
 const insumosS10 = () => import('../datos/insumos-s10').then((m) => m.INSUMOS_S10)
 import type {
-  AlertaReposicion, AvanceInsumo, Compra, InsumoCatalogo, InsumoMaestro,
+  AlertaReposicion, AvanceInsumo, Compra, HistorialFactor, InsumoCatalogo, InsumoMaestro,
   LineaCompra, LineaRecepcion, Movimiento, Obra, ObraActiva, Proveedor,
   ParametroReposicion, ResultadoRequerimiento, ResumenTablero, Semana, StockInsumo, TipoComprobante,
 } from './tipos'
@@ -59,6 +59,9 @@ export interface ClienteSigro {
   /** corrige nombre o marca de cualquier insumo; con verificar=true un
       «por verificar» pasa a «activo». El código no se toca jamás. */
   editarInsumo(codigo: string, datos: { nombre?: string; marca?: string; verificar?: boolean }): Promise<InsumoMaestro>
+  /** HU-17: declara o actualiza el factor de conversión (unidades S10 por unidad de compra) */
+  cambiarFactorConversion(codigo: string, factor: number, motivo: string): Promise<InsumoMaestro>
+  historialFactorConversion(codigo: string): Promise<HistorialFactor[]>
   registrarCompra(datos: {
     proveedorId: string
     tipoComprobante: TipoComprobante
@@ -476,6 +479,36 @@ export class ClienteSimulado implements ClienteSigro {
     return { ...ins }
   }
 
+  private factorHistorial = new Map<string, HistorialFactor[]>()
+
+  async cambiarFactorConversion(codigo: string, factor: number, motivo: string): Promise<InsumoMaestro> {
+    const maestro = await this.cargarMaestro()
+    await espera(180)
+    const ins = maestro.find((i) => i.codigo === codigo)
+    if (!ins) throw new ErrorApi('no_existe', 'Ese código no existe en el catálogo.')
+    if (!Number.isFinite(factor) || factor <= 0) throw new ErrorApi('factor', 'El factor debe ser mayor a cero.')
+    if (motivo.trim().length < 3) throw new ErrorApi('motivo', 'Escribe el motivo del cambio (mínimo 3 caracteres).')
+    const anterior = ins.factorConversion ?? 1
+    if (anterior === factor) throw new ErrorApi('sin_cambio', 'El factor ya tiene ese valor.')
+    ins.factorConversion = factor
+    const lista = this.factorHistorial.get(codigo) ?? []
+    lista.push({
+      id: String(lista.length + 1),
+      factorAnterior: anterior,
+      factorNuevo: factor,
+      motivo: motivo.trim(),
+      cambiadoPor: 'Residente (demo)',
+      cambiadoEn: new Date().toISOString(),
+    })
+    this.factorHistorial.set(codigo, lista)
+    return { ...ins }
+  }
+
+  async historialFactorConversion(codigo: string): Promise<HistorialFactor[]> {
+    await espera(100)
+    return [...(this.factorHistorial.get(codigo) ?? [])]
+  }
+
   async registrarCompra(datos: {
     proveedorId: string
     tipoComprobante: TipoComprobante
@@ -810,6 +843,12 @@ class ClienteHttp extends ClienteSimulado {
   }
   override editarInsumo(codigo: string, datos: { nombre?: string; marca?: string; verificar?: boolean }) {
     return catalogoHttp.editar(codigo, datos)
+  }
+  override cambiarFactorConversion(codigo: string, factor: number, motivo: string) {
+    return catalogoHttp.cambiarFactor(codigo, factor, motivo)
+  }
+  override historialFactorConversion(codigo: string) {
+    return catalogoHttp.historialFactor(codigo)
   }
   override aplicarImportacionS10(filas: { codigo: string; descripcion: string; unidad: string; tipo: string }[]) {
     return catalogoHttp.aplicarS10(filas)
