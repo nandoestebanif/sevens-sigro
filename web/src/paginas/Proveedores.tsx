@@ -13,12 +13,14 @@
      documento repetido se rechaza. El DNI queda «sin validar»: no va a SUNAT.
    El tercer criterio de HU-30 («al guardarlo queda seleccionado en la compra en
    curso») se demuestra en la pantalla de compra, que reutiliza este mismo alta.
+   Estilo vidrio: sin lienzo propio, con el lenguaje de W6 «Compras».
    ───────────────────────────────────────────────────────────────────────── */
 import { useEffect, useMemo, useState } from 'react'
 import { ErrorApi, api } from '../api/cliente'
 import { consultarRucEnSunat, type RucSunat } from '../api/sunat'
 import type { EstadoProveedor, Proveedor } from '../api/tipos'
-import { Boton, Campo, Chip, Modal, Tarjeta, Titulo, Vacio, type TonoChip } from '../ui/base'
+import { Campo, Chip, Modal, Vacio, type TonoChip } from '../ui/base'
+import { Chips, Encabezado, Fondo, Pildora, Vidrio } from '../ui/vidrio'
 
 const ESTADO: Record<EstadoProveedor, { texto: string; tono: TonoChip }> = {
   validado: { texto: 'Validado en SUNAT', tono: 'bien' },
@@ -85,14 +87,14 @@ export function AltaProveedor({ enCerrar, enCreado }: {
           error={error?.campo === 'ruc' ? error.texto : undefined}
         />
         {consultando && (
-          <span style={{ fontSize: 12.5, color: 'var(--tinta-3)' }}>Consultando en SUNAT…</span>
+          <span style={{ fontSize: 12.5, color: 'var(--tinta-2)' }}>Consultando en SUNAT…</span>
         )}
         {sunat && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
             <Chip tono={sunat.apto_para_comprar ? 'bien' : 'aviso'}>
               SUNAT: {sunat.estado_sunat} · {sunat.condicion}
             </Chip>
-            <span style={{ fontSize: 12, color: 'var(--tinta-3)' }}>razón social traída del padrón</span>
+            <span style={{ fontSize: 12, color: 'var(--tinta-2)' }}>razón social traída del padrón</span>
           </div>
         )}
         <Campo
@@ -102,17 +104,17 @@ export function AltaProveedor({ enCerrar, enCreado }: {
           enCambio={setRazon}
           error={error?.campo === 'razon' ? error.texto : undefined}
         />
-        <p style={{ fontSize: 12.5, color: 'var(--tinta-3)', lineHeight: 1.5 }}>
+        <p style={{ fontSize: 12.5, color: 'var(--tinta-2)', lineHeight: 1.5 }}>
           Con los 11 dígitos del RUC, la razón social se trae sola del padrón de
           SUNAT (vía el servicio de integraciones). Si el servicio no responde,
           se escribe a mano y el proveedor queda «sin validar»: la compra no se
           bloquea.
         </p>
-        <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
-          <Boton tipo="secundario" enClic={enCerrar}>Cancelar</Boton>
-          <Boton enClic={guardar} deshabilitado={guardando}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, justifyContent: 'flex-end' }}>
+          <Pildora tipo="secundario" enClic={enCerrar}>Cancelar</Pildora>
+          <Pildora enClic={guardar} deshabilitado={guardando}>
             {guardando ? 'Guardando…' : 'Guardar proveedor'}
-          </Boton>
+          </Pildora>
         </div>
       </div>
     </Modal>
@@ -141,27 +143,35 @@ export function Proveedores() {
   const recorte = visibles?.slice(0, tope) ?? null
 
   return (
-    <div className="pagina" style={{ display: 'flex', flexDirection: 'column', gap: 15 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16 }}>
-        <Titulo sub="RUC único en todo el sistema · un proveedor de baja no aparece al registrar compras nuevas">
-          Proveedores
-        </Titulo>
-        <Boton enClic={() => setAltaAbierta(true)}>Registrar proveedor</Boton>
-      </div>
-
-      <input
-        value={busqueda}
-        onChange={(e) => { setBusqueda(e.target.value); setTope(60) }}
-        placeholder="Buscar por razón social o RUC…"
-        aria-label="Buscar proveedor por razón social o RUC"
-        style={{
-          height: 42, border: '1px solid var(--borde)', borderRadius: 'var(--radio-chico)',
-          padding: '0 14px', fontSize: 14, fontFamily: 'inherit', background: 'var(--tarjeta)',
-          color: 'var(--tinta)', outlineColor: 'var(--accion)',
-        }}
+    <>
+    <Fondo dibujo="proveedores" />
+    <div className="pagina" style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+      <Encabezado
+        titulo="Proveedores"
+        sub="RUC único en todo el sistema · un proveedor de baja no aparece al registrar compras nuevas"
+        acciones={<Pildora enClic={() => setAltaAbierta(true)}>Registrar proveedor</Pildora>}
       />
 
-      <Tarjeta relleno={false}>
+      <Chips>
+        <Chip tono="marca">Proveedores reales del cliente{todos ? ` · ${todos.length.toLocaleString('es-PE')}` : ''}</Chip>
+        <Chip tono="info">Compras, entrega y última compra: datos de ejemplo</Chip>
+      </Chips>
+
+      <Vidrio estilo={{ display: 'flex', flexDirection: 'column', gap: 12 }} etiqueta="Lista de proveedores">
+        <label className="vidrio-fuerte" style={{ height: 52, borderRadius: 26, padding: '0 18px', display: 'flex', alignItems: 'center', gap: 10 }}>
+          <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accion)" strokeWidth="2.4" strokeLinecap="round" style={{ flex: 'none' }}>
+            <circle cx="11" cy="11" r="7" /><path d="M20 20l-4-4" />
+          </svg>
+          <input
+            value={busqueda}
+            onChange={(e) => { setBusqueda(e.target.value); setTope(60) }}
+            placeholder="Buscar por razón social o RUC…"
+            aria-label="Buscar proveedor por razón social o RUC"
+            className="foco-vidrio"
+            style={{ flex: 1, minWidth: 0, height: 40, border: 0, background: 'transparent', fontSize: 15, fontFamily: 'inherit', color: 'var(--tinta)' }}
+          />
+        </label>
+
         {visibles === null ? (
           <Vacio titulo="Cargando…" detalle="Consultando los proveedores de la empresa." />
         ) : visibles.length === 0 ? (
@@ -170,55 +180,39 @@ export function Proveedores() {
             detalle="Prueba con otra razón social u otro RUC, o registra el proveedor."
           />
         ) : (
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead>
-              <tr style={{ background: 'var(--tarjeta-suave)', borderBottom: '1px solid var(--borde)' }}>
-                {['Proveedor', 'RUC', 'Estado', 'Entrega', 'Compras', 'Última compra'].map((h, i) => (
-                  <th
-                    key={h}
-                    style={{
-                      padding: '11px 18px', fontSize: 11, fontWeight: 600,
-                      color: 'var(--tinta-3)', letterSpacing: 0.4,
-                      textAlign: i >= 3 ? 'right' : 'left',
-                    }}
-                  >
-                    {h}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {recorte!.map((p, i) => (
-                <tr key={p.id} style={{ borderBottom: i === recorte!.length - 1 ? 'none' : '1px solid var(--linea)' }}>
-                  <td style={{ padding: '12px 18px', fontSize: 13.5, fontWeight: 600 }}>{p.razonSocial}</td>
-                  <td className="n" style={{ padding: '12px 18px', fontSize: 13, color: 'var(--tinta-2)' }}>{p.ruc}</td>
-                  <td style={{ padding: '12px 18px' }}>
-                    <Chip tono={ESTADO[p.estado].tono}>{ESTADO[p.estado].texto}</Chip>
-                  </td>
-                  <td className="n" style={{ padding: '12px 18px', fontSize: 13, color: 'var(--tinta-2)', textAlign: 'right', whiteSpace: 'nowrap' }}>
-                    {p.diasEntrega == null ? '—' : `${p.diasEntrega} días`}
-                  </td>
-                  <td className="n" style={{ padding: '12px 18px', fontSize: 13, color: 'var(--tinta-2)', textAlign: 'right' }}>
-                    {p.comprasRegistradas}
-                  </td>
-                  <td className="n" style={{ padding: '12px 18px', fontSize: 13, color: 'var(--tinta-2)', textAlign: 'right', whiteSpace: 'nowrap' }}>
-                    {p.ultimaCompra ?? '—'}
-                  </td>
+          <div style={{ overflowX: 'auto' }}>
+            <table className="tabla-vidrio">
+              <thead>
+                <tr>
+                  <th>Proveedor</th><th>RUC</th><th>Estado</th>
+                  <th className="n">Entrega</th><th className="n">Compras</th><th className="n">Última compra</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-        {visibles && visibles.length > tope && (
-          <div style={{ padding: 14, display: 'flex', justifyContent: 'center', borderTop: '1px solid var(--borde)' }}>
-            <Boton tipo="secundario" enClic={() => setTope(tope + 60)}>
-              Mostrar 60 más · van {tope} de {visibles.length.toLocaleString('es-PE')}
-            </Boton>
+              </thead>
+              <tbody>
+                {recorte!.map((p) => (
+                  <tr key={p.id}>
+                    <td style={{ fontWeight: 600, minWidth: 260 }}>{p.razonSocial}</td>
+                    <td className="n" style={{ textAlign: 'left', color: 'var(--tinta-2)' }}>{p.ruc}</td>
+                    <td><Chip tono={ESTADO[p.estado].tono}>{ESTADO[p.estado].texto}</Chip></td>
+                    <td className="n" style={{ whiteSpace: 'nowrap' }}>{p.diasEntrega == null ? '—' : `${p.diasEntrega} días`}</td>
+                    <td className="n">{p.comprasRegistradas}</td>
+                    <td className="n" style={{ whiteSpace: 'nowrap' }}>{p.ultimaCompra ?? '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         )}
-      </Tarjeta>
+        {visibles && visibles.length > tope && (
+          <div style={{ paddingTop: 6, display: 'flex', justifyContent: 'center' }}>
+            <Pildora tipo="secundario" enClic={() => setTope(tope + 60)}>
+              Mostrar 60 más · van {tope} de {visibles.length.toLocaleString('es-PE')}
+            </Pildora>
+          </div>
+        )}
+      </Vidrio>
 
-      <p style={{ fontSize: 12.5, color: 'var(--tinta-3)' }}>
+      <p style={{ fontSize: 13, color: 'var(--tinta-plano)', padding: '0 4px', lineHeight: 1.5 }}>
         El plazo de entrega de cada proveedor alimenta el punto de reposición. Los días se
         recalculan con las recepciones reales.
       </p>
@@ -233,5 +227,6 @@ export function Proveedores() {
         />
       )}
     </div>
+    </>
   )
 }
