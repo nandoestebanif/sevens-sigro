@@ -33,7 +33,7 @@ class RepositorioSesionImpl(
         // Al entrar, el token se guarda antes que el usuario: sin usuario todavía no hay sesión que mostrar.
         if (m[Clave.USUARIO_ID] == null) return@map null
         Sesion(
-            servidor = m[Clave.SERVIDOR] ?: Plataforma.servidorPorDefecto,
+            servidor = m[Clave.SERVIDOR]?.let(Servidores::migrar) ?: Plataforma.servidorPorDefecto,
             token = token,
             usuarioId = m[Clave.USUARIO_ID]?.toIntOrNull() ?: 0,
             nombre = m[Clave.NOMBRE].orEmpty(),
@@ -48,11 +48,16 @@ class RepositorioSesionImpl(
         m[Clave.OBRAS]?.let { decodificarObras(it) }?.firstOrNull { it.id == id }
     }
 
-    override suspend fun servidorGuardado(): String =
-        ajustes.leer(Clave.SERVIDOR) ?: Plataforma.servidorPorDefecto
+    /** A4: si quedó guardado el servidor retirado (`sigro-gateway`), se muestra y se guarda el vigente. */
+    override suspend fun servidorGuardado(): String {
+        val guardado = ajustes.leer(Clave.SERVIDOR) ?: return Plataforma.servidorPorDefecto
+        val vigente = Servidores.migrar(guardado)
+        if (vigente != guardado) guardar(Clave.SERVIDOR, vigente)
+        return vigente
+    }
 
     override suspend fun iniciarSesion(servidor: String, usuario: String, clave: String): Sesion {
-        val base = servidor.trim().trimEnd('/')
+        val base = Servidores.migrar(servidor.trim().trimEnd('/'))
         if (!base.startsWith("http://") && !base.startsWith("https://")) {
             throw ErrorSigro("servidor_invalido", "La dirección del servidor debe empezar con http:// o https://")
         }

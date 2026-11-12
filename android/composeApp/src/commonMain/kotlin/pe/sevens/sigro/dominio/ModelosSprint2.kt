@@ -205,7 +205,7 @@ object Asistencia {
 enum class TipoRegistro(val legible: String, val conServicio: Boolean) {
     JORNADA("Asistencia", true),
     ENTRADA_COMPRA("Entrada de compra", true), // POST /obras/{id}/almacen/recepciones (M5)
-    INGRESO_SIN_COMPRA("Ingreso sin compra", false),
+    INGRESO_SIN_COMPRA("Ingreso sin compra", true), // POST /obras/{id}/almacen/ingresos (A5)
     TRASLADO("Traslado", false),
     CONTEO("Conteo físico", false),
     CIERRE("Cierre de obra", false),
@@ -223,13 +223,16 @@ data class RegistroLocal(
     val motivoRechazo: String?,
     val nota: String?,
     val intentos: Int,
+    /** A1: lo que dijo el servidor al recibirlo. */
+    val registradoPor: String? = null,
+    val fechaServidor: String? = null,
 )
 
 /** Nota con la que queda un registro de almacén mientras no exista su servicio. */
 const val NOTA_SIN_SERVICIO_ALMACEN = "Se envía cuando exista el servicio almacén: queda guardado en el celular."
 
 // ── Almacén ─────────────────────────────────────────────────────────────────────────────────
-// La entrada de compra ya se envía; ingreso sin compra, traslado, conteo y cierre se guardan y esperan.
+// La entrada de compra y el ingreso sin compra ya se envían; traslado, conteo y cierre se guardan y esperan.
 
 /** Línea con insumo y cantidad: entrada, ingreso, traslado y conteo la usan igual. */
 data class LineaAlmacen(val insumo: Insumo, val cantidad: String)
@@ -300,12 +303,13 @@ object ElegirAlmacen {
 /** Una fila de GET …/compras/{id}/recepcion, ya sin Ktor. Cantidades en unidad de compra. */
 data class EstadoLineaRecepcion(val insumoId: Int, val unidad: String, val pedido: String, val recibido: String, val pendiente: String)
 
-enum class OrigenIngreso(val api: String, val legible: String) {
-    DEVOLUCION("devolucion", "Devolución de cuadrilla"),
-    OTRA_OBRA("otra_obra", "Saldo de otra obra"),
+/** HU-41. `api` = los valores de `ORIGENES` del servicio almacén. «Otro» y «saldo de otra obra» exigen detalle. */
+enum class OrigenIngreso(val api: String, val legible: String, val exigeDetalle: Boolean = false) {
+    DEVOLUCION("devolucion_cuadrilla", "Devolución de cuadrilla"),
+    OTRA_OBRA("saldo_otra_obra", "Saldo de otra obra", exigeDetalle = true),
     PRESTAMO("prestamo", "Préstamo"),
     SOBRANTE("sobrante", "Sobrante"),
-    OTRO("otro", "Otro"),
+    OTRO("otro", "Otro", exigeDetalle = true),
 }
 
 enum class MotivoDiferencia(val legible: String) { MERMA("Merma"), ERROR("Error de registro"), PERDIDA("Pérdida"), OTRO("Otro") }

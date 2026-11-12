@@ -20,14 +20,18 @@ class RepositorioDispositivoImpl(
             val propio = api.dispositivos(servidor, obraId).lastOrNull { it.identificador == id }
             EstadoDispositivo(id, propio?.estado)
         } catch (e: ErrorSigro) {
-            // El almacenero quizá no puede LISTAR dispositivos (solo el administrador): no es un error para él.
-            if (e.estadoHttp == 403) EstadoDispositivo(id, null) else throw e
+            // El almacenero no puede LISTAR dispositivos (solo el administrador): no se sabe, y no se dice «Sin solicitar».
+            if (e.estadoHttp == 403) EstadoDispositivo(id, null, visible = false) else throw e
         }
     }
 
     override suspend fun solicitarAutorizacion(obraId: Int): EstadoDispositivo {
         val id = identificador()
-        val d = api.solicitarDispositivo(cred.exigir(), obraId, id)
-        return EstadoDispositivo(id, d.estado)
+        return try {
+            EstadoDispositivo(id, api.solicitarDispositivo(cred.exigir(), obraId, id).estado)
+        } catch (e: ErrorSigro) {
+            // 409: el celular ya está registrado en la obra (pendiente o autorizado). No es un error para el almacenero.
+            if (e.estadoHttp == 409) EstadoDispositivo(id, EstadoDispositivo.YA_SOLICITADO) else throw e
+        }
     }
 }

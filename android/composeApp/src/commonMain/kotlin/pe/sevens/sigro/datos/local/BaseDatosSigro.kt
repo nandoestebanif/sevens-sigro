@@ -54,6 +54,10 @@ data class SalidaLocalEntity(
     val ultimoIntentoMs: Long?,
     /** M6 (versión 3): almacén de donde sale. Nulo en salidas anteriores: el servidor usa el único activo. */
     val almacenId: Int? = null,
+    /** A1 (versión 4): recibo del servidor al aceptarlo (201/200): quién registró y la hora del servidor. */
+    val registradoPorId: Int? = null,
+    val registradoPor: String? = null,
+    val fechaServidor: String? = null,
 )
 
 /** Copia del catálogo para buscar insumos en obra sin señal. Se refresca con señal. */
@@ -86,7 +90,18 @@ data class RegistroLocalEntity(
     val nota: String?,
     val intentos: Int,
     val ultimoIntentoMs: Long?,
+    /** A1 (versión 4): recibo del servidor al aceptarlo (201/200): quién registró y la hora del servidor. */
+    val registradoPorId: Int? = null,
+    val registradoPor: String? = null,
+    val fechaServidor: String? = null,
 )
+
+/**
+ * A2 (versión 4): la última respuesta de GET /obras/{id}/almacen/stock, tal cual (JSON), y cuándo llegó.
+ * Sin señal se muestra esta copia con su hora. El celular no la recalcula ni la ajusta con lo registrado.
+ */
+@Entity(tableName = "stock_guardado")
+data class StockGuardadoEntity(@PrimaryKey val obraId: Int, val json: String, val recibidoMs: Long)
 
 /** Copia de los trabajadores de cada obra, para tomar asistencia sin señal (HU-63). */
 @Entity(tableName = "trabajador_local")
@@ -129,6 +144,9 @@ interface SalidaDao {
             "intentos = intentos + 1, ultimoIntentoMs = :ahora WHERE uuidCliente = :uuid"
     )
     suspend fun marcar(uuid: String, estado: String, motivoRechazo: String?, nota: String?, ahora: Long)
+
+    @Query("UPDATE salida_local SET registradoPorId = :porId, registradoPor = :por, fechaServidor = :fecha WHERE uuidCliente = :uuid")
+    suspend fun anotarRecibo(uuid: String, porId: Int?, por: String?, fecha: String?)
 }
 
 @Dao
@@ -166,6 +184,15 @@ interface RegistroDao {
             "intentos = intentos + 1, ultimoIntentoMs = :ahora WHERE uuidCliente = :uuid"
     )
     suspend fun marcar(uuid: String, estado: String, motivoRechazo: String?, nota: String?, ahora: Long)
+
+    @Query("UPDATE registro_local SET registradoPorId = :porId, registradoPor = :por, fechaServidor = :fecha WHERE uuidCliente = :uuid")
+    suspend fun anotarRecibo(uuid: String, porId: Int?, por: String?, fecha: String?)
+}
+
+@Dao
+interface StockDao {
+    @Upsert suspend fun guardar(s: StockGuardadoEntity)
+    @Query("SELECT * FROM stock_guardado WHERE obraId = :obraId") suspend fun leer(obraId: Int): StockGuardadoEntity?
 }
 
 @Dao
@@ -179,13 +206,18 @@ interface TrabajadorDao {
 @Database(
     entities = [
         AjusteEntity::class, SalidaLocalEntity::class, InsumoLocalEntity::class,
-        RegistroLocalEntity::class, TrabajadorLocalEntity::class,
+        RegistroLocalEntity::class, TrabajadorLocalEntity::class, StockGuardadoEntity::class,
     ],
-    version = 3,
+    version = 4,
     exportSchema = true,
     // 1 → 2 solo agrega tablas: la cola de salidas que ya está en el celular no se toca.
     // 2 → 3 agrega salida_local.almacenId (nulo en lo anterior) y cierra las entradas de compra viejas.
-    autoMigrations = [AutoMigration(from = 1, to = 2), AutoMigration(from = 2, to = 3, spec = Migracion2a3::class)],
+    // 3 → 4 agrega el recibo del servidor (A1), la tabla stock_guardado (A2) y cierra los ingresos sin compra viejos (A5).
+    autoMigrations = [
+        AutoMigration(from = 1, to = 2),
+        AutoMigration(from = 2, to = 3, spec = Migracion2a3::class),
+        AutoMigration(from = 3, to = 4, spec = Migracion3a4::class),
+    ],
 )
 @ConstructedBy(ConstructorBaseDatos::class)
 abstract class BaseDatosSigro : RoomDatabase() {
@@ -194,6 +226,7 @@ abstract class BaseDatosSigro : RoomDatabase() {
     abstract fun insumos(): InsumoDao
     abstract fun registros(): RegistroDao
     abstract fun trabajadores(): TrabajadorDao
+    abstract fun stock(): StockDao
 }
 
 /**
@@ -209,6 +242,22 @@ class Migracion2a3 : AutoMigrationSpec {
         )
     }
 }
+
+/**
+ * Hasta la versión 3 el ingreso sin compra se guardaba con un cuerpo propuesto (`detalle`, orígenes con otros
+ * nombres, sin `dispositivo`) que `IngresoIn` rechaza. Igual que en 2→3: quedan RECHAZADOS con su motivo, a la vista.
+ */
+class Migracion3a4 : AutoMigrationSpec {
+    override fun onPostMigrate(connection: SQLiteConnection) {
+        connection.execSQL(
+            "UPDATE registro_local SET estado = 'RECHAZADO', motivoRechazo = '$MOTIVO_INGRESO_ANTIGUO' " +
+                "WHERE tipo = 'INGRESO_SIN_COMPRA' AND estado = 'PENDIENTE'"
+        )
+    }
+}
+
+const val MOTIVO_INGRESO_ANTIGUO =
+    "Se guardó con una versión anterior de la app, antes de que el servidor recibiera ingresos. Regístralo de nuevo."
 
 const val MOTIVO_ENTRADA_ANTIGUA =
     "Se guardó con una versión anterior de la app, antes de que el servidor recibiera entradas. Regístrala de nuevo."
