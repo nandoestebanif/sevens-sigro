@@ -49,3 +49,58 @@ def desviacion_pct(precio_sin_igv: Decimal, referencia: Decimal | None) -> Decim
 def fuera_de_lo_habitual(desviacion: Decimal | None, limite_pct: Decimal) -> bool:
     """Avisa, no bloquea (D13): fuera si se aparta MÁS que el límite, hacia arriba o hacia abajo."""
     return desviacion is not None and abs(desviacion) > Decimal(str(limite_pct))
+
+
+# --------------------------------------------------------------------------- HU-31: qué dice SUNAT del proveedor
+ESTADOS_VALIDACION = ("validado", "sin_validar", "con_alerta_sunat")
+
+
+def clasificar_consulta_sunat(ruc: str, respuesta) -> tuple[str, str | None, str | None]:
+    """(estado, alerta_sunat, advertencia). Función pura: no consulta red ni base.
+
+    - DNI (8 dígitos) y RUC con dígito verificador malo: nunca se consultan; quedan «sin_validar» (por validar).
+    - SUNAT/Integraciones no responden (`respuesta is None`): «sin_validar», se reintenta; no bloquea.
+    - SUNAT responde y es activo y habido: «validado».
+    - SUNAT responde y NO es activo y habido: «con_alerta_sunat» con lo que informó; **avisa, no bloquea** (D12).
+    """
+    if len(ruc) == 8:
+        return "sin_validar", None, "Es un DNI (persona natural): queda sin validar; solo los RUC se validan en SUNAT."
+    if not ruc_valido(ruc):
+        return "sin_validar", None, "El dígito verificador del RUC no coincide: revisa que esté bien escrito."
+    if respuesta is None:
+        return "sin_validar", None, "No se pudo consultar a SUNAT; el proveedor queda por validar y se puede reintentar."
+    if respuesta.apto_para_comprar:
+        return "validado", None, None
+    alerta = f"{respuesta.estado_sunat} / {respuesta.condicion}"
+    return "con_alerta_sunat", alerta, f"SUNAT lo informa {alerta}: puedes comprarle, pero la compra queda marcada para el residente."
+
+
+# --------------------------------------------------------------------------- HU-34: comprobantes adjuntos
+MAX_COMPROBANTE_BYTES = 10 * 1024 * 1024          # D15/ADR-11 (la base lo repite en ck_compra_adjunto_tamano)
+
+_FIRMAS = (
+    (b"%PDF-", "application/pdf"),
+    (b"\xff\xd8\xff", "image/jpeg"),
+    (b"\x89PNG\r\n\x1a\n", "image/png"),
+)
+
+
+def tipo_real(contenido: bytes) -> str | None:
+    """El tipo lo dicen los primeros bytes del archivo, no la extensión ni el `Content-Type` que mande el navegador:
+    un .exe renombrado a .pdf no pasa. Devuelve el tipo MIME admitido o None."""
+    for firma, mime in _FIRMAS:
+        if contenido.startswith(firma):
+            return mime
+    return None
+
+
+def nombre_seguro(nombre: str | None, mime: str) -> str:
+    """Solo el nombre del archivo (sin rutas del equipo del usuario), sin caracteres de control y con un máximo de 150."""
+    base = (nombre or "").replace("\\", "/").rsplit("/", 1)[-1]
+    base = "".join(ch for ch in base if ch.isprintable() and ch not in '<>:"|?*').strip(" .")
+    if not base:
+        base = "comprobante" + {"application/pdf": ".pdf", "image/jpeg": ".jpg", "image/png": ".png"}[mime]
+    if len(base) > 150:
+        raiz, punto, ext = base.rpartition(".")
+        base = (raiz[: 150 - len(ext) - 1] + "." + ext) if punto and len(ext) <= 5 else base[:150]
+    return base
