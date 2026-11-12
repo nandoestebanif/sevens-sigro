@@ -87,3 +87,49 @@ def test_digito_verificador_de_sevens():
 ])
 def test_ruc_invalido(ruc):
     assert not ruc_valido(ruc)
+
+
+# ------------------------------------------------------------------ HU-36 exceso sobre lo requerido
+from decimal import Decimal as D  # noqa: E402
+
+from app.modulos.almacen.dominio import exceso_sobre_requerido  # noqa: E402
+
+
+def test_dentro_de_lo_requerido_no_hay_exceso():
+    assert exceso_sobre_requerido(D("300"), D("100"), D("200")) == D("0")        # justo lo requerido
+    assert exceso_sobre_requerido(D("300"), D("0"), D("120")) == D("0")
+
+
+def test_el_exceso_es_lo_que_pasa_de_lo_requerido_contando_lo_ya_recibido():
+    assert exceso_sobre_requerido(D("300"), D("250"), D("100")) == D("50.0000")
+    assert exceso_sobre_requerido(D("5000"), D("0"), D("5696")) == D("696.0000")  # acero: 800 varillas × 7,12 kg
+
+
+def test_si_ya_estaba_excedido_cualquier_recepcion_vuelve_a_exceder():
+    assert exceso_sobre_requerido(D("100"), D("130"), D("10")) == D("40.0000")
+
+
+def test_un_insumo_fuera_del_requerimiento_no_tiene_nada_que_exceder():
+    assert exceso_sobre_requerido(None, D("0"), D("999")) is None               # el requerimiento avisa, no bloquea (regla 7)
+
+
+# ------------------------------------------------------------------ HU-33 precio contra lo habitual
+from app.modulos.compras.dominio import desviacion_pct, fuera_de_lo_habitual, referencia_en_unidad_de_compra  # noqa: E402
+
+
+def test_la_referencia_del_acero_pasa_de_kg_a_varilla_con_el_factor():
+    assert referencia_en_unidad_de_compra(D("4.213483"), D("7.12")).quantize(D("0.01")) == D("30.00")   # S/ por kg × kg por varilla
+    assert referencia_en_unidad_de_compra(None, D("7.12")) is None                       # sin recepciones no hay promedio
+
+
+def test_la_desviacion_se_mide_en_porcentaje_hacia_arriba_y_hacia_abajo():
+    assert desviacion_pct(D("33.00"), D("30.00")) == D("10.00")
+    assert desviacion_pct(D("26.40"), D("30.00")) == D("-12.00")
+    assert desviacion_pct(D("30.00"), None) is None
+
+
+def test_solo_se_marca_lo_que_pasa_el_limite_y_sin_referencia_nada():
+    assert fuera_de_lo_habitual(D("10.00"), D("10")) is False        # justo el límite: dentro
+    assert fuera_de_lo_habitual(D("10.01"), D("10")) is True
+    assert fuera_de_lo_habitual(D("-12.00"), D("10")) is True       # también si se paga mucho menos
+    assert fuera_de_lo_habitual(None, D("10")) is False

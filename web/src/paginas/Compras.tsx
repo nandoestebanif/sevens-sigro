@@ -19,6 +19,7 @@ import { ErrorApi, api } from '../api/cliente'
 import type { Compra, EstadoCompra, InsumoCatalogo, LineaCompra, LineaRecepcion, Proveedor, TipoComprobante } from '../api/tipos'
 import { Campo, Chip, Modal, Vacio, type TonoChip } from '../ui/base'
 import { Aviso, Chips, Encabezado, Fondo, Pildora, TituloSeccion, Vidrio } from '../ui/vidrio'
+import { BuscarOpcion } from '../ui/BuscarOpcion'
 import { AltaProveedor } from './Proveedores'
 
 /* HU-35: el estado lo deriva el servidor de las recepciones; aquí solo se pinta */
@@ -159,6 +160,8 @@ export function Compras() {
 
   // cabecera de la compra
   const [proveedorId, setProveedorId] = useState('')
+  const opcionesProveedor = useMemo(
+    () => proveedores.map((p) => ({ valor: String(p.id), texto: acorta(p.razonSocial), detalle: `RUC ${p.ruc}` })), [proveedores])
   const [tipo, setTipo] = useState<TipoComprobante>('factura')
   const [numero, setNumero] = useState('')
   const [fecha, setFecha] = useState(() => new Date().toISOString().slice(0, 10))
@@ -235,7 +238,7 @@ export function Compras() {
       />
 
       <Chips>
-        <Chip tono="info">Compras y recepciones: datos de ejemplo · insumos del S10 real</Chip>
+        <Chip tono="info">Compras y recepciones: las del ambiente de pruebas · insumos del S10 real</Chip>
         <Chip tono="marca">Proveedores: los reales del cliente</Chip>
       </Chips>
 
@@ -297,13 +300,11 @@ export function Compras() {
           {/* cabecera · flex con envoltura: en angosto los campos bajan de fila en vez de desbordarse */}
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'flex-end' }}>
             <div style={celdaForm(3, 220)}>
-              <Etiqueta htmlFor="c-prov">Proveedor</Etiqueta>
-              <select id="c-prov" value={proveedorId} onChange={(e) => setProveedorId(e.target.value)} style={estiloCampo}>
-                <option value="">Elegir…</option>
-                {proveedores.map((p) => (
-                  <option key={p.id} value={p.id}>{acorta(p.razonSocial)} · {p.ruc}</option>
-                ))}
-              </select>
+              <BuscarOpcion
+                id="c-prov" etiqueta="Proveedor" valor={proveedorId} enCambio={setProveedorId}
+                opciones={opcionesProveedor} marcador="Escribe la razón social o el RUC"
+                sinResultados="Ningún proveedor coincide con"
+              />
             </div>
             <div style={{ flex: 'none' }}>
               <Pildora tipo="secundario" enClic={() => setAltaAbierta(true)}>+ Nuevo</Pildora>
@@ -423,9 +424,10 @@ export function Compras() {
           enCerrar={() => setAltaAbierta(false)}
           enCreado={(p) => {
             // HU-30: al guardarlo queda seleccionado en la compra en curso
+            const idStr = String(p.id)
             setAltaAbierta(false)
-            setProveedores((ps) => [p, ...ps])
-            setProveedorId(p.id)
+            setProveedores((ps) => [{ ...p, id: idStr }, ...ps.filter((x) => String(x.id) !== idStr)])
+            setProveedorId(idStr)
           }}
         />
       )}

@@ -54,7 +54,7 @@ export function Entrar({ saliendo = false }: { saliendo?: boolean }) {
       <div
         className={`pagina${saliendo ? ' entrar-sale' : ''}`}
         style={{
-          maxWidth: 1240, minHeight: '100vh', margin: '0 auto', padding: '40px 20px',
+          maxWidth: 1240, minHeight: 'calc(100vh / var(--escala, 1))', margin: '0 auto', padding: '40px 20px',
           display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'center', gap: 28,
         }}
       >
@@ -77,7 +77,7 @@ export function Entrar({ saliendo = false }: { saliendo?: boolean }) {
               <path d="M630 220V90M630 90H470M630 90h50M470 90v30M455 120h30v14h-30zM630 110l-20 20M630 140l-20 20M630 170l-20 20" />
             </g>
           </svg>
-          <img src={logoBlanco} alt="SEVEN'S Ingenieros SAC" style={{ position: 'relative', height: 'clamp(72px, 12vw, 120px)', width: 'auto', alignSelf: 'flex-start' }} />
+          <img src={logoBlanco} alt="SEVEN'S Ingenieros SAC" style={{ position: 'relative', height: 'clamp(72px, calc(12vw / var(--escala, 1)), 120px)', width: 'auto', alignSelf: 'flex-start' }} />
           <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', gap: 18, maxWidth: 420 }}>
             <span style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
               <span aria-hidden style={{ width: 28, height: 1.5, background: '#FDBA74' }} />

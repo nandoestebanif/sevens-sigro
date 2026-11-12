@@ -8,7 +8,7 @@ from fastapi import APIRouter, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.types import ASGIApp, Receive, Scope, Send
 
-from app import contexto, errores
+from app import contexto, errores, medicion
 
 PREFIJO = "/api/v1"
 
@@ -35,6 +35,7 @@ def crear_servicio(nombre: str, descripcion: str, publicos: Iterable[APIRouter],
         CORSMiddleware, allow_origins=origenes, allow_methods=["GET", "POST"], allow_headers=["Authorization", "Content-Type"]
     )
     app.add_middleware(_MarcaServicio, nombre=nombre)
+    app.add_middleware(medicion.MedirPeticion, nombre=nombre)   # el último agregado es el más externo: mide todo
     errores.instalar(app)
 
     @app.get("/salud", tags=["sistema"])

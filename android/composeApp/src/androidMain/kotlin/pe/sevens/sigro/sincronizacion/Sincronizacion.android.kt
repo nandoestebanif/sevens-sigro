@@ -14,6 +14,7 @@ import androidx.work.WorkerParameters
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 import pe.sevens.sigro.dominio.ProgramadorSincronizacion
+import pe.sevens.sigro.dominio.RepositorioRegistros
 import pe.sevens.sigro.dominio.RepositorioSalidas
 import java.util.concurrent.TimeUnit
 
@@ -25,11 +26,13 @@ class SincronizacionWorker(contexto: Context, params: WorkerParameters) :
     CoroutineWorker(contexto, params), KoinComponent {
 
     private val salidas: RepositorioSalidas by inject()
+    private val registros: RepositorioRegistros by inject() // asistencia (y almacén cuando tenga servicio)
 
     override suspend fun doWork(): Result {
         val r = salidas.sincronizar()
+        val g = registros.sincronizar()
         // Quedan pendientes: WorkManager reintenta con espera creciente, sin gastar batería.
-        return if (r.siguenPendientes > 0) Result.retry() else Result.success()
+        return if (r.siguenPendientes + g.siguenPendientes > 0) Result.retry() else Result.success()
     }
 }
 

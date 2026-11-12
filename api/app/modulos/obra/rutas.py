@@ -143,8 +143,23 @@ def _obra_out(s: Session, obra_id: int, rol: str | None = None) -> dict:
 
 @obras.get("", response_model=list[e.ObraOut])
 def listar_obras(a: Actor = Depends(usuario_autenticado)):
-    """Solo las obras donde la persona está asignada (R9)."""
-    return [_obra_out(a.sesion, o["id"], o["rol"]) for o in _obras_de(a.sesion, a.usuario_id)]
+    """Solo las obras donde la persona está asignada (R9).
+
+    Una sola consulta para todas (antes: 1 + 2 por obra). Mismos campos y mismo cálculo que `_obra_out`."""
+    return filas(
+        a.sesion,
+        "SELECT p.id, p.nombre, p.fecha_inicio, p.fecha_fin, p.dia_corte, p.estado, a.rol, "
+        "coalesce(per.total, 0) AS semanas_totales, per.actual AS semana "
+        "FROM obra.asignacion a JOIN obra.proyecto p ON p.id = a.proyecto_id "
+        "LEFT JOIN LATERAL ("
+        "  SELECT count(*) AS total, "
+        "  coalesce(max(numero) FILTER (WHERE current_date BETWEEN fecha_inicio AND fecha_fin), "
+        "           CASE WHEN current_date < min(fecha_inicio) THEN 0 ELSE count(*) END) AS actual "
+        "  FROM obra.periodo WHERE proyecto_id = p.id"
+        ") per ON true "
+        "WHERE a.usuario_id = :u AND a.fecha_retiro IS NULL ORDER BY p.nombre",
+        u=a.usuario_id,
+    )
 
 
 @obras.post("", response_model=e.ObraOut, status_code=201)

@@ -14,6 +14,8 @@ OBRAS = "obras"          # identidad, obras, accesos y dispositivos (dueño de q
 CATALOGO = "catalogo"
 COMPRAS = "compras"
 TAREO = "tareo"
+ALMACEN = "almacen"      # movimientos, saldo, kárdex y costo promedio (migración 0010)
+COSTO = "costo"          # modelo de lectura del gasto en recursos
 
 
 def actual() -> str | None:

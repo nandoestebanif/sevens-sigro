@@ -1,0 +1,18 @@
+# 03/11/2026 · prueba de humo por el gateway (infra/un_nodo/humo.py), un nodo EN LOCAL, datos reales del cliente.
+OK  salud de los servicios · 7 listos (obras, catalogo, compras, tareo, integraciones, almacen, costo)
+OK  login del administrador · 200 en 157 ms
+OK  obras · 200 · 1 obra(s) en 39 ms
+OK  catálogo · 200 · 2243 insumos en 1195 ms
+OK  proveedores · 200 · 626 proveedores en 1143 ms
+OK  alta del almacenero de prueba · 201
+OK  asignación como almacenero · 201
+OK  login del almacenero · 200
+OK  pedido de autorización del celular · 201
+OK  celular autorizado por el administrador · 200
+OK  almacén de la obra · 1 almacén(es)
+OK  ingreso de almacén · 201 en 1299 ms · 10
+OK  salida de almacén · 201 en 79 ms · costo congelado 12.500000 · saldo 3.0000
+OK  reenvío de la misma salida no duplica · 200 · mismo id 2
+OK  stock calculado por el servidor · 200 en 157 ms
+OK  un administrador no registra salidas (rol, servidor) · 403
+HUMO OK

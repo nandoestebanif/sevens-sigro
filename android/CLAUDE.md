@@ -27,7 +27,7 @@ Lee primero `../CLAUDE.md` (reglas de dominio) y `LEEME.md` (cómo compilar). Es
 - La app **no calcula saldo**; muestra el del servidor con su hora (regla 2).
 - Todo registro nace con `uuid_cliente` y se guarda en Room antes de enviarse; un rechazo queda con su motivo.
 - Lógica en ViewModel o dominio, con prueba en `commonTest`; la pantalla solo pinta.
-- Si falta un endpoint, se le pide a Adiel (backend). El contrato propuesto de salidas está en `LEEME.md`.
+- Si falta un endpoint, se le pide a Adiel (backend). Los endpoints que la app usa están en `LEEME.md` («Lo que la app usa de la API»).
 - Nada de datos inventados de la obra: lo que falte va como `[marcador]`.
 - Antes de pedir PR: `./gradlew :composeApp:testDebugUnitTest :composeApp:assembleDebug` en verde.
 - Rama por HU (`hu-40-salida-app`), PR aprobado por otro integrante. El responsable de la app es Nicolás.

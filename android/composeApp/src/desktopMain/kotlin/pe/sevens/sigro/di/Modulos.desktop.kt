@@ -11,13 +11,17 @@ import org.koin.dsl.module
 import pe.sevens.sigro.datos.local.BaseDatosSigro
 import pe.sevens.sigro.datos.local.construirBaseDatos
 import pe.sevens.sigro.datos.remoto.crearClienteHttp
+import pe.sevens.sigro.datos.repositorio.BovedaSesion
 import pe.sevens.sigro.dominio.ProgramadorSincronizacion
 import pe.sevens.sigro.dominio.RepositorioSalidas
+import pe.sevens.sigro.plataforma.AlmacenSeguro
+import pe.sevens.sigro.plataforma.AlmacenSeguroEscritorio
 import java.io.File
 
 /** Versión de escritorio: solo para probar la interfaz en la PC. Base en ~/.sigro/sigro.db */
 actual val moduloPlataforma: Module = module {
-    single { crearClienteHttp(OkHttp.create()) }
+    single { val boveda = get<BovedaSesion>(); crearClienteHttp(OkHttp.create()) { boveda.token() } }
+    single<AlmacenSeguro> { AlmacenSeguroEscritorio(File(File(System.getProperty("user.home"), ".sigro").apply { mkdirs() }, "seguro.properties")) }
     single<BaseDatosSigro> {
         val dir = File(System.getProperty("user.home"), ".sigro").apply { mkdirs() }
         construirBaseDatos(Room.databaseBuilder<BaseDatosSigro>(name = File(dir, "sigro.db").absolutePath))

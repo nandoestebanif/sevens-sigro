@@ -14,18 +14,26 @@ import pe.sevens.sigro.dominio.RepositorioSesion
 import pe.sevens.sigro.dominio.Sesion
 import pe.sevens.sigro.plataforma.Plataforma
 
+/**
+ * HU-12. El token va al almacén cifrado ([BovedaSesion]); `ajuste` guarda solo lo que se muestra (nombre,
+ * obras) y el servidor. La sesión «existe» mientras haya token.
+ */
 class RepositorioSesionImpl(
     private val api: ApiSigro,
     private val ajustes: AjusteDao,
+    private val boveda: BovedaSesion,
 ) : RepositorioSesion {
 
     private val listaObras = ListSerializer(ObraRolDto.serializer())
 
     override val sesion: Flow<Sesion?> = ajustes.observar().map { filas ->
         val m = filas.associate { it.clave to it.valor }
-        val token = m[Clave.TOKEN] ?: return@map null
+        // La primera lectura migra el token que una versión anterior dejó en `ajuste` (y lo borra de ahí).
+        val token = boveda.token() ?: return@map null
+        // Al entrar, el token se guarda antes que el usuario: sin usuario todavía no hay sesión que mostrar.
+        if (m[Clave.USUARIO_ID] == null) return@map null
         Sesion(
-            servidor = m[Clave.SERVIDOR] ?: Plataforma.servidorPorDefecto,
+            servidor = m[Clave.SERVIDOR]?.let(Servidores::migrar) ?: Plataforma.servidorPorDefecto,
             token = token,
             usuarioId = m[Clave.USUARIO_ID]?.toIntOrNull() ?: 0,
             nombre = m[Clave.NOMBRE].orEmpty(),
@@ -40,11 +48,16 @@ class RepositorioSesionImpl(
         m[Clave.OBRAS]?.let { decodificarObras(it) }?.firstOrNull { it.id == id }
     }
 
-    override suspend fun servidorGuardado(): String =
-        ajustes.leer(Clave.SERVIDOR) ?: Plataforma.servidorPorDefecto
+    /** A4: si quedó guardado el servidor retirado (`sigro-gateway`), se muestra y se guarda el vigente. */
+    override suspend fun servidorGuardado(): String {
+        val guardado = ajustes.leer(Clave.SERVIDOR) ?: return Plataforma.servidorPorDefecto
+        val vigente = Servidores.migrar(guardado)
+        if (vigente != guardado) guardar(Clave.SERVIDOR, vigente)
+        return vigente
+    }
 
     override suspend fun iniciarSesion(servidor: String, usuario: String, clave: String): Sesion {
-        val base = servidor.trim().trimEnd('/')
+        val base = Servidores.migrar(servidor.trim().trimEnd('/'))
         if (!base.startsWith("http://") && !base.startsWith("https://")) {
             throw ErrorSigro("servidor_invalido", "La dirección del servidor debe empezar con http:// o https://")
         }
@@ -53,8 +66,10 @@ class RepositorioSesionImpl(
             // Regla 9: sin obra asignada no hay nada que registrar. Se dice, no se deja una pantalla vacía.
             throw ErrorSigro("sin_obras", "Tu usuario no está asignado a ninguna obra. Pide al administrador que te asigne.")
         }
+        // Primero el token (cifrado) y después lo que muestra la sesión: el flujo `sesion` se enciende al final.
+        boveda.guardarToken(s.token)
+        api.olvidarToken()
         guardar(Clave.SERVIDOR, base)
-        guardar(Clave.TOKEN, s.token)
         guardar(Clave.USUARIO_ID, s.usuario.id.toString())
         guardar(Clave.NOMBRE, s.usuario.nombre)
         guardar(Clave.USUARIO, s.usuario.usuario)
@@ -70,7 +85,10 @@ class RepositorioSesionImpl(
     override suspend fun cambiarDeObra() = ajustes.quitar(listOf(Clave.OBRA_ID))
 
     /** Cierra la sesión pero NO borra la cola: lo registrado sin señal se envía al volver a entrar. */
-    override suspend fun cerrarSesion() = ajustes.quitar(Clave.deSesion)
+    override suspend fun cerrarSesion() {
+        boveda.cerrarSesion()
+        api.olvidarToken()
+    }
 
     private suspend fun guardar(clave: String, valor: String) = ajustes.guardar(AjusteEntity(clave, valor))
 

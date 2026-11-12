@@ -1,0 +1,16 @@
+{
+  "name": "sigro-web-e2e",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Pruebas de punta a punta de la web de oficina contra la API local (HT-06). Paquete aparte para no tocar el de la web.",
+  "type": "module",
+  "scripts": {
+    "test": "playwright test",
+    "instalar-navegador": "playwright install chromium"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.56.0",
+    "@types/node": "^22.10.0",
+    "newman": "^6.2.3"
+  }
+}

@@ -109,12 +109,12 @@ def test_el_ruc_es_unico_en_todo_el_sistema(mundo, eq, sunat):
 
 def test_quien_puede_registrar_y_consultar_proveedores(mundo, eq, sunat):
     nuevo = lambda rol: post(mundo, "/proveedores", eq[rol], ruc=ruc_nuevo(), razon_social="Proveedor SAC")
-    assert nuevo("residente").status_code == 201 and nuevo("admin").status_code == 201
-    for rol in ("almacenero", "ssoma", "gerente"):
+    assert nuevo("almacenero").status_code == 201 and nuevo("residente").status_code == 201 and nuevo("admin").status_code == 201
+    for rol in ("ssoma", "gerente"):
         assert nuevo(rol).status_code == 403, rol
-    for rol in ("residente", "admin", "gerente"):
+    for rol in ("almacenero", "residente", "admin", "gerente"):
         assert get(mundo, "/proveedores", eq[rol]).status_code == 200
-    for rol in ("almacenero", "ssoma"):
+    for rol in ("ssoma",):
         assert get(mundo, "/proveedores", eq[rol]).status_code == 403
 
 

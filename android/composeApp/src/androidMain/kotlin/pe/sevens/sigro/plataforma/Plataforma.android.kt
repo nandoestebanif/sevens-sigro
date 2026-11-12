@@ -1,8 +1,10 @@
 package pe.sevens.sigro.plataforma
 
+import android.app.ActivityManager
 import androidx.activity.compose.BackHandler
 import android.provider.Settings
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -11,10 +13,11 @@ import java.util.Locale
 actual object Plataforma {
     actual val nombre: String = "android"
     // Ambiente de pruebas en Render. Para la API en la PC desde el emulador: http://10.0.2.2:8000
-    actual val servidorPorDefecto: String = "https://sigro-gateway.onrender.com"
+    actual val servidorPorDefecto: String = "https://sigro-api.onrender.com"
     actual fun ahoraMs(): Long = System.currentTimeMillis()
     actual fun formatearHora(ms: Long): String =
         SimpleDateFormat("dd/MM HH:mm", Locale.forLanguageTag("es-PE")).format(Date(ms))
+    actual fun fechaIso(ms: Long): String = SimpleDateFormat("yyyy-MM-dd", Locale.ROOT).format(Date(ms))
 }
 
 @Composable
@@ -25,4 +28,11 @@ actual fun ManejarAtras(activo: Boolean, alVolver: () -> Unit) = BackHandler(ena
 actual fun reducirMovimiento(): Boolean {
     val resolver = LocalContext.current.contentResolver
     return Settings.Global.getFloat(resolver, Settings.Global.ANIMATOR_DURATION_SCALE, 1f) == 0f
+}
+
+@Composable
+actual fun vidrioSinDesenfoque(): Boolean {
+    val ctx = LocalContext.current
+    val pocaMemoria = remember(ctx) { ctx.getSystemService(ActivityManager::class.java)?.isLowRamDevice == true }
+    return pocaMemoria || reducirMovimiento()
 }
