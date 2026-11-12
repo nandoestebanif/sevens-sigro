@@ -53,6 +53,23 @@ describe('HT-11 · acciones con rastro', () => {
   })
 })
 
+describe('T-340 · insumo agregado a mano al requerimiento', () => {
+  it('envía código, cantidad, precio y motivo, y marca la línea como manual', async () => {
+    servidor({
+      ...OBRAS,
+      'POST /api/v1/obras/1/requerimiento': { id: 9, insumo_id: 4, insumo_codigo: 'C-000300', descripcion: 'MALLA RASCHEL', unidad_s10: 'm2',
+        cantidad_planificada: '120.0000', precio_planificado: '4.5400', costo_planificado: '544.80', origen: 'manual', motivo_alta: 'Partida adicional' },
+      'GET /api/v1/obras/1/requerimiento': [{ id: 1, insumo_id: 1, insumo_codigo: '0221000000', descripcion: 'CEMENTO', unidad_s10: 'bls',
+        cantidad_planificada: '400', precio_planificado: '29.23', costo_planificado: '11692', origen: 's10', motivo_alta: null }],
+    })
+    const l = await requerimiento.agregar(' C-000300 ', 120, 4.54, '  Partida adicional ')
+    expect(l).toMatchObject({ id: 9, codigo: 'C-000300', cantidad: 120, manual: true, motivoAlta: 'Partida adicional' })
+    expect(pedidos.find((x) => x.metodo === 'POST')!.cuerpo).toEqual({ insumo_codigo: 'C-000300', cantidad: 120, precio: 4.54, motivo: 'Partida adicional' })
+    const [s10] = await requerimiento.listar()
+    expect(s10).toMatchObject({ manual: false, motivoAlta: null })
+  })
+})
+
 describe('T-345 · nombres de quien registró', () => {
   it('usa las asignaciones si la obra las deja ver; si no, al menos el propio nombre', async () => {
     servidor({ ...OBRAS, 'GET /api/v1/obras/1/asignaciones': [{ usuario_id: 2, usuario_nombre: 'Almacenero local' }] })
