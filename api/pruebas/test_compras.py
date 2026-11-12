@@ -214,7 +214,46 @@ class TestDetalleYAdjuntos:
         c = f.compra(obra["proyecto"], obra["proveedor"], obra["residente"])
         with rechaza(db, CHECK, "ck_compra_adjunto_tamano"):
             db.execute("INSERT INTO compras.compra_adjunto (compra_id, archivo, nombre_original, tipo_mime, tamano_bytes, sha256, subido_por) "
-                       "VALUES (%s, 'k/1', 'f.pdf', 'application/pdf', %s, %s, %s)", (c, 16 * 1024 * 1024, "c" * 64, obra["residente"]))
+                       "VALUES (%s, 'k/1', 'f.pdf', 'application/pdf', %s, %s, %s)", (c, 11 * 1024 * 1024, "c" * 64, obra["residente"]))
+
+    # ---- HU-34 · el comprobante no se borra ni se reemplaza: se anula con motivo (migración 0015)
+    def _adjunto(self, db, f, obra, sha="a" * 64):
+        c = f.compra(obra["proyecto"], obra["proveedor"], obra["residente"])
+        a = db.execute("INSERT INTO compras.compra_adjunto (compra_id, archivo, nombre_original, tipo_mime, tamano_bytes, sha256, subido_por) "
+                       "VALUES (%s, 'k/1', 'f.pdf', 'application/pdf', 1000, %s, %s) RETURNING id", (c, sha, obra["residente"])).fetchone()["id"]
+        return c, a
+
+    def test_el_comprobante_se_anula_con_motivo_y_autor(self, db, f, obra):
+        _, a = self._adjunto(db, f, obra)
+        db.execute("UPDATE compras.compra_adjunto SET anulado_por=%s, anulado_en=now(), motivo_anulacion='Foto movida' WHERE id=%s",
+                   (obra["residente"], a))
+        assert db.execute("SELECT anulado_en FROM compras.compra_adjunto WHERE id=%s", (a,)).fetchone()["anulado_en"] is not None
+
+    def test_la_anulacion_exige_autor_fecha_y_motivo_juntos(self, db, f, obra):
+        _, a = self._adjunto(db, f, obra)
+        with rechaza(db, CHECK, "ck_compra_adjunto_anulacion"):
+            db.execute("UPDATE compras.compra_adjunto SET anulado_en=now() WHERE id=%s", (a,))
+
+    def test_el_comprobante_no_se_borra_ni_se_edita_el_archivo(self, db, f, obra):
+        _, a = self._adjunto(db, f, obra)
+        with rechaza(db, RESTRICT, "SIGRO-R1"):
+            db.execute("DELETE FROM compras.compra_adjunto WHERE id=%s", (a,))
+        with rechaza(db, RESTRICT, "SIGRO-R1"):
+            db.execute("UPDATE compras.compra_adjunto SET sha256=%s WHERE id=%s", ("f" * 64, a))
+
+    def test_una_anulacion_no_se_deshace(self, db, f, obra):
+        _, a = self._adjunto(db, f, obra)
+        db.execute("UPDATE compras.compra_adjunto SET anulado_por=%s, anulado_en=now(), motivo_anulacion='Error' WHERE id=%s", (obra["residente"], a))
+        with rechaza(db, RESTRICT, "SIGRO-A1"):
+            db.execute("UPDATE compras.compra_adjunto SET anulado_por=NULL, anulado_en=NULL, motivo_anulacion=NULL WHERE id=%s", (a,))
+
+    def test_los_bytes_son_un_libro(self, db, f, obra):
+        _, a = self._adjunto(db, f, obra)
+        db.execute("INSERT INTO compras.compra_adjunto_contenido (adjunto_id, contenido) VALUES (%s, %s)", (a, b"%PDF-1"))
+        with rechaza(db, RESTRICT, "SIGRO-R1"):
+            db.execute("UPDATE compras.compra_adjunto_contenido SET contenido=%s WHERE adjunto_id=%s", (b"x", a))
+        with rechaza(db, RESTRICT, "SIGRO-R1"):
+            db.execute("DELETE FROM compras.compra_adjunto_contenido WHERE adjunto_id=%s", (a,))
 
 
 # ============================================================ solicitud de materiales (CR-04)

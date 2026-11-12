@@ -14,7 +14,7 @@ ESQUEMAS = ("obra", "catalogo", "compras", "tareo", "outbox")
 # Libros: se inserta y se lee. Nunca se actualiza.
 LIBROS = (
     "obra.proyecto_plazo_historial", "tareo.jornada", "compras.compra_detalle",
-    "compras.compra_adjunto", "compras.solicitud_linea", "compras.solicitud_correlativo",
+    "compras.compra_adjunto_contenido", "compras.solicitud_linea", "compras.solicitud_correlativo",
 )
 
 
@@ -106,7 +106,8 @@ class TestPermisosDeLaAplicacion:
         ("obra.proyecto", "fecha_fin"), ("obra.proyecto", "fecha_inicio"), ("obra.periodo", "fecha_fin"),
         ("obra.asignacion", "rol"), ("obra.dispositivo", "identificador"), ("catalogo.insumo", "codigo"),
         ("compras.compra", "total"), ("compras.compra", "base_imponible"), ("compras.proveedor", "ruc"),
-        ("compras.solicitud", "numero"), ("tareo.trabajador", "documento"), ("tareo.trabajador", "fecha_ingreso"),
+        ("compras.solicitud", "numero"), ("compras.compra_adjunto", "sha256"), ("compras.compra_adjunto", "archivo"),
+        ("compras.compra_adjunto", "tamano_bytes"), ("compras.compra_adjunto", "compra_id"), ("tareo.trabajador", "documento"), ("tareo.trabajador", "fecha_ingreso"),
     ])
     def test_columnas_que_la_aplicacion_nunca_edita(self, db, tabla, columna):
         assert not db.execute("SELECT has_column_privilege('sigro_app', %s, %s, 'UPDATE') AS p", (tabla, columna)).fetchone()["p"]
