@@ -100,3 +100,13 @@ def normalizar(texto: str) -> str:
 
 def _a_fecha(v) -> date:
     return v if isinstance(v, date) else date.fromisoformat(str(v)[:10])
+
+
+def exceso_sobre_requerido(requerido: Decimal | None, ya_recibido: Decimal, con_esta: Decimal) -> Decimal | None:
+    """HU-36. Cuánto pasa lo recibido de lo requerido por el S10 (HU-19), todo en la unidad del S10.
+
+    `None` si el insumo no está en el requerimiento: no hay nada que exceder y la recepción sigue normal. El requerimiento
+    avisa, no bloquea (regla 7): solo se exige el motivo, nunca se impide recibir."""
+    if requerido is None:
+        return None
+    return max(Decimal(str(ya_recibido)) + Decimal(str(con_esta)) - Decimal(str(requerido)), Decimal(0)).quantize(D4)

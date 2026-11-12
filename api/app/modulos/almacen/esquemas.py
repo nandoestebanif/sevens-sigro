@@ -66,6 +66,12 @@ class RecepcionIn(DesdeDispositivo):
     motivo_exceso: str | None = Field(None, max_length=300)
 
 
+class VerificacionIn(Estricto):
+    """HU-36. Lo mismo que se va a recibir (misma compra y mismas líneas que `RecepcionIn`), para avisar ANTES de guardar."""
+    compra_id: int = Field(ge=1)
+    lineas: list[LineaCantidad] | None = Field(None, min_length=1, max_length=500)
+
+
 class TrasladoIn(DesdeDispositivo):
     """HU-42. Destino: otro almacén de esta obra u otra obra (donde quien registra también esté asignado, regla 9)."""
     origen_almacen_id: int | None = Field(None, ge=1)
@@ -146,6 +152,24 @@ class RecepcionLineaOut(BaseModel):
     pendiente: Decimal
 
 
+class VerificacionLineaOut(BaseModel):
+    """Todo en la unidad del S10, que es la del requerimiento y la de los movimientos."""
+    insumo_id: int
+    insumo_codigo: str
+    unidad: str
+    requerido: Decimal | None        # None: el insumo no está en el requerimiento de la obra
+    ya_recibido: Decimal
+    con_esta: Decimal                # ya_recibido + lo que se recibe ahora
+    exceso: Decimal | None
+    excede: bool
+
+
+class VerificacionOut(BaseModel):
+    compra_id: int
+    hay_exceso: bool                 # si es True, recibir exige `motivo_exceso`
+    lineas: list[VerificacionLineaOut]
+
+
 class RecepcionOut(OperacionOut):
     compra_id: int
     lineas: list[RecepcionLineaOut]
@@ -176,6 +200,7 @@ class StockOut(BaseModel):
 
 
 class KardexFilaOut(MovimientoOut):
+    recepcion_motivo_exceso: str | None = None   # HU-36: la recepción pasó lo requerido y dejó este motivo
     revertido_por_id: int | None
     saldo_despues: Decimal
     promedio_despues: Decimal | None
