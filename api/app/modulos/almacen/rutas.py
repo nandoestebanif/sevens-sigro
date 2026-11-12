@@ -306,6 +306,63 @@ def _recepcion_out(s: Session, rec: dict, compra: dict, insumos: dict[int, dict]
             "lineas": _estado_recepcion(s, compra, insumos), "advertencias": list(advertencias)}
 
 
+def _pedido(estado: dict[int, dict], insumos: dict[int, dict], lineas) -> dict[int, Decimal]:
+    """Qué se va a recibir, en unidad de compra: lo pendiente si no hay líneas (recepción total), o lo que pide cada línea.
+    Las reglas de HU-35 (no recibir más de lo comprado, sin repetir insumos) viven aquí para la recepción y su verificación."""
+    if lineas is None:
+        pedir = {i: x["pendiente"] for i, x in estado.items() if x["pendiente"] > 0}
+        if not pedir:
+            raise ErrorSigro(409, "compra_ya_recibida", "Esa compra ya se recibió completa.")
+        return pedir
+    pedir: dict[int, Decimal] = {}
+    for l in lineas:
+        if l.insumo_id not in estado:
+            raise ErrorSigro(422, "insumo_no_comprado", f"El insumo {l.insumo_id} no está en esa compra.")
+        if l.insumo_id in pedir:
+            raise ErrorSigro(422, "datos_invalidos", "Un insumo aparece dos veces en la recepción.")
+        if l.cantidad > estado[l.insumo_id]["pendiente"]:
+            x = estado[l.insumo_id]
+            raise ErrorSigro(422, "recepcion_excede_compra", f"{insumos[l.insumo_id]['codigo']}: se compró {x['pedido']} "
+                             f"{x['unidad_compra']}, ya se recibió {x['recibido']} y quedan {x['pendiente']}; no se puede recibir {l.cantidad}.")
+        pedir[l.insumo_id] = l.cantidad
+    return pedir
+
+
+def _verificar(s: Session, obra_id: int, insumos: dict[int, dict], pedir: dict[int, Decimal]) -> list[dict]:
+    """HU-36: por insumo, lo requerido por el S10, lo ya recibido en la obra (de todas las compras, neto de reversos) y cuánto
+    pasaría con esta recepción. El servidor lo calcula siempre; la app solo avisa con lo que él devuelve (regla 2)."""
+    requerido = {r["insumo_id"]: Decimal(str(r["requerido"])) for r in
+                 internos.json_de(contexto.COMPRAS, "GET", f"/interno/obras/{obra_id}/requerido")}
+    ya = {r["insumo_id"]: r["recibido"] for r in filas(
+        s, """SELECT m.insumo_id, coalesce(sum(m.sentido * m.cantidad), 0) AS recibido
+                FROM almacen.movimiento m LEFT JOIN almacen.movimiento o ON o.id = m.revierte_a_id
+               WHERE m.proyecto_id = :p AND m.insumo_id = ANY(:ids) AND coalesce(o.tipo, m.tipo) = 'ingreso_compra'
+               GROUP BY m.insumo_id""", p=obra_id, ids=list(pedir))}
+    salida = []
+    for insumo_id, cant in pedir.items():
+        ins = insumos[insumo_id]
+        ahora = (cant * Decimal(str(ins["factor_conversion"]))).quantize(dom.D4)      # a la unidad del S10
+        antes = Decimal(str(ya.get(insumo_id, 0))).quantize(dom.D4)
+        req = requerido.get(insumo_id)
+        exceso = dom.exceso_sobre_requerido(req, antes, ahora)
+        salida.append({"insumo_id": insumo_id, "insumo_codigo": ins["codigo"], "unidad": ins["unidad_s10"],
+                       "requerido": req.quantize(dom.D4) if req is not None else None, "ya_recibido": antes,
+                       "con_esta": antes + ahora, "exceso": exceso, "excede": bool(exceso and exceso > 0)})
+    return salida
+
+
+@router.post("/recepciones/verificacion", response_model=e.VerificacionOut)
+def verificar_recepcion(d: e.VerificacionIn, a: Actor = Depends(exigir("recepcion.registrar"))):
+    """HU-36: avisa ANTES de guardar si lo que se va a recibir pasa lo requerido. No guarda nada; avisa, no bloquea (regla 7):
+    si hay exceso, `POST /recepciones` pide `motivo_exceso`."""
+    s = a.sesion
+    compra = _compra_de_la_obra(a, d.compra_id)
+    insumos = _insumos(s, [l["insumo_id"] for l in compra["lineas"]], para_registrar=False)
+    estado = {x["insumo_id"]: x for x in _estado_recepcion(s, compra, insumos)}
+    lineas = _verificar(s, a.obra_id, insumos, _pedido(estado, insumos, d.lineas))
+    return {"compra_id": compra["id"], "hay_exceso": any(x["excede"] for x in lineas), "lineas": lineas}
+
+
 @router.post("/recepciones", response_model=e.RecepcionOut, status_code=201)
 def registrar_recepcion(d: e.RecepcionIn, respuesta: Response, a: Actor = Depends(exigir("recepcion.registrar"))):
     """Total o parcial; varias recepciones hasta completar lo comprado y nunca más de lo comprado de cada insumo. Cada
@@ -325,22 +382,15 @@ def registrar_recepcion(d: e.RecepcionIn, respuesta: Response, a: Actor = Depend
     alm = _almacen(s, a.obra_id, d.almacen_id)
     s.execute(text("SELECT pg_advisory_xact_lock(hashtext('sigro.recepcion'), CAST(:c AS int))"), {"c": d.compra_id})
     estado = {x["insumo_id"]: x for x in _estado_recepcion(s, compra, insumos)}
-    if d.lineas is None:
-        pedir = {i: x["pendiente"] for i, x in estado.items() if x["pendiente"] > 0}
-        if not pedir:
-            raise ErrorSigro(409, "compra_ya_recibida", "Esa compra ya se recibió completa.")
-    else:
-        pedir = {}
-        for l in d.lineas:
-            if l.insumo_id not in estado:
-                raise ErrorSigro(422, "insumo_no_comprado", f"El insumo {l.insumo_id} no está en esa compra.")
-            if l.insumo_id in pedir:
-                raise ErrorSigro(422, "datos_invalidos", "Un insumo aparece dos veces en la recepción.")
-            if l.cantidad > estado[l.insumo_id]["pendiente"]:
-                x = estado[l.insumo_id]
-                raise ErrorSigro(422, "recepcion_excede_compra", f"{insumos[l.insumo_id]['codigo']}: se compró {x['pedido']} "
-                                 f"{x['unidad_compra']}, ya se recibió {x['recibido']} y quedan {x['pendiente']}; no se puede recibir {l.cantidad}.")
-            pedir[l.insumo_id] = l.cantidad
+    pedir = _pedido(estado, insumos, d.lineas)
+    verificacion = _verificar(s, a.obra_id, insumos, pedir)
+    advertencias: list[str] = []
+    if any(x["excede"] for x in verificacion):
+        codigos = ", ".join(x["insumo_codigo"] for x in verificacion if x["excede"])
+        if not (d.motivo_exceso and d.motivo_exceso.strip()):
+            raise ErrorSigro(422, "exceso_sin_motivo", f"Con esta recepción se pasa lo requerido ({codigos}): indica el motivo del exceso "
+                             "o recibe solo hasta lo requerido.")
+        advertencias.append(f"Se recibió más de lo requerido ({codigos}); queda el motivo en el kárdex.")
     periodo = _periodo(a.obra_id, d.hora_dispositivo_ms, False)
     rec = fila(s, "INSERT INTO almacen.recepcion (uuid_cliente, proyecto_id, almacen_id, compra_id, motivo_exceso, registrado_por, "
                   "dispositivo_id, fecha_dispositivo) VALUES (:u, :p, :a, :c, :m, :r, :d, :f) RETURNING id, uuid_cliente",
@@ -358,7 +408,7 @@ def registrar_recepcion(d: e.RecepcionIn, respuesta: Response, a: Actor = Depend
             recepcion_id=rec["id"], periodo_id=periodo, dispositivo_id=disp, registrado_por=a.usuario_id,
             fecha_dispositivo=_fecha_dispositivo(d.hora_dispositivo_ms)))
     _publicar(s, "almacen.recepcion_registrada", a.obra_id, nuevos)
-    return _recepcion_out(s, rec, compra, insumos)
+    return _recepcion_out(s, rec, compra, insumos, advertencias)
 
 
 @router.get("/compras/{compra_id}/recepcion", response_model=list[e.RecepcionLineaOut])
@@ -576,8 +626,9 @@ def kardex(insumo_id: int | None = Query(None, ge=1), almacen_id: int | None = Q
            a: Actor = Depends(exigir("stock.consultar"))):
     """Cada movimiento con el saldo y el promedio que dejó; se ve el anulado (`revertido_por_id`) y el que lo anuló."""
     cols = _COLS.replace("m.", "k.")
-    return filas(a.sesion, f"SELECT {cols}, k.revertido_por_id, k.saldo_despues, k.promedio_despues "
+    return filas(a.sesion, f"SELECT {cols}, r.motivo_exceso AS recepcion_motivo_exceso, k.revertido_por_id, k.saldo_despues, k.promedio_despues "
                            "FROM almacen.kardex k JOIN almacen.insumo_ref i ON i.id = k.insumo_id "
+                           "LEFT JOIN almacen.recepcion r ON r.id = k.recepcion_id "
                            "WHERE k.proyecto_id = :p AND (CAST(:i AS bigint) IS NULL OR k.insumo_id = :i) "
                            "AND (CAST(:a AS bigint) IS NULL OR k.almacen_id = :a) ORDER BY k.id LIMIT 2000",
                  p=a.obra_id, i=insumo_id, a=almacen_id)

@@ -290,6 +290,81 @@ def test_no_se_recibe_una_compra_de_otra_obra_ni_una_anulada(mundo, ob):
     assert r.status_code == 409 and r.json()["codigo"] == "compra_anulada"
 
 
+# ═══════════════════════════════════ HU-36 recepción que pasa lo requerido
+def _requerir(mundo, ob, insumo, cantidad):
+    """Lo requerido por el S10 para la obra (HU-19), en la unidad del S10."""
+    mundo.f.q1("INSERT INTO compras.requerimiento (proyecto_id, insumo_id, cantidad_planificada, precio_planificado, creado_por) "
+               "VALUES (%s, %s, %s, 10, %s) RETURNING id", (ob["proyecto"], insumo, cantidad, ob["residente"]))
+
+
+def _recibir(mundo, ob, c, **kw):
+    return post(mundo, f"/obras/{ob['proyecto']}/almacen/recepciones", ob["almacenero"], uuid_cliente=kw.pop("uuid", str(uuid.uuid4())),
+                compra_id=c, **kw)
+
+
+def test_la_verificacion_avisa_el_exceso_antes_de_guardar_y_no_guarda_nada(mundo, ob):
+    _requerir(mundo, ob, ob["cem"], 300)
+    c = _compra(mundo, ob, ob["cem"], 400, "29.23")
+    r = post(mundo, f"/obras/{ob['proyecto']}/almacen/recepciones/verificacion", ob["almacenero"], compra_id=c)
+    assert r.status_code == 200, r.text
+    v = r.json()
+    assert v["hay_exceso"] is True and len(v["lineas"]) == 1
+    l = v["lineas"][0]
+    assert (D(l["requerido"]), D(l["ya_recibido"]), D(l["con_esta"]), D(l["exceso"]), l["excede"]) == (D("300"), D("0"), D("400"), D("100"), True)
+    assert saldo(mundo, ob) is None                                       # verificar no mueve el libro
+
+
+def test_pasarse_de_lo_requerido_exige_motivo_y_con_motivo_se_recibe_y_queda_en_el_kardex(mundo, ob):
+    _requerir(mundo, ob, ob["cem"], 300)
+    c = _compra(mundo, ob, ob["cem"], 400, "29.23")
+    r = _recibir(mundo, ob, c)
+    assert r.status_code == 422 and r.json()["codigo"] == "exceso_sin_motivo"
+    assert saldo(mundo, ob) is None                                       # el rechazo no deja nada a medias
+    u = str(uuid.uuid4())
+    r = _recibir(mundo, ob, c, uuid=u, motivo_exceso="Desperdicio por lluvia en el vaciado")
+    assert r.status_code == 201, r.text
+    assert r.json()["advertencias"] and saldo(mundo, ob)[0] == D("400")  # avisa, no bloquea (regla 7)
+    k = get(mundo, f"/obras/{ob['proyecto']}/almacen/kardex", ob["gerente"], insumo_id=ob["cem"]).json()
+    assert k[0]["recepcion_motivo_exceso"] == "Desperdicio por lluvia en el vaciado"
+    otra = _recibir(mundo, ob, c, uuid=u)                                 # el reenvío de la cola no vuelve a pedir motivo (R3)
+    assert otra.status_code == 200 and otra.json()["id"] == r.json()["id"]
+
+
+def test_dentro_de_lo_requerido_o_sin_requerimiento_no_se_pide_motivo(mundo, ob):
+    _requerir(mundo, ob, ob["cem"], 500)
+    c = _compra(mundo, ob, ob["cem"], 400, "29.23")
+    v = post(mundo, f"/obras/{ob['proyecto']}/almacen/recepciones/verificacion", ob["almacenero"], compra_id=c).json()
+    assert v["hay_exceso"] is False and D(v["lineas"][0]["exceso"]) == 0
+    assert _recibir(mundo, ob, c).status_code == 201
+    c2 = _compra(mundo, ob, ob["acero"], 10, "35.40", unidad="var", base=D("354.00"), total=D("417.72"))   # el acero no está en el requerimiento
+    v = post(mundo, f"/obras/{ob['proyecto']}/almacen/recepciones/verificacion", ob["almacenero"], compra_id=c2).json()
+    assert v["hay_exceso"] is False and v["lineas"][0]["requerido"] is None and v["lineas"][0]["exceso"] is None
+    assert _recibir(mundo, ob, c2).status_code == 201
+
+
+def test_el_exceso_del_acero_se_mide_en_kg_aunque_se_compre_en_varillas(mundo, ob):
+    _requerir(mundo, ob, ob["acero"], 5000)                               # kg del S10
+    c = _compra(mundo, ob, ob["acero"], 800, "35.40", unidad="var", base=D("28320.00"), total=D("33417.60"))   # 800 var × 7,12 = 5 696 kg
+    l = post(mundo, f"/obras/{ob['proyecto']}/almacen/recepciones/verificacion", ob["almacenero"], compra_id=c).json()["lineas"][0]
+    assert l["unidad"] == "kg" and D(l["con_esta"]) == D("5696") and D(l["exceso"]) == D("696")
+    assert _recibir(mundo, ob, c, lineas=[{"insumo_id": ob["acero"], "cantidad": "700"}]).status_code == 201   # 4 984 kg: dentro
+
+
+def test_lo_ya_recibido_de_otras_compras_cuenta_para_el_exceso(mundo, ob):
+    _requerir(mundo, ob, ob["cem"], 300)
+    assert _recibir(mundo, ob, _compra(mundo, ob, ob["cem"], 250, "29.23")).status_code == 201
+    c2 = _compra(mundo, ob, ob["cem"], 100, "29.23")
+    v = post(mundo, f"/obras/{ob['proyecto']}/almacen/recepciones/verificacion", ob["almacenero"], compra_id=c2).json()["lineas"][0]
+    assert D(v["ya_recibido"]) == D("250") and D(v["exceso"]) == D("50") and v["excede"] is True
+
+
+def test_la_verificacion_se_rechaza_en_otra_obra(mundo, ob):
+    otra = mundo.f.obra_completa()
+    c = _compra(mundo, {"proyecto": otra["proyecto"], "residente": otra["residente"]}, ob["cem"], 10, "10")
+    r = post(mundo, f"/obras/{ob['proyecto']}/almacen/recepciones/verificacion", ob["almacenero"], compra_id=c)
+    assert r.status_code == 404                                           # R9: el alcance es la obra
+
+
 # ═══════════════════════════════════ HU-42 traslado
 def test_traslado_entre_obras_lleva_el_costo_y_se_anula_con_dos_reversos(mundo, ob):
     otra = mundo.f.obra_completa()
