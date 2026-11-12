@@ -195,13 +195,13 @@ export function Proveedores() {
                   <td style={{ padding: '12px 18px' }}>
                     <Chip tono={ESTADO[p.estado].tono}>{ESTADO[p.estado].texto}</Chip>
                   </td>
-                  <td className="n" style={{ padding: '12px 18px', fontSize: 13, color: 'var(--tinta-2)', textAlign: 'right' }}>
+                  <td className="n" style={{ padding: '12px 18px', fontSize: 13, color: 'var(--tinta-2)', textAlign: 'right', whiteSpace: 'nowrap' }}>
                     {p.diasEntrega == null ? '—' : `${p.diasEntrega} días`}
                   </td>
                   <td className="n" style={{ padding: '12px 18px', fontSize: 13, color: 'var(--tinta-2)', textAlign: 'right' }}>
                     {p.comprasRegistradas}
                   </td>
-                  <td className="n" style={{ padding: '12px 18px', fontSize: 13, color: 'var(--tinta-2)', textAlign: 'right' }}>
+                  <td className="n" style={{ padding: '12px 18px', fontSize: 13, color: 'var(--tinta-2)', textAlign: 'right', whiteSpace: 'nowrap' }}>
                     {p.ultimaCompra ?? '—'}
                   </td>
                 </tr>

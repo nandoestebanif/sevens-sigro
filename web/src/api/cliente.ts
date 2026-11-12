@@ -20,7 +20,7 @@ import type {
 } from './tipos'
 
 import { ErrorApi } from './error'
-import { catalogoHttp, obrasHttp, proveedoresHttp, reposicionHttp, usaApiReal } from './http'
+import { catalogoHttp, comprasHttp, obrasHttp, proveedoresHttp, reposicionHttp, usaApiReal } from './http'
 export { ErrorApi }
 
 export interface ClienteSigro {
@@ -823,6 +823,10 @@ class ClienteHttp extends ClienteSimulado {
   override cargarRequerimiento(filas: { insumoCodigo: string; cantidad: number; precio: number }[]) {
     return reposicionHttp.cargarRequerimiento(filas)
   }
+  override registrarCompra(datos: { proveedorId: string; tipoComprobante: TipoComprobante; numeroComprobante: string; fecha: string; lineas: LineaCompra[] }) {
+    return comprasHttp.registrar(datos)
+  }
+  override listarCompras() { return comprasHttp.listar() }
 }
 
 export const api: ClienteSigro = usaApiReal ? new ClienteHttp() : new ClienteSimulado()
