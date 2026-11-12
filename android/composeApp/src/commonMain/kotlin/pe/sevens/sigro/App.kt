@@ -23,7 +23,19 @@ import org.koin.compose.viewmodel.koinViewModel
 import pe.sevens.sigro.plataforma.ManejarAtras
 import pe.sevens.sigro.ui.pantallas.Destino
 import pe.sevens.sigro.ui.pantallas.EstadoRaiz
+import pe.sevens.sigro.ui.pantallas.PantallaAsistencia
+import pe.sevens.sigro.ui.pantallas.PantallaCatalogo
+import pe.sevens.sigro.ui.pantallas.PantallaEntrada
+import pe.sevens.sigro.ui.pantallas.PantallaIngresoSinCompra
+import pe.sevens.sigro.ui.pantallas.PantallaStock
+import pe.sevens.sigro.ui.pantallas.PantallaTraslado
+import pe.sevens.sigro.ui.pantallas.PantallaTrabajadorNuevo
+import pe.sevens.sigro.ui.pantallas.PantallaTrabajadores
+import pe.sevens.sigro.ui.pantallas.PantallaCierre
+import pe.sevens.sigro.ui.pantallas.PantallaConteo
 import pe.sevens.sigro.ui.pantallas.PantallaDispositivo
+import pe.sevens.sigro.ui.pantallas.PantallaFichaInsumo
+import pe.sevens.sigro.ui.pantallas.PantallaInsumoNuevo
 import pe.sevens.sigro.ui.pantallas.PantallaEntrar
 import pe.sevens.sigro.ui.pantallas.PantallaInicio
 import pe.sevens.sigro.ui.pantallas.PantallaObras
@@ -68,8 +80,8 @@ fun App() {
 }
 
 /**
- * Navegación dentro de la obra: una pila simple. Son cuatro pantallas; una librería de
- * navegación entra cuando haya más (Sprint 2: recepción, stock, tareo).
+ * Navegación dentro de la obra: una pila simple de [Destino]. Cada pantalla recibe `irA` para abrir
+ * otra y `volver` para cerrarse; el botón atrás del sistema hace lo mismo.
  */
 @Composable
 private fun Navegacion(e: EstadoRaiz.Dentro) {
@@ -78,12 +90,25 @@ private fun Navegacion(e: EstadoRaiz.Dentro) {
     val volver: () -> Unit = { if (pila.size > 1) pila.removeAt(pila.lastIndex) }
     ManejarAtras(activo = pila.size > 1, alVolver = volver)
 
+    val irA: (Destino) -> Unit = { pila.add(it) }
     AnimatedContent(actual, transitionSpec = { fadeIn() togetherWith fadeOut() }) { d ->
         when (d) {
-            Destino.Inicio -> PantallaInicio(e.sesion, e.obra, irA = { pila.add(it) })
+            Destino.Inicio -> PantallaInicio(e.sesion, e.obra, irA = irA)
             Destino.Salida -> PantallaSalida(e.obra.id, alVolver = volver)
             Destino.Pendientes -> PantallaPendientes(e.obra.id, alVolver = volver)
-            Destino.Dispositivo -> PantallaDispositivo(e.obra.id, alVolver = volver)
+            Destino.Dispositivo -> PantallaDispositivo(e.obra.id, alVolver = volver, obraNombre = e.obra.nombre)
+            Destino.Catalogo -> PantallaCatalogo(alVolver = volver, alAbrir = { irA(Destino.Ficha(it)) }, alNuevo = { irA(Destino.InsumoNuevo) })
+            is Destino.Ficha -> PantallaFichaInsumo(d.insumo, alVolver = volver, alVerStock = { irA(Destino.Stock) })
+            Destino.InsumoNuevo -> PantallaInsumoNuevo(alVolver = volver, alAbrir = { volver(); irA(Destino.Ficha(it)) })
+            Destino.Trabajadores -> PantallaTrabajadores(e.obra.id, e.obra.nombre, alVolver = volver, irA = irA)
+            Destino.TrabajadorNuevo -> PantallaTrabajadorNuevo(e.obra.id, alVolver = volver)
+            Destino.Asistencia -> PantallaAsistencia(e.obra.id, alVolver = volver, alRegistros = { irA(Destino.Pendientes) })
+            Destino.Stock -> PantallaStock(e.obra.id, alVolver = volver)
+            Destino.Entrada -> PantallaEntrada(e.obra.id, alVolver = volver)
+            Destino.IngresoSinCompra -> PantallaIngresoSinCompra(e.obra.id, alVolver = volver)
+            Destino.Traslado -> PantallaTraslado(e.obra.id, e.obra.nombre, e.sesion.obras, alVolver = volver)
+            Destino.Conteo -> PantallaConteo(e.obra.id, alVolver = volver)
+            Destino.Cierre -> PantallaCierre(e.obra.id, e.obra.nombre, alVolver = volver)
         }
     }
 }

@@ -26,8 +26,8 @@ import { ErrorApi, api } from '../api/cliente'
 import type { InsumoMaestro } from '../api/tipos'
 import { Campo, Chip, Modal, Vacio } from '../ui/base'
 import { Chips, Encabezado, Fondo, Pildora, TituloSeccion, Vidrio } from '../ui/vidrio'
+import { FilasVirtuales, type MedirFila } from '../ui/FilasVirtuales'
 
-const PASO = 60
 const CORTAS = new Set(['DE', 'LA', 'EL', 'Y', 'A', 'EN', 'SIN', 'CON', 'POR', 'DEL', 'LOS', 'LAS'])
 
 /** MAYÚSCULAS → caja amable: baja las palabras comunes y conserva siglas,
@@ -132,10 +132,10 @@ function AltaInsumo({ unidades, editando, enCerrar, enListo }: {
           error={error?.campo === 'nombre' ? error.texto : undefined}
         />
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
-          <div style={{ flex: '1 1 160px' }}>
+          <div style={{ flex: '1 1 160px', minWidth: 0 }}>
             <Campo id="ins-medida" etiqueta="Medida (si el tipo la lleva)" valor={medida} enCambio={setMedida} marcador="p. ej. 1/2¨ x 9 m" deshabilitado={!!editando} />
           </div>
-          <div style={{ flex: '1 1 160px' }}>
+          <div style={{ flex: '1 1 160px', minWidth: 0 }}>
             <Campo id="ins-marca" etiqueta="Marca (opcional)" valor={marca} enCambio={setMarca} marcador="p. ej. SIKA" />
           </div>
         </div>
@@ -182,7 +182,6 @@ export function Catalogo() {
   const [maestro, setMaestro] = useState<InsumoMaestro[] | null>(null)
   const [busqueda, setBusqueda] = useState('')
   const [um, setUm] = useState('todas')
-  const [tope, setTope] = useState(PASO)
   const [editando, setEditando] = useState<InsumoMaestro | null>(null)
   const [viendo, setViendo] = useState<InsumoMaestro | null>(null)
   const [altaAbierta, setAltaAbierta] = useState(false)
@@ -204,8 +203,6 @@ export function Catalogo() {
       (um === 'todas' || i.um === um) &&
       (!q || i.nombre.toLowerCase().includes(q) || i.medida.toLowerCase().includes(q) || i.codigo.includes(q)))
   }, [maestro, busqueda, um])
-
-  const recorte = visibles.slice(0, tope)
 
   // seguridad: un texto que empieza con = + - @ se neutraliza con apóstrofo,
   // para que Excel no lo ejecute como fórmula al abrir el CSV
@@ -280,7 +277,7 @@ export function Catalogo() {
               </svg>
               <input
                 value={busqueda}
-                onChange={(e) => { setBusqueda(e.target.value); setTope(PASO) }}
+                onChange={(e) => { setBusqueda(e.target.value) }}
                 placeholder="Buscar por nombre o código…"
                 aria-label="Buscar insumo por nombre o código"
                 className="foco-vidrio"
@@ -290,7 +287,7 @@ export function Catalogo() {
             <select
               aria-label="Filtrar por unidad de medida"
               value={um}
-              onChange={(e) => { setUm(e.target.value); setTope(PASO) }}
+              onChange={(e) => { setUm(e.target.value) }}
               className="campo"
               style={{ flex: '0 1 240px', height: 52, borderRadius: 26, fontWeight: 600, fontSize: 14 }}
             >
@@ -305,31 +302,28 @@ export function Catalogo() {
             <Vacio titulo="Ningún insumo coincide" detalle="Prueba con otro nombre u otro código, o agrégalo al catálogo." />
           ) : (
             <div style={{ overflowX: 'auto' }}>
-              <table className="tabla-vidrio">
+              <table className="tabla-vidrio" style={{ tableLayout: 'fixed', minWidth: 860 }}>
+                {/* anchos fijos: con la lista virtual las filas entran y salen, y sin esto las columnas bailarían */}
+                <colgroup>
+                  <col style={{ width: 100 }} /><col /><col style={{ width: 120 }} /><col style={{ width: 130 }} /><col style={{ width: 140 }} /><col style={{ width: 170 }} />
+                </colgroup>
                 <thead>
                   <tr>
                     <th>Código</th><th>Insumo</th><th>Unidad</th><th>Marca</th>
                     <th className="n">Precio promedio</th><th style={{ textAlign: 'right' }}>Acciones</th>
                   </tr>
                 </thead>
-                <tbody>
-                  {recorte.map((ins) => (
-                    <FilaInsumo
-                      key={ins.codigo}
-                      insumo={ins}
-                      enVer={() => setViendo(ins)}
-                      enEditar={() => { setEditando(ins); setAltaAbierta(true) }}
-                    />
-                  ))}
-                </tbody>
+                {/* las 2 243 filas, pero en el DOM solo las que se ven (antes: de 60 en 60 con «Mostrar 60 más») */}
+                <FilasVirtuales items={visibles} columnas={6} fila={(ins, _i, medir) => (
+                  <FilaInsumo
+                    key={ins.codigo}
+                    insumo={ins}
+                    medir={medir}
+                    enVer={() => setViendo(ins)}
+                    enEditar={() => { setEditando(ins); setAltaAbierta(true) }}
+                  />
+                )} />
               </table>
-            </div>
-          )}
-          {visibles.length > tope && (
-            <div style={{ paddingTop: 6, display: 'flex', justifyContent: 'center' }}>
-              <Pildora tipo="secundario" enClic={() => setTope(tope + PASO)}>
-                Mostrar 60 más · van {recorte.length.toLocaleString('es-PE')} de {visibles.length.toLocaleString('es-PE')}
-              </Pildora>
             </div>
           )}
         </Vidrio>
@@ -358,9 +352,9 @@ export function Catalogo() {
 
 /** Una fila del catálogo. Va aparte para que la lista pueda virtualizarse
     (envolver las filas) sin tocar cómo se dibuja cada una. */
-function FilaInsumo({ insumo: ins, enVer, enEditar }: { insumo: InsumoMaestro; enVer: () => void; enEditar: () => void }) {
+function FilaInsumo({ insumo: ins, medir, enVer, enEditar }: { insumo: InsumoMaestro; medir: MedirFila; enVer: () => void; enEditar: () => void }) {
   return (
-    <tr>
+    <tr {...medir}>
       <td className="n" style={{ fontWeight: 800, color: 'var(--marca-tinte-tinta)', textAlign: 'left', width: 70 }}>{ins.codigo}</td>
       <td style={{ fontWeight: 600, minWidth: 240 }}>
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>

@@ -3,14 +3,42 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass
+from decimal import Decimal
+
+from app import contexto
 
 _DEV_SECRET = "solo-para-desarrollo-no-usar-en-produccion-0123456789"
+_DEV_DB = "postgresql+psycopg://sigro_api:sigro_api_dev@localhost:5432/sigro_dev"
+
+
+def un_proceso() -> bool:
+    """Ambiente de pruebas en un nodo (ADR-10): todos los servicios son apps ASGI dentro del MISMO proceso."""
+    return os.environ.get("SIGRO_UN_PROCESO") == "1"
+
+
+def url_de_base() -> str:
+    """La cadena de conexión del servicio que atiende la petición en curso.
+
+    Con un proceso por servicio (producción, docker-compose) es `SIGRO_APP_DATABASE_URL`, la única que ese proceso
+    recibe. En el nodo único todas las apps comparten el entorno: cada una usa `SIGRO_DB_<SERVICIO>` según
+    `contexto.SERVICIO` (lo fija el middleware de cada app; el relevo NO tiene petición HTTP: su contexto lo fija el
+    lanzador del nodo único, `infra/un_nodo/un_proceso.py`, antes de cada vuelta). Sin servicio, o sin su
+    variable, falla: nunca se cae a la cadena de otro servicio. El mensaje no incluye la cadena.
+    """
+    if not un_proceso():
+        return os.environ.get("SIGRO_APP_DATABASE_URL", _DEV_DB)
+    servicio = contexto.actual()
+    if not servicio:
+        raise RuntimeError("nodo único: se pidió la base fuera de un servicio (contexto.SERVICIO vacío)")
+    variable = f"SIGRO_DB_{servicio.upper()}"
+    url = os.environ.get(variable)
+    if not url:
+        raise RuntimeError(f"nodo único: falta {variable} para el servicio {servicio}")
+    return url
 
 
 @dataclass(frozen=True)
 class Config:
-    # La aplicación se conecta como un usuario MIEMBRO de sigro_app (sin UPDATE/DELETE sobre libros).
-    database_url: str
     jwt_secret: str
     jwt_horas: int
     entorno: str
@@ -19,6 +47,13 @@ class Config:
     servicio_token: str | None
     intentos_max: int
     bloqueo_minutos: int
+    limite_precio_pct: Decimal = Decimal("10")   # HU-33: cuánto puede apartarse el precio del promedio (D13)
+
+    @property
+    def database_url(self) -> str:
+        """Se resuelve al usarse (no al cargar): en el nodo único depende del servicio de la petición en curso.
+        La aplicación se conecta como un usuario MIEMBRO de sigro_app (sin UPDATE/DELETE sobre libros)."""
+        return url_de_base()
 
     @property
     def es_dev(self) -> bool:
@@ -35,10 +70,6 @@ def cargar() -> Config:
     if entorno != "dev" and len(secreto) < 32:
         raise RuntimeError("SIGRO_JWT_SECRET debe tener al menos 32 caracteres")
     return Config(
-        database_url=os.environ.get(
-            "SIGRO_APP_DATABASE_URL",
-            "postgresql+psycopg://sigro_api:sigro_api_dev@localhost:5432/sigro_dev",
-        ),
         jwt_secret=secreto,
         jwt_horas=int(os.environ.get("SIGRO_JWT_HORAS", "8")),
         entorno=entorno,
@@ -47,4 +78,5 @@ def cargar() -> Config:
         servicio_token=os.environ.get("SIGRO_SERVICIO_TOKEN") or None,
         intentos_max=int(os.environ.get("SIGRO_INTENTOS_MAX", "5")),
         bloqueo_minutos=int(os.environ.get("SIGRO_BLOQUEO_MINUTOS", "15")),
+        limite_precio_pct=Decimal(os.environ.get("SIGRO_LIMITE_PRECIO_PCT", "10")),
     )

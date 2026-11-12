@@ -30,8 +30,8 @@ URL = os.environ.get(
 
 target_metadata = Base.metadata
 
-# Esquemas que este repositorio administra. almacen y costo son de Henry y no se
-# comparan aquí: si aparecieran en la base, `alembic check` no debe tocarlos.
+# Esquemas con modelos SQLAlchemy que `alembic check` compara. almacen y costo (0010) se escriben solo con SQL
+# (libros, vistas y disparadores) y no tienen modelos: no se comparan.
 ESQUEMAS = {"obra", "catalogo", "compras", "tareo", "outbox"}
 
 

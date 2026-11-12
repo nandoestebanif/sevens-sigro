@@ -1,12 +1,14 @@
 /* SIGRO · armazón de la web de oficina: menú lateral de vidrio (lienzo «SIGRO Oficina · Web»), obra activa y rutas. */
-import { Component, useEffect, useState, type ReactNode } from 'react'
-import { HashRouter, NavLink, Navigate, Route, Routes } from 'react-router-dom'
+import { Component, Suspense, lazy, useEffect, useState, type ReactNode } from 'react'
+import { HashRouter, NavLink, Navigate, Route, Routes, useLocation } from 'react-router-dom'
+import { alternarGrupo, grupoDeRuta } from './menu'
 import { api } from './api/cliente'
 import { cerrarSesion, sesionActual, usaApiReal } from './api/http'
 import { Entrar } from './paginas/Entrar'
+import { esAdministrador } from './paginas/administracion/reglas'
 import type { Obra, ObraActiva } from './api/tipos'
-import logo from './assets/sevens-logo.png'
-import logoBlanco from './assets/sevens-logo-blanco.png'
+import logo from './assets/sevens-logo.webp'   // 165×116: el doble de los 58 px de alto que ocupa (pantallas 2x)
+import logoBlanco from './assets/sevens-logo-blanco.webp'
 
 const ROLES: Record<string, string> = {
   residente: 'Residente de obra', administrador: 'Administrador', gerente: 'Gerente',
@@ -51,16 +53,23 @@ class GuardianErrores extends Component<{ children: ReactNode }, { error: Error 
     )
   }
 }
-import { Accesos } from './paginas/Accesos'
-import { Catalogo } from './paginas/Catalogo'
-import { Compras } from './paginas/Compras'
-import { Importar } from './paginas/Importar'
-import { Movimientos } from './paginas/Movimientos'
-import { Obras } from './paginas/Obra'
-import { Parametros } from './paginas/Parametros'
-import { Proveedores } from './paginas/Proveedores'
-import { Reposicion } from './paginas/Reposicion'
-import { Tablero } from './paginas/Tablero'
+
+/* Cada pantalla es su propio trozo de JS (React.lazy): la web arranca con el armazón y baja
+   solo la pantalla que se abre. Las páginas exportan con nombre; lazy pide `default`. */
+const Administracion = lazy(() => import('./paginas/Administracion').then((m) => ({ default: m.Administracion })))
+const Catalogo = lazy(() => import('./paginas/Catalogo').then((m) => ({ default: m.Catalogo })))
+const Compras = lazy(() => import('./paginas/Compras').then((m) => ({ default: m.Compras })))
+const Importar = lazy(() => import('./paginas/Importar').then((m) => ({ default: m.Importar })))
+const Movimientos = lazy(() => import('./paginas/Movimientos').then((m) => ({ default: m.Movimientos })))
+const Obras = lazy(() => import('./paginas/Obra').then((m) => ({ default: m.Obras })))
+const Parametros = lazy(() => import('./paginas/Parametros').then((m) => ({ default: m.Parametros })))
+const Proveedores = lazy(() => import('./paginas/Proveedores').then((m) => ({ default: m.Proveedores })))
+const Reposicion = lazy(() => import('./paginas/Reposicion').then((m) => ({ default: m.Reposicion })))
+const Tablero = lazy(() => import('./paginas/Tablero').then((m) => ({ default: m.Tablero })))
+
+const CargandoPantalla = () => (
+  <p role="status" style={{ fontSize: 13, color: 'var(--tinta-3)', padding: '24px 4px' }}>Cargando la pantalla…</p>
+)
 
 /* Íconos del menú: trazo simple, heredan el color del texto. */
 const Icono = ({ d, tam = 16 }: { d: string; tam?: number }) => (
@@ -77,8 +86,15 @@ const ICONOS = {
   catalogo: 'M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z|M3.3 7 12 12l8.7-5|M12 22V12',
   importar: 'M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4|M7 8l5-5 5 5|M12 3v12',
   parametros: 'M4 21v-7|M4 10V3|M12 21v-9|M12 8V3|M20 21v-5|M20 12V3|M1 14h6|M9 8h6|M17 16h6',
-  accesos: 'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2|M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8|M17 2h4v7h-4z|M19 7v.01',
   obra: 'M3 21h18|M5 21V7l7-4 7 4v14|M9 21v-4h6v4|M9 10h.01|M15 10h.01|M9 14h.01|M15 14h.01',
+  administracion: 'M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10|M9 12l2 2 4-4',
+}
+
+/* Solo para el administrador de la obra activa (HU-13, HU-14, HU-15). Esconderla es comodidad:
+   la API verifica el rol en cada petición y responde 403 si no corresponde. */
+const GRUPO_ADMINISTRACION: (typeof GRUPOS)[number] = {
+  rotulo: 'Administración',
+  items: [{ ruta: '/administracion', nombre: 'Administración', icono: 'administracion' }],
 }
 
 const GRUPOS: { rotulo: string; items: { ruta: string; nombre: string; icono: keyof typeof ICONOS }[] }[] = [
@@ -98,7 +114,7 @@ const GRUPOS: { rotulo: string; items: { ruta: string; nombre: string; icono: ke
       // costo total (gastos generales, subcontratos y planilla quedan fuera)
       { ruta: '/tablero', nombre: 'Gasto en recursos', icono: 'tablero' },
       { ruta: '/reposicion', nombre: 'Reposición', icono: 'reposicion' },
-      { ruta: '/parametros', nombre: 'Parámetros de reposición', icono: 'parametros' },
+      { ruta: '/parametros', nombre: 'Reposición: parámetros', icono: 'parametros' },
     ],
   },
   {
@@ -115,10 +131,6 @@ const GRUPOS: { rotulo: string; items: { ruta: string; nombre: string; icono: ke
   {
     rotulo: 'Catálogo',
     items: [{ ruta: '/catalogo', nombre: 'Catálogo de insumos', icono: 'catalogo' }],
-  },
-  {
-    rotulo: 'Administración',
-    items: [{ ruta: '/accesos', nombre: 'Usuarios y celulares', icono: 'accesos' }],
   },
 ]
 
@@ -225,6 +237,51 @@ function PanelAccesibilidad() {
   )
 }
 
+/* Secciones del menú en acordeón: cada área es un botón que se abre al tocarlo, una a la vez, y al
+   entrar está abierta la de la pantalla actual. Así el menú cabe sin scroll (también a 125 %).
+   En angosto (menú arriba, en una fila) se ven todas las opciones y los botones de área no aparecen. */
+function MenuSecciones({ grupos }: { grupos: typeof GRUPOS }) {
+  const { pathname } = useLocation()
+  const actual = grupoDeRuta(grupos, pathname)
+  const [abierto, setAbierto] = useState<string | null>(actual)
+  // al llegar a una pantalla de otra área (por un enlace o con «atrás»), se abre esa área
+  useEffect(() => { if (actual) setAbierto(actual) }, [actual])
+
+  return (
+    <nav aria-label="Secciones" className="menu-grupos">
+      {grupos.map((g, i) => {
+        const abre = abierto === g.rotulo
+        const idLista = `menu-area-${i}`
+        return (
+          <div key={g.rotulo} className="menu-grupo" data-abierto={abre || undefined}>
+            <button
+              type="button"
+              className="menu-area"
+              aria-expanded={abre}
+              aria-controls={idLista}
+              onClick={() => setAbierto((x) => alternarGrupo(x, g.rotulo))}
+            >
+              <span className="menu-area-texto">{g.rotulo}</span>
+              {actual === g.rotulo && !abre && <span className="menu-area-punto" aria-label="(pantalla actual)" />}
+              <svg className="menu-area-flecha" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="m6 9 6 6 6-6" />
+              </svg>
+            </button>
+            <div id={idLista} className="menu-area-lista" hidden={!abre}>
+              {g.items.map((s) => (
+                <NavLink key={s.ruta} to={s.ruta} className="menu-enlace" title={s.nombre}>
+                  <Icono d={ICONOS[s.icono]} tam={19} />
+                  <span className="menu-enlace-texto">{s.nombre}</span>
+                </NavLink>
+              ))}
+            </div>
+          </div>
+        )
+      })}
+    </nav>
+  )
+}
+
 /** HT-04: con la API real primero se entra; con el cliente simulado no hace falta */
 export default function App() {
   const [sesion, setSesion] = useState(() => sesionActual())
@@ -259,14 +316,17 @@ function Sistema() {
 
   const sesion = sesionActual()
   const rol = sesion?.obras.find((o) => String(o.id) === obra?.id)?.rol ?? sesion?.obras[0]?.rol
+  const grupos = usaApiReal && esAdministrador(sesion, obra?.id) ? [...GRUPOS, GRUPO_ADMINISTRACION] : GRUPOS
 
   return (
     <HashRouter>
       <div className="armazon">
         <aside aria-label="Menú principal" className="vidrio-fuerte menu-lateral">
+          {/* cabecera fija: el logo y la obra activa siempre a la vista; solo la lista de opciones se desplaza */}
+          <div className="menu-cabecera">
           <NavLink to="/tablero" aria-label="SIGRO · inicio" style={{ display: 'flex', justifyContent: 'center', padding: '2px 0 4px' }}>
-            <img src={logo} alt="SEVEN'S Ingenieros SAC" className="solo-claro" style={{ height: 58, width: 'auto' }} />
-            <img src={logoBlanco} alt="SEVEN'S Ingenieros SAC" className="solo-oscuro" style={{ height: 58, width: 'auto' }} />
+            <img src={logo} alt="SEVEN'S Ingenieros SAC" className="solo-claro" width={83} height={58} decoding="async" style={{ height: 58, width: 'auto' }} />
+            <img src={logoBlanco} alt="SEVEN'S Ingenieros SAC" className="solo-oscuro" width={83} height={58} decoding="async" style={{ height: 58, width: 'auto' }} />
           </NavLink>
 
           <div className="vidrio" style={{ borderRadius: 18, padding: '10px 12px', display: 'flex', alignItems: 'center', gap: 10, boxShadow: 'none' }}>
@@ -298,35 +358,24 @@ function Sistema() {
               </span>
             </div>
           </div>
+          </div>
 
-          <nav aria-label="Secciones" className="menu-grupos">
-            {GRUPOS.map((g) => (
-              <div key={g.rotulo} className="menu-grupo">
-                <span className="menu-grupo-rotulo">{g.rotulo}</span>
-                {g.items.map((s) => (
-                  <NavLink key={s.ruta} to={s.ruta} className="menu-enlace">
-                    <Icono d={ICONOS[s.icono]} tam={19} />
-                    {s.nombre}
-                  </NavLink>
-                ))}
-              </div>
-            ))}
-          </nav>
+          <MenuSecciones grupos={grupos} />
 
           {usaApiReal && sesion && (
-            <div style={{ marginTop: 'auto', borderTop: '1px solid var(--separador)', padding: '14px 6px 0', display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div className="menu-pie">
               <span aria-hidden style={{ width: 40, height: 40, borderRadius: 20, background: 'var(--aviso-tinte)', color: 'var(--aviso)', display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 'none', fontWeight: 800 }}>
                 {sesion.usuario.nombre.trim().charAt(0).toUpperCase()}
               </span>
               <span style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
-                <span style={{ fontSize: 14, fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{sesion.usuario.nombre}</span>
-                {rol && <span style={{ fontSize: 12, color: 'var(--tinta-2)' }}>{ROLES[rol] ?? rol}</span>}
+                <span className="texto-corto" title={sesion.usuario.nombre} style={{ fontSize: 14, fontWeight: 700 }}>{sesion.usuario.nombre}</span>
+                {rol && <span className="texto-corto" style={{ fontSize: 12, color: 'var(--tinta-2)' }}>{ROLES[rol] ?? rol}</span>}
               </span>
               <button
-                type="button" onClick={cerrarSesion} aria-label="Cerrar sesión" title="Cerrar sesión" className="foco-vidrio"
-                style={{ width: 44, height: 44, borderRadius: 22, border: 0, background: 'transparent', color: 'var(--tinta-2)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flex: 'none' }}
+                type="button" onClick={cerrarSesion} aria-label="Cerrar sesión" title="Cerrar sesión" className="foco-vidrio menu-salir"
               >
-                <Icono d="M15 4h4v16h-4|M10 17l5-5-5-5|M15 12H3" tam={18} />
+                <Icono d="M15 4h4v16h-4|M10 17l5-5-5-5|M15 12H3" tam={17} />
+                Salir
               </button>
             </div>
           )}
@@ -336,6 +385,7 @@ function Sistema() {
           {/* la clave remonta las pantallas al cambiar de obra: vuelven a consultar */}
           <div key={obra?.id ?? 'sin-obra'}>
           <GuardianErrores>
+          <Suspense fallback={<CargandoPantalla />}>
           <Routes>
             <Route path="/" element={<Navigate to="/proveedores" replace />} />
             <Route path="/proveedores" element={<Proveedores />} />
@@ -347,8 +397,10 @@ function Sistema() {
             <Route path="/importar" element={<Importar />} />
             <Route path="/obra" element={<Obras />} />
             <Route path="/parametros" element={<Parametros />} />
-            <Route path="/accesos" element={<Accesos />} />
+            <Route path="/administracion" element={<Administracion obra={obra} />} />
+            <Route path="/administracion/:seccion" element={<Administracion obra={obra} />} />
           </Routes>
+          </Suspense>
           </GuardianErrores>
           </div>
         </main>

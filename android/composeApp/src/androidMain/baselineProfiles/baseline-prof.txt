@@ -1,0 +1,7 @@
+# Perfil de arranque (Baseline Profile) de la app, escrito a mano: docs/rendimiento-app.md.
+# ART precompila estas clases y métodos al instalar (ProfileInstaller), en vez de interpretarlos
+# las primeras veces. La app es chica: se incluye todo su código (pantallas, ViewModels, datos, Koin).
+# Las librerías (Compose, Ktor, Room, Koin) ya traen sus propios perfiles y AGP los junta con este.
+# Para generarlo midiendo de verdad (Macrobenchmark + BaselineProfileRule) ver el informe.
+HSPLpe/sevens/sigro/**->**(**)**
+Lpe/sevens/sigro/**;

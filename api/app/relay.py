@@ -1,4 +1,6 @@
-"""Relevo del outbox: entrega los eventos pendientes al microservicio de Notificaciones, con reintentos.
+"""Relevo del outbox: entrega los eventos pendientes, con reintentos, según su `destino` (migración 0010, D2):
+  - 'aviso'       → microservicio de Notificaciones (POST {SIGRO_NOTIFICACIONES_URL}/eventos)
+  - 'integracion' → servicio costo (POST {SIGRO_URL_COSTO}/interno/eventos): hechos ya valorizados por almacén
 
     python -m app.relay                 # se queda trabajando
     python -m app.relay --una-vez       # procesa lo pendiente y termina (útil para cron y pruebas)
@@ -12,6 +14,7 @@ Garantías
 from __future__ import annotations
 
 import argparse
+import os
 import time
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -38,6 +41,8 @@ class Resultado:
 
 
 def enviar_http(evento: dict, cliente: httpx.Client | None = None) -> None:
+    if evento.get("destino", "aviso") == "integracion":
+        return enviar_integracion(evento, cliente)
     cfg = cargar()
     if not cfg.notificaciones_url or not cfg.servicio_token:
         raise RuntimeError("SIGRO_NOTIFICACIONES_URL y SIGRO_SERVICIO_TOKEN deben estar definidos")
@@ -58,6 +63,24 @@ def enviar_http(evento: dict, cliente: httpx.Client | None = None) -> None:
             c.close()
 
 
+def enviar_integracion(evento: dict, cliente: httpx.Client | None = None) -> None:
+    """Al servicio costo, que deduplica por `evento_id` (un reenvío no duplica hechos)."""
+    cfg = cargar()
+    base = os.environ.get("SIGRO_URL_COSTO")
+    if not base or not cfg.servicio_token:
+        raise RuntimeError("SIGRO_URL_COSTO y SIGRO_SERVICIO_TOKEN deben estar definidos")
+    cuerpo = {"evento_id": evento["id"], "tipo": evento["tipo"], "proyecto_id": evento["proyecto_id"],
+              "creado_en": evento["creado_en"].isoformat(), "datos": evento["payload"]}
+    propio = cliente is None
+    c = cliente or httpx.Client(timeout=httpx.Timeout(5.0, connect=2.0))
+    try:
+        r = c.post(f"{base.rstrip('/')}/interno/eventos", json=cuerpo, headers={"X-Servicio-Token": cfg.servicio_token})
+        r.raise_for_status()
+    finally:
+        if propio:
+            c.close()
+
+
 def procesar(abrir_sesion: Callable[[], Session], enviar: Callable[[dict], None], limite: int = 100) -> Resultado:
     """Reclama y entrega eventos de uno en uno; cada resultado se confirma al instante (un fallo no deshace un envío ya hecho)."""
     res = Resultado()
@@ -65,7 +88,7 @@ def procesar(abrir_sesion: Callable[[], Session], enviar: Callable[[dict], None]
         with abrir_sesion() as s:
             fila = s.execute(
                 text(
-                    "SELECT id, tipo, proyecto_id, payload, creado_en, intentos FROM outbox.evento "
+                    "SELECT id, tipo, proyecto_id, payload, creado_en, intentos, destino FROM outbox.evento "
                     "WHERE enviado_en IS NULL AND siguiente_intento <= now() "
                     "ORDER BY id LIMIT 1 FOR UPDATE SKIP LOCKED"
                 )

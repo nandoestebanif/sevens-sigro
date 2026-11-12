@@ -10,15 +10,18 @@ from __future__ import annotations
 
 from decimal import ROUND_HALF_UP, Decimal
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Response
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
-from app import eventos, integraciones
+from app import contexto, eventos, integraciones, internos
 from app.dependencias import Actor, exigir, exigir_en_alguna_obra
 from app.errores import ErrorSigro
+from app.paginacion import Pagina, paginacion
 from app.modulos.compras import esquemas as e
 from app.modulos.compras import catalogo_cliente
+from app.config import cargar
+from app.modulos.compras import dominio as dom
 from app.modulos.compras.dominio import ruc_valido
 from app.sql import fila, filas
 
@@ -59,16 +62,20 @@ def _validar_en_sunat(ruc: str) -> tuple[bool, str | None]:
 
 @proveedores.get("", response_model=list[e.ProveedorOut])
 def listar_proveedores(
+    respuesta: Response,
     q: str = Query("", max_length=80), solo_para_comprar: bool = Query(False),
+    pagina: Pagina = Depends(paginacion()),
     a: Actor = Depends(exigir_en_alguna_obra("proveedor.consultar")),
 ):
-    """HU-29: se busca por razón social o por RUC. Un proveedor de baja no aparece para compras nuevas."""
-    return filas(
+    """HU-29: se busca por razón social o por RUC. Un proveedor de baja no aparece para compras nuevas.
+    `limite`/`desde` son opcionales: sin ellos llegan todos, como siempre."""
+    rows = filas(
         a.sesion,
         _SQL_PROV + "WHERE (:q = '' OR lower(p.razon_social) LIKE '%' || lower(:q) || '%' OR p.ruc LIKE :q || '%') "
-        "AND (NOT :c OR p.estado = 'activo') ORDER BY p.razon_social",
+        "AND (NOT :c OR p.estado = 'activo') ORDER BY p.razon_social, p.id" + pagina.sql,
         q=q.strip(), c=solo_para_comprar,
     )
+    return pagina.recortar(rows, respuesta)
 
 
 @proveedores.post("", response_model=e.ProveedorOut, status_code=201)
@@ -128,7 +135,8 @@ def _compra_out(s: Session, filas_compra: list[dict]) -> list[dict]:
     ids = [c["id"] for c in filas_compra]
     lineas = filas(
         s,
-        "SELECT d.compra_id, d.insumo_id, d.cantidad, d.unidad AS unidad_compra, d.precio_unitario "
+        "SELECT d.compra_id, d.insumo_id, d.cantidad, d.unidad AS unidad_compra, d.precio_unitario, "
+        "d.precio_referencia, d.fuera_de_lo_habitual, d.nota_precio "
         "FROM compras.compra_detalle d WHERE d.compra_id = ANY(:ids) ORDER BY d.id",
         ids=ids,
     )
@@ -156,7 +164,8 @@ def registrar_compra(datos: e.CompraIn, a: Actor = Depends(exigir("compra.regist
     """
     s = a.sesion
     codigos = [l.insumo_codigo.upper() for l in datos.lineas]
-    por_codigo = {k: v["id"] for k, v in catalogo_cliente.por_codigo(codigos, solo_activos=True).items()}
+    catalogo = catalogo_cliente.por_codigo(codigos, solo_activos=True)
+    por_codigo = {k: v["id"] for k, v in catalogo.items()}
     faltan = [c for c in codigos if c not in por_codigo]
     if faltan:
         raise ErrorSigro(422, "insumo_no_existe", f"No existen en el catálogo (o están inactivos): {', '.join(faltan)}.")
@@ -179,30 +188,74 @@ def registrar_compra(datos: e.CompraIn, a: Actor = Depends(exigir("compra.regist
         p=a.obra_id, pv=datos.proveedor_id, t=datos.tipo_comprobante, n=datos.numero_comprobante.upper(), f=datos.fecha,
         m=datos.moneda, b=base, i=igv, tt=total, u=a.usuario_id, sol=datos.solicitud_id,
     )
+    # HU-33: cada línea se compara, sin IGV y en unidad de compra, con el promedio pagado del insumo en esta obra
+    factor_sin_igv = (base / bruto) if bruto else Decimal(1)
+    insumos = catalogo
+    filas_detalle, advertencias = [], []
+    try:
+        pagado = _promedios_pagados(a.obra_id)
+    except ErrorSigro:                          # avisa, no bloquea (D13): sin almacén la compra se registra sin comparar
+        pagado = {}
+        advertencias.append("No se pudo consultar el precio habitual (servicio de almacén); la compra se registró sin compararlo.")
+    limite = cargar().limite_precio_pct
     for l, codigo in zip(datos.lineas, codigos):
-        s.execute(
-            text(
-                "INSERT INTO compras.compra_detalle (compra_id, insumo_id, cantidad, unidad, precio_unitario) "
-                "VALUES (:c, :i, :q, :u, :pr)"
-            ),
-            {"c": c["id"], "i": por_codigo[codigo], "q": l.cantidad, "u": l.unidad_compra, "pr": l.precio_unitario},
-        )
-    return _compra_out(s, filas(s, _SQL_COMPRA + "WHERE c.id = :i", i=c["id"]))[0]
+        ins = insumos[codigo]
+        ref = dom.referencia_en_unidad_de_compra(pagado.get(ins["id"], {}).get("promedio_pagado"), ins["factor_conversion"])
+        desv = dom.desviacion_pct(l.precio_unitario * factor_sin_igv, ref)
+        fuera = dom.fuera_de_lo_habitual(desv, limite)
+        if fuera:
+            advertencias.append(f"{codigo}: el precio se aparta {desv:+} % del promedio pagado en la obra "
+                                f"(S/ {ref.quantize(CENTAVO)} sin IGV por {l.unidad_compra}); queda marcado para el residente.")
+        filas_detalle.append({"c": c["id"], "i": ins["id"], "q": l.cantidad, "u": l.unidad_compra, "pr": l.precio_unitario,
+                              "ref": ref, "f": fuera, "n": l.nota_precio})
+    # todas las líneas en un solo executemany (antes: un INSERT por línea)
+    s.execute(
+        text(
+            "INSERT INTO compras.compra_detalle (compra_id, insumo_id, cantidad, unidad, precio_unitario, precio_referencia, "
+            "fuera_de_lo_habitual, nota_precio) VALUES (:c, :i, :q, :u, :pr, :ref, :f, :n)"
+        ),
+        filas_detalle,
+    )
+    out = _compra_out(s, filas(s, _SQL_COMPRA + "WHERE c.id = :i", i=c["id"]))[0]
+    out["advertencias"] = advertencias
+    return out
+
+
+def _promedios_pagados(obra_id: int) -> dict[int, dict]:
+    """Lo pagado lo sabe almacén (cada recepción congela su costo sin IGV); compras no lee el esquema `almacen`."""
+    return {r["insumo_id"]: r for r in internos.json_de(contexto.ALMACEN, "GET", f"/interno/obras/{obra_id}/costo-pagado")}
+
+
+@compras.get("/compras/precio-referencia", response_model=e.PrecioReferenciaOut)
+def precio_referencia(insumo: str = Query(min_length=1, max_length=30), a: Actor = Depends(exigir("compra.consultar"))):
+    """HU-33: el promedio ponderado pagado del insumo en esta obra, para precargar el precio y avisar si se sale de lo
+    habitual. Lo recalcula el sistema con cada recepción y nunca se edita a mano."""
+    ins = catalogo_cliente.por_codigo([insumo]).get(insumo.upper())
+    if not ins:
+        raise ErrorSigro(404, "insumo_no_existe", f"No existe el insumo {insumo} en el catálogo.")
+    p = _promedios_pagados(a.obra_id).get(ins["id"], {})
+    prom = Decimal(str(p["promedio_pagado"])) if p.get("promedio_pagado") is not None else None
+    return {"insumo_codigo": ins["codigo"], "unidad_compra": ins.get("unidad_compra") or ins.get("unidad_s10"),
+            "promedio_ponderado": dom.referencia_en_unidad_de_compra(prom, ins["factor_conversion"]),
+            "unidad_s10": ins.get("unidad_s10"), "promedio_s10": prom, "factor_conversion": ins["factor_conversion"],
+            "cantidad_recibida_s10": Decimal(str(p.get("cantidad") or 0)), "limite_pct": cargar().limite_precio_pct}
 
 
 @compras.get("/compras", response_model=list[e.CompraOut])
 def listar_compras(
+    respuesta: Response,
     estado: str | None = Query(None, pattern="^(registrada|anulada)$"),
     proveedor_id: int | None = Query(None, ge=1),
+    pagina: Pagina = Depends(paginacion()),
     a: Actor = Depends(exigir("compra.consultar")),
 ):
     cabeceras = filas(
         a.sesion,
         _SQL_COMPRA + "WHERE c.proyecto_id = :p AND (CAST(:e AS text) IS NULL OR c.estado = :e) "
-        "AND (CAST(:pv AS bigint) IS NULL OR c.proveedor_id = :pv) ORDER BY c.fecha DESC, c.id DESC",
+        "AND (CAST(:pv AS bigint) IS NULL OR c.proveedor_id = :pv) ORDER BY c.fecha DESC, c.id DESC" + pagina.sql,
         p=a.obra_id, e=estado, pv=proveedor_id,
     )
-    return _compra_out(a.sesion, cabeceras)
+    return _compra_out(a.sesion, pagina.recortar(cabeceras, respuesta))
 
 
 @compras.get("/compras/{compra_id}", response_model=e.CompraOut)
@@ -282,15 +335,14 @@ def emitir_solicitud(datos: e.SolicitudIn, a: Actor = Depends(exigir("solicitud.
     if len(set(codigos)) != len(codigos):
         raise ErrorSigro(422, "insumo_repetido", "Un insumo aparece dos veces; suma las cantidades en una sola línea.")
     sol = fila(s, "INSERT INTO compras.solicitud (proyecto_id, emitida_por) VALUES (:p, :u) RETURNING id", p=a.obra_id, u=a.usuario_id)
-    for l in datos.lineas:
-        s.execute(
-            text(
-                "INSERT INTO compras.solicitud_linea (solicitud_id, insumo_id, descripcion_libre, cantidad, unidad_compra) "
-                "VALUES (:s, :i, :d, :q, :u)"
-            ),
-            {"s": sol["id"], "i": por_codigo[l.insumo_codigo.upper()] if l.insumo_codigo else None,
-             "d": l.descripcion_libre, "q": l.cantidad, "u": l.unidad_compra},
-        )
+    s.execute(      # todas las líneas en un solo executemany
+        text(
+            "INSERT INTO compras.solicitud_linea (solicitud_id, insumo_id, descripcion_libre, cantidad, unidad_compra) "
+            "VALUES (:s, :i, :d, :q, :u)"
+        ),
+        [{"s": sol["id"], "i": por_codigo[l.insumo_codigo.upper()] if l.insumo_codigo else None,
+          "d": l.descripcion_libre, "q": l.cantidad, "u": l.unidad_compra} for l in datos.lineas],
+    )
     numero = s.execute(text("SELECT numero FROM compras.solicitud WHERE id = :i"), {"i": sol["id"]}).scalar()
     eventos.publicar(
         s, "solicitud.emitida", a.obra_id, eventos.destinatarios_con_rol(s, a.obra_id, ["administrador"], excepto=a.usuario_id),
@@ -301,8 +353,12 @@ def emitir_solicitud(datos: e.SolicitudIn, a: Actor = Depends(exigir("solicitud.
 
 
 @compras.get("/solicitudes", response_model=list[e.SolicitudOut])
-def listar_solicitudes(a: Actor = Depends(exigir("solicitud.consultar"))):
-    ids = [r["id"] for r in filas(a.sesion, "SELECT id FROM compras.solicitud WHERE proyecto_id = :p", p=a.obra_id)]
+def listar_solicitudes(
+    respuesta: Response, pagina: Pagina = Depends(paginacion()), a: Actor = Depends(exigir("solicitud.consultar")),
+):
+    ids = [r["id"] for r in pagina.recortar(filas(
+        a.sesion, "SELECT id FROM compras.solicitud WHERE proyecto_id = :p ORDER BY numero DESC" + pagina.sql, p=a.obra_id),
+        respuesta)]
     return _solicitud_out(a.sesion, ids)
 
 

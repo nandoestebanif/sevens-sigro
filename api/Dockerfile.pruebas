@@ -1,0 +1,39 @@
+# SIGRO · ambiente de PRUEBAS «todo en uno» (ADR-10). Un contenedor y UN proceso Python con todas las apps ASGI.
+# Contexto: la RAÍZ del repositorio (necesita api/, integraciones/, notificaciones/ e infra/un_nodo/).
+#
+#   docker build -f api/Dockerfile.pruebas -t sigro-api .
+#   docker run --env-file un-nodo.env --memory 512m -p 8000:10000 sigro-api
+#
+# Producción NO usa esta imagen: sigue con api/Dockerfile (una imagen podada por servicio) y docker-compose.yml.
+# Un solo entorno virtual: en un proceso no pueden convivir dos versiones de FastAPI. Integraciones y notificaciones
+# corren con las versiones de la API (fastapi, uvicorn, httpx, pydantic, python-multipart); de sus requirements se
+# agrega solo lo que la API no trae (pdfplumber, certifi). CI corre sus pruebas con ese mismo conjunto (job un-nodo).
+FROM python:3.13-slim
+
+# MALLOC_ARENA_MAX=2: glibc abre un «arena» por hilo y los endpoints síncronos de todas las apps corren en un mismo
+# pool de hilos; dos arenas bajan la memoria residente sin costo visible.
+ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 PORT=10000 MALLOC_ARENA_MAX=2
+WORKDIR /app
+
+COPY api/requirements.txt /tmp/req-api.txt
+COPY integraciones/requirements.txt /tmp/req-integraciones.txt
+COPY notificaciones/requirements.txt /tmp/req-notificaciones.txt
+RUN grep -hviE '^(fastapi|uvicorn|httpx|pydantic|python-multipart|pytest)([=<>~ ]|$)' \
+        /tmp/req-integraciones.txt /tmp/req-notificaciones.txt > /tmp/req-extra.txt \
+ && python -m venv /opt/venv-api \
+ && /opt/venv-api/bin/pip install --no-cache-dir -r /tmp/req-api.txt -r /tmp/req-extra.txt \
+ && rm /tmp/req-*.txt
+
+COPY api /app/api
+COPY integraciones /app/integraciones
+COPY notificaciones /app/notificaciones
+COPY infra/un_nodo /app/infra/un_nodo
+
+# Sin root, como las imágenes de cada servicio.
+RUN useradd --system --no-create-home sigro && chown -R sigro /app
+USER sigro
+EXPOSE 10000
+# Render fija PORT (10000 por omisión) y solo publica ese puerto: el del gateway. Los demás quedan en 127.0.0.1.
+# Diagnóstico (un intérprete por servicio, el arreglo anterior): SIGRO_UN_NODO_VENV_INTEGRACIONES=/opt/venv-api
+# SIGRO_UN_NODO_VENV_NOTIFICACIONES=/opt/venv-api /opt/venv-api/bin/python /app/infra/un_nodo/supervisor.py
+CMD ["/opt/venv-api/bin/python", "/app/infra/un_nodo/un_proceso.py"]

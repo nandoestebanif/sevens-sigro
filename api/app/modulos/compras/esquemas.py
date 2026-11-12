@@ -37,6 +37,8 @@ class LineaCompraIn(Estricto):
     cantidad: Decimal = Field(gt=0, max_digits=18, decimal_places=4)
     unidad_compra: str = Field(min_length=1, max_length=30)
     precio_unitario: Decimal = Field(gt=0, max_digits=18, decimal_places=4)
+    nota_precio: str | None = Field(None, min_length=1, max_length=300,
+                                    description="HU-33: nota opcional si el precio se sale de lo habitual (no es obligatoria, D13).")
 
 
 class CompraIn(Estricto):
@@ -64,6 +66,21 @@ class LineaCompraOut(BaseModel):
     cantidad: Decimal
     unidad_compra: str
     precio_unitario: Decimal
+    precio_referencia: Decimal | None = None      # HU-33: promedio pagado en la obra, unidad de compra y sin IGV
+    fuera_de_lo_habitual: bool = False
+    nota_precio: str | None = None
+
+
+class PrecioReferenciaOut(BaseModel):
+    """HU-33. Con qué se compara el precio que se va a pagar. Todo sin IGV."""
+    insumo_codigo: str
+    unidad_compra: str
+    promedio_ponderado: Decimal | None      # por unidad de compra; None si aún no se recibió ninguna compra del insumo
+    unidad_s10: str
+    promedio_s10: Decimal | None            # por unidad del S10 (la del almacén)
+    factor_conversion: Decimal
+    cantidad_recibida_s10: Decimal          # sobre cuánto se calcula el promedio
+    limite_pct: Decimal                     # hoy 10: se marca si el precio se aparta más que esto
 
 
 class TotalesOut(BaseModel):
@@ -85,6 +102,7 @@ class CompraOut(BaseModel):
     solicitud_id: int | None
     totales: TotalesOut
     lineas: list[LineaCompraOut]
+    advertencias: list[str] = []
     registrado_por: int
     creado_en: datetime
 

@@ -4,7 +4,6 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import pe.sevens.sigro.datos.local.AjusteDao
 import pe.sevens.sigro.datos.local.SalidaDao
 import pe.sevens.sigro.datos.local.SalidaLocalEntity
 import pe.sevens.sigro.datos.remoto.ApiSigro
@@ -31,10 +30,9 @@ import kotlin.uuid.Uuid
 class RepositorioSalidasImpl(
     private val api: ApiSigro,
     private val salidas: SalidaDao,
-    ajustes: AjusteDao,
+    private val cred: Credenciales,
     private val reloj: () -> Long = Plataforma::ahoraMs,
 ) : RepositorioSalidas {
-    private val cred = Credenciales(ajustes)
     private val unaALaVez = Mutex() // el botón «Enviar ahora» y el trabajo de fondo no envían en paralelo
 
     override fun salidasDeObra(obraId: Int): Flow<List<SalidaRegistrada>> =
@@ -49,6 +47,7 @@ class RepositorioSalidasImpl(
         val fila = SalidaLocalEntity(
             uuidCliente = Uuid.random().toString(),
             obraId = nueva.obraId,
+            almacenId = nueva.almacenId,
             insumoId = nueva.insumo.id,
             insumoCodigo = nueva.insumo.codigo,
             insumoDescripcion = nueva.insumo.descripcion,
@@ -72,8 +71,7 @@ class RepositorioSalidasImpl(
         val cola = salidas.pendientes()
         if (cola.isEmpty()) return@withLock ResultadoSincronizacion(0, 0, 0)
         val servidor = cred.servidor()
-        val token = cred.token()
-        if (servidor == null || token == null) {
+        if (servidor == null || !cred.haySesion()) {
             return@withLock ResultadoSincronizacion(0, 0, cola.size) // se envía al volver a entrar
         }
         val dispositivo = cred.identificadorDispositivo()
@@ -81,20 +79,22 @@ class RepositorioSalidasImpl(
         var rechazados = 0
         for (s in cola) {
             try {
-                api.enviarSalida(servidor, token, s.obraId, s.aEnvio(dispositivo))
+                val respuesta = api.enviarSalida(servidor, s.obraId, s.aEnvio(dispositivo))
                 salidas.marcar(s.uuidCliente, EstadoEnvio.ENVIADO.name, null, null, reloj())
+                // A1: quién registró y la hora del servidor, tal como vinieron en el 201/200.
+                cred.recibo(respuesta)?.let { salidas.anotarRecibo(s.uuidCliente, it.registradoPorId, it.registradoPor, it.fechaServidor) }
                 enviados++
             } catch (e: ErrorSigro) {
-                when (val decision = decidir(e)) {
-                    is Decision.Reintentar -> {
+                when (val decision = decidirEnvio(e, "salidas")) {
+                    is DecisionEnvio.Reintentar -> {
                         salidas.marcar(s.uuidCliente, EstadoEnvio.PENDIENTE.name, null, decision.nota, reloj())
                         // Si falla por señal, sesión o servidor, fallarán todas: se corta y se reintenta después.
                         if (decision.cortar) break
                     }
-                    Decision.YaRecibido -> {
+                    DecisionEnvio.YaRecibido -> {
                         salidas.marcar(s.uuidCliente, EstadoEnvio.ENVIADO.name, null, null, reloj()); enviados++
                     }
-                    is Decision.Rechazar -> {
+                    is DecisionEnvio.Rechazar -> {
                         salidas.marcar(s.uuidCliente, EstadoEnvio.RECHAZADO.name, decision.motivo, null, reloj()); rechazados++
                     }
                 }
@@ -103,22 +103,8 @@ class RepositorioSalidasImpl(
         ResultadoSincronizacion(enviados, rechazados, salidas.pendientes().size)
     }
 
-    private sealed interface Decision {
-        data class Reintentar(val nota: String, val cortar: Boolean) : Decision
-        data object YaRecibido : Decision
-        data class Rechazar(val motivo: String) : Decision
-    }
-
-    private fun decidir(e: ErrorSigro): Decision = when {
-        e.esTransitorio -> Decision.Reintentar("Sin señal o servidor ocupado: se reintenta solo.", cortar = true)
-        e.estadoHttp == 401 -> Decision.Reintentar("Tu sesión venció: vuelve a ingresar y se envía.", cortar = true)
-        e.estadoHttp == 404 -> Decision.Reintentar("El servidor aún no recibe salidas: queda guardada en el celular.", cortar = true)
-        e.estadoHttp == 409 && e.codigo.contains("uuid") -> Decision.YaRecibido // el servidor ya la tenía (regla 3)
-        else -> Decision.Rechazar(e.message) // regla de negocio: stock insuficiente, dispositivo no autorizado…
-    }
-
     private fun SalidaLocalEntity.aEnvio(dispositivo: String) = SalidaIn(
-        uuidCliente = uuidCliente, insumoId = insumoId, cantidad = cantidad, motivo = motivo,
+        uuidCliente = uuidCliente, almacenId = almacenId, insumoId = insumoId, cantidad = cantidad, unidad = unidad, motivo = motivo,
         quienRetira = quienRetira, frente = frente, horaDispositivoMs = horaDispositivoMs, dispositivo = dispositivo,
     )
 
@@ -135,5 +121,7 @@ class RepositorioSalidasImpl(
         motivoRechazo = e.motivoRechazo,
         nota = e.nota,
         intentos = e.intentos,
+        registradoPor = e.registradoPor,
+        fechaServidor = e.fechaServidor,
     )
 }
