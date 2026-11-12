@@ -15,6 +15,7 @@
    curso») se demuestra en la pantalla de compra, que reutiliza este mismo alta.
    Estilo vidrio: sin lienzo propio, con el lenguaje de W6 «Compras».
    ───────────────────────────────────────────────────────────────────────── */
+import { usaApiReal } from '../api/http'
 import { useEffect, useMemo, useState } from 'react'
 import { ErrorApi, api } from '../api/cliente'
 import { consultarRucEnSunat, type RucSunat } from '../api/sunat'
@@ -155,7 +156,9 @@ export function Proveedores() {
 
       <Chips>
         <Chip tono="marca">Proveedores reales del cliente{todos ? ` · ${todos.length.toLocaleString('es-PE')}` : ''}</Chip>
-        <Chip tono="info">Compras, entrega y última compra: datos de ejemplo</Chip>
+        {usaApiReal
+          ? <Chip tono="info">Compras y última compra: del servidor · días de entrega: aún sin registrar</Chip>
+          : <Chip tono="info">Compras, entrega y última compra: datos de ejemplo</Chip>}
       </Chips>
 
       <Vidrio estilo={{ display: 'flex', flexDirection: 'column', gap: 12 }} etiqueta="Lista de proveedores">

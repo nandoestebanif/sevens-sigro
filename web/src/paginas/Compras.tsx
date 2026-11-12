@@ -16,7 +16,7 @@
    ───────────────────────────────────────────────────────────────────────── */
 import { useEffect, useMemo, useState } from 'react'
 import { ErrorApi, api } from '../api/cliente'
-import type { Compra, EstadoCompra, InsumoCatalogo, LineaCompra, LineaRecepcion, Proveedor, TipoComprobante } from '../api/tipos'
+import type { Compra, EstadoCompra, InsumoCatalogo, LineaCompra, LineaRecepcion, Proveedor, TipoComprobante, VerificacionRecepcion } from '../api/tipos'
 import { Campo, Chip, Modal, Vacio, type TonoChip } from '../ui/base'
 import { Aviso, Chips, Encabezado, Fondo, Pildora, TituloSeccion, Vidrio } from '../ui/vidrio'
 import { BuscarOpcion } from '../ui/BuscarOpcion'
@@ -40,6 +40,9 @@ function RecepcionCompra({ compra, enCerrar, enListo }: {
   const [cantidades, setCantidades] = useState<Record<string, string>>({})
   const [error, setError] = useState('')
   const [guardando, setGuardando] = useState(false)
+  // HU-36: si con esta recepción se pasa lo requerido en el S10, se avisa ANTES de guardar y se pide el motivo
+  const [exceso, setExceso] = useState<VerificacionRecepcion | null>(null)
+  const [motivo, setMotivo] = useState('')
 
   useEffect(() => {
     setError('')
@@ -53,15 +56,24 @@ function RecepcionCompra({ compra, enCerrar, enListo }: {
     })
   }, [compra.id])
 
+  const lineasARecibir = () =>
+    (detalle ?? []).map((l) => ({ insumoId: l.insumoId, cantidad: Number(String(cantidades[l.insumoId] ?? '').replace(',', '.')) || 0 }))
+
   const recibir = async () => {
     if (!detalle) return
     setGuardando(true)
     setError('')
     try {
-      await api.registrarRecepcion(
-        compra.id,
-        detalle.map((l) => ({ insumoId: l.insumoId, cantidad: Number(cantidades[l.insumoId]) || 0 })),
-      )
+      const lineas = lineasARecibir()
+      if (!exceso) {
+        // primero se verifica contra lo requerido: avisa, no bloquea (regla 7)
+        const v = await api.verificarRecepcion(compra.id, lineas)
+        if (v.hayExceso) { setExceso(v); return }
+      } else if (motivo.trim().length < 3) {
+        setError('Escribe el motivo del exceso: queda en el kárdex junto al ingreso.')
+        return
+      }
+      await api.registrarRecepcion(compra.id, lineas, exceso ? motivo : undefined)
       enListo()
     } catch (e) {
       if (e instanceof ErrorApi) setError(e.message)
@@ -101,7 +113,7 @@ function RecepcionCompra({ compra, enCerrar, enListo }: {
                     <input
                       aria-label={`Cantidad a recibir de ${l.descripcion}`}
                       value={cantidades[l.insumoId] ?? ''}
-                      onChange={(e) => setCantidades((c) => ({ ...c, [l.insumoId]: e.target.value }))}
+                      onChange={(e) => { setExceso(null); setCantidades((c) => ({ ...c, [l.insumoId]: e.target.value })) }}
                       className="campo"
                       style={{ width: 86, height: 40, padding: '0 10px', fontSize: 14, textAlign: 'right' }}
                     />
@@ -111,6 +123,30 @@ function RecepcionCompra({ compra, enCerrar, enListo }: {
             </tbody>
           </table>
           </div>
+          {exceso && (
+            <Aviso tono="aviso" rol="alert">
+              <strong>Con esta recepción se pasa lo requerido en el S10.</strong>
+              <ul style={{ margin: '6px 0 8px', paddingLeft: 18 }}>
+                {exceso.lineas.filter((x) => x.excede).map((x) => (
+                  <li key={x.insumoId} style={{ fontSize: 13 }}>
+                    {x.descripcion}: requerido {x.requerido === null ? 'no está en el requerimiento' : `${x.requerido.toLocaleString('es-PE')} ${x.unidad}`},
+                    {' '}con esta recepción {x.conEsta.toLocaleString('es-PE')} {x.unidad}
+                    {x.exceso !== null && ` (+${x.exceso.toLocaleString('es-PE')})`}
+                  </li>
+                ))}
+              </ul>
+              <span style={{ fontSize: 13 }}>Se puede recibir igual (el requerimiento avisa, no bloquea): indica el motivo.</span>
+              <textarea
+                aria-label="Motivo del exceso"
+                value={motivo}
+                maxLength={300}
+                onChange={(e) => setMotivo(e.target.value)}
+                placeholder="Ej.: reposición por merma en el vaciado de losa"
+                className="campo"
+                style={{ display: 'block', width: '100%', minHeight: 60, marginTop: 8, padding: 10, fontSize: 14, fontFamily: 'inherit', boxSizing: 'border-box' }}
+              />
+            </Aviso>
+          )}
           {error && <p role="alert" style={{ fontSize: 12.5, color: 'var(--grave)', fontWeight: 600 }}>{error}</p>}
           <p style={{ fontSize: 12, color: 'var(--tinta-2)', lineHeight: 1.5 }}>
             Esta recepción es la que mueve el stock: cada línea genera su ingreso en el
@@ -119,7 +155,7 @@ function RecepcionCompra({ compra, enCerrar, enListo }: {
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, justifyContent: 'flex-end' }}>
             <Pildora tipo="secundario" enClic={enCerrar}>Cancelar</Pildora>
             <Pildora enClic={recibir} deshabilitado={guardando || !detalle.length}>
-              {guardando ? 'Registrando…' : 'Registrar recepción'}
+              {guardando ? 'Registrando…' : exceso ? 'Recibir con este motivo' : 'Registrar recepción'}
             </Pildora>
           </div>
         </div>
