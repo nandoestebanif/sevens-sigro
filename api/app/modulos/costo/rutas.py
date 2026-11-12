@@ -51,12 +51,17 @@ class GastoOut(BaseModel):
     declaracion: str
     criterio: str
     moneda: str
+    corte: datetime                  # el mismo instante para las cinco cifras
     cifras: list[CifraOut]
+    otros_movimientos: Decimal | None   # traslados entre obras y ajustes de conteo: también mueven el stock
+    por_conciliar: bool              # True si las cifras no cuadran (ver `conciliacion`): no se presentan como definitivas
+    conciliacion: list[str]
     por_familia: list[FamiliaOut]
     horas_hombre: HorasOut
 
 
-_DEF_COMPRADO = "Valor de las compras registradas (base imponible, sin IGV); las anuladas no cuentan."
+_DEF_COMPRADO = "Valor de las compras registradas hasta la fecha de corte (base imponible, sin IGV, por fecha del comprobante); las anuladas no cuentan."
+_TOLERANCIA = Decimal("0.01")
 
 
 def _texto(v) -> str | None:
@@ -64,37 +69,66 @@ def _texto(v) -> str | None:
 
 
 @router.get("/gasto", response_model=GastoOut)
-def gasto(a: Actor = Depends(exigir("costo.consultar"))):
-    fam = filas(a.sesion, "SELECT familia, recibido, consumido, en_stock, hasta::text AS hasta FROM costo.gasto_por_obra "
-                          "WHERE proyecto_id = :p AND moneda = 'PEN' ORDER BY familia", p=a.obra_id)
-    tot = fila(a.sesion, "SELECT coalesce(sum(recibido), 0) AS recibido, coalesce(sum(consumido), 0) AS consumido, "
-                         "coalesce(sum(en_stock), 0) AS en_stock, max(hasta)::text AS hasta FROM costo.gasto_por_obra "
-                         "WHERE proyecto_id = :p AND moneda = 'PEN'", p=a.obra_id)
-    corte = tot["hasta"]
+def gasto(corte: str | None = Query(None, description="AAAA-MM-DD o AAAA-MM-DDTHH:MM, hora de Lima; por defecto, ahora"),
+          a: Actor = Depends(exigir("costo.consultar"))):
+    """HU-58. Cinco cifras con su definición y UNA sola fecha de corte. Recibido, consumido y en stock salen del libro de
+    Almacén (el mismo cálculo del inventario, HU-56); comprado de Compras y las horas de Tareo. Si no cuadran entre sí, la
+    respuesta lo marca (`por_conciliar`) en vez de mostrar números que se contradicen."""
+    pedido = corte_de(corte)
+    params = {"corte": pedido.isoformat()} if pedido else {}
+    conciliacion: list[str] = []
     try:
-        c = internos.json_de(contexto.COMPRAS, "GET", f"/interno/obras/{a.obra_id}/comprado")
-        comprado = CifraOut(clave="comprado", valor=Decimal(str(c["base_imponible"])), corte=_texto(c["corte"]), definicion=_DEF_COMPRADO)
+        lib = internos.json_de(contexto.ALMACEN, "GET", f"/interno/obras/{a.obra_id}/resumen-valorizado", params=params)
+        efectivo = datetime.fromisoformat(lib["corte"])
     except ErrorSigro:
-        comprado = CifraOut(clave="comprado", valor=None, corte=None, definicion=_DEF_COMPRADO,
+        lib, efectivo = None, min(pedido, datetime.now(timezone.utc)) if pedido else datetime.now(timezone.utc)
+        conciliacion.append("Almacén no respondió: recibido, consumido y en stock no se pueden calcular ahora.")
+    dia = efectivo.astimezone(LIMA).date().isoformat()
+    corte_txt = efectivo.isoformat()
+    try:
+        c = internos.json_de(contexto.COMPRAS, "GET", f"/interno/obras/{a.obra_id}/comprado", params={"hasta": dia})
+        comprado = CifraOut(clave="comprado", valor=Decimal(str(c["base_imponible"])), corte=corte_txt, definicion=_DEF_COMPRADO)
+    except ErrorSigro:
+        comprado = CifraOut(clave="comprado", valor=None, corte=corte_txt, definicion=_DEF_COMPRADO,
                             nota="Compras no respondió; inténtalo en un momento.")
     try:
-        h = internos.json_de(contexto.TAREO, "GET", f"/interno/obras/{a.obra_id}/horas")
-        horas = HorasOut(horas_normales=h["horas_normales"], horas_extra=h["horas_extra"], corte=_texto(h["hasta"]))
+        h = internos.json_de(contexto.TAREO, "GET", f"/interno/obras/{a.obra_id}/horas", params={"hasta": dia})
+        horas = HorasOut(horas_normales=h["horas_normales"], horas_extra=h["horas_extra"], corte=corte_txt)
     except ErrorSigro:
-        horas = HorasOut(horas_normales=None, horas_extra=None, corte=None)
+        horas = HorasOut(horas_normales=None, horas_extra=None, corte=corte_txt)
+
+    def cifra(clave, definicion):
+        return CifraOut(clave=clave, valor=None if lib is None else Decimal(str(lib[clave])), corte=corte_txt, definicion=definicion)
+
+    otros = None if lib is None else Decimal(str(lib["otros"]))
+    if lib is not None:
+        rec, con, stock = (Decimal(str(lib[k])) for k in ("recibido", "consumido", "en_stock"))
+        if abs(rec - con + otros - stock) > _TOLERANCIA:                  # la identidad del libro: no debería romperse nunca
+            conciliacion.append(f"Recibido − consumido + otros movimientos ({rec - con + otros}) no coincide con lo que hay en stock ({stock}).")
+        if pedido is None:                                                 # contra el modelo de lectura que llega por eventos
+            m = fila(a.sesion, "SELECT coalesce(sum(importe) FILTER (WHERE clase = 'ingreso'), 0) AS recibido, "
+                               "coalesce(-sum(importe) FILTER (WHERE clase = 'consumo'), 0) AS consumido, "
+                               "coalesce(sum(importe) FILTER (WHERE clase IN ('ingreso', 'consumo', 'traslado', 'ajuste')), 0) AS en_stock "
+                               "FROM costo.hecho WHERE proyecto_id = :p AND moneda = 'PEN' AND familia <> 'mano_obra'", p=a.obra_id)
+            for k, nombre in (("recibido", "Recibido"), ("consumido", "Consumido"), ("en_stock", "En stock")):
+                if abs(Decimal(str(lib[k])) - m[k]) > _TOLERANCIA:
+                    conciliacion.append(f"{nombre}: el libro de Almacén dice {lib[k]} y el modelo de costo {m[k]}; faltan eventos por entregar.")
+    fam = filas(a.sesion, "SELECT familia, coalesce(sum(importe) FILTER (WHERE clase = 'ingreso'), 0) AS recibido, "
+                          "coalesce(-sum(importe) FILTER (WHERE clase = 'consumo'), 0) AS consumido, "
+                          "coalesce(sum(importe) FILTER (WHERE clase IN ('ingreso', 'consumo', 'traslado', 'ajuste')), 0) AS en_stock, "
+                          "max(fecha)::text AS hasta FROM costo.hecho WHERE proyecto_id = :p AND moneda = 'PEN' AND fecha <= CAST(:d AS date) "
+                          "GROUP BY familia ORDER BY familia", p=a.obra_id, d=dia)
     cifras = [
         comprado,
-        CifraOut(clave="recibido", valor=tot["recibido"], corte=corte,
-                 definicion="Valor de lo efectivamente ingresado al almacén (recepciones e ingresos sin compra, netos de reversos)."),
-        CifraOut(clave="consumido", valor=tot["consumido"], corte=corte,
-                 definicion="Valor de las salidas de material, al costo promedio ponderado congelado en cada salida (netas de reversos)."),
-        CifraOut(clave="en_stock", valor=tot["en_stock"], corte=corte,
-                 definicion="Valor del inventario que queda en los almacenes de la obra (ingresos - salidas, con traslados y ajustes)."),
-        CifraOut(clave="horas_hombre", valor=None, corte=horas.corte,
-                 definicion="Valor de las jornadas registradas, con sus horas extra aparte.",
+        cifra("recibido", "Valor de lo ingresado al almacén (recepciones e ingresos sin compra), al costo con que entró, neto de reversos."),
+        cifra("consumido", "Valor de las salidas de material, al costo promedio ponderado congelado en cada salida (NIC 2), neto de reversos."),
+        cifra("en_stock", "Valor del inventario que queda en los almacenes de la obra a la fecha de corte; es el total del inventario valorizado (HU-56)."),
+        CifraOut(clave="horas_hombre", valor=None, corte=corte_txt,
+                 definicion="Valor de las jornadas registradas (horas × tarifa de su categoría), con las horas extra aparte.",
                  nota="Falta la tarifa por categoría (HU-65): se informan las horas en horas_hombre, sin valorizar."),
     ]
-    return GastoOut(declaracion=DECLARACION, criterio=CRITERIO, moneda="PEN", cifras=cifras, por_familia=fam, horas_hombre=horas)
+    return GastoOut(declaracion=DECLARACION, criterio=CRITERIO, moneda="PEN", corte=efectivo, cifras=cifras, otros_movimientos=otros,
+                    por_conciliar=bool(conciliacion), conciliacion=conciliacion, por_familia=fam, horas_hombre=horas)
 
 
 # ------------------------------------------------------------------ HU-56 · inventario valorizado
