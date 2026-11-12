@@ -228,6 +228,8 @@ def registrar_salida(d: e.SalidaIn, respuesta: Response, a: Actor = Depends(exig
 @router.post("/ingresos", response_model=e.MovimientoOut, status_code=201)
 def registrar_ingreso(d: e.IngresoIn, respuesta: Response, a: Actor = Depends(exigir("ingreso.registrar"))):
     """Origen declarado y costo unitario obligatorios; queda distinguible (tipo `ingreso_sin_compra`) de una recepción.
+    **Unidad del costo**: va en la misma unidad que la cantidad (`unidad`; si se omite, la del S10). Ej. acero: 100 var a
+    S/ 35.40 la varilla → el libro guarda 712 kg a S/ 4.971910 el kg; 712 kg a S/ 4.97 el kg es lo mismo, sin factor.
     «Saldo de otra obra» solo si esa obra no está en SIGRO (D5): si está, se usa el traslado (HU-42)."""
     s = a.sesion
     previo = _por_uuid(s, a.obra_id, d.uuid_cliente, {"ingreso_sin_compra"})
@@ -244,12 +246,13 @@ def registrar_ingreso(d: e.IngresoIn, respuesta: Response, a: Actor = Depends(ex
     ins = _insumos(s, [d.insumo_id])[d.insumo_id]
     try:
         cantidad = dom.a_unidad_s10(d.cantidad, d.unidad, ins)
+        costo = dom.a_costo_s10(d.costo_unitario, d.unidad, ins)          # el costo sigue a la cantidad: misma unidad
     except dom.ReglaAlmacen as r:
         raise _error(r)
     return _registrar_uno(
         s, respuesta, a.obra_id, "almacen.ingreso_registrado",
         uuid_cliente=d.uuid_cliente, proyecto_id=a.obra_id, almacen_id=alm["id"], insumo_id=d.insumo_id,
-        tipo="ingreso_sin_compra", sentido=1, cantidad=cantidad, costo_unitario=d.costo_unitario, origen=d.origen,
+        tipo="ingreso_sin_compra", sentido=1, cantidad=cantidad, costo_unitario=costo, origen=d.origen,
         origen_detalle=d.origen_detalle, periodo_id=_periodo(a.obra_id, d.hora_dispositivo_ms, False), dispositivo_id=disp,
         registrado_por=a.usuario_id, fecha_dispositivo=_fecha_dispositivo(d.hora_dispositivo_ms))
 
