@@ -567,3 +567,48 @@ def test_el_motor_no_acepta_una_marca_sin_referencia_ni_una_nota_vacia(mundo, ob
     with pytest.raises(psycopg.errors.CheckViolation):
         mundo.f.q1("INSERT INTO compras.compra_detalle (compra_id, insumo_id, cantidad, unidad, precio_unitario, fuera_de_lo_habitual) "
                    "VALUES (%s, %s, 1, 'bls', 1, true) RETURNING id", (c, ob["cem"]))
+
+
+# ═══════════════════════════════════ HU-44 entradas y salidas de la semana
+def _ms(dia: str) -> int:
+    from datetime import datetime, timezone
+    return int(datetime.fromisoformat(f"{dia}T15:00:00").replace(tzinfo=timezone.utc).timestamp() * 1000)
+
+
+def test_semana_saldo_inicial_entradas_salidas_y_final_solo_con_lo_que_se_movio(mundo, ob):
+    p = ob["proyecto"]
+    semanas = get(mundo, f"/obras/{p}/periodos", ob["residente"]).json()
+    s1, s2 = semanas[0], semanas[1]
+    d1, d2 = str(s1["fecha_inicio"]), str(s2["fecha_inicio"])
+    ingreso(mundo, ob, 100, "20", hora_dispositivo_ms=_ms(d1))                       # semana 1: entra 100
+    ingreso(mundo, ob, 10, "700", insumo=ob["acero"], hora_dispositivo_ms=_ms(d1))   # acero solo se mueve en la semana 1
+    sal = salida(mundo, ob, 30, hora_dispositivo_ms=_ms(d1)).json()                  # semana 1: sale 30
+    ingreso(mundo, ob, 50, "22", hora_dispositivo_ms=_ms(d2))                        # semana 2: entra 50
+    salida(mundo, ob, 12, hora_dispositivo_ms=_ms(d2))                               # semana 2: sale 12
+    post(mundo, f"/obras/{p}/almacen/movimientos/{sal['id']}/reverso", ob["almacenero"], uuid_cliente=str(uuid.uuid4()),
+         motivo="registro duplicado", hora_dispositivo_ms=_ms(d2))                   # semana 2: se anula la salida de 30
+
+    r = get(mundo, f"/obras/{p}/almacen/semana", ob["almacenero"], numero=s2["numero"])
+    assert r.status_code == 200, r.text
+    d = r.json()
+    assert d["numero"] == s2["numero"] and "reverso" in d["criterio"]
+    assert [f["insumo_codigo"] for f in d["filas"]] == ["0221000000"]                # el acero no se movió esta semana
+    f = d["filas"][0]
+    # inicial 100 − 30 = 70 · entradas 50 · salidas 12 − 30 (reverso de una salida) = −18 · final 70 + 50 + 18 = 138
+    assert (D(f["saldo_inicial"]), D(f["entradas"]), D(f["salidas"]), D(f["saldo_final"])) == (D(70), D(50), D(-18), D(138))
+    assert D(f["saldo_final"]) == saldo(mundo, ob)[0]                                 # cuadra con el stock del servidor
+
+    sem1 = get(mundo, f"/obras/{p}/almacen/semana", ob["residente"], numero=s1["numero"]).json()
+    assert {x["insumo_codigo"]: (D(x["saldo_inicial"]), D(x["entradas"]), D(x["salidas"])) for x in sem1["filas"]} == \
+        {"0221000000": (D(0), D(100), D(30)), "0203020004": (D(0), D(10), D(0))}
+
+    csv = get(mundo, f"/obras/{p}/almacen/semana", ob["gerente"], numero=s2["numero"], formato="csv")
+    assert csv.status_code == 200 and csv.headers["content-type"].startswith("text/csv")
+    assert csv.text.lstrip("﻿").splitlines()[0] == "almacen;codigo;insumo;unidad;saldo_inicial;entradas;salidas;saldo_final"
+    assert "0221000000" in csv.text
+
+
+def test_semana_inexistente_y_acceso_desde_otra_obra(mundo, ob):
+    assert get(mundo, f"/obras/{ob['proyecto']}/almacen/semana", ob["residente"], numero=999).status_code == 404
+    otra = mundo.f.obra_completa()
+    assert get(mundo, f"/obras/{ob['proyecto']}/almacen/semana", otra["residente"], numero=1).status_code == 403
