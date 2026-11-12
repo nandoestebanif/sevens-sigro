@@ -23,9 +23,9 @@
    ───────────────────────────────────────────────────────────────────────── */
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { ErrorApi, api } from '../api/cliente'
-import type { InsumoMaestro } from '../api/tipos'
+import type { HistorialFactor, InsumoMaestro } from '../api/tipos'
 import { Campo, Chip, Modal, Vacio } from '../ui/base'
-import { Chips, Encabezado, Fondo, Pildora, TituloSeccion, Vidrio } from '../ui/vidrio'
+import { Aviso, Chips, Encabezado, Fondo, Pildora, TituloSeccion, Vidrio } from '../ui/vidrio'
 import { FilasVirtuales, type MedirFila } from '../ui/FilasVirtuales'
 
 const CORTAS = new Set(['DE', 'LA', 'EL', 'Y', 'A', 'EN', 'SIN', 'CON', 'POR', 'DEL', 'LOS', 'LAS'])
@@ -56,16 +56,22 @@ function FilaDetalle({ rot, children }: { rot: string; children: ReactNode }) {
   )
 }
 
-function VerInsumo({ insumo, enCerrar, enEditar }: {
+function VerInsumo({ insumo, enCerrar, enEditar, enFactor }: {
   insumo: InsumoMaestro
   enCerrar: () => void
   enEditar: () => void
+  enFactor: () => void
 }) {
+  const uCompra = insumo.um.toLowerCase()
+  const uS10 = (insumo.unidadS10 ?? insumo.um).toLowerCase()
+  const factor = insumo.factorConversion ?? 1
   return (
     <Modal titulo={`Insumo · código ${insumo.codigo}`} enCerrar={enCerrar}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
         <FilaDetalle rot="Nombre normalizado">{insumo.nombre}{insumo.medida ? ` ${insumo.medida}` : ''}</FilaDetalle>
-        <FilaDetalle rot="Unidad de medida">{insumo.um.toLowerCase()}</FilaDetalle>
+        <FilaDetalle rot="Unidad de compra">{uCompra}</FilaDetalle>
+        <FilaDetalle rot="Unidad S10">{uS10}</FilaDetalle>
+        <FilaDetalle rot="Factor de conversión">1 {uCompra} = {factor.toLocaleString('es-PE', { maximumFractionDigits: 6 })} {uS10}</FilaDetalle>
         <FilaDetalle rot="Marcas registradas">{insumo.marca || '—'}</FilaDetalle>
         <FilaDetalle rot="Precio promedio">{precio(insumo.precioPromedio)}</FilaDetalle>
         <FilaDetalle rot="Estado">
@@ -79,7 +85,134 @@ function VerInsumo({ insumo, enCerrar, enEditar }: {
         </p>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, justifyContent: 'flex-end', marginTop: 8 }}>
           <Pildora tipo="secundario" enClic={enCerrar}>Cerrar</Pildora>
+          <Pildora tipo="secundario" enClic={enFactor}>Factor de conversión</Pildora>
           <Pildora enClic={enEditar}>Editar</Pildora>
+        </div>
+      </div>
+    </Modal>
+  )
+}
+
+function ModalFactor({ insumo, enCerrar, enGuardado }: {
+  insumo: InsumoMaestro
+  enCerrar: () => void
+  enGuardado: (actualizado: InsumoMaestro) => void
+}) {
+  const uCompra = insumo.um.toLowerCase()
+  const uS10 = (insumo.unidadS10 ?? insumo.um).toLowerCase()
+  const factorActual = insumo.factorConversion ?? 1
+  const [factor, setFactor] = useState(String(factorActual))
+  const [motivo, setMotivo] = useState('')
+  const [historial, setHistorial] = useState<HistorialFactor[] | null>(null)
+  const [error, setError] = useState('')
+  const [exito, setExito] = useState('')
+  const [guardando, setGuardando] = useState(false)
+
+  const cargarHistorial = () => {
+    api.historialFactorConversion(insumo.codigo).then(setHistorial).catch(() => setHistorial([]))
+  }
+  useEffect(() => {
+    cargarHistorial()
+  }, [insumo.codigo])
+
+  const factorNum = Number(factor)
+  const valido = Number.isFinite(factorNum) && factorNum > 0
+
+  const guardar = async () => {
+    setGuardando(true)
+    setError('')
+    setExito('')
+    try {
+      const actualizado = await api.cambiarFactorConversion(insumo.codigo, factorNum, motivo)
+      setMotivo('')
+      setExito(`Factor actualizado: 1 ${uCompra} = ${factorNum.toLocaleString('es-PE', { maximumFractionDigits: 6 })} ${uS10}.`)
+      cargarHistorial()
+      enGuardado(actualizado)
+    } catch (e) {
+      setError(e instanceof ErrorApi ? e.message : 'No se pudo guardar el factor de conversión.')
+    } finally {
+      setGuardando(false)
+    }
+  }
+
+  return (
+    <Modal titulo={`Factor de conversión · ${insumo.codigo}`} enCerrar={enCerrar}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <div style={{ padding: '12px 14px', background: 'var(--vidrio-celda)', borderRadius: 16, display: 'flex', flexDirection: 'column', gap: 4 }}>
+          <strong style={{ fontSize: 14 }}>{amable(insumo.medida ? `${insumo.nombre} ${insumo.medida}` : insumo.nombre)}</strong>
+          <span className="n" style={{ fontSize: 13, color: 'var(--tinta-2)' }}>
+            Vigente: <strong>1 {uCompra} = {factorActual.toLocaleString('es-PE', { maximumFractionDigits: 6 })} {uS10}</strong>
+          </span>
+        </div>
+
+        <Campo
+          id="factor-valor"
+          etiqueta={`Factor (${uS10} por cada ${uCompra})`}
+          valor={factor}
+          enCambio={setFactor}
+          marcador="p. ej. 7.12"
+          autoFoco
+        />
+
+        {valido && (
+          <div style={{ fontSize: 12.5, color: 'var(--tinta-2)', background: 'var(--vidrio-celda)', borderRadius: 12, padding: '8px 12px' }}>
+            Equivalencia: <strong className="n">1 {uCompra} = {factorNum.toLocaleString('es-PE', { maximumFractionDigits: 6 })} {uS10}</strong>
+            {' · '}
+            <span className="n">100 {uS10} ≈ {(100 / factorNum).toLocaleString('es-PE', { maximumFractionDigits: 2 })} {uCompra}</span>
+          </div>
+        )}
+
+        <div>
+          <label htmlFor="factor-motivo" style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--tinta-2)', marginBottom: 6 }}>
+            Motivo del cambio (obligatorio)
+          </label>
+          <textarea
+            id="factor-motivo"
+            value={motivo}
+            onChange={(e) => setMotivo(e.target.value)}
+            placeholder="p. ej. Acero corrugado 1/2&quot; × 9 m: 7.12 kg por varilla según ficha técnica"
+            rows={2}
+            className="campo"
+            style={{ height: 'auto', padding: '10px 14px', resize: 'vertical' }}
+          />
+        </div>
+
+        <p style={{ fontSize: 12.5, color: 'var(--tinta-2)', lineHeight: 1.5 }}>
+          Sin factor declarado, el sistema asume 1 (ambas unidades iguales). Cada cambio se
+          guarda en el histórico con fecha y usuario, sin borrar el valor anterior.
+        </p>
+
+        {error && <Aviso tono="grave" rol="alert">{error}</Aviso>}
+        {exito && <Aviso tono="bien" rol="status">{exito}</Aviso>}
+
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, justifyContent: 'flex-end' }}>
+          <Pildora tipo="secundario" enClic={enCerrar}>Cerrar</Pildora>
+          <Pildora enClic={guardar} deshabilitado={guardando}>
+            {guardando ? 'Guardando…' : 'Guardar factor'}
+          </Pildora>
+        </div>
+
+        <div style={{ borderTop: '1px solid var(--separador)', paddingTop: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <span style={{ fontSize: 12.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--tinta-2)' }}>
+            Histórico de cambios
+          </span>
+          {historial === null ? (
+            <span style={{ fontSize: 12.5, color: 'var(--tinta-3)' }}>Consultando histórico…</span>
+          ) : historial.length === 0 ? (
+            <span style={{ fontSize: 12.5, color: 'var(--tinta-3)' }}>Sin cambios registrados; se usa el factor inicial (1).</span>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 160, overflowY: 'auto' }}>
+              {[...historial].reverse().map((h) => (
+                <div key={h.id} style={{ background: 'var(--vidrio-celda)', borderRadius: 12, padding: '8px 12px', fontSize: 12.5 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, fontWeight: 700 }}>
+                    <span className="n">{h.factorAnterior} → {h.factorNuevo} {uS10}/{uCompra}</span>
+                    <span className="n" style={{ color: 'var(--tinta-2)', fontWeight: 500 }}>{h.cambiadoEn.slice(0, 16).replace('T', ' ')}</span>
+                  </div>
+                  <div style={{ color: 'var(--tinta-2)', marginTop: 2 }}>{h.motivo} · {h.cambiadoPor}</div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </Modal>
@@ -184,6 +317,7 @@ export function Catalogo() {
   const [um, setUm] = useState('todas')
   const [editando, setEditando] = useState<InsumoMaestro | null>(null)
   const [viendo, setViendo] = useState<InsumoMaestro | null>(null)
+  const [factorDe, setFactorDe] = useState<InsumoMaestro | null>(null)
   const [altaAbierta, setAltaAbierta] = useState(false)
 
   const cargar = () => api.listarMaestro().then(setMaestro)
@@ -305,7 +439,7 @@ export function Catalogo() {
               <table className="tabla-vidrio" style={{ tableLayout: 'fixed', minWidth: 860 }}>
                 {/* anchos fijos: con la lista virtual las filas entran y salen, y sin esto las columnas bailarían */}
                 <colgroup>
-                  <col style={{ width: 100 }} /><col /><col style={{ width: 120 }} /><col style={{ width: 130 }} /><col style={{ width: 140 }} /><col style={{ width: 170 }} />
+                  <col style={{ width: 100 }} /><col /><col style={{ width: 130 }} /><col style={{ width: 120 }} /><col style={{ width: 135 }} /><col style={{ width: 235 }} />
                 </colgroup>
                 <thead>
                   <tr>
@@ -320,6 +454,7 @@ export function Catalogo() {
                     insumo={ins}
                     medir={medir}
                     enVer={() => setViendo(ins)}
+                    enFactor={() => setFactorDe(ins)}
                     enEditar={() => { setEditando(ins); setAltaAbierta(true) }}
                   />
                 )} />
@@ -334,7 +469,18 @@ export function Catalogo() {
         <VerInsumo
           insumo={viendo}
           enCerrar={() => setViendo(null)}
+          enFactor={() => { setFactorDe(viendo); setViendo(null) }}
           enEditar={() => { setEditando(viendo); setViendo(null); setAltaAbierta(true) }}
+        />
+      )}
+      {factorDe && (
+        <ModalFactor
+          insumo={factorDe}
+          enCerrar={() => setFactorDe(null)}
+          enGuardado={(actualizado) => {
+            cargar()
+            setFactorDe(actualizado)
+          }}
         />
       )}
       {altaAbierta && (
@@ -352,7 +498,10 @@ export function Catalogo() {
 
 /** Una fila del catálogo. Va aparte para que la lista pueda virtualizarse
     (envolver las filas) sin tocar cómo se dibuja cada una. */
-function FilaInsumo({ insumo: ins, medir, enVer, enEditar }: { insumo: InsumoMaestro; medir: MedirFila; enVer: () => void; enEditar: () => void }) {
+function FilaInsumo({ insumo: ins, medir, enVer, enFactor, enEditar }: {
+  insumo: InsumoMaestro; medir: MedirFila; enVer: () => void; enFactor: () => void; enEditar: () => void
+}) {
+  const tieneFactor = ins.factorConversion !== undefined && ins.factorConversion !== 1
   return (
     <tr {...medir}>
       <td className="n" style={{ fontWeight: 800, color: 'var(--marca-tinte-tinta)', textAlign: 'left', width: 70 }}>{ins.codigo}</td>
@@ -362,12 +511,20 @@ function FilaInsumo({ insumo: ins, medir, enVer, enEditar }: { insumo: InsumoMae
           {ins.estado === 'por_verificar' && <Chip tono="aviso">por verificar</Chip>}
         </span>
       </td>
-      <td><Chip tono="neutro">{ins.um.toLowerCase()}</Chip></td>
+      <td>
+        <Chip tono="neutro">{ins.um.toLowerCase()}</Chip>
+        {tieneFactor && (
+          <div className="n" style={{ fontSize: 11.5, color: 'var(--tinta-2)', marginTop: 3, textAlign: 'left' }}>
+            1 = {ins.factorConversion} {(ins.unidadS10 ?? ins.um).toLowerCase()}
+          </div>
+        )}
+      </td>
       <td style={{ color: 'var(--tinta-2)' }}>{ins.marca || '—'}</td>
       <td className="n" style={{ whiteSpace: 'nowrap' }}>{precio(ins.precioPromedio)}</td>
-      <td style={{ textAlign: 'right', whiteSpace: 'nowrap', width: 170 }}>
+      <td style={{ textAlign: 'right', whiteSpace: 'nowrap', width: 235 }}>
         <span style={{ display: 'inline-flex', gap: 6 }}>
           <Pildora tipo="secundario" chica enClic={enVer}>Ver</Pildora>
+          <Pildora tipo="secundario" chica enClic={enFactor}>Factor</Pildora>
           <Pildora tipo="secundario" chica enClic={enEditar}>{ins.estado === 'por_verificar' ? 'Verificar' : 'Editar'}</Pildora>
         </span>
       </td>
