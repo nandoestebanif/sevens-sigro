@@ -19,6 +19,7 @@ import { usaApiReal } from '../api/http'
 import { useEffect, useMemo, useState } from 'react'
 import { ErrorApi, api } from '../api/cliente'
 import { consultarRucEnSunat, type RucSunat } from '../api/sunat'
+import { proveedores as proveedoresOficina } from '../api/oficina'
 import type { EstadoProveedor, Proveedor } from '../api/tipos'
 import { Campo, Chip, Modal, Vacio, type TonoChip } from '../ui/base'
 import { Chips, Encabezado, Fondo, Pildora, Vidrio } from '../ui/vidrio'
@@ -123,11 +124,39 @@ export function AltaProveedor({ enCerrar, enCreado }: {
   )
 }
 
+/* ── HU-29 · T-344: la baja es un estado con fecha; sus compras quedan y deja de salir en compras nuevas ── */
+function BajaProveedor({ p, enCerrar, enListo }: { p: Proveedor; enCerrar: () => void; enListo: () => void }) {
+  const [error, setError] = useState('')
+  const [guardando, setGuardando] = useState(false)
+  const confirmar = async () => {
+    setGuardando(true); setError('')
+    try { await proveedoresOficina.darDeBaja(p.id); enListo() }
+    catch (e) { setError(e instanceof ErrorApi ? e.message : 'No se pudo dar de baja.') }
+    finally { setGuardando(false) }
+  }
+  return (
+    <Modal titulo="Dar de baja al proveedor" enCerrar={enCerrar}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <p style={{ fontSize: 14, lineHeight: 1.5 }}>
+          <strong>{p.razonSocial}</strong> (RUC {p.ruc}) dejará de aparecer al registrar compras nuevas.
+          No se borra: sus {p.comprasRegistradas} compras registradas se conservan y sigue en esta lista como «De baja».
+        </p>
+        {error && <p role="alert" style={{ fontSize: 13, color: 'var(--grave)', fontWeight: 600 }}>{error}</p>}
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, justifyContent: 'flex-end' }}>
+          <Pildora tipo="secundario" enClic={enCerrar}>Cancelar</Pildora>
+          <Pildora enClic={confirmar} deshabilitado={guardando}>{guardando ? 'Dando de baja…' : 'Dar de baja'}</Pildora>
+        </div>
+      </div>
+    </Modal>
+  )
+}
+
 export function Proveedores() {
   const [todos, setTodos] = useState<Proveedor[] | null>(null)
   const [busqueda, setBusqueda] = useState('')
   const [altaAbierta, setAltaAbierta] = useState(false)
   const [tope, setTope] = useState(60)
+  const [bajando, setBajando] = useState<Proveedor | null>(null)
 
   const cargar = () => api.listarProveedores().then(setTodos)
   useEffect(() => {
@@ -190,6 +219,7 @@ export function Proveedores() {
                 <tr>
                   <th>Proveedor</th><th>RUC</th><th>Estado</th>
                   <th className="n">Entrega</th><th className="n">Compras</th><th className="n">Última compra</th>
+                  {usaApiReal && <th aria-label="Acción" />}
                 </tr>
               </thead>
               <tbody>
@@ -201,6 +231,13 @@ export function Proveedores() {
                     <td className="n" style={{ whiteSpace: 'nowrap' }}>{p.diasEntrega == null ? '—' : `${p.diasEntrega} días`}</td>
                     <td className="n">{p.comprasRegistradas}</td>
                     <td className="n" style={{ whiteSpace: 'nowrap' }}>{p.ultimaCompra ?? '—'}</td>
+                    {usaApiReal && (
+                      <td style={{ textAlign: 'right' }}>
+                        {p.estado !== 'de_baja' && (
+                          <Pildora tipo="secundario" chica etiqueta={`Dar de baja a ${p.razonSocial}`} enClic={() => setBajando(p)}>Dar de baja</Pildora>
+                        )}
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>
@@ -220,6 +257,10 @@ export function Proveedores() {
         El plazo de entrega de cada proveedor alimenta el punto de reposición. Los días se
         recalculan con las recepciones reales.
       </p>
+
+      {bajando && (
+        <BajaProveedor p={bajando} enCerrar={() => setBajando(null)} enListo={() => { setBajando(null); cargar() }} />
+      )}
 
       {altaAbierta && (
         <AltaProveedor

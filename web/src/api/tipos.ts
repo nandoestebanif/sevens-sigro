@@ -38,6 +38,10 @@ export interface LineaCompra {
   cantidad: number
   unidadCompra: string
   precioUnitario: number
+  /** HU-33: nota opcional si el precio se sale de lo habitual (no es obligatoria, D13) */
+  notaPrecio?: string
+  /** HU-33: solo para mostrar en el formulario; lo que vale lo marca el servidor */
+  fueraDeLoHabitual?: boolean
 }
 
 export type EstadoCompra = 'registrada' | 'recibida_parcial' | 'recibida' | 'anulada'

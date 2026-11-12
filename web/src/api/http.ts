@@ -293,8 +293,8 @@ export const catalogoHttp = {
 
 /* ── requerimiento (HU-19), saldo por comprar (HU-24) y parámetros de reposición (HU-25) ──
    todo es de la obra activa (regla 9): la ruta lleva su id y el servidor verifica la asignación */
-const obraId = async () => (await obrasHttp.activa()).id
-const num = (x: unknown) => Number(x ?? 0) // la API manda los decimales como texto exacto
+export const obraId = async () => (await obrasHttp.activa()).id
+export const num = (x: unknown) => Number(x ?? 0) // la API manda los decimales como texto exacto
 
 interface SaldoApi {
   insumoId: number; insumoCodigo: string; descripcion: string; unidadS10: string; unidadCompra: string
@@ -400,6 +400,7 @@ export const comprasHttp = {
         cantidad: l.cantidad,
         unidadCompra: l.unidadCompra,
         precioUnitario: l.precioUnitario,
+        ...(l.notaPrecio && l.notaPrecio.trim() ? { notaPrecio: l.notaPrecio.trim() } : {}),
       })),
     })
     return aCompra(c, oId)
@@ -527,7 +528,7 @@ function motivoDe(m: MovimientoApi): string {
   return m.tipo.replace(/_/g, ' ')
 }
 
-async function aMovimiento(m: MovimientoApi, nombres: Map<number, string>, oId: string): Promise<Movimiento> {
+async function aMovimiento(m: MovimientoApi, nombres: Map<number, string>, oId: string, personas = new Map<number, string>()): Promise<Movimiento> {
   const codigo = m.insumoCodigo ?? (await codigoDe(m.insumoId))
   const yo = sesionActual()?.usuario
   return {
@@ -536,7 +537,8 @@ async function aMovimiento(m: MovimientoApi, nombres: Map<number, string>, oId: 
     insumoId: codigo, descripcion: await descripcionDe(codigo), unidad: m.unidad ?? '',
     tipo: m.tipo === 'reverso' ? 'reverso' : m.sentido > 0 ? 'ingreso' : 'salida',
     cantidad: num(m.cantidad), costoUnitario: num(m.costoUnitario), motivo: motivoDe(m),
-    autor: yo && yo.id === m.registradoPor ? yo.nombre : `Usuario ${m.registradoPor}`,
+    // T-345: quién lo registró (nombre si la obra lo deja ver) — la hora es la del servidor (fechaServidor)
+    autor: personas.get(m.registradoPor) ?? (yo && yo.id === m.registradoPor ? yo.nombre : `Usuario ${m.registradoPor}`),
     reversaA: m.revierteAId ? idMovimiento(m.revierteAId) : null,
     anuladoPor: m.revertidoPorId ? idMovimiento(m.revertidoPorId) : null,
   }
@@ -563,8 +565,11 @@ export const almacenHttp = {
   },
   /** kárdex completo, del más reciente al más antiguo; el anulado y el que lo anuló vienen del servidor */
   async kardex(): Promise<Movimiento[]> {
-    const [xs, nombres, oId] = await Promise.all([pedir<MovimientoApi[]>('GET', `${await almacen()}/kardex`), nombresDeAlmacen(), obraId()])
-    const movs = await Promise.all(xs.map((m) => aMovimiento(m, nombres, oId)))
+    const { nombresDeLaObra } = await import('./oficina')
+    const [xs, nombres, oId, personas] = await Promise.all([
+      pedir<MovimientoApi[]>('GET', `${await almacen()}/kardex`), nombresDeAlmacen(), obraId(), nombresDeLaObra(),
+    ])
+    const movs = await Promise.all(xs.map((m) => aMovimiento(m, nombres, oId, personas)))
     return movs.sort((a, b) => b.fechaServidor.localeCompare(a.fechaServidor))
   },
   /** HU-45: corregir = un movimiento inverso que apunta al original; el original no se toca */
