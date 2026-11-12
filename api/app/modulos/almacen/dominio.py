@@ -83,6 +83,19 @@ def a_unidad_s10(cantidad: Decimal, unidad: str | None, insumo: dict) -> Decimal
                        f"{insumo['codigo']} se registra en {insumo['unidad_s10']} (o en {insumo['unidad_compra']}, su unidad de compra).")
 
 
+def a_costo_s10(costo: Decimal, unidad: str | None, insumo: dict) -> Decimal:
+    """El costo viaja en la MISMA unidad que la cantidad (HU-41): S/ por bolsa, por m³ o por varilla. El libro guarda cantidad
+    y costo en la unidad del S10, así que un costo dado por unidad de compra se divide entre el factor de conversión; si no,
+    100 varillas a S/ 35.40 valdrían 7,12 veces lo que costaron."""
+    costo = Decimal(str(costo))
+    if unidad is None or unidad == insumo["unidad_s10"]:
+        return costo
+    if unidad == insumo["unidad_compra"]:
+        return (costo / Decimal(str(insumo["factor_conversion"]))).quantize(D6, rounding=ROUND_HALF_UP)
+    raise ReglaAlmacen(422, "unidad_invalida",
+                       f"{insumo['codigo']} se registra en {insumo['unidad_s10']} (o en {insumo['unidad_compra']}, su unidad de compra).")
+
+
 def costo_recepcion(precio_unitario: Decimal, factor_sin_igv: Decimal, factor_conversion: Decimal) -> Decimal:
     """Costo por unidad del S10 de lo recibido: precio de la línea sin IGV (NIC 2) entre el factor de conversión."""
     return (Decimal(str(precio_unitario)) * Decimal(str(factor_sin_igv)) / Decimal(str(factor_conversion))).quantize(D6, rounding=ROUND_HALF_UP)
