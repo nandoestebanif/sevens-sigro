@@ -199,6 +199,30 @@ class StockOut(BaseModel):
     advertencias: list[str] = []
 
 
+class SemanaFilaOut(BaseModel):
+    """HU-44: por insumo (y almacén), en la unidad del S10. Un reverso cuenta en la columna de lo que anula, en negativo."""
+    almacen_id: int | None
+    almacen: str | None
+    insumo_id: int
+    insumo_codigo: str
+    descripcion: str
+    unidad: str
+    saldo_inicial: Decimal
+    entradas: Decimal
+    salidas: Decimal
+    saldo_final: Decimal
+
+
+class SemanaOut(BaseModel):
+    periodo_id: int
+    numero: int
+    fecha_inicio: date
+    fecha_fin: date
+    estado: str
+    criterio: str
+    filas: list[SemanaFilaOut]
+
+
 class KardexFilaOut(MovimientoOut):
     recepcion_motivo_exceso: str | None = None   # HU-36: la recepción pasó lo requerido y dejó este motivo
     revertido_por_id: int | None
