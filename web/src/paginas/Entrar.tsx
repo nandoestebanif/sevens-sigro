@@ -24,30 +24,35 @@ function servidor(): string {
   try { return new URL(API_URL).host } catch { return API_URL }
 }
 
-export function Entrar() {
+/** `saliendo`: ya entró; la tarjeta se desvanece antes de la capa «Preparando tu obra» (App.tsx). */
+export function Entrar({ saliendo = false }: { saliendo?: boolean }) {
   const [usuario, setUsuario] = useState('')
   const [clave, setClave] = useState('')
   const [verClave, setVerClave] = useState(false)
   const [error, setError] = useState('')
   const [enviando, setEnviando] = useState(false)
+  // el servidor está despertando (502, 503 o sin red): se reintenta solo y no se muestra un error falso
+  const [conectando, setConectando] = useState(false)
 
   const entrar = async () => {
     if (!usuario.trim() || !clave) { setError('Escribe tu usuario y tu contraseña.'); return }
-    setEnviando(true); setError('')
+    setEnviando(true); setConectando(false); setError('')
     try {
-      await iniciarSesion(usuario.trim(), clave)
+      await iniciarSesion(usuario.trim(), clave, { alReintentar: () => setConectando(true) })
     } catch (e) {
+      // 401: «Usuario o contraseña incorrectos.»; agotados los reintentos: «No pudimos conectar…»
       setError(e instanceof ErrorApi ? e.message : 'No se pudo ingresar. Inténtalo de nuevo.')
     } finally {
-      setEnviando(false)
+      setEnviando(false); setConectando(false)
     }
   }
+  const textoBoton = conectando ? 'Conectando con el servidor…' : enviando || saliendo ? 'Entrando…' : 'Entrar'
 
   return (
     <>
       <Fondo dibujo="entrar" />
       <div
-        className="pagina"
+        className={`pagina${saliendo ? ' entrar-sale' : ''}`}
         style={{
           maxWidth: 1240, minHeight: 'calc(100vh / var(--escala, 1))', margin: '0 auto', padding: '40px 20px',
           display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'center', gap: 28,
@@ -136,7 +141,7 @@ export function Entrar() {
               </span>
             </label>
             {error && <div role="alert" style={{ fontSize: 14, fontWeight: 600, color: 'var(--grave)' }}>{error}</div>}
-            <Pildora enviar grande anchoCompleto deshabilitado={enviando}>{enviando ? 'Entrando…' : 'Entrar'}</Pildora>
+            <Pildora enviar grande anchoCompleto deshabilitado={enviando || saliendo}>{textoBoton}</Pildora>
             <p style={{ textAlign: 'center', fontSize: 14, color: 'var(--tinta-2)' }}>
               ¿No tienes usuario? <span style={{ color: 'var(--accion)', fontWeight: 700 }}>Pídelo al administrador de la obra</span>
             </p>

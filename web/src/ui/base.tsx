@@ -64,7 +64,7 @@ export function Boton({ children, tipo = 'primario', deshabilitado, enClic, anch
   )
 }
 
-export type TonoChip = 'bien' | 'aviso' | 'grave' | 'neutro'
+export type TonoChip = 'bien' | 'aviso' | 'grave' | 'neutro' | 'info' | 'marca'
 
 /** Estado con etiqueta: el color nunca va solo (criterio de accesibilidad). */
 export function Chip({ tono, children }: { tono: TonoChip; children: ReactNode }) {
@@ -72,15 +72,19 @@ export function Chip({ tono, children }: { tono: TonoChip; children: ReactNode }
     bien: ['var(--bien)', 'var(--bien-tinte)'],
     aviso: ['var(--aviso)', 'var(--aviso-tinte)'],
     grave: ['var(--grave)', 'var(--grave-tinte)'],
-    neutro: ['var(--tinta-3)', 'var(--linea)'],
+    // neutro con --tinta-2: sobre vidrio --tinta-3 no llega a AA
+    neutro: ['var(--tinta-2)', 'var(--linea)'],
+    info: ['var(--info)', 'var(--info-tinte)'],
+    marca: ['var(--marca-tinte-tinta)', 'var(--marca-tinte)'],
   }
   const [color, fondo] = mapa[tono]
   return (
     <span
       className="n"
       style={{
-        fontSize: 11.5, fontWeight: 600, color, background: fondo,
-        borderRadius: 'var(--radio-pildora)', padding: '5px 10px', whiteSpace: 'nowrap',
+        display: 'inline-flex', alignItems: 'center', gap: 6,
+        fontSize: 12, fontWeight: 700, color, background: fondo,
+        borderRadius: 'var(--radio-pildora)', padding: '4px 11px', whiteSpace: 'nowrap',
       }}
     >
       {children}
@@ -98,9 +102,10 @@ export function Campo({ etiqueta, valor, enCambio, marcador, error, autoFoco, id
   id: string
   deshabilitado?: boolean
 }) {
+  // mismo aspecto que .campo del estilo vidrio (tokens.css)
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-      <label htmlFor={id} style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--tinta-2)' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 6, minWidth: 0 }}>
+      <label htmlFor={id} style={{ fontSize: 13, fontWeight: 600, color: 'var(--tinta-2)' }}>
         {etiqueta}
       </label>
       <input
@@ -110,15 +115,11 @@ export function Campo({ etiqueta, valor, enCambio, marcador, error, autoFoco, id
         autoFocus={autoFoco}
         disabled={deshabilitado}
         onChange={(e) => enCambio(e.target.value)}
-        style={{
-          width: '100%', minWidth: 0,
-          height: 42, border: `1px solid ${error ? 'var(--grave)' : 'var(--borde)'}`,
-          borderRadius: 'var(--radio-chico)', padding: '0 13px', fontSize: 14,
-          fontFamily: 'inherit', color: 'var(--tinta)', background: 'var(--tarjeta)',
-          outlineColor: 'var(--accion)',
-        }}
+        className="campo"
+        aria-invalid={error ? true : undefined}
+        style={{ width: '100%', minWidth: 0, height: 44, borderColor: error ? 'var(--grave)' : undefined, opacity: deshabilitado ? 0.6 : 1 }}
       />
-      {error && <span style={{ fontSize: 12, color: 'var(--grave)' }}>{error}</span>}
+      {error && <span style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--grave)' }}>{error}</span>}
     </div>
   )
 }
@@ -180,7 +181,7 @@ const ENFOCABLES = 'a[href], button:not([disabled]), input:not([disabled]), sele
  * - el foco entra al primer campo, queda atrapado dentro (Tab y Mayús+Tab dan la vuelta) y al cerrar
  *   vuelve a donde estaba (el botón que lo abrió).
  */
-export function Modal({ titulo, children, enCerrar, ancho = 420 }: {
+export function Modal({ titulo, children, enCerrar, ancho = 440 }: {
   titulo: string
   children: ReactNode
   enCerrar: () => void
@@ -226,17 +227,16 @@ export function Modal({ titulo, children, enCerrar, ancho = 420 }: {
         tabIndex={-1}
         onKeyDown={teclas}
         onClick={(e) => e.stopPropagation()}
-        className="modal-caja"
+        className="modal-caja vidrio-fuerte"
         style={{
           width: ancho, maxWidth: 'calc(100vw / var(--escala, 1) - 32px)',
           maxHeight: 'calc(90vh / var(--escala, 1))',
           display: 'flex', flexDirection: 'column', overflow: 'hidden', outline: 'none',
-          background: 'var(--tarjeta)', border: '1px solid var(--borde)',
-          borderRadius: 'var(--radio)', boxShadow: '0 24px 60px rgba(20,20,20,0.25)',
+          borderRadius: 'var(--radio-vidrio)', boxShadow: 'var(--vidrio-sombra-alta)',
         }}
       >
-        <div style={{ flex: 'none', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, padding: '18px 22px 14px', borderBottom: '1px solid var(--linea)' }}>
-          <h2 id={idTitulo} style={{ fontSize: 17, fontWeight: 700, minWidth: 0 }}>{titulo}</h2>
+        <div style={{ flex: 'none', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, padding: '20px 24px 14px', borderBottom: '1px solid var(--linea)' }}>
+          <h2 id={idTitulo} style={{ fontSize: 18, fontWeight: 800, letterSpacing: '-0.01em', minWidth: 0 }}>{titulo}</h2>
           <button
             type="button"
             onClick={enCerrar}

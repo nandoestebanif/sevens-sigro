@@ -3,7 +3,7 @@
            cualquier momento, para programar la jornada sabiendo con qué cuento.
    HU-45 · Como almacenero, quiero corregir un movimiento sin borrar el
            original, para conservar el rastro de lo registrado y lo corregido.
-   (Pantalla 15 del lienzo, «Kárdex y reverso».)
+   Lienzo W7 «Ingresos y salidas» (estilo vidrio): stock y kárdex con reverso.
 
    Criterios de HU-43:
    - Saldo por almacén y consolidado por proyecto.
@@ -18,7 +18,8 @@
 import { useEffect, useState } from 'react'
 import { ErrorApi, api } from '../api/cliente'
 import type { Movimiento, StockInsumo } from '../api/tipos'
-import { Boton, Chip, Modal, Tarjeta, Titulo, Vacio } from '../ui/base'
+import { Chip, Modal, Vacio } from '../ui/base'
+import { Aviso, Chips, Encabezado, Fondo, Pildora, TituloSeccion, Vidrio } from '../ui/vidrio'
 
 const n = (v: number) => v.toLocaleString('es-PE')
 const hora = (iso: string) => `${iso.slice(8, 10)}/${iso.slice(5, 7)} ${iso.slice(11, 16)}`
@@ -54,16 +55,16 @@ function Reverso({ movimiento, enCerrar, enListo }: {
   return (
     <Modal titulo={`Corregir ${movimiento.id} con un reverso`} enCerrar={enCerrar}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-        <Tarjeta estilo={{ padding: '11px 14px', background: 'var(--tarjeta-suave)' }}>
-          <div style={{ fontSize: 12.5, color: 'var(--tinta-2)', lineHeight: 1.6 }}>
+        <div style={{ padding: '12px 14px', background: 'var(--vidrio-celda)', borderRadius: 16 }}>
+          <div style={{ fontSize: 13.5, color: 'var(--tinta-2)', lineHeight: 1.6 }}>
             <strong style={{ color: 'var(--tinta)' }}>{TIPO[movimiento.tipo].texto}</strong>{' '}
             · {movimiento.descripcion}<br />
             {n(movimiento.cantidad)} {movimiento.unidad} · S/ {movimiento.costoUnitario.toFixed(2)} c/u ·{' '}
             {movimiento.almacen} · {hora(movimiento.fechaServidor)}
           </div>
-        </Tarjeta>
+        </div>
         <div>
-          <label htmlFor="rev-motivo" style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--tinta-3)', marginBottom: 6 }}>
+          <label htmlFor="rev-motivo" style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--tinta-2)', marginBottom: 6 }}>
             Motivo de la corrección (obligatorio)
           </label>
           <textarea
@@ -72,26 +73,22 @@ function Reverso({ movimiento, enCerrar, enListo }: {
             onChange={(e) => setMotivo(e.target.value)}
             placeholder="p. ej. Se digitó 12; el conteo real fue 2"
             rows={2}
-            style={{
-              width: '100%', border: `1px solid ${error ? 'var(--grave)' : 'var(--borde)'}`,
-              borderRadius: 'var(--radio-chico)', padding: '10px 12px', fontSize: 13.5,
-              fontFamily: 'inherit', background: 'var(--tarjeta)', color: 'var(--tinta)',
-              resize: 'vertical',
-            }}
+            className="campo"
+            style={{ height: 'auto', padding: '10px 14px', resize: 'vertical', borderColor: error ? 'var(--grave)' : undefined }}
           />
-          {error && <div style={{ fontSize: 12, color: 'var(--grave)', marginTop: 5 }}>{error}</div>}
+          {error && <div role="alert" style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--grave)', marginTop: 5 }}>{error}</div>}
         </div>
-        <p style={{ fontSize: 12.5, color: 'var(--tinta-3)', lineHeight: 1.5 }}>
+        <p style={{ fontSize: 13, color: 'var(--tinta-2)', lineHeight: 1.5 }}>
           El original <strong>no se toca</strong>: queda en el libro con la marca de quién
           lo anuló. El reverso hereda la cantidad y el costo congelado, y el saldo se
           recalcula con ambos. Si además corresponde otra cantidad, se registra el
           movimiento correcto aparte.
         </p>
-        <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
-          <Boton tipo="secundario" enClic={enCerrar}>Cancelar</Boton>
-          <Boton enClic={corregir} deshabilitado={guardando}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, justifyContent: 'flex-end' }}>
+          <Pildora tipo="secundario" enClic={enCerrar}>Cancelar</Pildora>
+          <Pildora enClic={corregir} deshabilitado={guardando}>
             {guardando ? 'Registrando…' : 'Registrar el reverso'}
-          </Boton>
+          </Pildora>
         </div>
       </div>
     </Modal>
@@ -115,141 +112,125 @@ export function Movimientos() {
   const corte = kardex?.[0]?.fechaServidor
 
   return (
-    <div className="pagina" style={{ display: 'flex', flexDirection: 'column', gap: 15 }}>
-      <Titulo sub={`El movimiento es un libro que no se borra: corregir es registrar un reverso. ${corte ? `Último movimiento considerado: ${hora(corte)} (hora del servidor).` : ''}`}>
-        Ingresos y salidas
-      </Titulo>
+    <>
+    <Fondo dibujo="movimientos" />
+    <div className="pagina" style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+      <Encabezado
+        titulo="Ingresos y salidas"
+        sub={`El movimiento es un libro que no se borra: corregir es registrar un reverso. ${corte ? `Último movimiento considerado: ${hora(corte)} (hora del servidor).` : ''}`}
+      />
+
+      <Chips>
+        <Chip tono="info">Movimientos y stock: datos de ejemplo · insumos del S10 real</Chip>
+        <Chip tono="neutro">El saldo lo calcula el servidor</Chip>
+        <Chip tono="neutro">Costo promedio ponderado (NIC 2)</Chip>
+      </Chips>
 
       {/* ── HU-43 · stock por almacén y consolidado ── */}
-      <Tarjeta relleno={false}>
-        <div style={{ padding: '13px 16px', borderBottom: '1px solid var(--borde)', display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-          <span style={{ fontSize: 13.5, fontWeight: 700 }}>Stock al momento</span>
-          <span style={{ fontSize: 11.5, color: 'var(--tinta-3)' }}>el saldo se deriva de los movimientos: no es un campo editable</span>
+      <Vidrio estilo={{ display: 'flex', flexDirection: 'column', gap: 12 }} etiqueta="Stock al momento">
+        <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'baseline', gap: 8 }}>
+          <TituloSeccion>Stock al momento</TituloSeccion>
+          <span style={{ fontSize: 13, color: 'var(--tinta-2)' }}>el saldo se deriva de los movimientos: no es un campo editable</span>
         </div>
         {stock === null ? (
           <Vacio titulo="Cargando…" detalle="Sumando los movimientos del libro." />
         ) : (
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead>
-              <tr style={{ background: 'var(--tarjeta-suave)', borderBottom: '1px solid var(--borde)' }}>
-                {['Insumo', 'Por almacén', 'Consolidado', 'Punto de reposición', 'Último movimiento'].map((h, i) => (
-                  <th key={h} style={{ padding: '11px 16px', fontSize: 11, fontWeight: 600, color: 'var(--tinta-3)', letterSpacing: 0.4, textAlign: i >= 2 ? 'right' : 'left' }}>{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {stock.map((s, i) => (
-                <tr key={s.insumoId} style={{ borderBottom: i === stock.length - 1 ? 'none' : '1px solid var(--linea)' }}>
-                  <td style={{ padding: '12px 16px' }}>
-                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: 13, fontWeight: 600 }}>
-                      {s.descripcion}
-                      {s.bajoPunto && <Chip tono="grave">bajo el punto</Chip>}
-                    </span>
-                    <div className="n" style={{ fontSize: 11, color: 'var(--tinta-3)', marginTop: 2 }}>SKU {s.insumoId}</div>
-                  </td>
-                  <td style={{ padding: '12px 16px', fontSize: 12.5, color: 'var(--tinta-2)' }}>
-                    {s.porAlmacen.map((a) => (
-                      <div key={a.almacen} className="n">{a.almacen}: <strong>{n(a.saldo)}</strong> {s.unidad}</div>
-                    ))}
-                  </td>
-                  <td className="n" style={{ padding: '12px 16px', fontSize: 14, fontWeight: 700, textAlign: 'right' }}>
-                    {n(s.saldoTotal)} {s.unidad}
-                  </td>
-                  <td className="n" style={{ padding: '12px 16px', fontSize: 12.5, color: s.bajoPunto ? 'var(--grave)' : 'var(--tinta-2)', textAlign: 'right' }}>
-                    {s.puntoReposicion === null ? '—' : `${n(s.puntoReposicion)} ${s.unidad}`}
-                  </td>
-                  <td className="n" style={{ padding: '12px 16px', fontSize: 12.5, color: 'var(--tinta-3)', textAlign: 'right' }}>
-                    {hora(s.ultimoMovimiento)}
-                  </td>
+          <div style={{ overflowX: 'auto' }}>
+            <table className="tabla-vidrio">
+              <thead>
+                <tr>
+                  <th>Insumo</th><th>Por almacén</th><th className="n">Consolidado</th><th className="n">Punto de reposición</th><th className="n">Último movimiento</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {stock.map((s) => (
+                  <tr key={s.insumoId}>
+                    <td style={{ minWidth: 240 }}>
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', fontWeight: 600 }}>
+                        {s.descripcion}
+                        {s.bajoPunto && <Chip tono="grave">bajo el punto</Chip>}
+                      </span>
+                      <div className="n" style={{ fontSize: 12, color: 'var(--tinta-2)', marginTop: 2, textAlign: 'left' }}>SKU {s.insumoId}</div>
+                    </td>
+                    <td style={{ color: 'var(--tinta-2)' }}>
+                      {s.porAlmacen.map((a) => (
+                        <div key={a.almacen} className="n" style={{ textAlign: 'left', whiteSpace: 'nowrap' }}>{a.almacen}: <strong style={{ color: 'var(--tinta)' }}>{n(a.saldo)}</strong> {s.unidad}</div>
+                      ))}
+                    </td>
+                    <td className="n" style={{ fontWeight: 800, whiteSpace: 'nowrap' }}>{n(s.saldoTotal)} {s.unidad}</td>
+                    <td className="n" style={{ color: s.bajoPunto ? 'var(--grave)' : 'var(--tinta-2)', fontWeight: s.bajoPunto ? 700 : 400, whiteSpace: 'nowrap' }}>
+                      {s.puntoReposicion === null ? '—' : `${n(s.puntoReposicion)} ${s.unidad}`}
+                    </td>
+                    <td className="n" style={{ color: 'var(--tinta-2)', whiteSpace: 'nowrap' }}>{hora(s.ultimoMovimiento)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
-      </Tarjeta>
+      </Vidrio>
 
-      {aviso && (
-        <Tarjeta estilo={{ padding: '11px 16px', borderLeft: '4px solid var(--bien)' }}>
-          <span style={{ fontSize: 12.5, color: 'var(--tinta-2)' }}>{aviso}</span>
-        </Tarjeta>
-      )}
+      {aviso && <Aviso tono="bien" rol="status">{aviso}</Aviso>}
 
       {/* ── HU-45 · kárdex con reverso ── */}
-      <Tarjeta relleno={false}>
-        <div style={{ padding: '13px 16px', borderBottom: '1px solid var(--borde)', display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-          <span style={{ fontSize: 13.5, fontWeight: 700 }}>Kárdex · los movimientos del libro</span>
-          <span style={{ fontSize: 11.5, color: 'var(--tinta-3)' }}>aquí no hay editar ni eliminar: solo corregir con reverso</span>
+      <Vidrio estilo={{ display: 'flex', flexDirection: 'column', gap: 12 }} etiqueta="Kárdex">
+        <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'baseline', gap: 8 }}>
+          <TituloSeccion>Kárdex · los movimientos del libro</TituloSeccion>
+          <span style={{ fontSize: 13, color: 'var(--tinta-2)' }}>aquí no hay editar ni eliminar: solo corregir con reverso</span>
         </div>
         {kardex === null ? (
           <Vacio titulo="Cargando…" detalle="Abriendo el libro de movimientos." />
         ) : (
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead>
-              <tr style={{ background: 'var(--tarjeta-suave)', borderBottom: '1px solid var(--borde)' }}>
-                {['Mov.', 'Fecha (servidor)', 'Tipo', 'Insumo y motivo', 'Cantidad', 'Costo cong.', ''].map((h, i) => (
-                  <th key={h || 'acc'} style={{ padding: '11px 14px', fontSize: 11, fontWeight: 600, color: 'var(--tinta-3)', letterSpacing: 0.4, textAlign: i >= 4 ? 'right' : 'left' }}>{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {kardex.map((m, i) => {
-                const anulado = m.anuladoPor !== null
-                return (
-                  <tr
-                    key={m.id}
-                    style={{
-                      borderBottom: i === kardex.length - 1 ? 'none' : '1px solid var(--linea)',
-                      background: m.tipo === 'reverso' ? 'var(--aviso-tinte)' : 'transparent',
-                    }}
-                  >
-                    <td className="n" style={{ padding: '11px 14px', fontSize: 12, color: 'var(--tinta-3)', whiteSpace: 'nowrap' }}>{m.id}</td>
-                    <td className="n" style={{ padding: '11px 14px', fontSize: 12.5, color: 'var(--tinta-2)', whiteSpace: 'nowrap' }}>{hora(m.fechaServidor)}</td>
-                    <td style={{ padding: '11px 14px', whiteSpace: 'nowrap' }}>
-                      <Chip tono={m.tipo === 'ingreso' ? 'bien' : m.tipo === 'salida' ? 'neutro' : 'aviso'}>
-                        {TIPO[m.tipo].texto}
-                      </Chip>
-                    </td>
-                    <td style={{ padding: '11px 14px' }}>
-                      <div style={{ fontSize: 12.5, fontWeight: 600, textDecoration: anulado ? 'line-through' : 'none', color: anulado ? 'var(--tinta-3)' : 'var(--tinta)' }}>
-                        {m.descripcion}
-                      </div>
-                      <div style={{ fontSize: 11.5, color: 'var(--tinta-3)', marginTop: 2 }}>
-                        {m.motivo} · {m.almacen} · {m.autor}
-                        {m.reversaA && <strong> · anula a {m.reversaA}</strong>}
-                        {anulado && <strong style={{ color: 'var(--aviso)' }}> · anulado por {m.anuladoPor}</strong>}
-                      </div>
-                    </td>
-                    <td className="n" style={{ padding: '11px 14px', fontSize: 13, fontWeight: 700, textAlign: 'right', whiteSpace: 'nowrap', textDecoration: anulado ? 'line-through' : 'none', color: anulado ? 'var(--tinta-3)' : 'var(--tinta)' }}>
-                      {TIPO[m.tipo].signo} {n(m.cantidad)} {m.unidad}
-                    </td>
-                    <td className="n" style={{ padding: '11px 14px', fontSize: 12.5, color: 'var(--tinta-2)', textAlign: 'right', whiteSpace: 'nowrap' }}>
-                      S/ {m.costoUnitario.toFixed(2)}
-                    </td>
-                    <td style={{ padding: '11px 14px', textAlign: 'right' }}>
-                      {m.tipo !== 'reverso' && !anulado && (
-                        <button
-                          type="button"
-                          onClick={() => setCorrigiendo(m)}
-                          style={{
-                            border: '1px solid var(--borde)', background: 'var(--tarjeta)',
-                            color: 'var(--tinta-2)', borderRadius: 'var(--radio-pildora)',
-                            padding: '5px 12px', fontSize: 12, fontWeight: 600,
-                            cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap',
-                          }}
-                        >
-                          Corregir
-                        </button>
-                      )}
-                    </td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
+          <div style={{ overflowX: 'auto' }}>
+            <table className="tabla-vidrio" style={{ minWidth: 860 }}>
+              <thead>
+                <tr>
+                  <th>Mov.</th><th>Fecha (servidor)</th><th>Tipo</th><th>Insumo y motivo</th>
+                  <th className="n">Cantidad</th><th className="n">Costo cong.</th><th aria-label="Acción" />
+                </tr>
+              </thead>
+              <tbody>
+                {kardex.map((m) => {
+                  const anulado = m.anuladoPor !== null
+                  return (
+                    <tr key={m.id} style={{ background: m.tipo === 'reverso' ? 'var(--aviso-tinte)' : undefined }}>
+                      <td className="n" style={{ color: 'var(--tinta-2)', whiteSpace: 'nowrap', textAlign: 'left' }}>{m.id}</td>
+                      <td className="n" style={{ color: 'var(--tinta-2)', whiteSpace: 'nowrap', textAlign: 'left' }}>{hora(m.fechaServidor)}</td>
+                      <td style={{ whiteSpace: 'nowrap' }}>
+                        <Chip tono={m.tipo === 'ingreso' ? 'bien' : m.tipo === 'salida' ? 'marca' : 'aviso'}>
+                          {TIPO[m.tipo].texto}
+                        </Chip>
+                      </td>
+                      <td style={{ minWidth: 260 }}>
+                        <div style={{ fontWeight: 600, textDecoration: anulado ? 'line-through' : 'none', color: anulado ? 'var(--tinta-2)' : 'var(--tinta)' }}>
+                          {m.descripcion}
+                        </div>
+                        <div style={{ fontSize: 12.5, color: 'var(--tinta-2)', marginTop: 2 }}>
+                          {m.motivo} · {m.almacen} · {m.autor}
+                          {m.reversaA && <strong> · anula a {m.reversaA}</strong>}
+                          {anulado && <strong style={{ color: 'var(--aviso)' }}> · anulado por {m.anuladoPor}</strong>}
+                        </div>
+                      </td>
+                      <td className="n" style={{ fontWeight: 700, whiteSpace: 'nowrap', textDecoration: anulado ? 'line-through' : 'none', color: anulado ? 'var(--tinta-2)' : m.tipo === 'ingreso' ? 'var(--bien)' : m.tipo === 'salida' ? 'var(--grave)' : 'var(--tinta)' }}>
+                        {TIPO[m.tipo].signo} {n(m.cantidad)} {m.unidad}
+                      </td>
+                      <td className="n" style={{ whiteSpace: 'nowrap' }}>S/ {m.costoUnitario.toFixed(2)}</td>
+                      <td style={{ textAlign: 'right' }}>
+                        {m.tipo !== 'reverso' && !anulado && (
+                          <Pildora tipo="secundario" chica enClic={() => setCorrigiendo(m)}>Corregir</Pildora>
+                        )}
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
         )}
-      </Tarjeta>
+        <span style={{ fontSize: 13, color: 'var(--tinta-2)' }}>Cada salida congela el promedio de ese momento.</span>
+      </Vidrio>
 
-      <p style={{ fontSize: 12.5, color: 'var(--tinta-3)' }}>
+      <p style={{ fontSize: 13, color: 'var(--tinta-plano)', padding: '0 4px', lineHeight: 1.5 }}>
         El registro de ingresos y salidas en obra lo hace el almacenero desde el celular
         (con o sin señal); esta pantalla es la consulta de oficina. El costo de cada salida
         queda <strong>congelado</strong> al promedio vigente en ese instante (NIC 2): un
@@ -268,5 +249,6 @@ export function Movimientos() {
         />
       )}
     </div>
+    </>
   )
 }
