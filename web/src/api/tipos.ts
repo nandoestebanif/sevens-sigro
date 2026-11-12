@@ -76,6 +76,26 @@ export interface LineaRecepcion {
   pendiente: number
 }
 
+/** HU-44: entradas y salidas de una semana (periodo de la obra), por insumo y almacén. Lo calcula el servidor. */
+export interface FilaSemana {
+  almacen: string
+  insumoId: string // código del insumo
+  descripcion: string
+  unidad: string
+  saldoInicial: number
+  entradas: number
+  salidas: number // un reverso resta en la columna de lo que anula: puede salir negativa
+  saldoFinal: number
+}
+export interface ReporteSemana {
+  numero: number
+  inicio: string
+  fin: string
+  cerrada: boolean
+  criterio: string
+  filas: FilaSemana[]
+}
+
 /** HU-36: lo que se va a recibir contra lo requerido en el S10, ANTES de guardar. Avisa, no bloquea (regla 7). */
 export interface VerificacionRecepcion {
   hayExceso: boolean

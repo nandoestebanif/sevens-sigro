@@ -19,7 +19,7 @@ import type {
   Obra, ObraActiva, ParametroReposicion, Proveedor, ResultadoRequerimiento, Semana, TipoComprobante,
 } from './tipos'
 // importes propios de almacén y semana: en su línea, para no chocar con la lista de arriba
-import type { Movimiento, StockInsumo, VerificacionRecepcion } from './tipos'
+import type { Movimiento, ReporteSemana, StockInsumo, VerificacionRecepcion } from './tipos'
 
 export const API_URL: string = (import.meta.env.VITE_API_URL ?? '').replace(/\/$/, '')
 export const usaApiReal = API_URL !== ''
@@ -575,6 +575,39 @@ export const almacenHttp = {
       nombresDeAlmacen(), obraId(),
     ])
     return aMovimiento(m, nombres, oId)
+  },
+}
+
+/* ── HU-44: entradas y salidas de la semana ── */
+interface SemanaApi {
+  numero: number; fechaInicio: string; fechaFin: string; estado: string; criterio: string
+  filas: { almacen: string | null; insumoCodigo: string; descripcion: string; unidad: string; saldoInicial: string
+    entradas: string; salidas: string; saldoFinal: string }[]
+}
+export const semanaHttp = {
+  async reporte(numero: number): Promise<ReporteSemana> {
+    const s = await pedir<SemanaApi>('GET', `${await almacen()}/semana?numero=${numero}`)
+    return {
+      numero: s.numero, inicio: s.fechaInicio, fin: s.fechaFin, cerrada: s.estado === 'cerrado', criterio: s.criterio,
+      filas: s.filas.map((f) => ({
+        almacen: f.almacen ?? '', insumoId: f.insumoCodigo, descripcion: f.descripcion, unidad: f.unidad,
+        saldoInicial: num(f.saldoInicial), entradas: num(f.entradas), salidas: num(f.salidas), saldoFinal: num(f.saldoFinal),
+      })),
+    }
+  },
+  /** el CSV lo arma el servidor (mismas cifras que la pantalla); aquí solo se descarga con la sesión */
+  async csv(numero: number): Promise<Blob> {
+    const s = sesionActual()
+    let r: Response
+    try {
+      r = await fetch(`${API_URL}/api/v1${await almacen()}/semana?numero=${numero}&formato=csv`, {
+        headers: s ? { Authorization: `Bearer ${s.token}` } : {},
+      })
+    } catch {
+      throw new ErrorApi('sin_conexion', 'No se pudo conectar con el servidor de SIGRO. Revisa tu conexión e inténtalo de nuevo.')
+    }
+    if (!r.ok) throw new ErrorApi(`http_${r.status}`, 'El servidor no pudo armar el archivo de esa semana.', r.status)
+    return r.blob()
   },
 }
 
