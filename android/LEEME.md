@@ -44,7 +44,7 @@ docs/capturas/  ← el diseño de cada pantalla, claro y oscuro
 | Elegir obra | regla 9 | Solo las obras donde la persona está asignada; con una sola, entra directo |
 | Inicio | — | Franja «N por enviar / todo enviado», accesos grandes, catálogo guardado para buscar sin señal |
 | Registrar salida | HU-40, HU-37 | Elige el **almacén** (con uno solo, automático), busca el insumo **sin señal**, cantidad en su unidad de compra, motivo, quién retira, frente opcional. Guarda en el celular con `uuid_cliente` y la envía a `POST /obras/{id}/almacen/salidas` |
-| Entrada de compra | HU-35, HU-37 | Compras de la obra, lo **pendiente** de cada línea según el servidor y el almacén de destino. «Llegó todo» o «llegó una parte»; se guarda con `uuid_cliente` y viaja por la misma cola a `POST /obras/{id}/almacen/recepciones` |
+| Entrada de compra | HU-35, HU-36, HU-37 | Compras de la obra, lo **pendiente** de cada línea según el servidor y el almacén de destino. «Llegó todo» o «llegó una parte»; se guarda con `uuid_cliente` y viaja por la misma cola a `POST /obras/{id}/almacen/recepciones`. **HU-36:** antes de guardar, con señal, pregunta si se pasa lo requerido en el S10; si se pasa, avisa con las cifras del servidor y pide el motivo (o «recibir solo hasta lo requerido»). Sin señal guarda igual y lo dice |
 | Mis registros | HU-37, HU-38 | Cada registro con su estado (por enviar · enviado · rechazado). Un rechazo muestra el **`mensaje` del servidor** tal cual (422, y 404 con código como `almacen_no_existe`). Al tocarlo, el detalle (insumo, cantidad, motivo, quién retira, estado) y, si se envió, «registró: <nombre> · <hora del servidor en Lima>», guardado en Room al recibir el 201/200. «Enviar ahora» |
 | Stock | HU-43 | `GET /obras/{id}/almacen/stock`: por almacén y consolidado, con el **corte** del servidor. Sin señal, la última respuesta guardada con «actualizado a las HH:MM». Nunca calcula |
 | Ingreso sin compra | HU-41 | Origen, insumo, cantidad, costo sin IGV y almacén; «otro» y «saldo de otra obra» exigen su detalle. Va por la cola a `POST /obras/{id}/almacen/ingresos` |
@@ -66,7 +66,8 @@ La API ya recibe salidas, recepciones y stock (servicio almacén, migración 001
 | Salida | `POST /obras/{id}/almacen/salidas` | `almacen_id` (nulo solo si la obra tiene uno), `unidad` = unidad de compra (el servidor convierte con el factor), `dispositivo` |
 | Compras por recibir | `GET /obras/{id}/compras?estado=registrada` | |
 | Pendiente de una compra | `GET /obras/{id}/almacen/compras/{compra_id}/recepcion` | Se une a las líneas de la compra por orden (ambas vienen por `compra_detalle.id`); si no calzan, no se adivina |
-| Entrada de compra | `POST /obras/{id}/almacen/recepciones` | Cuerpo exacto de `RecepcionIn`: `lineas: null` = todo lo pendiente; si no, `[{insumo_id, cantidad}]` |
+| Entrada de compra | `POST /obras/{id}/almacen/recepciones` | Cuerpo exacto de `RecepcionIn`: `lineas: null` = todo lo pendiente; si no, `[{insumo_id, cantidad}]`; `motivo_exceso` solo si se pasa lo requerido (HU-36) |
+| Aviso de lo requerido (HU-36) | `POST /obras/{id}/almacen/recepciones/verificacion` | Mismo cuerpo que la recepción (`compra_id`, `lineas`); no guarda nada. Un 404 sin código (servidor viejo) no bloquea |
 | Ingreso sin compra | `POST /obras/{id}/almacen/ingresos` | Cuerpo exacto de `IngresoIn`; `origen` con los valores de `ORIGENES`; `costo_unitario` por unidad del S10 |
 | Stock | `GET /obras/{id}/almacen/stock` | Se guarda la última respuesta (tabla `stock_guardado`) para verla sin señal |
 | Estado del celular | `GET /obras/{id}/dispositivos` | Solo el administrador puede listar: el almacenero recibe 403. **Pedido a Adiel:** `GET /obras/{id}/dispositivos/mio` |
