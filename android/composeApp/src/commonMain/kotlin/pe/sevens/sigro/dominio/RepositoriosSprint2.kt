@@ -47,7 +47,14 @@ sealed interface RegistroAlmacen {
      * HU-35. `todo` = llegó todo lo pendiente: viaja SIN líneas y el servidor recibe lo que falte (aunque
      * otra entrega haya llegado antes). Si no, cada línea va con su `insumo_id` y lo recibido.
      */
-    data class Entrada(val almacenId: Int?, val compra: CompraParaRecibir, val recibido: List<Pair<LineaCompra, String>>, val todo: Boolean) : RegistroAlmacen {
+    data class Entrada(
+        val almacenId: Int?,
+        val compra: CompraParaRecibir,
+        val recibido: List<Pair<LineaCompra, String>>,
+        val todo: Boolean,
+        /** HU-36 (D11): si con esta entrada se pasa lo requerido en el S10, el motivo; si no, nulo. */
+        val motivoExceso: String? = null,
+    ) : RegistroAlmacen {
         override val tipo get() = TipoRegistro.ENTRADA_COMPRA
     }
     data class IngresoSinCompra(val almacenId: Int?, val origen: OrigenIngreso, val linea: LineaAlmacen, val costoUnitario: String, val detalle: String?) : RegistroAlmacen {
@@ -73,6 +80,13 @@ interface RepositorioObra {
     suspend fun compras(obraId: Int): List<CompraParaRecibir>
     /** HU-35: la compra con el pendiente de cada línea según el servidor (necesita señal). */
     suspend fun conPendientes(obraId: Int, compra: CompraParaRecibir): CompraParaRecibir
+    /**
+     * HU-36: antes de guardar, ¿con lo que se va a recibir se pasa lo requerido en el S10? Necesita señal.
+     * `lineas` nulo = «llegó todo» (lo pendiente); si no, insumo_id → cantidad en unidad de compra.
+     * Devuelve nulo si este servidor todavía no ofrece la verificación (se guarda igual: avisa, no bloquea).
+     */
+    suspend fun verificarRecepcion(obraId: Int, compraId: Int, lineas: List<Pair<Int, String>>?): VerificacionRecepcion? = null
+
     /** Obras a las que se puede trasladar (GET /obras), sin la propia. */
     suspend fun obrasDestino(obraId: Int): List<ObraAsignada>
 }

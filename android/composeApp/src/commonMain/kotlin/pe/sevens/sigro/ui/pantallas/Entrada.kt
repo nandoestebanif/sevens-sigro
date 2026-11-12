@@ -21,6 +21,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -36,17 +38,22 @@ import org.koin.compose.viewmodel.koinViewModel
 import pe.sevens.sigro.dominio.AlmacenObra
 import pe.sevens.sigro.dominio.CompraParaRecibir
 import pe.sevens.sigro.dominio.ErrorSigro
+import pe.sevens.sigro.dominio.ExcesoRequerido
+import pe.sevens.sigro.dominio.LineaCompra
+import pe.sevens.sigro.dominio.MotivoExceso
 import pe.sevens.sigro.dominio.ProgramadorSincronizacion
 import pe.sevens.sigro.dominio.RegistroAlmacen
 import pe.sevens.sigro.dominio.RepositorioObra
 import pe.sevens.sigro.dominio.RepositorioRegistros
 import pe.sevens.sigro.dominio.ValidarAlmacen
 import pe.sevens.sigro.dominio.ValidarSalida
+import pe.sevens.sigro.dominio.VerificacionRecepcion
 import pe.sevens.sigro.ui.componentes.AvisoNaranja
 import pe.sevens.sigro.ui.componentes.AvisoRojo
 import pe.sevens.sigro.ui.componentes.BotonNegro
 import pe.sevens.sigro.ui.componentes.CampoVidrio
 import pe.sevens.sigro.ui.componentes.Marcador
+import pe.sevens.sigro.ui.componentes.Opciones
 import pe.sevens.sigro.ui.componentes.PantallaVidrio
 import pe.sevens.sigro.ui.componentes.TarjetaVidrio
 import pe.sevens.sigro.ui.componentes.planoEntrada
@@ -58,6 +65,11 @@ import pe.sevens.sigro.ui.tema.Paleta
  *    GET /obras/{id}/almacen/compras/{compra_id}/recepcion (lo calcula el servidor);
  *  - lo recibido se guarda en el celular con su uuid_cliente y viaja por la misma cola sin señal a
  *    POST /obras/{id}/almacen/recepciones. «Llegó todo» va sin líneas: el servidor recibe lo pendiente.
+ *  - HU-36 (D11, T-298): antes de guardar, con señal, se pregunta al servidor si con esta entrada se pasa lo
+ *    requerido en el S10 (POST …/recepciones/verificacion). Si se pasa, se AVISA con sus cifras y se pide el
+ *    motivo (regla 7: avisa, no bloquea); el motivo viaja como `motivo_exceso`. Pasar lo COMPRADO sí se bloquea
+ *    (HU-35, `validarRecepcion`). Sin señal se guarda igual: si al enviarse el servidor encuentra exceso sin motivo,
+ *    el registro queda rechazado con su mensaje en «Mis registros» (HU-38) y se vuelve a registrar con el motivo.
  */
 
 /**
@@ -96,6 +108,14 @@ data class EstadoEntrada(
     val errores: Map<Int, String> = emptyMap(),
     val guardando: Boolean = false,
     val guardada: Boolean = false,
+    /** HU-36: consultando al servidor si se pasa lo requerido. */
+    val verificando: Boolean = false,
+    /** HU-36: la respuesta del servidor cuando SÍ se pasa; mientras esté, guardar exige motivo. */
+    val exceso: VerificacionRecepcion? = null,
+    val motivo: MotivoExceso? = null,
+    val motivoDetalle: String = "",
+    /** Se guardó sin poder revisar lo requerido (sin señal). */
+    val sinVerificar: Boolean = false,
 ) {
     /** Recibir una parte exige saber el insumo y el pendiente de cada línea (con señal). */
     val puedeParcial: Boolean get() = compra?.conPendientes == true
@@ -140,7 +160,7 @@ class EntradaViewModel(
         }
     }
 
-    fun cambiarCompra() = _e.update { it.copy(compra = null, consultando = false, recibido = emptyMap(), errores = emptyMap()) }
+    fun cambiarCompra() = _e.update { it.copy(compra = null, consultando = false, recibido = emptyMap(), errores = emptyMap()).sinExceso() }
 
     fun elegirAlmacen(obraId: Int, a: AlmacenObra) {
         almacen.elegir(obraId, a)
@@ -151,29 +171,84 @@ class EntradaViewModel(
         val c = s.compra ?: return@update s
         if (s.llegoTodo && !s.puedeParcial) return@update s // sin el pendiente del servidor no se puede partir
         val todo = !s.llegoTodo
-        s.copy(llegoTodo = todo, recibido = proponer(c, todo), errores = emptyMap())
+        s.copy(llegoTodo = todo, recibido = proponer(c, todo), errores = emptyMap()).sinExceso()
     }
 
-    fun recibido(i: Int, v: String) = _e.update { it.copy(recibido = it.recibido + (i to v), errores = it.errores - i - (-1)) }
+    /** Cambiar una cantidad obliga a volver a preguntar al servidor (el aviso anterior ya no vale). */
+    fun recibido(i: Int, v: String) = _e.update { it.copy(recibido = it.recibido + (i to v), errores = it.errores - i - (-1)).sinExceso() }
+
+    fun motivo(m: MotivoExceso) = _e.update { it.copy(motivo = m, errores = it.errores - ERROR_MOTIVO) }
+    fun motivoDetalle(v: String) = _e.update { it.copy(motivoDetalle = v, errores = it.errores - ERROR_MOTIVO) }
+
+    /**
+     * «No, recibir solo hasta lo requerido»: pasa a «llegó una parte» con lo recibido de cada línea que se pasa
+     * bajado a lo que falta para el requerido. Se vuelve a verificar al guardar.
+     */
+    fun hastaLoRequerido() = _e.update { s ->
+        val c = s.compra ?: return@update s
+        val v = s.exceso ?: return@update s
+        if (!c.conPendientes) return@update s.copy(errores = s.errores + (-1 to "Para recibir solo una parte hace falta señal."))
+        val base = if (s.llegoTodo) proponer(c, true) else s.recibido
+        s.copy(llegoTodo = false, recibido = base + ExcesoRequerido.hastaLoRequerido(c.lineas, base, v), errores = emptyMap()).sinExceso()
+    }
 
     fun guardar(obraId: Int) {
         val s = _e.value
         val c = s.compra ?: return
+        if (s.verificando || s.guardando) return
         val errores = when {
             c.recibidaCompleta -> mapOf(-1 to "Esta compra ya se recibió completa.")
             almacen.estado.value.falta -> mapOf(-1 to "Elige a qué almacén entra")
             else -> validarRecepcion(c, s.recibido)
         }
         if (errores.isNotEmpty()) { _e.update { it.copy(errores = errores) }; return }
+        val lineas = c.lineas.mapIndexedNotNull { i, l ->
+            val v = s.recibido[i].orEmpty()
+            if ((ValidarSalida.normalizarCantidad(v).toDoubleOrNull() ?: 0.0) > 0.0) l to v else null
+        }
+        // Ya se avisó que se pasa lo requerido: ahora solo falta el motivo.
+        if (s.exceso != null) {
+            val m = ExcesoRequerido.motivo(s.motivo, s.motivoDetalle)
+            if (m == null) {
+                val msg = if (s.motivo == MotivoExceso.OTRO) "Escribe el motivo" else "Elige por qué se necesita más de lo requerido"
+                _e.update { it.copy(errores = it.errores + (ERROR_MOTIVO to msg)) }
+                return
+            }
+            return guardarEnCelular(obraId, c, lineas, s.llegoTodo, m, sinVerificar = false)
+        }
+        _e.update { it.copy(verificando = true, errores = emptyMap()) }
+        viewModelScope.launch {
+            val consulta = if (s.llegoTodo) null else lineas.map { (l, v) -> requireNotNull(l.insumoId) to v }
+            val v = try {
+                Resultado.Listo(obra.verificarRecepcion(obraId, c.id, consulta))
+            } catch (x: ErrorSigro) {
+                if (x.esTransitorio) Resultado.SinSenal else Resultado.Rechazo(x.message)
+            }
+            when (v) {
+                is Resultado.Listo -> if (v.verificacion?.hayExceso == true) {
+                    _e.update { it.copy(verificando = false, exceso = v.verificacion, motivo = null, motivoDetalle = "") }
+                } else {
+                    _e.update { it.copy(verificando = false) }
+                    guardarEnCelular(obraId, c, lineas, s.llegoTodo, null, sinVerificar = false)
+                }
+                Resultado.SinSenal -> {
+                    _e.update { it.copy(verificando = false) }
+                    guardarEnCelular(obraId, c, lineas, s.llegoTodo, null, sinVerificar = true)
+                }
+                // 409 ya recibida, 422 se pasa de lo comprado…: el servidor manda; no se guarda.
+                is Resultado.Rechazo -> _e.update { it.copy(verificando = false, errores = mapOf(-1 to v.mensaje)) }
+            }
+        }
+    }
+
+    private fun guardarEnCelular(
+        obraId: Int, c: CompraParaRecibir, lineas: List<Pair<LineaCompra, String>>, todo: Boolean, motivo: String?, sinVerificar: Boolean,
+    ) {
         _e.update { it.copy(guardando = true) }
         viewModelScope.launch {
-            val lineas = c.lineas.mapIndexedNotNull { i, l ->
-                val v = s.recibido[i].orEmpty()
-                if ((ValidarSalida.normalizarCantidad(v).toDoubleOrNull() ?: 0.0) > 0.0) l to v else null
-            }
-            registros.registrarAlmacen(obraId, RegistroAlmacen.Entrada(almacen.estado.value.elegido?.id, c, lineas, todo = s.llegoTodo))
+            registros.registrarAlmacen(obraId, RegistroAlmacen.Entrada(almacen.estado.value.elegido?.id, c, lineas, todo = todo, motivoExceso = motivo))
             programador.programar() // si hay señal se envía ya; si no, cuando vuelva
-            _e.update { it.copy(guardando = false, guardada = true) }
+            _e.update { it.copy(guardando = false, guardada = true, sinVerificar = sinVerificar) }
         }
     }
 
@@ -181,6 +256,56 @@ class EntradaViewModel(
 
     private fun proponer(c: CompraParaRecibir, todo: Boolean): Map<Int, String> =
         c.lineas.indices.associateWith { i -> if (todo) c.lineas[i].recibible else "" }
+
+    private fun EstadoEntrada.sinExceso() = copy(exceso = null, motivo = null, motivoDetalle = "", errores = errores - ERROR_MOTIVO)
+
+    private sealed interface Resultado {
+        data class Listo(val verificacion: VerificacionRecepcion?) : Resultado
+        data object SinSenal : Resultado
+        data class Rechazo(val mensaje: String) : Resultado
+    }
+
+    companion object {
+        /** Clave de error del motivo del exceso (las líneas usan su índice; -1 es toda la entrada). */
+        const val ERROR_MOTIVO = -2
+    }
+}
+
+/** HU-36: el aviso del lienzo («Pasa lo requerido»), con las cifras del servidor y el motivo. */
+@Composable
+private fun AvisoExceso(e: EstadoEntrada, compra: CompraParaRecibir, vm: EntradaViewModel) {
+    val v = e.exceso ?: return
+    val nombres = compra.lineas.filter { it.insumoId != null }.associate { it.insumoId!! to it.descripcion }
+    Column(
+        Modifier.fillMaxWidth().background(Color(0xFFFEF3C7), RoundedCornerShape(18.dp)).padding(14.dp)
+            .semantics { liveRegion = LiveRegionMode.Polite },
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        val excedidas = v.excedidas
+        Text(
+            if (excedidas.size == 1) "${nombres[excedidas[0].insumoId] ?: excedidas[0].insumoCodigo} pasa lo requerido en el S10 en " +
+                "${ExcesoRequerido.fmt(excedidas[0].exceso)} ${excedidas[0].unidad}"
+            else "${excedidas.size} insumos pasan lo requerido en el S10",
+            fontSize = 15.sp, fontWeight = FontWeight.Bold, color = Color(0xFF92400E),
+        )
+        excedidas.forEach { l ->
+            Text(ExcesoRequerido.detalle(l, nombres[l.insumoId] ?: l.insumoCodigo), fontSize = 13.sp, lineHeight = 18.sp, color = Color(0xFF78350F))
+        }
+        Text(
+            "Puedes seguir: entra al stock al costo de la compra y queda marcado con tu motivo para el residente.",
+            fontSize = 13.sp, lineHeight = 18.sp, color = Color(0xFF78350F),
+        )
+        Text("¿Por qué se necesita más de lo requerido?", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF78350F))
+        Opciones(MotivoExceso.entries, e.motivo, { it.legible }, vm::motivo)
+        if (e.motivo == MotivoExceso.OTRO) {
+            CampoVidrio(e.motivoDetalle, vm::motivoDetalle, "Motivo", error = e.errores[EntradaViewModel.ERROR_MOTIVO])
+        } else {
+            e.errores[EntradaViewModel.ERROR_MOTIVO]?.let { Text(it, fontSize = 13.sp, color = Paleta.RechazadoTexto, fontWeight = FontWeight.SemiBold) }
+        }
+        TextButton(onClick = vm::hastaLoRequerido, enabled = compra.conPendientes) {
+            Text("No, recibir solo hasta lo requerido", color = Paleta.Naranja, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+        }
+    }
 }
 
 @Composable
@@ -192,7 +317,9 @@ fun PantallaEntrada(obraId: Int, alVolver: () -> Unit, vm: EntradaViewModel = ko
     PantallaVidrio("Entrada", plano = { planoEntrada(it) }, alVolver = alVolver, subtitulo = "Recibe lo que llegó de una compra") {
         if (e.guardada) {
             GuardadoEnCelular(
-                "Entrada guardada", "Lo recibido de ${e.compra?.proveedor ?: "la compra"} quedó en el celular con su código único.",
+                "Entrada guardada",
+                "Lo recibido de ${e.compra?.proveedor ?: "la compra"} quedó en el celular con su código único." +
+                    (if (e.sinVerificar) " Sin señal no se pudo revisar lo requerido en el S10: si se pasa, «Mis registros» te pedirá registrarla de nuevo con el motivo." else ""),
                 "Registrar otra entrada", vm::otra, alVolver, conServicio = true,
             )
             return@PantallaVidrio
@@ -249,10 +376,12 @@ fun PantallaEntrada(obraId: Int, alVolver: () -> Unit, vm: EntradaViewModel = ko
                 }
             }
             Text(
-                if (e.llegoTodo) "«Llegó todo» registra todo lo pendiente de la compra, aunque otra entrega haya llegado antes."
-                else "No se puede recibir más de lo pendiente. Lo que falte queda para otra entrega.",
+                (if (e.llegoTodo) "«Llegó todo» registra todo lo pendiente de la compra, aunque otra entrega haya llegado antes."
+                else "No se puede recibir más de lo pendiente. Lo que falte queda para otra entrega.") +
+                    " Si con lo recibido se pasa lo requerido en el S10, se avisa antes de guardar y se pide el motivo.",
                 fontSize = 13.sp, lineHeight = 18.sp, color = Paleta.Texto3,
             )
+            AvisoExceso(e, compra, vm)
             if (!e.puedeParcial && !e.consultando) {
                 Text("Para recibir solo una parte hace falta señal: el servidor dice cuánto queda pendiente.", fontSize = 13.sp, lineHeight = 18.sp, color = Paleta.Texto3)
             }
@@ -262,7 +391,10 @@ fun PantallaEntrada(obraId: Int, alVolver: () -> Unit, vm: EntradaViewModel = ko
             Marcador("Foto de la guía: llega con la cámara del celular (recomendada, no obligatoria)")
         }
         e.errores[-1]?.let { AvisoRojo(it) }
-        BotonNegro("Guardar entrada", { vm.guardar(obraId) }, icono = Icons.Filled.Save, colorIcono = Paleta.NaranjaVivo, cargando = e.guardando)
+        BotonNegro(
+            if (e.exceso != null) "Guardar con el motivo" else "Guardar entrada", { vm.guardar(obraId) },
+            icono = Icons.Filled.Save, colorIcono = Paleta.NaranjaVivo, cargando = e.guardando || e.verificando,
+        )
         AvisoNaranja("El costo de la entrada sale de la compra y lo calcula el servidor (costo promedio ponderado).")
     }
 }

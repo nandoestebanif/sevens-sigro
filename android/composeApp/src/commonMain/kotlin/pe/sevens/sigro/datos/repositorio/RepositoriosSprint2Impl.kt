@@ -8,15 +8,18 @@ import pe.sevens.sigro.datos.local.TrabajadorLocalEntity
 import pe.sevens.sigro.datos.remoto.ApiSigro
 import pe.sevens.sigro.datos.remoto.InsumoDto
 import pe.sevens.sigro.datos.remoto.InsumoIn
+import pe.sevens.sigro.datos.remoto.LineaCantidadDto
 import pe.sevens.sigro.datos.remoto.TrabajadorDto
 import pe.sevens.sigro.datos.remoto.TrabajadorIn
+import pe.sevens.sigro.datos.remoto.VerificacionIn
 import pe.sevens.sigro.dominio.AlmacenObra
 import pe.sevens.sigro.dominio.BusquedaInsumos
 import pe.sevens.sigro.dominio.CatalogoTexto
 import pe.sevens.sigro.dominio.CompraParaRecibir
 import pe.sevens.sigro.dominio.ElegirAlmacen
-import pe.sevens.sigro.dominio.EstadoLineaRecepcion
 import pe.sevens.sigro.dominio.ErrorSigro
+import pe.sevens.sigro.dominio.EstadoLineaRecepcion
+import pe.sevens.sigro.dominio.ExcesoLinea
 import pe.sevens.sigro.dominio.FichaInsumo
 import pe.sevens.sigro.dominio.LineaCompra
 import pe.sevens.sigro.dominio.NuevoInsumo
@@ -26,6 +29,8 @@ import pe.sevens.sigro.dominio.RepositorioInsumos
 import pe.sevens.sigro.dominio.RepositorioObra
 import pe.sevens.sigro.dominio.RepositorioTrabajadores
 import pe.sevens.sigro.dominio.Trabajador
+import pe.sevens.sigro.dominio.ValidarSalida
+import pe.sevens.sigro.dominio.VerificacionRecepcion
 
 /** HU-10 con señal (servidor) y sin señal (copia del celular); HU-08 registrar con señal. */
 class RepositorioInsumosImpl(
@@ -113,6 +118,19 @@ class RepositorioObraImpl(private val api: ApiSigro, private val cred: Credencia
         val estado = api.estadoRecepcion(cred.exigir(), obraId, compra.id)
             .map { EstadoLineaRecepcion(it.insumoId, it.unidadCompra, it.pedido, it.recibido, it.pendiente) }
         return compra.copy(lineas = ElegirAlmacen.unirPendientes(compra.lineas, estado))
+    }
+
+    override suspend fun verificarRecepcion(obraId: Int, compraId: Int, lineas: List<Pair<Int, String>>?): VerificacionRecepcion? {
+        val cuerpo = VerificacionIn(compraId, lineas?.map { (id, c) -> LineaCantidadDto(id, ValidarSalida.normalizarCantidad(c)) })
+        val r = try {
+            api.verificarRecepcion(cred.exigir(), obraId, cuerpo)
+        } catch (e: ErrorSigro) {
+            if (e.estadoHttp == 404 && e.codigo == "http_404") return null // servidor sin HU-36 todavía: no se bloquea
+            throw e
+        }
+        return VerificacionRecepcion(r.hayExceso, r.lineas.map {
+            ExcesoLinea(it.insumoId, it.insumoCodigo, it.unidad, it.requerido, it.yaRecibido, it.conEsta, it.exceso, it.excede)
+        })
     }
 
     override suspend fun compras(obraId: Int): List<CompraParaRecibir> {

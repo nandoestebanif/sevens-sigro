@@ -300,6 +300,80 @@ object ElegirAlmacen {
     }
 }
 
+/**
+ * HU-36 · lo que responde POST /obras/{id}/almacen/recepciones/verificacion, ya sin Ktor. Lo calcula SIEMPRE el
+ * servidor (regla 2): la app solo avisa con esto. Cantidades en la unidad del S10 (la del requerimiento).
+ * `requerido` nulo = el insumo no está en el requerimiento de la obra (no se avisa).
+ */
+data class ExcesoLinea(
+    val insumoId: Int,
+    val insumoCodigo: String,
+    val unidad: String,
+    val requerido: String?,
+    val yaRecibido: String,
+    val conEsta: String,
+    val exceso: String?,
+    val excede: Boolean,
+)
+
+data class VerificacionRecepcion(val hayExceso: Boolean, val lineas: List<ExcesoLinea>) {
+    val excedidas: List<ExcesoLinea> get() = lineas.filter { it.excede }
+}
+
+/** D11 · por qué se recibe más de lo requerido en el S10 (lienzo de la app, Entrada · «Pasa lo requerido»). */
+enum class MotivoExceso(val legible: String) {
+    CAMBIO("Cambio pedido por el residente"),
+    REPOSICION("Reponer material dañado"),
+    S10_CORTO("El S10 se quedó corto"),
+    OTRO("Otro motivo"),
+}
+
+object ExcesoRequerido {
+    private fun num(t: String?) = t?.let { ValidarSalida.normalizarCantidad(it).toDoubleOrNull() }
+
+    /** Texto del motivo que viaja como `motivo_exceso` (máx. 300). «Otro» exige que se escriba. */
+    fun motivo(m: MotivoExceso?, detalle: String?): String? = when (m) {
+        null -> null
+        MotivoExceso.OTRO -> detalle?.trim()?.take(300)?.ifEmpty { null }
+        else -> m.legible
+    }
+
+    /** Una línea del aviso: «Clavo: requerido 60 kg · ya recibido 55 kg · con esta entrada 65 kg (5 kg de más)». */
+    fun detalle(l: ExcesoLinea, nombre: String): String =
+        "$nombre: requerido en el S10 ${fmt(l.requerido)} ${l.unidad} · ya recibido ${fmt(l.yaRecibido)} ${l.unidad} · " +
+            "con esta entrada ${fmt(l.conEsta)} ${l.unidad} (${fmt(l.exceso)} ${l.unidad} de más)"
+
+    /**
+     * «No, recibir solo hasta lo requerido»: baja lo recibido de cada línea que se pasa. El exceso viene en la unidad
+     * del S10 y lo recibido en la de compra; el factor sale de la propia respuesta (lo que suma esta entrada en el
+     * S10 ÷ lo que se envió en unidad de compra), sin adivinar. Redondea HACIA ABAJO a 2 decimales para no pasarse.
+     * Devuelve índice de línea → nueva cantidad (en unidad de compra).
+     */
+    fun hastaLoRequerido(lineas: List<LineaCompra>, recibido: Map<Int, String>, v: VerificacionRecepcion): Map<Int, String> {
+        val porInsumo = v.excedidas.associateBy { it.insumoId }
+        return buildMap {
+            lineas.forEachIndexed { i, l ->
+                val x = porInsumo[l.insumoId ?: return@forEachIndexed] ?: return@forEachIndexed
+                val enviado = num(recibido[i]) ?: return@forEachIndexed
+                val sumaS10 = (num(x.conEsta) ?: return@forEachIndexed) - (num(x.yaRecibido) ?: 0.0)
+                if (enviado <= 0.0 || sumaS10 <= 0.0) return@forEachIndexed
+                val factor = sumaS10 / enviado
+                val nuevo = (enviado - (num(x.exceso) ?: 0.0) / factor).coerceAtLeast(0.0)
+                put(i, fmt(kotlin.math.floor(nuevo * 100 + 1e-9) / 100))
+            }
+        }
+    }
+
+    fun fmt(t: String?): String = num(t)?.let { fmt(it) } ?: "—"
+
+    fun fmt(d: Double): String {
+        val r = kotlin.math.round(d * 100) / 100
+        val entero = r.toLong()
+        val cent = kotlin.math.round((r - entero) * 100).toInt()
+        return if (cent == 0) "$entero" else "$entero." + cent.toString().padStart(2, '0').trimEnd('0')
+    }
+}
+
 /** Una fila de GET …/compras/{id}/recepcion, ya sin Ktor. Cantidades en unidad de compra. */
 data class EstadoLineaRecepcion(val insumoId: Int, val unidad: String, val pedido: String, val recibido: String, val pendiente: String)
 

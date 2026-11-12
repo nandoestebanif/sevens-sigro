@@ -142,6 +142,32 @@ import pe.sevens.sigro.dominio.ErrorSigro
     val pendiente: String,
 )
 
+/** HU-36 · VerificacionIn: lo mismo que se va a recibir (sin líneas = todo lo pendiente). */
+@Serializable data class VerificacionIn(
+    @SerialName("compra_id") val compraId: Int,
+    val lineas: List<LineaCantidadDto>? = null,
+)
+
+@Serializable data class LineaCantidadDto(@SerialName("insumo_id") val insumoId: Int, val cantidad: String)
+
+/** HU-36 · VerificacionLineaOut, en la unidad del S10. */
+@Serializable data class VerificacionLineaDto(
+    @SerialName("insumo_id") val insumoId: Int,
+    @SerialName("insumo_codigo") val insumoCodigo: String,
+    val unidad: String,
+    val requerido: String? = null,
+    @SerialName("ya_recibido") val yaRecibido: String,
+    @SerialName("con_esta") val conEsta: String,
+    val exceso: String? = null,
+    val excede: Boolean,
+)
+
+@Serializable data class VerificacionDto(
+    @SerialName("compra_id") val compraId: Int,
+    @SerialName("hay_exceso") val hayExceso: Boolean,
+    val lineas: List<VerificacionLineaDto> = emptyList(),
+)
+
 /**
  * Salida que viaja al servidor (HU-40). `uuid_cliente` es la clave de idempotencia (regla 3):
  * un reenvío con el mismo uuid no crea nada nuevo. La hora del dispositivo viaja como dato;
@@ -222,6 +248,10 @@ class ApiSigro(
     /** HU-35: pedido, recibido y pendiente por línea, en el orden de las líneas de la compra. */
     suspend fun estadoRecepcion(servidor: String, obraId: Int, compraId: Int): List<RecepcionLineaDto> =
         llamar { http.get(url(servidor, "/obras/$obraId/almacen/compras/$compraId/recepcion")) }
+
+    /** HU-36: avisa ANTES de guardar si la recepción pasa lo requerido en el S10. No guarda nada en el servidor. */
+    suspend fun verificarRecepcion(servidor: String, obraId: Int, cuerpo: VerificacionIn): VerificacionDto =
+        llamar { http.post(url(servidor, "/obras/$obraId/almacen/recepciones/verificacion")) { cuerpo(cuerpo) } }
 
     /** A2 · Stock por almacén y consolidado. Lo calcula el servidor a partir del libro (regla 2). */
     suspend fun stock(servidor: String, obraId: Int): StockDto =
