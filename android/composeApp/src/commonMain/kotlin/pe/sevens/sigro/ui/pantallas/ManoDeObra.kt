@@ -154,7 +154,7 @@ fun PantallaTrabajadores(obraId: Int, obraNombre: String, alVolver: () -> Unit, 
         },
     ) {
         Row(
-            Modifier.fillMaxWidth().heightIn(min = 72.dp).background(Paleta.Tinta, RoundedCornerShape(24.dp))
+            Modifier.fillMaxWidth().heightIn(min = 72.dp).background(Paleta.Principal, RoundedCornerShape(24.dp))
                 .clickable(onClickLabel = "Tomar asistencia") { irA(Destino.Asistencia) }.padding(16.dp)
                 .semantics(mergeDescendants = true) {},
             verticalAlignment = Alignment.CenterVertically,
@@ -162,13 +162,13 @@ fun PantallaTrabajadores(obraId: Int, obraNombre: String, alVolver: () -> Unit, 
         ) {
             Icon(Icons.Filled.EventAvailable, contentDescription = null, tint = Paleta.NaranjaVivo, modifier = Modifier.size(28.dp))
             Column(Modifier.weight(1f)) {
-                Text("Asistencia de hoy", fontSize = 17.sp, fontWeight = FontWeight.Bold, color = Paleta.SobreTinta)
+                Text("Asistencia de hoy", fontSize = 17.sp, fontWeight = FontWeight.Bold, color = Paleta.SobrePrincipal)
                 Text(
                     if (faltan == 0 && r.activos.isNotEmpty()) "Registrada para todos" else "Falta registrar · $faltan ${if (faltan == 1) "trabajador" else "trabajadores"}",
-                    fontSize = 14.sp, color = Paleta.SobreTinta.copy(alpha = 0.8f),
+                    fontSize = 14.sp, color = Paleta.SobrePrincipal.copy(alpha = 0.8f),
                 )
             }
-            Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null, tint = Paleta.SobreTinta)
+            Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null, tint = Paleta.SobrePrincipal)
         }
         e.aviso?.let { AvisoNaranja(it) }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {

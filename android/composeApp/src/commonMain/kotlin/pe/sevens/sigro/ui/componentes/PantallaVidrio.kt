@@ -146,7 +146,7 @@ fun <T> Opciones(
     texto: (T) -> String,
     alElegir: (T) -> Unit,
     modifier: Modifier = Modifier,
-    colorActivo: Color = Paleta.Tinta,
+    colorActivo: Color = Paleta.Principal,
 ) {
     FlowRow(modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         opciones.forEach { o ->
@@ -160,7 +160,7 @@ fun <T> Opciones(
                     .padding(horizontal = 16.dp, vertical = 10.dp),
                 contentAlignment = Alignment.Center,
             ) {
-                Text(texto(o), fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = if (activa) Paleta.SobreTinta else Paleta.Tinta)
+                Text(texto(o), fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = if (activa) Paleta.SobrePrincipal else Paleta.Tinta)
             }
         }
     }
