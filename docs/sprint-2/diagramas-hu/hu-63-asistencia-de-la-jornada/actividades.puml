@@ -1,0 +1,71 @@
+@startuml
+skinparam defaultFontName "DejaVu Sans"
+skinparam defaultFontSize 12
+skinparam shadowing false
+skinparam roundCorner 8
+skinparam ArrowColor #1F2A44
+skinparam ActivityBorderColor #1F2A44
+skinparam ActivityBackgroundColor #FFF7ED
+skinparam ActivityDiamondBackgroundColor #FEF3C7
+skinparam ActivityDiamondBorderColor #92400E
+skinparam SwimlaneTitleFontStyle bold
+skinparam SwimlaneTitleFontColor #1F2A44
+skinparam SwimlaneBorderColor #9CA3AF
+skinparam PartitionBorderColor #9CA3AF
+skinparam ParticipantBorderColor #1F2A44
+skinparam ParticipantBackgroundColor #FFF7ED
+skinparam ActorBorderColor #1F2A44
+skinparam ActorBackgroundColor #FFF7ED
+skinparam DatabaseBorderColor #1F2A44
+skinparam DatabaseBackgroundColor #E0E7FF
+skinparam SequenceLifeLineBorderColor #9CA3AF
+skinparam SequenceGroupBorderColor #C2410C
+skinparam SequenceGroupHeaderFontColor #C2410C
+skinparam StateBorderColor #1F2A44
+skinparam StateBackgroundColor #FFF7ED
+skinparam StateStartColor #1F2A44
+skinparam StateEndColor #1F2A44
+skinparam NoteBackgroundColor #F3F4F6
+skinparam NoteBorderColor #9CA3AF
+skinparam TitleFontSize 15
+skinparam TitleFontColor #C2410C
+skinparam ClassBorderColor #1F2A44
+skinparam ClassBackgroundColor #FFF7ED
+
+title HU-63 · Asistencia de la jornada\nDiagrama de actividades del sistema
+|Almacenero|
+start
+:Abre «Asistencia del día» en la app;
+:Marca presente, ausente o permiso;
+:Anota horas normales y, aparte, horas extra;
+:Pulsa «Guardar»;
+|App del almacenero|
+if (¿Algún presente sin horas?) then (sí)
+  :Marca la fila y no guarda;
+  stop
+else (no)
+endif
+:Guarda la jornada en el celular\ncon su uuid_cliente (estado PENDIENTE);
+if (¿Hay señal?) then (sí)
+else (no)
+  :Queda en cola y se envía al volver la señal;
+endif
+:Envía POST /api/v1/obras/{id}/jornadas;
+|API (servicio Tareo)|
+:Verifica sesión, rol, asignación y celular autorizado;
+if (¿Ese uuid_cliente ya llegó?) then (sí)
+  :Responde lo mismo que la primera vez\n(no duplica);
+else (no)
+  if (¿Fecha fuera del plazo de la obra?) then (sí)
+    :Responde 422;
+  elseif (¿Ese trabajador ya tiene asistencia ese día?) then (sí)
+    :Responde 409 «Use corrección»;
+  else (no)
+    :Guarda la jornada del día;
+  endif
+endif
+|App del almacenero|
+:Muestra ENVIADO o el motivo del rechazo;
+|Almacenero|
+stop
+@enduml

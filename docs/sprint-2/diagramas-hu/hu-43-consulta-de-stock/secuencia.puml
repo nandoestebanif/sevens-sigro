@@ -31,29 +31,30 @@ skinparam TitleFontSize 15
 skinparam TitleFontColor #C2410C
 skinparam ClassBorderColor #1F2A44
 skinparam ClassBackgroundColor #FFF7ED
+
 title HU-43 · Consulta de stock\nDiagrama de secuencia
 autonumber
 actor "Residente de obra" as U
-participant "Web de oficina" as UI
+participant "Web / App" as UI
 participant "API Gateway" as GW
-participant "Servicio Almacén" as S
+participant "Servicio Almacén" as SA
+participant "Servicio Compras" as SC
 database "BD · esquema almacen" as BD
-U -> UI : Abre «Stock» (web) o «Consultar stock» (app)
-U -> UI : Elige un almacén o «Consolidado»
-UI -> GW : GET /api/v1/obras/{id}/almacen/stock\nAuthorization: Bearer <JWT>
-GW -> S : reenvía la petición
-S -> BD : rol del usuario y asignación a la obra
-BD --> S : permisos
-alt sin permiso o sin asignación
-  S --> GW : 403 Prohibido
-  GW --> UI : 403
-  UI --> U : muestra «No tienes permiso en esta obra»
-else datos válidos
-  S -> S : Deriva el saldo de los movimientos: no hay campo saldo
-  S -> BD : Toma la fecha y hora del último movimiento considerado
-  S -> S : Marca los insumos bajo su punto de reposición
-  S --> GW : 200 OK
-  GW --> UI : respuesta
-  UI --> U : Muestra saldo por almacén y consolidado, con su hora de corte
+U -> UI : abre «Stock» · Consolidado
+alt con señal
+  UI -> GW : GET /api/v1/obras/{id}/almacen/stock?almacen=todos
+  GW -> SA : reenvía
+  SA -> BD : permisos y movimientos de la obra
+  BD --> SA : movimientos
+  SA -> SA : saldo = entradas − salidas ± reversos
+  SA -> SC : GET /interno/obras/{id}/parametros-reposicion
+  SC --> SA : punto de reposición por insumo
+  SA --> GW : 200 · saldos, hora de corte, alertas
+  GW --> UI : 200
+  UI --> U : saldo por almacén y consolidado
+  UI -> UI : guarda la copia (solo app)
+else sin señal (app)
+  UI -> UI : lee la copia guardada
+  UI --> U : «Sin señal · actualizado a las HH:MM»
 end
 @enduml

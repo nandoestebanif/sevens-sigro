@@ -31,32 +31,27 @@ skinparam TitleFontSize 15
 skinparam TitleFontColor #C2410C
 skinparam ClassBorderColor #1F2A44
 skinparam ClassBackgroundColor #FFF7ED
+
 title HU-56 · Inventario valorizado\nDiagrama de secuencia
 autonumber
 actor "Administrador" as U
 participant "Web de oficina" as UI
 participant "API Gateway" as GW
-participant "Servicio Costo" as S
-participant "Servicio Almacén" as X0
+participant "Servicio Costo" as SK
+participant "Servicio Almacén" as SA
 database "BD · esquema almacen" as BD
-U -> UI : Abre «Inventario valorizado»
-U -> UI : Elige un almacén o «Consolidado»
-UI -> GW : GET /api/v1/obras/{id}/costo/inventario  (nuevo, Sprint 2)\nAuthorization: Bearer <JWT>
-GW -> S : reenvía la petición
-S -> BD : rol del usuario y asignación a la obra
-BD --> S : permisos
-alt sin permiso o sin asignación
-  S --> GW : 403 Prohibido
-  GW --> UI : 403
-  UI --> U : muestra «No tienes permiso en esta obra»
-else datos válidos
-  S -> X0 : saldo y costo promedio vigente por insumo
-  X0 --> S : saldos valorizados
-  S -> S : Calcula valor = cantidad × costo promedio
-  S -> S : Suma por almacén y consolidado por obra
-  S -> S : Registra la fecha de corte del cálculo
-  S --> GW : 200 OK
-  GW --> UI : respuesta
-  UI --> U : Muestra cantidad, costo promedio y valor por insumo, con fecha de corte
-end
+U -> UI : Consolidado · corte 11/11/2026 18:00
+UI -> GW : GET /api/v1/obras/{id}/costo/inventario?almacen=todos&corte=2026-11-11T18:00
+GW -> SK : reenvía
+SK -> SK : verifica rol y asignación
+SK -> SA : GET /interno/obras/{id}/saldos-valorizados?corte=...
+SA -> BD : movimientos hasta el corte
+BD --> SA : movimientos
+SA -> SA : saldo y costo promedio por insumo
+SA --> SK : cantidad y costo promedio
+SK -> SK : valor = cantidad × costo promedio
+SK -> SK : totales por almacén y consolidado
+SK --> GW : 200 · insumos, total S/ 41,268.00, corte
+GW --> UI : 200
+UI --> U : inventario con su fecha de corte
 @enduml

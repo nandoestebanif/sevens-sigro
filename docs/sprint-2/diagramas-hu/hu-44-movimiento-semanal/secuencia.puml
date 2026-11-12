@@ -31,29 +31,31 @@ skinparam TitleFontSize 15
 skinparam TitleFontColor #C2410C
 skinparam ClassBorderColor #1F2A44
 skinparam ClassBackgroundColor #FFF7ED
+
 title HU-44 · Movimiento semanal\nDiagrama de secuencia
 autonumber
 actor "Almacenero" as U
 participant "Web de oficina" as UI
 participant "API Gateway" as GW
-participant "Servicio Almacén" as S
+participant "Servicio Almacén" as SA
+participant "Servicio Obras" as SO
 database "BD · esquema almacen" as BD
-U -> UI : Abre «Movimiento semanal»
-U -> UI : Elige la semana de control
-UI -> GW : GET /api/v1/obras/{id}/almacen/kardex?semana=  (reporte semanal, Sprint 2)\nAuthorization: Bearer <JWT>
-GW -> S : reenvía la petición
-S -> BD : rol del usuario y asignación a la obra
-BD --> S : permisos
-alt sin permiso o sin asignación
-  S --> GW : 403 Prohibido
-  GW --> UI : 403
-  UI --> U : muestra «No tienes permiso en esta obra»
-else datos válidos
-  S -> BD : Toma los movimientos de esa semana
-  S -> S : Calcula saldo inicial, entradas, salidas y saldo final por insumo
-  S -> S : Deja solo los insumos con movimiento en la semana
-  S --> GW : 200 OK
-  GW --> UI : respuesta
-  UI --> U : Muestra la tabla semanal y permite exportarla
-end
+U -> UI : elige la semana 16
+UI -> GW : GET /api/v1/obras/{id}/almacen/movimiento-semanal?semana=16
+GW -> SA : reenvía
+SA -> BD : permisos
+SA -> SO : GET /interno/obras/{id}/semanas/16
+SO --> SA : 02/11 al 08/11 · cerrada
+SA -> BD : saldo al 01/11 y movimientos del 02 al 08/11
+BD --> SA : movimientos (con reversos)
+SA -> SA : inicial, entradas, salidas y final por insumo
+SA -> SA : quita los insumos sin movimiento
+SA --> GW : 200 · filas y estado de la semana
+GW --> UI : 200
+UI --> U : tabla de la semana 16 (cerrada)
+U -> UI : «Exportar Excel»
+UI -> GW : GET ...movimiento-semanal?semana=16&formato=xlsx
+GW -> SA : reenvía
+SA --> GW : archivo .xlsx
+GW --> UI : archivo
 @enduml

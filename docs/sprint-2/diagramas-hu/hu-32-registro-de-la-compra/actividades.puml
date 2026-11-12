@@ -31,41 +31,43 @@ skinparam TitleFontSize 15
 skinparam TitleFontColor #C2410C
 skinparam ClassBorderColor #1F2A44
 skinparam ClassBackgroundColor #FFF7ED
+
 title HU-32 · Registro de la compra\nDiagrama de actividades del sistema
 |Almacenero|
 start
-:Abre «Compras → Nueva compra»;
-:Elige proveedor, fecha, tipo y número de comprobante;
-:Agrega insumos con cantidad y precio;
-:Pulsa «Registrar»;
+:Abre «Compras → Registrar la compra»;
+:Elige el proveedor (HU-29), tipo, número\ny fecha del comprobante;
+:Agrega insumos con cantidad y precio pagado (HU-33);
+:Adjunta la factura o la guía (HU-34);
+:Pulsa «Registrar compra»;
 |Web de oficina|
-if (¿Falta un dato obligatorio?) then (sí)
-:Marca el campo y no envía;
-stop
+if (¿Falta proveedor, comprobante\no algún precio?) then (sí)
+  :Marca el campo y no envía;
+  stop
 else (no)
 endif
-:Envía POST /api/v1/obras/{id}/compras\ncon el token de sesión;
+:Envía POST /api/v1/obras/{id}/compras;
 |API (servicio Compras)|
-:Verifica la sesión y el permiso\ndel rol en esa obra;
-if (¿Sin permiso o sin asignación?) then (sí)
-:Responde 403;
-stop
+:Verifica sesión, rol y asignación a la obra;
+if (¿Sin permiso?) then (sí)
+  :Responde 403;
+  stop
 else (no)
 endif
-if (¿No hay al menos un insumo\ncon cantidad y precio?) then (sí)
-:Responde 422 «Agregue al menos un insumo»;
-stop
+if (¿Mismo proveedor, tipo y número\nya registrados?) then (sí)
+  :Responde 409 «Comprobante repetido»;
+  stop
 else (no)
 endif
-if (¿Ese proveedor ya tiene un comprobante\ncon el mismo tipo y número?) then (sí)
-:Responde 409 «Comprobante repetido»;
-stop
+:Calcula base imponible, IGV 18 % y total;
+:Guarda la compra «registrada»\ncon sus líneas y el precio pagado;
+note right: No mueve el stock:\nel stock cambia con la recepción (HU-35)
+if (¿Proveedor «por validar» o con alerta SUNAT?) then (sí)
+  :Marca la compra para el residente;
 else (no)
 endif
-:Calcula base imponible, IGV y total;
-:Guarda la compra «registrada»: no mueve el stock;
 |Web de oficina|
-:Muestra la compra con pedido, recibido y pendiente en 0;
+:Muestra la compra con pedido, recibido\ny pendiente por insumo (pendiente = pedido);
 |Almacenero|
 stop
 @enduml

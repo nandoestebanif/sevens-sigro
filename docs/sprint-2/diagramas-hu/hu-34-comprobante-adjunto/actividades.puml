@@ -31,40 +31,38 @@ skinparam TitleFontSize 15
 skinparam TitleFontColor #C2410C
 skinparam ClassBorderColor #1F2A44
 skinparam ClassBackgroundColor #FFF7ED
+
 title HU-34 · Comprobante adjunto\nDiagrama de actividades del sistema
 |Almacenero|
 start
-:Abre la compra y pulsa «Adjuntar comprobante»;
-:Elige una foto o un PDF de la factura;
+:En la compra arrastra o elige\nla factura o la guía;
 |Web de oficina|
-if (¿Falta un dato obligatorio?) then (sí)
-:Marca el campo y no envía;
-stop
+if (¿No es PDF, JPG ni PNG?) then (sí)
+  :Muestra «Formato no admitido»;
+  stop
 else (no)
 endif
-:Envía POST /api/v1/obras/{id}/compras/{id}/comprobantes\ncon el token de sesión;
+if (¿Pesa más de 10 MB?) then (sí)
+  :Muestra «El archivo es demasiado grande»;
+  stop
+else (no)
+endif
+:Envía POST .../compras/{c}/comprobantes\n(multipart);
 |API (servicio Compras)|
-:Verifica la sesión y el permiso\ndel rol en esa obra;
-if (¿Sin permiso o sin asignación?) then (sí)
-:Responde 403;
-stop
-else (no)
-endif
-if (¿No es JPG, PNG ni PDF?) then (sí)
-:Responde 415 «Formato no admitido»;
-stop
-else (no)
-endif
-if (¿Supera el tamaño máximo?) then (sí)
-:Responde 413 «El archivo es demasiado grande»;
-stop
-else (no)
-endif
-:Calcula el hash del archivo;
-:Guarda el archivo y su registro:\ntipo, tamaño, hash, quién y cuándo;
+:Verifica sesión, rol y que la compra sea de la obra;
+:Revisa el tipo real del archivo\n(no solo la extensión);
+:Calcula la huella SHA-256;
+:Guarda el archivo en el almacenamiento de archivos;
+:Guarda el registro: tipo, tamaño, huella,\nquién y cuándo;
 |Web de oficina|
-:Lista los comprobantes de la compra con su botón «Descargar»;
+:Lista los comprobantes con «Descargar»;
+|Almacenero|
+if (¿Se subió uno equivocado?) then (sí)
+  :Pulsa «Anular» y escribe el motivo;
+  |API (servicio Compras)|
+  :Marca el comprobante «anulado»\ncon motivo, quién y cuándo (no lo borra);
+else (no)
+endif
 |Almacenero|
 stop
-floating note right: Una compra admite varios archivos. Dónde se guarda el archivo se decide en un ADR
 @enduml

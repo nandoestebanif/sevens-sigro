@@ -31,6 +31,7 @@ skinparam TitleFontSize 15
 skinparam TitleFontColor #C2410C
 skinparam ClassBorderColor #1F2A44
 skinparam ClassBackgroundColor #FFF7ED
+
 title HU-33 · Precio pagado con referencia\nDiagrama de actividades del sistema
 |Almacenero|
 start
@@ -44,8 +45,8 @@ start
 |Almacenero|
 :Escribe el precio realmente pagado;
 |Web de oficina|
-if (¿Se aparta del promedio más\ndel porcentaje configurado?) then (sí)
-  :Muestra la advertencia (no bloquea);
+if (¿Se aparta del promedio más\ndel porcentaje configurado (hoy ±10 %)?) then (sí)
+  :Muestra la advertencia (no bloquea)\ny ofrece una nota opcional;
 else (no)
 endif
 |Almacenero|

@@ -31,26 +31,25 @@ skinparam TitleFontSize 15
 skinparam TitleFontColor #C2410C
 skinparam ClassBorderColor #1F2A44
 skinparam ClassBackgroundColor #FFF7ED
+
 title HU-23 · Avance de compra y consumo\nDiagrama de actividades del sistema
 |Residente de obra|
 start
-:Abre «Gasto en recursos → Avance»;
+:Abre «Gasto en recursos» o la tabla\n«Lo comprado y lo consumido»;
 :Elige un insumo o la lista completa;
 |Web de oficina|
-:Envía GET /api/v1/obras/{id}/avance\ncon el token de sesión;
+:Envía GET /api/v1/obras/{id}/avance;
 |API (servicio Compras)|
-:Verifica la sesión y el permiso\ndel rol en esa obra;
-if (¿Sin permiso o sin asignación?) then (sí)
-:Responde 403;
-stop
-else (no)
-endif
-:Consulta a Servicio Almacén:\nGET /interno/obras/{id}/recibido-consumido;
-:Lee requerido y comprado de la obra;
-:Calcula los porcentajes sobre el requerimiento total;
-:Expresa todo en unidad de compra;
+:Verifica sesión, rol y asignación;
+:Lee el requerimiento total (HU-19) y lo comprado;
+|API (servicio Almacén)|
+:Entrega recibido y consumido por insumo;
+|API (servicio Compras)|
+:Convierte todo a unidad de compra (HU-17);
+:% comprado, % recibido y % consumido\nsobre el requerimiento total;
+:Saldo por comprar = requerido − comprado;
 |Web de oficina|
-:Muestra requerido, comprado, recibido, consumido,\nsaldo por comprar y porcentajes;
+:Muestra requerido, comprado, recibido, consumido,\nsaldo por comprar y los tres porcentajes;
 |Residente de obra|
 stop
 @enduml

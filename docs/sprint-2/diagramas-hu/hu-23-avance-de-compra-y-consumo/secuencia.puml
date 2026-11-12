@@ -31,32 +31,25 @@ skinparam TitleFontSize 15
 skinparam TitleFontColor #C2410C
 skinparam ClassBorderColor #1F2A44
 skinparam ClassBackgroundColor #FFF7ED
+
 title HU-23 · Avance de compra y consumo\nDiagrama de secuencia
 autonumber
 actor "Residente de obra" as U
 participant "Web de oficina" as UI
 participant "API Gateway" as GW
-participant "Servicio Compras" as S
-participant "Servicio Almacén" as X0
+participant "Servicio Compras" as SC
+participant "Servicio Almacén" as SA
 database "BD · esquema compras" as BD
-U -> UI : Abre «Gasto en recursos → Avance»
-U -> UI : Elige un insumo o la lista completa
-UI -> GW : GET /api/v1/obras/{id}/avance\nAuthorization: Bearer <JWT>
-GW -> S : reenvía la petición
-S -> BD : rol del usuario y asignación a la obra
-BD --> S : permisos
-alt sin permiso o sin asignación
-  S --> GW : 403 Prohibido
-  GW --> UI : 403
-  UI --> U : muestra «No tienes permiso en esta obra»
-else datos válidos
-  S -> X0 : GET /interno/obras/{id}/recibido-consumido
-  X0 --> S : recibido y consumido por insumo
-  S -> BD : Lee requerido y comprado de la obra
-  S -> S : Calcula los porcentajes sobre el requerimiento total
-  S -> S : Expresa todo en unidad de compra
-  S --> GW : 200 OK
-  GW --> UI : respuesta
-  UI --> U : Muestra requerido, comprado, recibido, consumido,\nsaldo por comprar y porcentajes
-end
+U -> UI : abre el avance de compra y consumo
+UI -> GW : GET /api/v1/obras/{id}/avance
+GW -> SC : reenvía
+SC -> BD : permisos, requerimiento y compras
+BD --> SC : requerido y comprado
+SC -> SA : GET /interno/obras/{id}/recibido-consumido
+SA --> SC : recibido y consumido
+SC -> SC : convierte a unidad de compra (factor HU-17)
+SC -> SC : % comprado, % recibido, % consumido
+SC --> GW : 200 · filas por insumo
+GW --> UI : 200
+UI --> U : tabla con los tres porcentajes separados
 @enduml
