@@ -9,7 +9,7 @@ from datetime import date, datetime
 from decimal import Decimal
 
 from sqlalchemy import (
-    BigInteger, Boolean, CHAR, Date, DateTime, ForeignKey, ForeignKeyConstraint, Identity, Index, Integer,
+    BigInteger, Boolean, CHAR, Date, DateTime, ForeignKey, ForeignKeyConstraint, Identity, Index, Integer, LargeBinary,
     Numeric, Text, UniqueConstraint, func, text,
 )
 from sqlalchemy.orm import Mapped, mapped_column
@@ -30,6 +30,8 @@ class Proveedor(Base):
     razon_social: Mapped[str] = mapped_column(Text)
     estado_validacion: Mapped[str] = mapped_column(Text, server_default="sin_validar")
     validado_en: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    alerta_sunat: Mapped[str | None] = mapped_column(Text)
+    consultado_en: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     estado: Mapped[str] = mapped_column(Text, server_default="activo")
     fecha_baja: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     creado_en: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
@@ -102,6 +104,21 @@ class CompraAdjunto(Base):
     sha256: Mapped[str] = mapped_column(CHAR(64))
     subido_por: Mapped[int] = mapped_column(BigInteger, ForeignKey("obra.usuario.id", name="fk_compra_adjunto_subido_por_usuario"))
     subido_en: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    # HU-34 (0015): el comprobante no se borra; se anula con motivo
+    anulado_por: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("obra.usuario.id", name="fk_compra_adjunto_anulado_por_usuario"), nullable=True)
+    anulado_en: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    motivo_anulacion: Mapped[str | None] = mapped_column(Text, nullable=True)
+    almacenamiento: Mapped[str] = mapped_column(Text, server_default="bd")
+
+
+class CompraAdjuntoContenido(Base):
+    """Los bytes del comprobante (ADR-11): tabla aparte para que listar compras nunca los arrastre."""
+
+    __tablename__ = "compra_adjunto_contenido"
+    __table_args__ = {"schema": "compras"}
+
+    adjunto_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("compras.compra_adjunto.id", name="fk_compra_adjunto_contenido_adjunto_id"), primary_key=True)
+    contenido: Mapped[bytes] = mapped_column(LargeBinary)
 
 
 class SolicitudCorrelativo(Base):
