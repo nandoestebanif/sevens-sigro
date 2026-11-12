@@ -199,7 +199,7 @@ class ArreglosPruebaTest {
         assertFalse(s.desdeCelular)
         assertEquals(3, s.porAlmacen.size)
         assertEquals(listOf("Principal", "Patio", VISTA_TODA_LA_OBRA), vistasStock(s))
-        assertEquals("Corte del servidor: 05/11/2026 10:00 (hora de Lima)", textoCorte(s))
+        assertEquals("Actualizado 05/11/2026 10:00", textoCorte(s))
         assertTrue(b.stockDao.m.containsKey(1), "se guarda para mostrarlo sin señal")
     }
 
@@ -212,7 +212,7 @@ class ArreglosPruebaTest {
         b.hora += 3 * 3_600_000L // tres horas después
         val s = b.stock.stock(1)
         assertTrue(s.desdeCelular)
-        assertEquals("Sin señal · actualizado a las 12:00", textoCorte(s), "la hora en que llegó la copia, no la de ahora")
+        assertEquals("Sin señal · es el de las 12:00", textoCorte(s), "la hora en que llegó la copia, no la de ahora")
         assertEquals("37.0000", filasStock(s, VISTA_TODA_LA_OBRA, "cemento").single().cantidad)
     }
 
@@ -253,7 +253,7 @@ class ArreglosPruebaTest {
         assertEquals("8", filasStock(s, "Patio", "").single().cantidad)
         assertEquals(1, filasStock(s, "Principal", "portland").size, "busca sin mayúsculas")
         assertTrue(filasStock(s, "Principal", "arena").isEmpty())
-        assertEquals("El servidor aún no tiene movimientos en esta obra", textoCorte(s))
+        assertEquals("Todavía no hay movimientos en esta obra", textoCorte(s))
     }
 
     // ── A3 · Mi celular ───────────────────────────────────────────────────────────────────────

@@ -14,6 +14,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import org.koin.compose.viewmodel.koinViewModel
+import pe.sevens.sigro.dominio.Texto
 import pe.sevens.sigro.dominio.AlmacenObra
 import pe.sevens.sigro.dominio.Insumo
 import pe.sevens.sigro.dominio.LineaAlmacen
@@ -117,10 +118,10 @@ fun PantallaIngresoSinCompra(obraId: Int, alVolver: () -> Unit, vm: IngresoSinCo
     val almacen by vm.almacen.estado.collectAsState()
     LaunchedEffect(obraId) { vm.cargar(obraId) }
 
-    PantallaVidrio("Ingreso sin compra", plano = { planoIngreso(it) }, alVolver = alVolver, subtitulo = "Material que llega sin una compra de por medio") {
+    PantallaVidrio("Ingreso sin compra", plano = { planoIngreso(it) }, alVolver = alVolver, subtitulo = "Devoluciones, préstamos y sobrantes") {
         if (e.guardado) {
             GuardadoEnCelular(
-                "Ingreso guardado", "El ingreso de ${e.cantidad} ${e.insumo?.unidad.orEmpty()} de ${e.insumo?.descripcion.orEmpty()} quedó en el celular con su código único.",
+                "Ingreso guardado", "${e.insumo?.let { Texto.cantidadConUnidad(e.cantidad, it.unidad) + " de " + Texto.nombre(it.descripcion) } ?: "El ingreso"}. Se envía solo en cuanto haya señal.",
                 "Registrar otro ingreso", vm::otro, alVolver, conServicio = true,
             )
             return@PantallaVidrio
@@ -130,7 +131,7 @@ fun PantallaIngresoSinCompra(obraId: Int, alVolver: () -> Unit, vm: IngresoSinCo
             ElegirAlmacenObra(almacen, { vm.elegirAlmacen(obraId, it) }, e.errores["almacen"])
             Opciones(OrigenIngreso.entries, e.origen, { it.legible }, vm::origen)
             if (e.origen == OrigenIngreso.OTRA_OBRA) {
-                AvisoNaranja("Solo si esa obra no está en SIGRO. Si está registrada, usa «Traslado entre obras» para que el costo viaje con el material.")
+                AvisoNaranja("Solo si esa obra no está en SIGRO.")
             }
             if (e.origen.exigeDetalle) {
                 CampoVidrio(
@@ -142,7 +143,7 @@ fun PantallaIngresoSinCompra(obraId: Int, alVolver: () -> Unit, vm: IngresoSinCo
         FormularioAlmacen {
             PasoAlmacen("2", "¿Qué y cuánto?")
             ElegirInsumo(b, e.insumo, vm.buscador::buscar, vm::elegir, vm::quitar, error = e.errores["insumo"])
-            CampoVidrio(e.cantidad, vm::cantidad, "Cantidad", teclado = KeyboardType.Decimal, sufijo = e.insumo?.unidad ?: "—", error = e.errores["cantidad"])
+            CampoVidrio(e.cantidad, vm::cantidad, "Cantidad", teclado = KeyboardType.Decimal, sufijo = e.insumo?.let { Texto.unidad(it.unidad) } ?: "", error = e.errores["cantidad"])
             CampoVidrio(
                 e.costo, vm::costo, "Costo unitario sin IGV", teclado = KeyboardType.Decimal, sufijo = "S/", error = e.errores["costo"],
                 ayuda = "Obligatorio. Por unidad del S10 (para el acero, por kg).",

@@ -37,6 +37,7 @@ import pe.sevens.sigro.dominio.CatalogoTexto
 import pe.sevens.sigro.dominio.ErrorSigro
 import pe.sevens.sigro.dominio.FilaStock
 import pe.sevens.sigro.dominio.HoraLima
+import pe.sevens.sigro.dominio.Texto
 import pe.sevens.sigro.dominio.RepositorioStock
 import pe.sevens.sigro.dominio.StockObra
 import pe.sevens.sigro.dominio.cifraLegible
@@ -60,7 +61,7 @@ import pe.sevens.sigro.ui.tema.Paleta
 
 /** Lo que se muestra como saldo: el del servidor, o el marcador si todavía no llegó. */
 fun saldoParaMostrar(saldoServidor: String?, unidad: String): String =
-    saldoServidor?.let { "${cifraLegible(it)} $unidad" } ?: "[lo calcula el servidor]"
+    saldoServidor?.let { "${cifraLegible(it)} ${Texto.unidad(unidad, it)}" } ?: "—"
 
 const val VISTA_TODA_LA_OBRA = "Toda la obra"
 
@@ -86,9 +87,9 @@ fun filasStock(s: StockObra?, vista: String, texto: String): List<FilaStock> {
 
 /** De cuándo es lo que se ve: el corte del servidor, o (sin señal) la hora en que llegó la copia guardada. */
 fun textoCorte(s: StockObra): String = when {
-    s.desdeCelular -> "Sin señal · actualizado a las ${HoraLima.horaDeMs(s.recibidoMs)}"
-    s.corte == null -> "El servidor aún no tiene movimientos en esta obra"
-    else -> "Corte del servidor: ${HoraLima.deIso(s.corte) ?: s.corte} (hora de Lima)"
+    s.desdeCelular -> "Sin señal · es el de las ${HoraLima.horaDeMs(s.recibidoMs)}"
+    s.corte == null -> "Todavía no hay movimientos en esta obra"
+    else -> "Actualizado ${HoraLima.deIso(s.corte) ?: s.corte}"
 }
 
 data class EstadoStock(
@@ -131,7 +132,7 @@ fun PantallaStock(obraId: Int, alVolver: () -> Unit, vm: StockViewModel = koinVi
     val e by vm.estado.collectAsState()
     LaunchedEffect(obraId) { vm.cargar(obraId) }
 
-    PantallaVidrio("Stock", plano = { planoStock(it) }, alVolver = alVolver, subtitulo = "Calculado por el servidor, nunca en el celular") {
+    PantallaVidrio("Stock", plano = { planoStock(it) }, alVolver = alVolver, subtitulo = "Por almacén y de toda la obra") {
         val s = e.stock
         TarjetaVidrio(Modifier.semantics(mergeDescendants = true) {}) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -188,7 +189,7 @@ private fun FilaDeStock(f: FilaStock) {
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(f.descripcion, fontSize = 15.sp, fontWeight = FontWeight.Bold, color = Paleta.Tinta, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            Text(Texto.nombre(f.descripcion), fontSize = 15.sp, fontWeight = FontWeight.Bold, color = Paleta.Tinta, maxLines = 2, overflow = TextOverflow.Ellipsis)
             Text("Código ${f.codigo}" + (f.almacen?.let { " · $it" } ?: ""), fontSize = 13.sp, color = Paleta.Texto3)
             if (f.bajoPuntoReposicion == true) Etiqueta("Bajo el punto de reposición", Paleta.RechazadoTexto, Paleta.RechazadoFondo)
         }

@@ -5,6 +5,8 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -64,6 +66,15 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import org.koin.compose.viewmodel.koinViewModel
+import kotlinx.coroutines.flow.first
+import pe.sevens.sigro.dominio.HoraLima
+import pe.sevens.sigro.dominio.RepositorioStock
+import pe.sevens.sigro.dominio.RepositorioTrabajadores
+import pe.sevens.sigro.dominio.SalidaRegistrada
+import pe.sevens.sigro.dominio.StockObra
+import pe.sevens.sigro.dominio.Texto
+import pe.sevens.sigro.ui.componentes.AvisoRojo
+import pe.sevens.sigro.ui.componentes.EncabezadoVidrio
 import pe.sevens.sigro.dominio.EstadoEnvio
 import pe.sevens.sigro.dominio.Insumo
 import pe.sevens.sigro.dominio.NuevaSalida
@@ -74,7 +85,6 @@ import pe.sevens.sigro.dominio.RepositorioObra
 import pe.sevens.sigro.dominio.RepositorioSalidas
 import pe.sevens.sigro.dominio.ValidarSalida
 import pe.sevens.sigro.plataforma.reducirMovimiento
-import pe.sevens.sigro.ui.componentes.AvisoNaranja
 import pe.sevens.sigro.ui.componentes.BotonNegro
 import pe.sevens.sigro.ui.componentes.CampoVidrio
 import pe.sevens.sigro.ui.componentes.ChipEstado
@@ -97,6 +107,10 @@ data class EstadoSalida(
     val errores: Map<String, String> = emptyMap(),
     val guardando: Boolean = false,
     val guardada: Boolean = false,
+    /** Lo último usado en esta obra (desde este celular), para no escribirlo cada vez. */
+    val sugerencias: SugerenciasSalida = SugerenciasSalida(),
+    /** El último stock que dio el SERVIDOR (con su hora): la app no lo calcula, solo lo muestra (regla 2). */
+    val stock: StockObra? = null,
 )
 
 class SalidaViewModel(
@@ -104,6 +118,8 @@ class SalidaViewModel(
     private val salidas: RepositorioSalidas,
     private val programador: ProgramadorSincronizacion,
     obra: RepositorioObra,
+    private val stock: RepositorioStock? = null,
+    private val trabajadores: RepositorioTrabajadores? = null,
 ) : ViewModel() {
     private val _e = MutableStateFlow(EstadoSalida())
     val estado = _e.asStateFlow()
@@ -112,6 +128,25 @@ class SalidaViewModel(
     /** M6: de qué almacén sale (HU-40 lo exige). */
     val almacen = SelectorAlmacen(obra, viewModelScope)
     fun cargarAlmacenes(obraId: Int) = almacen.cargar(obraId)
+
+    /** Al abrir: almacenes, lo último usado y el último stock del servidor (sin señal, la copia guardada). */
+    fun cargar(obraId: Int) {
+        almacen.cargar(obraId)
+        viewModelScope.launch {
+            val previas = runCatching { salidas.salidasDeObra(obraId).first() }.getOrDefault(emptyList())
+            val nombres = runCatching { trabajadores?.deObra(obraId)?.first()?.filter { it.fechaSalida == null }?.map { it.nombre } }.getOrNull().orEmpty()
+            _e.update { it.copy(sugerencias = sugerenciasSalida(previas, nombres)) }
+        }
+        viewModelScope.launch {
+            val s = runCatching { stock?.stock(obraId) }.getOrNull()
+            _e.update { it.copy(stock = s) }
+        }
+    }
+
+    /** HU-38: una salida rechazada se registra de nuevo con sus datos ya puestos (es un registro nuevo, con su uuid). */
+    fun precargar(base: SalidaRegistrada) = _e.update {
+        it.copy(insumo = base.insumo, cantidad = base.cantidad, motivo = base.motivo, quienRetira = base.quienRetira, frente = base.frente.orEmpty())
+    }
     fun elegirAlmacen(obraId: Int, a: AlmacenObra) {
         almacen.elegir(obraId, a)
         _e.update { it.copy(errores = it.errores - "almacen") }
@@ -158,16 +193,19 @@ class SalidaViewModel(
 private val NaranjaTexto = Color(0xFF7C2D12)
 
 @Composable
-fun PantallaSalida(obraId: Int, alVolver: () -> Unit, vm: SalidaViewModel = koinViewModel()) {
+fun PantallaSalida(obraId: Int, alVolver: () -> Unit, base: SalidaRegistrada? = null, vm: SalidaViewModel = koinViewModel()) {
     val e by vm.estado.collectAsState()
     val almacen by vm.almacen.estado.collectAsState()
-    LaunchedEffect(obraId) { vm.cargarAlmacenes(obraId) }
+    LaunchedEffect(obraId) {
+        vm.cargar(obraId)
+        if (base != null) vm.precargar(base)
+    }
     FondoPlano(plano = { planoSalida(it) }) {
         Column(
             Modifier.fillMaxSize().verticalScroll(rememberScrollState()).statusBarsPadding().imePadding()
                 .navigationBarsPadding().padding(bottom = 16.dp),
         ) {
-            Encabezado(if (e.guardada) null else "Se guarda en el celular aunque no haya señal", alVolver)
+            EncabezadoVidrio(if (base != null && !e.guardada) "Registrar de nuevo" else "Registrar salida", null, alVolver)
             if (e.guardada) {
                 Confirmacion(e, alOtra = vm::otra, alVolver = alVolver)
                 return@Column
@@ -176,15 +214,15 @@ fun PantallaSalida(obraId: Int, alVolver: () -> Unit, vm: SalidaViewModel = koin
                 Modifier.padding(horizontal = 16.dp).widthIn(max = 560.dp).fillMaxWidth().align(Alignment.CenterHorizontally),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
+                if (base?.motivoRechazo != null) AvisoRojo("La anterior no se registró: ${base.motivoRechazo}")
                 Column(
                     Modifier.fillMaxWidth().vidrio(RoundedCornerShape(26.dp)).padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
-                    Paso("1", "¿Qué sale?")
                     ElegirAlmacenObra(almacen, { vm.elegirAlmacen(obraId, it) }, e.errores["almacen"])
                     if (e.insumo == null) {
                         CampoVidrio(
-                            e.busqueda, vm::buscar, "Buscar insumo por nombre o código", marcador = "Ej.: cemento",
+                            e.busqueda, vm::buscar, "Insumo", marcador = "Nombre o código",
                             error = e.errores["insumo"],
                             finalIcono = { Icon(Icons.Filled.Search, contentDescription = null, tint = Paleta.Texto3, modifier = Modifier.padding(end = 10.dp)) },
                         )
@@ -197,61 +235,59 @@ fun PantallaSalida(obraId: Int, alVolver: () -> Unit, vm: SalidaViewModel = koin
                                             .padding(horizontal = 16.dp, vertical = 10.dp),
                                         verticalArrangement = Arrangement.spacedBy(2.dp),
                                     ) {
-                                        Text(ins.descripcion, fontSize = 16.sp, color = Paleta.Tinta)
-                                        Text("${ins.codigo} · ${ins.unidad}", fontSize = 14.sp, color = Paleta.Texto3)
+                                        Text(Texto.nombre(ins.descripcion), fontSize = 16.sp, color = Paleta.Tinta)
+                                        Text("${ins.codigo} · ${Texto.unidad(ins.unidad)}", fontSize = 14.sp, color = Paleta.Texto3)
                                     }
                                 }
                             }
                         } else if (e.busqueda.trim().length >= 2) {
-                            Text(
-                                "Sin coincidencias. Prueba con otra palabra o actualiza el catálogo desde «Más» en el inicio.",
-                                fontSize = 15.sp, lineHeight = 21.sp, color = Paleta.Texto2,
-                            )
+                            Text("Nada coincide. Prueba con otra palabra.", fontSize = 15.sp, color = Paleta.Texto2)
                         }
                     } else {
                         InsumoElegido(e.insumo!!, vm::quitarInsumo)
                     }
 
-                    Paso("2", "¿Cuánto?")
                     CampoVidrio(
                         e.cantidad, vm::cantidad, "Cantidad",
-                        teclado = KeyboardType.Decimal, sufijo = e.insumo?.unidad ?: "—", error = e.errores["cantidad"],
-                        ayuda = "El servidor verifica que haya stock en el almacén",
+                        teclado = KeyboardType.Decimal, sufijo = e.insumo?.let { Texto.unidad(it.unidad, e.cantidad) } ?: "", error = e.errores["cantidad"],
+                        ayuda = stockConocido(e.stock, e.insumo, almacen.elegido?.id),
                     )
+                }
 
-                    Paso("3", "¿Para qué y quién lo lleva?")
-                    CampoVidrio(e.motivo, vm::motivo, "Motivo / uso", marcador = "Ej.: vaciado de losa del 3.er piso", error = e.errores["motivo"])
-                    CampoVidrio(e.quienRetira, vm::quienRetira, "Quién retira", error = e.errores["quienRetira"])
-                    CampoVidrio(e.frente, vm::frente, "Frente o cuadrilla (opcional)", marcador = "Ej.: cuadrilla de concreto")
+                Column(
+                    Modifier.fillMaxWidth().vidrio(RoundedCornerShape(26.dp)).padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    CampoVidrio(e.motivo, vm::motivo, "Motivo", marcador = "Ej.: vaciado de losa 3.er piso", error = e.errores["motivo"])
+                    Sugerencias(e.sugerencias.motivos, e.motivo, vm::motivo)
+                    CampoVidrio(e.quienRetira, vm::quienRetira, "Retira", marcador = "Nombre de quien lo lleva", error = e.errores["quienRetira"])
+                    Sugerencias(e.sugerencias.quienes, e.quienRetira, vm::quienRetira)
+                    CampoVidrio(e.frente, vm::frente, "Frente o cuadrilla (opcional)")
+                    Sugerencias(e.sugerencias.frentes, e.frente, vm::frente)
                 }
 
                 BotonNegro("Guardar salida", { vm.guardar(obraId) }, icono = Icons.Filled.Save, cargando = e.guardando, modifier = Modifier.padding(top = 4.dp))
-                AvisoNaranja("La salida queda «por enviar» y se envía sola cuando hay señal. El costo lo calcula el servidor al recibirla.")
             }
         }
     }
 }
 
+/** Lo último usado, en píldoras: tocar una la escribe en el campo. Se ocultan las que ya coinciden con lo escrito. */
 @Composable
-private fun Encabezado(subtitulo: String?, alVolver: () -> Unit) {
-    Row(Modifier.fillMaxWidth().padding(start = 8.dp, end = 16.dp, top = 8.dp, bottom = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-        IconButton(onClick = alVolver, modifier = Modifier.size(48.dp).vidrio(CircleShape, sombra = 4.dp)) {
-            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Volver", tint = Paleta.Tinta)
+private fun Sugerencias(opciones: List<String>, actual: String, alElegir: (String) -> Unit) {
+    val visibles = opciones.filter { !it.equals(actual.trim(), ignoreCase = true) }
+    if (visibles.isEmpty()) return
+    // Una sola fila que se desliza: no alarga el formulario.
+    Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        visibles.forEach { o ->
+            Box(
+                Modifier.heightIn(min = 44.dp).background(Color.White.copy(alpha = 0.85f), RoundedCornerShape(22.dp))
+                    .border(1.dp, Paleta.BordeCampo, RoundedCornerShape(22.dp))
+                    .clickable(onClickLabel = "Usar «$o»") { alElegir(o) }
+                    .padding(horizontal = 14.dp, vertical = 10.dp),
+                contentAlignment = Alignment.Center,
+            ) { Text(o, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Paleta.Tinta, maxLines = 1) }
         }
-        Spacer(Modifier.width(12.dp))
-        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text("Registrar salida", fontSize = 21.sp, fontWeight = FontWeight.SemiBold, color = Paleta.Tinta, modifier = Modifier.semantics { heading() })
-            if (subtitulo != null) Text(subtitulo, fontSize = 14.sp, color = Paleta.Texto3)
-        }
-    }
-}
-
-@Composable
-private fun Paso(n: String, titulo: String) {
-    Row(Modifier.padding(top = 4.dp).semantics(mergeDescendants = true) { heading() }, verticalAlignment = Alignment.CenterVertically) {
-        Text(n, color = Paleta.Naranja, fontWeight = FontWeight.Bold, fontSize = 18.sp)
-        Spacer(Modifier.width(10.dp))
-        Text(titulo, fontWeight = FontWeight.SemiBold, fontSize = 18.sp, color = Paleta.Tinta)
     }
 }
 
@@ -262,8 +298,8 @@ private fun InsumoElegido(i: Insumo, alQuitar: () -> Unit) {
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(i.descripcion, fontSize = 17.sp, fontWeight = FontWeight.SemiBold, color = NaranjaTexto)
-            Text("${i.codigo} · se mide en ${i.unidad}", fontSize = 14.sp, color = NaranjaTexto)
+            Text(Texto.nombre(i.descripcion), fontSize = 17.sp, fontWeight = FontWeight.SemiBold, color = NaranjaTexto)
+            Text("${i.codigo} · en ${Texto.unidad(i.unidad)}", fontSize = 14.sp, color = NaranjaTexto)
         }
         IconButton(onClick = alQuitar) { Icon(Icons.Filled.Close, contentDescription = "Cambiar insumo", tint = NaranjaTexto) }
     }
@@ -305,9 +341,9 @@ private fun Confirmacion(e: EstadoSalida, alOtra: () -> Unit, alVolver: () -> Un
     ) {
         CheckGuardado()
         Text("Salida guardada", fontSize = 26.sp, fontWeight = FontWeight.Bold, color = Paleta.Tinta, modifier = Modifier.semantics { heading() })
-        val que = e.insumo?.let { "La salida de ${e.cantidad} ${it.unidad} de ${it.descripcion}" } ?: "La salida"
+        val que = e.insumo?.let { "${Texto.cantidadConUnidad(e.cantidad, it.unidad)} de ${Texto.nombre(it.descripcion)}" } ?: "La salida"
         Text(
-            "$que quedó en el celular con su código único. Se envía sola cuando haya señal; un reenvío no la duplica.",
+            "$que. Se envía sola en cuanto haya señal.",
             fontSize = 17.sp, lineHeight = 25.sp, color = Paleta.Texto3, textAlign = TextAlign.Center,
         )
         ChipEstado(EstadoEnvio.PENDIENTE)

@@ -44,6 +44,7 @@ import pe.sevens.sigro.ui.pantallas.ObrasViewModel
 import pe.sevens.sigro.ui.pantallas.PendientesViewModel
 import pe.sevens.sigro.ui.pantallas.RaizViewModel
 import pe.sevens.sigro.ui.pantallas.SalidaViewModel
+import pe.sevens.sigro.ui.pantallas.PerfilViewModel
 
 /*
  * Inyección de dependencias con Koin. Tres capas:
@@ -87,7 +88,8 @@ val moduloPresentacion = module {
     viewModel { RaizViewModel(get()) }
     viewModel { EntrarViewModel(get()) }
     viewModel { InicioViewModel(get(), get(), get(), get()) }
-    viewModel { SalidaViewModel(get(), get(), get(), get()) }
+    viewModel { SalidaViewModel(get(), get(), get(), get(), get(), get()) }
+    viewModel { PerfilViewModel(get(), get(), get()) }
     viewModel { PendientesViewModel(get(), get()) }
     viewModel { DispositivoViewModel(get()) }
     viewModel { ObrasViewModel(get(), get(), get()) }

@@ -27,6 +27,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -101,7 +102,8 @@ fun FondoPlano(
     val medidor = rememberTextMeasurer()
     TemaSigro(oscuro = false) {
         Box(modifier.fillMaxSize().background(Paleta.FondoBase)) {
-            Canvas(Modifier.fillMaxSize().then(if (haze != null) Modifier.hazeSource(haze) else Modifier)) { plano(medidor) }
+            // El plano acompaña, no compite: al 55 % el texto sobre él gana contraste y la pantalla se lee más limpia.
+            Canvas(Modifier.fillMaxSize().graphicsLayer { alpha = 0.55f }.then(if (haze != null) Modifier.hazeSource(haze) else Modifier)) { plano(medidor) }
             CompositionLocalProvider(LocalHaze provides haze) { contenido() }
         }
     }
