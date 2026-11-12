@@ -48,6 +48,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import org.koin.compose.viewmodel.koinViewModel
+import pe.sevens.sigro.dominio.Texto
 import pe.sevens.sigro.dominio.Asistencia
 import pe.sevens.sigro.dominio.Categoria
 import pe.sevens.sigro.dominio.ErrorSigro
@@ -153,7 +154,7 @@ fun PantallaTrabajadores(obraId: Int, obraNombre: String, alVolver: () -> Unit, 
         },
     ) {
         Row(
-            Modifier.fillMaxWidth().heightIn(min = 72.dp).background(Paleta.Tinta, RoundedCornerShape(24.dp))
+            Modifier.fillMaxWidth().heightIn(min = 72.dp).background(Paleta.Principal, RoundedCornerShape(24.dp))
                 .clickable(onClickLabel = "Tomar asistencia") { irA(Destino.Asistencia) }.padding(16.dp)
                 .semantics(mergeDescendants = true) {},
             verticalAlignment = Alignment.CenterVertically,
@@ -161,13 +162,13 @@ fun PantallaTrabajadores(obraId: Int, obraNombre: String, alVolver: () -> Unit, 
         ) {
             Icon(Icons.Filled.EventAvailable, contentDescription = null, tint = Paleta.NaranjaVivo, modifier = Modifier.size(28.dp))
             Column(Modifier.weight(1f)) {
-                Text("Asistencia de hoy", fontSize = 17.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                Text("Asistencia de hoy", fontSize = 17.sp, fontWeight = FontWeight.Bold, color = Paleta.SobrePrincipal)
                 Text(
                     if (faltan == 0 && r.activos.isNotEmpty()) "Registrada para todos" else "Falta registrar · $faltan ${if (faltan == 1) "trabajador" else "trabajadores"}",
-                    fontSize = 14.sp, color = Color.White.copy(alpha = 0.8f),
+                    fontSize = 14.sp, color = Paleta.SobrePrincipal.copy(alpha = 0.8f),
                 )
             }
-            Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null, tint = Color.White)
+            Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null, tint = Paleta.SobrePrincipal)
         }
         e.aviso?.let { AvisoNaranja(it) }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -212,7 +213,7 @@ private fun FilaTrabajador(t: Trabajador, deBaja: Boolean) {
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Box(Modifier.size(40.dp).background(if (deBaja) Color(0xFFF3F4F6) else Paleta.NaranjaClaro, CircleShape), contentAlignment = Alignment.Center) {
+        Box(Modifier.size(40.dp).background(if (deBaja) Paleta.SuperficieSuave else Paleta.NaranjaClaro, CircleShape), contentAlignment = Alignment.Center) {
             Text(iniciales(t.nombre), fontSize = 14.sp, fontWeight = FontWeight.ExtraBold, color = if (deBaja) Paleta.Texto3 else Paleta.NaranjaOscuro)
         }
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
@@ -222,7 +223,7 @@ private fun FilaTrabajador(t: Trabajador, deBaja: Boolean) {
                 fontSize = 13.sp, color = Paleta.Texto3, maxLines = 2,
             )
         }
-        if (deBaja) Etiqueta("De baja", Paleta.Texto3, Color(0xFFF3F4F6)) else Etiqueta(t.categoriaLegible, Paleta.NaranjaOscuro, Paleta.NaranjaClaro)
+        if (deBaja) Etiqueta("De baja", Paleta.Texto3, Paleta.SuperficieSuave) else Etiqueta(t.categoriaLegible, Paleta.NaranjaOscuro, Paleta.NaranjaClaro)
     }
 }
 
@@ -297,7 +298,7 @@ fun PantallaTrabajadorNuevo(obraId: Int, alVolver: () -> Unit, vm: TrabajadorNue
         }
         TarjetaVidrio {
             CampoVidrio(e.documento, vm::documento, "DNI *", teclado = KeyboardType.Number, error = e.errores["documento"], marcador = "8 dígitos")
-            Marcador("Consulta RENIEC: llega con el servicio de integraciones. Por ahora escribe el nombre a mano")
+            
             CampoVidrio(e.nombre, vm::nombre, "Nombres y apellidos *", error = e.errores["nombre"])
             Text("Categoría *", fontSize = 14.sp, color = Paleta.Texto3)
             Opciones(Categoria.entries, e.categoria, { it.legible }, vm::categoria, colorActivo = Paleta.Naranja)
@@ -371,9 +372,9 @@ class AsistenciaViewModel(
 }
 
 private val ColoresEstado = mapOf(
-    EstadoAsistencia.PRESENTE to Color(0xFF166534),
-    EstadoAsistencia.AUSENTE to Color(0xFF991B1B),
-    EstadoAsistencia.PERMISO to Color(0xFF92400E),
+    EstadoAsistencia.PRESENTE to Paleta.EnviadoTexto,
+    EstadoAsistencia.AUSENTE to Paleta.RechazadoTexto,
+    EstadoAsistencia.PERMISO to Paleta.PendienteTexto,
 )
 
 @OptIn(ExperimentalLayoutApi::class)
@@ -383,12 +384,12 @@ fun PantallaAsistencia(obraId: Int, alVolver: () -> Unit, alRegistros: () -> Uni
     LaunchedEffect(obraId) { vm.cargar(obraId) }
     val r = remember(e.porMarcar) { Asistencia.resumir(e.porMarcar) }
 
-    PantallaVidrio("Asistencia", plano = { planoAsistencia(it) }, alVolver = alVolver, subtitulo = "Un registro por trabajador y día") {
+    PantallaVidrio("Asistencia", plano = { planoAsistencia(it) }, alVolver = alVolver, subtitulo = "Uno por trabajador y día") {
         TarjetaVidrio {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
-                    Text("Hoy · ${e.fecha}", fontSize = 17.sp, fontWeight = FontWeight.Bold, color = Paleta.Tinta)
-                    Text("El servidor verifica que la fecha esté dentro del plazo de la obra.", fontSize = 13.sp, color = Paleta.Texto3)
+                    Text("Hoy · ${Texto.fecha(e.fecha)}", fontSize = 17.sp, fontWeight = FontWeight.Bold, color = Paleta.Tinta)
+                    
                 }
             }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -453,7 +454,7 @@ fun PantallaAsistencia(obraId: Int, alVolver: () -> Unit, alRegistros: () -> Uni
 
 @Composable
 private fun RowScope.Mini(valor: Int, etiqueta: String, color: Color) {
-    Column(Modifier.weight(1f).background(Color.White.copy(alpha = 0.7f), RoundedCornerShape(16.dp)).padding(10.dp).semantics(mergeDescendants = true) {}) {
+    Column(Modifier.weight(1f).background(Paleta.Superficie.copy(alpha = 0.7f), RoundedCornerShape(16.dp)).padding(10.dp).semantics(mergeDescendants = true) {}) {
         Text("$valor", fontSize = 20.sp, fontWeight = FontWeight.ExtraBold, color = color)
         Text(etiqueta, fontSize = 12.sp, color = Paleta.Texto3)
     }

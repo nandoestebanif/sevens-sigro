@@ -75,6 +75,9 @@ import pe.sevens.sigro.ui.pantallas.PantallaEntrar
 import pe.sevens.sigro.ui.pantallas.PantallaInicio
 import pe.sevens.sigro.ui.pantallas.PantallaObras
 import pe.sevens.sigro.ui.pantallas.PantallaPendientes
+import kotlinx.coroutines.flow.first
+import pe.sevens.sigro.ui.pantallas.PerfilViewModel
+import pe.sevens.sigro.ui.pantallas.PantallaPerfil
 import pe.sevens.sigro.ui.pantallas.PantallaSalida
 import pe.sevens.sigro.ui.pantallas.PendientesViewModel
 import pe.sevens.sigro.ui.pantallas.SalidaViewModel
@@ -226,6 +229,7 @@ private object StockFalso : pe.sevens.sigro.dominio.RepositorioStock {
 }
 
 private fun capturar(dir: File, nombre: String, oscuro: Boolean = false, ms: Int = 1500, alto: Int = 892, preparar: () -> Unit = {}, contenido: @Composable () -> Unit) {
+    pe.sevens.sigro.ui.tema.Apariencia.oscuro = oscuro
     preparar()
     Thread.sleep(400) // los ViewModel actualizan su estado en el hilo principal de Swing
     ImageComposeScene(width = 412 * 2, height = alto * 2, density = Density(2f)) {
@@ -262,25 +266,39 @@ fun main(args: Array<String>) {
     capturar(dir, "04-inicio-oscuro", oscuro = true) { PantallaInicio(sesionEjemplo, obra, {}, InicioViewModel(SesionFalsa(), salidas, CatalogoFalso, sinProgramar)) }
 
     val buscar = SalidaViewModel(CatalogoFalso, salidas, sinProgramar, ObraFalsa)
-    capturar(dir, "05-salida-buscar", preparar = { buscar.buscar("cemento") }) { PantallaSalida(1, {}, buscar) }
+    capturar(dir, "05-salida-buscar", preparar = { buscar.buscar("cemento") }) { PantallaSalida(1, {}, vm = buscar) }
 
-    val llena = SalidaViewModel(CatalogoFalso, salidas, sinProgramar, ObraFalsa)
+    val llena = SalidaViewModel(CatalogoFalso, salidas, sinProgramar, ObraFalsa, StockFalso, TrabajadoresFalsos)
     capturar(dir, "06-salida-llena", preparar = {
         llena.elegir(insumo("CEMENTO PORTLAND TIPO I")); llena.cantidad("25"); llena.motivo("Vaciado de columnas 2.º piso")
         llena.quienRetira("Maestro de obra (ejemplo)"); llena.frente("Cuadrilla de concreto")
-    }) { PantallaSalida(1, {}, llena) }
+    }) { PantallaSalida(1, {}, vm = llena) }
 
     val conErrores = SalidaViewModel(CatalogoFalso, salidas, sinProgramar, ObraFalsa)
-    capturar(dir, "07-salida-validacion", preparar = { conErrores.cantidad("0"); conErrores.guardar(1) }) { PantallaSalida(1, {}, conErrores) }
+    capturar(dir, "07-salida-validacion", preparar = { conErrores.cantidad("0"); conErrores.guardar(1) }) { PantallaSalida(1, {}, vm = conErrores) }
 
     val guardada = SalidaViewModel(CatalogoFalso, salidas, sinProgramar, ObraFalsa)
     capturar(dir, "08-salida-guardada", preparar = {
         guardada.elegir(insumo("ARENA GRUESA")); guardada.cantidad("3,5"); guardada.motivo("Tarrajeo"); guardada.quienRetira("Maestro de obra (ejemplo)"); guardada.guardar(1)
-    }) { PantallaSalida(1, {}, guardada) }
+    }) { PantallaSalida(1, {}, vm = guardada) }
 
-    capturar(dir, "09-mis-registros") { PantallaPendientes(1, {}, PendientesViewModel(salidas, registros)) }
-    capturar(dir, "09-mis-registros-oscuro", oscuro = true) { PantallaPendientes(1, {}, PendientesViewModel(salidas, registros)) }
+    capturar(dir, "09-mis-registros") { PantallaPendientes(1, {}, vm = PendientesViewModel(salidas, registros)) }
+    capturar(dir, "09-mis-registros-oscuro", oscuro = true) { PantallaPendientes(1, {}, vm = PendientesViewModel(salidas, registros)) }
 
+    capturar(dir, "09b-registros-rechazados") { PantallaPendientes(1, {}, soloRechazados = true, vm = PendientesViewModel(salidas, registros)) }
+    capturar(dir, "23-perfil") { PantallaPerfil(sesionEjemplo, obra, {}, {}, PerfilViewModel(SesionFalsa(), CatalogoFalso, DispositivoFalso)) }
+    val deNuevo = SalidaViewModel(CatalogoFalso, salidas, sinProgramar, ObraFalsa, StockFalso, TrabajadoresFalsos)
+    val rechazada = kotlinx.coroutines.runBlocking { salidas.salidasDeObra(1).first() }.first { it.estado == EstadoEnvio.RECHAZADO }
+    capturar(dir, "24-salida-de-nuevo", alto = 1100) { PantallaSalida(1, {}, base = rechazada, vm = deNuevo) }
+    // Modo oscuro (Perfil → Apariencia)
+    capturar(dir, "30-oscuro-inicio", oscuro = true) { PantallaInicio(sesionEjemplo, obra, {}, InicioViewModel(SesionFalsa(), salidas, CatalogoFalso, sinProgramar)) }
+    val llenaOsc = SalidaViewModel(CatalogoFalso, salidas, sinProgramar, ObraFalsa, StockFalso, TrabajadoresFalsos)
+    capturar(dir, "31-oscuro-salida", oscuro = true, preparar = {
+        llenaOsc.elegir(insumo("CEMENTO PORTLAND TIPO I")); llenaOsc.cantidad("25"); llenaOsc.motivo("Vaciado de columnas 2.º piso")
+        llenaOsc.quienRetira("Maestro de obra (ejemplo)")
+    }) { PantallaSalida(1, {}, vm = llenaOsc) }
+    capturar(dir, "32-oscuro-registros", oscuro = true) { PantallaPendientes(1, {}, vm = PendientesViewModel(salidas, registros)) }
+    capturar(dir, "33-oscuro-perfil", oscuro = true) { PantallaPerfil(sesionEjemplo, obra, {}, {}, PerfilViewModel(SesionFalsa(), CatalogoFalso, DispositivoFalso)) }
     capturar(dir, "10-mi-celular") { PantallaDispositivo(1, {}, "Multifamiliar Flores", DispositivoViewModel(DispositivoFalso)) }
     val cat = CatalogoViewModel(InsumosFalsos)
     capturar(dir, "11-catalogo-buscar", preparar = { cat.buscar("fierro corrugado") }) { PantallaCatalogo({}, {}, {}, cat) }

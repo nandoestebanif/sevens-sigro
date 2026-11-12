@@ -48,3 +48,10 @@ interface RepositorioDispositivo {
 interface ProgramadorSincronizacion {
     fun programar()
 }
+
+/** Preferencias del celular que no son de la sesión (sobreviven a cerrar sesión). */
+interface RepositorioPreferencias {
+    /** «SISTEMA», «CLARO» u «OSCURO»; null si nunca se eligió. */
+    suspend fun tema(): String?
+    suspend fun guardarTema(valor: String)
+}

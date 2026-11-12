@@ -23,7 +23,7 @@ internal sealed interface DecisionEnvio {
  * igual que un 422, para que el almacenero lo vea en «Mis registros».
  */
 internal fun decidirEnvio(e: ErrorSigro, que: String): DecisionEnvio = when {
-    e.esTransitorio -> DecisionEnvio.Reintentar("Sin señal o servidor ocupado: se reintenta solo.", cortar = true)
+    e.esTransitorio -> DecisionEnvio.Reintentar("Sin señal o el servidor está ocupado: se enviará solo.", cortar = true)
     e.estadoHttp == 401 -> DecisionEnvio.Reintentar("Tu sesión venció: vuelve a ingresar y se envía.", cortar = true)
     e.estadoHttp == 404 && e.codigo == "http_404" ->
         DecisionEnvio.Reintentar("El servidor aún no recibe $que: queda guardada en el celular.", cortar = true)

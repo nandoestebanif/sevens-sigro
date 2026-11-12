@@ -229,7 +229,7 @@ data class RegistroLocal(
 )
 
 /** Nota con la que queda un registro de almacén mientras no exista su servicio. */
-const val NOTA_SIN_SERVICIO_ALMACEN = "Se envía cuando exista el servicio almacén: queda guardado en el celular."
+const val NOTA_SIN_SERVICIO_ALMACEN = "Guardado en el celular. Esta función todavía no se envía al servidor."
 
 // ── Almacén ─────────────────────────────────────────────────────────────────────────────────
 // La entrada de compra y el ingreso sin compra ya se envían; traslado, conteo y cierre se guardan y esperan.

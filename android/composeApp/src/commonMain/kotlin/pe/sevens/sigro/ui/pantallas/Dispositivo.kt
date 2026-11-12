@@ -5,12 +5,18 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.ErrorOutline
 import androidx.compose.material.icons.filled.HelpOutline
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.VerifiedUser
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.material3.Icon
+import androidx.compose.foundation.layout.size
+import androidx.compose.material3.TextButton
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -32,6 +38,7 @@ import kotlinx.coroutines.launch
 import org.koin.compose.viewmodel.koinViewModel
 import pe.sevens.sigro.dominio.ErrorSigro
 import pe.sevens.sigro.dominio.EstadoDispositivo
+import pe.sevens.sigro.dominio.Texto
 import pe.sevens.sigro.dominio.RepositorioDispositivo
 import pe.sevens.sigro.ui.componentes.AvisoNaranja
 import pe.sevens.sigro.ui.componentes.AvisoRojo
@@ -80,7 +87,7 @@ private fun chip(estado: String?): ChipCelular = when (estado) {
     "autorizado" -> ChipCelular(Icons.Filled.CheckCircle, Paleta.EnviadoTexto, Paleta.EnviadoFondo)
     "pendiente", EstadoDispositivo.YA_SOLICITADO -> ChipCelular(Icons.Filled.Schedule, Paleta.PendienteTexto, Paleta.PendienteFondo)
     "revocado" -> ChipCelular(Icons.Filled.ErrorOutline, Paleta.RechazadoTexto, Paleta.RechazadoFondo)
-    else -> ChipCelular(Icons.Filled.HelpOutline, Color(0xFF334155), Color(0xFFE2E8F0))
+    else -> ChipCelular(Icons.Filled.HelpOutline, Paleta.Neutro, Paleta.Separador)
 }
 
 @Composable
@@ -94,7 +101,17 @@ fun PantallaDispositivo(obraId: Int, alVolver: () -> Unit, obraNombre: String? =
     ) {
         TarjetaVidrio(Modifier.semantics(mergeDescendants = true) {}) {
             Text("Código de este celular", fontSize = 14.sp, color = Paleta.Texto3)
-            Text(e.dispositivo?.identificador ?: "…", fontFamily = FontFamily.Monospace, fontSize = 15.sp, color = Paleta.Tinta)
+            val id = e.dispositivo?.identificador
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(id?.let { Texto.codigoCorto(it) } ?: "…", fontFamily = FontFamily.Monospace, fontSize = 24.sp, fontWeight = FontWeight.Bold, color = Paleta.Tinta, modifier = Modifier.weight(1f))
+                if (id != null) {
+                    val portapapeles = LocalClipboardManager.current
+                    TextButton(onClick = { portapapeles.setText(AnnotatedString(id)) }) {
+                        Icon(Icons.Filled.ContentCopy, contentDescription = null, tint = Paleta.Naranja, modifier = Modifier.size(18.dp))
+                        Text("  Copiar", color = Paleta.Naranja, fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text("Estado:", fontSize = 17.sp, fontWeight = FontWeight.SemiBold, color = Paleta.Tinta)
                 val d = e.dispositivo
@@ -118,9 +135,8 @@ fun PantallaDispositivo(obraId: Int, alVolver: () -> Unit, obraNombre: String? =
         }
         TarjetaVidrio {
             Text(
-                "El administrador autoriza el celular desde la web. Un registro que llegue de un celular no autorizado " +
-                    "lo rechaza el servidor y queda en «Mis registros» con el motivo.",
-                fontSize = 15.sp, lineHeight = 22.sp, color = Color(0xFF7C2D12),
+                "El administrador lo autoriza desde la web, en Administración. Mientras no esté autorizado, las salidas no se registran.",
+                fontSize = 15.sp, lineHeight = 22.sp, color = Paleta.NaranjaTexto,
             )
         }
     }

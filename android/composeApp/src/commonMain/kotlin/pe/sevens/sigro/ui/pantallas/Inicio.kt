@@ -107,13 +107,16 @@ import pe.sevens.sigro.dominio.RepositorioSalidas
 import pe.sevens.sigro.dominio.RepositorioSesion
 import pe.sevens.sigro.dominio.SalidaRegistrada
 import pe.sevens.sigro.dominio.Sesion
+import pe.sevens.sigro.dominio.Texto
 import pe.sevens.sigro.plataforma.ManejarAtras
 import pe.sevens.sigro.plataforma.Plataforma
 import pe.sevens.sigro.recursos.Res
 import pe.sevens.sigro.recursos.sevens_logo
+import pe.sevens.sigro.recursos.sevens_logo_blanco
 import pe.sevens.sigro.ui.componentes.FondoPlano
 import pe.sevens.sigro.ui.componentes.planoInicio
 import pe.sevens.sigro.ui.componentes.vidrio
+import pe.sevens.sigro.ui.tema.Apariencia
 import pe.sevens.sigro.ui.tema.Paleta
 
 data class EstadoInicio(
@@ -185,13 +188,17 @@ class InicioViewModel(
         viewModelScope.launch {
             val r = salidas.sincronizar()
             val texto = when {
-                r.enviados == 0 && r.rechazados == 0 && r.siguenPendientes == 0 -> "No hay nada por enviar"
-                r.siguenPendientes > 0 -> "Enviados ${r.enviados}. Quedan ${r.siguenPendientes}: se reintentará solo"
-                else -> "Enviados ${r.enviados}" + if (r.rechazados > 0) " · ${r.rechazados} rechazados (revisa Pendientes)" else ""
+                r.enviados == 0 && r.rechazados == 0 && r.siguenPendientes == 0 -> "Todo está enviado"
+                r.siguenPendientes > 0 && r.enviados == 0 -> "Sin señal: ${registros(r.siguenPendientes)} ${if (r.siguenPendientes == 1) "espera" else "esperan"} y se ${if (r.siguenPendientes == 1) "enviará" else "enviarán"} solos"
+                r.siguenPendientes > 0 -> "Se enviaron ${r.enviados}; ${registros(r.siguenPendientes)} se ${if (r.siguenPendientes == 1) "enviará" else "enviarán"} con señal"
+                r.rechazados > 0 -> "Se enviaron ${r.enviados}; ${r.rechazados} ${if (r.rechazados == 1) "fue rechazado: revísalo" else "fueron rechazados: revísalos"}"
+                else -> "Listo: se ${if (r.enviados == 1) "envió 1 registro" else "enviaron ${r.enviados} registros"}"
             }
             _estado.update { it.copy(enviando = false, mensaje = texto) }
         }
     }
+
+    private fun registros(n: Int) = if (n == 1) "1 registro" else "$n registros"
 
     fun mensajeVisto() = _estado.update { it.copy(mensaje = null) }
     fun salir() = viewModelScope.launch { sesiones.cerrarSesion() }
@@ -222,12 +229,12 @@ fun PantallaInicio(
     FondoPlano(plano = { planoInicio(it) }) {
         Column(
             Modifier.fillMaxSize().verticalScroll(rememberScrollState()).statusBarsPadding()
-                .padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 200.dp),
+                .padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 120.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Image(
-                    painterResource(Res.drawable.sevens_logo), contentDescription = "SEVEN'S Ingenieros SAC",
+                    painterResource(if (Apariencia.oscuro) Res.drawable.sevens_logo_blanco else Res.drawable.sevens_logo), contentDescription = "SEVEN'S Ingenieros SAC",
                     modifier = Modifier.height(64.dp).offset(x = (-4).dp),
                 )
                 Spacer(Modifier.weight(1f))
@@ -255,12 +262,12 @@ fun PantallaInicio(
                 Text("${sesion.nombre} · ${obra.rolLegible}", fontSize = 14.sp, color = Paleta.Texto3, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
 
-            TarjetaResumen(resumen, pendientes, e.enviando, alEnviar = vm::enviarAhora, alVerRegistros = { irA(Destino.Pendientes) })
+            TarjetaResumen(resumen, pendientes, e.enviando, alEnviar = vm::enviarAhora, alVerRegistros = { irA(Destino.Pendientes) }, alVerRechazados = { irA(Destino.Rechazados) })
 
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Acceso(Icons.Filled.ArrowUpward, "Salida", principal = true) { irA(Destino.Salida) }
                 Acceso(Icons.Filled.ArrowDownward, "Entrada") { irA(Destino.Entrada) }
-                Acceso(Icons.Filled.ViewInAr, "Stock") { irA(Destino.Stock) }
+                Acceso(Icons.Filled.MoveDown, "Ingreso") { irA(Destino.IngresoSinCompra) }
                 Acceso(Icons.Filled.MoreHoriz, "Más") { conMas = true }
             }
 
@@ -276,7 +283,7 @@ fun PantallaInicio(
             Column(Modifier.fillMaxWidth().vidrio(RoundedCornerShape(26.dp))) {
                 if (resumen.ultimas.isEmpty()) {
                     Text(
-                        "Aún no registras salidas en esta obra. Las que guardes aparecen aquí, con su estado de envío.",
+                        "Todavía no hay salidas en esta obra.",
                         fontSize = 15.sp, lineHeight = 21.sp, color = Paleta.Texto2, modifier = Modifier.padding(16.dp),
                     )
                 }
@@ -287,27 +294,13 @@ fun PantallaInicio(
             }
         }
 
-        Button(
-            onClick = { irA(Destino.Salida) },
-            shape = RoundedCornerShape(29.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = Paleta.Tinta, contentColor = Color.White),
-            contentPadding = PaddingValues(start = 18.dp, end = 22.dp),
-            modifier = Modifier.align(Alignment.BottomEnd).navigationBarsPadding()
-                .padding(end = 18.dp, bottom = 108.dp).height(58.dp)
-                .shadow(14.dp, RoundedCornerShape(29.dp), spotColor = Paleta.Tinta.copy(alpha = 0.45f)),
-        ) {
-            Icon(Icons.Filled.Add, contentDescription = null, tint = Paleta.NaranjaVivo, modifier = Modifier.size(22.dp))
-            Spacer(Modifier.width(10.dp))
-            Text("Registrar salida", fontSize = 16.sp, fontWeight = FontWeight.Bold)
-        }
-
-        SnackbarHost(avisos, Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(bottom = 176.dp))
+        SnackbarHost(avisos, Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(bottom = 104.dp))
 
         BarraInferior(
             pendientes,
             alRegistros = { irA(Destino.Pendientes) },
             alStock = { irA(Destino.Stock) },
-            alPerfil = { vm.cambiarDeObra() },
+            alPerfil = { irA(Destino.Perfil) },
             modifier = Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(start = 12.dp, end = 12.dp, bottom = 16.dp),
         )
 
@@ -322,25 +315,18 @@ fun PantallaInicio(
             enter = slideInVertically { it }, exit = slideOutVertically { it },
             modifier = Modifier.align(Alignment.BottomCenter),
         ) {
-            HojaMas(
-                e,
-                irA = { conMas = false; irA(it) },
-                alCelular = { conMas = false; irA(Destino.Dispositivo) },
-                alActualizar = { vm.actualizarCatalogo() },
-                alSalir = { conMas = false; vm.salir() },
-                alCerrar = { conMas = false },
-            )
+            HojaMas(irA = { conMas = false; irA(it) }, alCerrar = { conMas = false })
         }
     }
 }
 
 @Composable
-private fun TarjetaResumen(r: ResumenObra, pendientesTotales: Int, enviando: Boolean, alEnviar: () -> Unit, alVerRegistros: () -> Unit) {
+private fun TarjetaResumen(r: ResumenObra, pendientesTotales: Int, enviando: Boolean, alEnviar: () -> Unit, alVerRegistros: () -> Unit, alVerRechazados: () -> Unit) {
     Column(Modifier.fillMaxWidth().vidrio(RoundedCornerShape(26.dp))) {
         Row(Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 16.dp)) {
             Cifra(r.salidasHoy, if (r.salidasHoy == 1) "Salida hoy" else "Salidas hoy", Paleta.Tinta, null)
             Cifra(r.porEnviar, "Por enviar", Paleta.Ambar, alVerRegistros, conBorde = true)
-            Cifra(r.rechazadas, if (r.rechazadas == 1) "Rechazada" else "Rechazadas", Paleta.Rojo, alVerRegistros, conBorde = true)
+            Cifra(r.rechazadas, if (r.rechazadas == 1) "Rechazada" else "Rechazadas", if (r.rechazadas > 0) Paleta.Rojo else Paleta.Texto3, if (r.rechazadas > 0) alVerRechazados else null, conBorde = true)
         }
         // La cola se envía sola; el botón es para no esperar al reintento (HU-38).
         if (pendientesTotales > 0) {
@@ -390,7 +376,7 @@ private fun RowScope.Acceso(icono: ImageVector, texto: String, principal: Boolea
             else Modifier.size(62.dp).vidrio(forma, sombra = 6.dp),
             contentAlignment = Alignment.Center,
         ) {
-            Icon(icono, contentDescription = null, tint = if (principal) Color.White else Paleta.Naranja, modifier = Modifier.size(26.dp))
+            Icon(icono, contentDescription = null, tint = if (principal) Paleta.SobreAcento else Paleta.Naranja, modifier = Modifier.size(26.dp))
         }
         Text(texto, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Paleta.Tinta)
         if (!habilitado) Text("Pronto", fontSize = 11.sp, color = Paleta.Texto3, modifier = Modifier.offset(y = (-6).dp))
@@ -414,8 +400,8 @@ private fun FilaRegistro(s: SalidaRegistrada, alPulsar: () -> Unit) {
             Icon(icono, contentDescription = null, tint = color, modifier = Modifier.size(18.dp))
         }
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(s.insumo.descripcion, fontSize = 15.sp, fontWeight = FontWeight.Bold, color = Paleta.Tinta, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Text("${s.cantidad} ${s.insumo.unidad} · $palabra", fontSize = 13.sp, color = Paleta.Texto2, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(Texto.nombre(s.insumo.descripcion), fontSize = 15.sp, fontWeight = FontWeight.Bold, color = Paleta.Tinta, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            Text("${Texto.cantidadConUnidad(s.cantidad, s.insumo.unidad)} · $palabra", fontSize = 13.sp, color = Paleta.Texto2, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
         Text(Plataforma.formatearHora(s.horaDispositivoMs).substringAfter(' '), fontSize = 13.sp, color = Paleta.Texto2)
     }
@@ -460,14 +446,14 @@ private fun RowScope.ItemBarra(
             ),
             contentAlignment = Alignment.Center,
         ) {
-            Icon(icono, contentDescription = null, tint = if (activo) Color.White else Paleta.Texto3, modifier = Modifier.size(22.dp))
+            Icon(icono, contentDescription = null, tint = if (activo) Paleta.SobreAcento else Paleta.Texto3, modifier = Modifier.size(22.dp))
             if (insignia > 0) {
                 Box(
                     Modifier.align(Alignment.TopEnd).offset(x = (-10).dp).size(18.dp)
-                        .background(Paleta.Ambar, CircleShape).border(2.dp, Color.White, CircleShape),
+                        .background(Paleta.Ambar, CircleShape).border(2.dp, Paleta.Superficie, CircleShape),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Text(if (insignia > 9) "9+" else "$insignia", fontSize = 10.sp, fontWeight = FontWeight.ExtraBold, color = Color.White)
+                    Text(if (insignia > 9) "9+" else "$insignia", fontSize = 10.sp, fontWeight = FontWeight.ExtraBold, color = Paleta.SobreAcento)
                 }
             }
         }
@@ -475,9 +461,13 @@ private fun RowScope.ItemBarra(
     }
 }
 
-/** Hoja «Más»: las demás operaciones del almacén. Las que aún no existen se ven, pero dicen «Pronto». */
+/**
+ * Hoja «Más»: las demás operaciones. Lo de la cuenta (celular, catálogo, cerrar sesión) está en Perfil.
+ * Traslado, conteo y cierre se guardan en el celular pero el servidor todavía no los recibe (HU-42, 46, 47 son de
+ * la siguiente iteración): se ven con «Pronto» en vez de dejar registrar algo que no llegará.
+ */
 @Composable
-private fun HojaMas(e: EstadoInicio, irA: (Destino) -> Unit, alCelular: () -> Unit, alActualizar: () -> Unit, alSalir: () -> Unit, alCerrar: () -> Unit) {
+private fun HojaMas(irA: (Destino) -> Unit, alCerrar: () -> Unit) {
     Column(
         Modifier.fillMaxWidth().navigationBarsPadding().padding(10.dp)
             .vidrio(RoundedCornerShape(32.dp), fuerte = true, sombra = 24.dp)
@@ -487,50 +477,22 @@ private fun HojaMas(e: EstadoInicio, irA: (Destino) -> Unit, alCelular: () -> Un
     ) {
         Box(Modifier.align(Alignment.CenterHorizontally).width(40.dp).height(5.dp).background(Paleta.Tinta.copy(alpha = 0.18f), RoundedCornerShape(3.dp)))
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("Más operaciones", fontSize = 18.sp, fontWeight = FontWeight.ExtraBold, color = Paleta.Tinta, modifier = Modifier.weight(1f).semantics { heading() })
+            Text("Más", fontSize = 18.sp, fontWeight = FontWeight.ExtraBold, color = Paleta.Tinta, modifier = Modifier.weight(1f).semantics { heading() })
             IconButton(onClick = alCerrar, modifier = Modifier.size(44.dp).background(Paleta.Tinta.copy(alpha = 0.06f), CircleShape)) {
                 Icon(Icons.Filled.Close, contentDescription = "Cerrar", tint = Paleta.Tinta, modifier = Modifier.size(18.dp))
             }
         }
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            OpcionMas(Icons.Filled.MoveDown, "Ingreso sin compra") { irA(Destino.IngresoSinCompra) }
-            OpcionMas(Icons.Filled.SwapHoriz, "Traslado entre obras") { irA(Destino.Traslado) }
-        }
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            OpcionMas(Icons.Filled.FactCheck, "Conteo físico") { irA(Destino.Conteo) }
-            OpcionMas(Icons.Filled.Lock, "Cerrar obra") { irA(Destino.Cierre) }
-        }
-        Row(
-            Modifier.fillMaxWidth().background(Color.White, RoundedCornerShape(20.dp)).clickable(onClick = alCelular)
-                .heightIn(min = 52.dp).padding(14.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
-        ) {
-            Icon(Icons.Filled.PhoneAndroid, contentDescription = null, tint = Paleta.Naranja, modifier = Modifier.size(22.dp))
-            Text("Mi celular en esta obra", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Paleta.Tinta)
-        }
-        Text("OTROS RECURSOS", fontSize = 13.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.04.em, color = Paleta.Texto3)
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             OpcionMas(Icons.Filled.Search, "Catálogo", centrada = true) { irA(Destino.Catalogo) }
-            OpcionMas(Icons.Filled.Build, "Herramientas", centrada = true, alPulsar = null)
             OpcionMas(Icons.Filled.Groups, "Personal", centrada = true) { irA(Destino.Trabajadores) }
+            OpcionMas(Icons.Filled.ViewInAr, "Stock", centrada = true) { irA(Destino.Stock) }
         }
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(
-                "${e.insumosEnCelular} insumos del catálogo guardados para buscar sin señal",
-                fontSize = 13.sp, color = Paleta.Texto2, modifier = Modifier.weight(1f),
-            )
-            TextButton(onClick = alActualizar, enabled = !e.actualizandoCatalogo) {
-                if (e.actualizandoCatalogo) CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp, color = Paleta.Naranja)
-                else Icon(Icons.Filled.Sync, contentDescription = null, tint = Paleta.Naranja, modifier = Modifier.size(18.dp))
-                Spacer(Modifier.width(6.dp))
-                Text("Actualizar", fontWeight = FontWeight.Bold, color = Paleta.Naranja)
-            }
-        }
-        TextButton(onClick = alSalir, modifier = Modifier.align(Alignment.CenterHorizontally)) {
-            Icon(Icons.AutoMirrored.Filled.Logout, contentDescription = null, tint = Paleta.Texto3, modifier = Modifier.size(18.dp))
-            Spacer(Modifier.width(6.dp))
-            Text("Cerrar sesión", fontWeight = FontWeight.SemiBold, color = Paleta.Texto3)
+        Text("PRÓXIMAMENTE", fontSize = 12.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.04.em, color = Paleta.Texto3)
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            OpcionMas(Icons.Filled.SwapHoriz, "Traslado", centrada = true, alPulsar = null)
+            OpcionMas(Icons.Filled.FactCheck, "Conteo", centrada = true, alPulsar = null)
+            OpcionMas(Icons.Filled.Lock, "Cierre", centrada = true, alPulsar = null)
+            OpcionMas(Icons.Filled.Build, "Herramientas", centrada = true, alPulsar = null)
         }
     }
 }
@@ -539,7 +501,7 @@ private fun HojaMas(e: EstadoInicio, irA: (Destino) -> Unit, alCelular: () -> Un
 private fun RowScope.OpcionMas(icono: ImageVector, texto: String, centrada: Boolean = false, alPulsar: (() -> Unit)?) {
     val pronto = alPulsar == null
     Column(
-        Modifier.weight(1f).alpha(if (pronto) 0.55f else 1f).background(Color.White, RoundedCornerShape(20.dp))
+        Modifier.weight(1f).alpha(if (pronto) 0.55f else 1f).background(Paleta.Superficie, RoundedCornerShape(20.dp))
             .clickable(enabled = !pronto, role = Role.Button) { alPulsar?.invoke() }
             .heightIn(min = 44.dp)
             .padding(horizontal = if (centrada) 8.dp else 14.dp, vertical = if (centrada) 12.dp else 14.dp)

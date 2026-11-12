@@ -36,6 +36,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import pe.sevens.sigro.dominio.Texto
 import pe.sevens.sigro.dominio.AlmacenObra
 import pe.sevens.sigro.dominio.ElegirAlmacen
 import pe.sevens.sigro.dominio.ErrorSigro
@@ -107,7 +108,7 @@ fun ElegirAlmacenObra(estado: SelectorAlmacen.Estado, alElegir: (AlmacenObra) ->
             fontSize = 14.sp, color = Paleta.Texto2,
         )
         estado.sinLista && !estado.cargando -> Text(
-            "Sin señal no se pudo ver los almacenes. Si la obra tiene uno solo, el servidor lo usa; si no, te lo dirá en «Mis registros».",
+            "Sin señal: se usa el último almacén elegido.",
             fontSize = 13.sp, lineHeight = 18.sp, color = Paleta.Texto3,
         )
     }
@@ -152,10 +153,10 @@ fun ElegirInsumo(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text(elegido.descripcion, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF7C2D12))
-                Text("${elegido.codigo} · se mide en ${elegido.unidad}", fontSize = 13.sp, color = Color(0xFF7C2D12))
+                Text(Texto.nombre(elegido.descripcion), fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = Paleta.NaranjaTexto)
+                Text("${elegido.codigo} · en ${Texto.unidad(elegido.unidad)}", fontSize = 13.sp, color = Paleta.NaranjaTexto)
             }
-            IconButton(onClick = alQuitar) { Icon(Icons.Filled.Close, contentDescription = "Cambiar insumo", tint = Color(0xFF7C2D12)) }
+            IconButton(onClick = alQuitar) { Icon(Icons.Filled.Close, contentDescription = "Cambiar insumo", tint = Paleta.NaranjaTexto) }
         }
         return
     }
@@ -164,15 +165,15 @@ fun ElegirInsumo(
         finalIcono = { Icon(Icons.Filled.Search, contentDescription = null, tint = Paleta.Texto3, modifier = Modifier.padding(end = 10.dp)) },
     )
     if (estado.resultados.isNotEmpty()) {
-        Column(Modifier.fillMaxWidth().background(Color.White.copy(alpha = 0.9f), RoundedCornerShape(18.dp))) {
+        Column(Modifier.fillMaxWidth().background(Paleta.Superficie.copy(alpha = 0.9f), RoundedCornerShape(18.dp))) {
             estado.resultados.take(6).forEachIndexed { i, ins ->
                 if (i > 0) Separador()
                 Column(
                     Modifier.fillMaxWidth().clickable { alElegir(ins) }.heightIn(min = 56.dp).padding(horizontal = 14.dp, vertical = 8.dp),
                     verticalArrangement = Arrangement.spacedBy(2.dp),
                 ) {
-                    Text(ins.descripcion, fontSize = 15.sp, color = Paleta.Tinta)
-                    Text("${ins.codigo} · ${ins.unidad}", fontSize = 13.sp, color = Paleta.Texto3)
+                    Text(Texto.nombre(ins.descripcion), fontSize = 15.sp, color = Paleta.Tinta)
+                    Text("${ins.codigo} · ${Texto.unidad(ins.unidad)}", fontSize = 13.sp, color = Paleta.Texto3)
                 }
             }
         }
@@ -197,7 +198,7 @@ fun GuardadoEnCelular(
         Text(detalle, fontSize = 16.sp, lineHeight = 23.sp, color = Paleta.Texto3, textAlign = TextAlign.Center)
         ChipEstado(EstadoEnvio.PENDIENTE)
         if (conServicio) {
-            Text("Se envía sola cuando hay señal. Si el servidor la rechaza, verás el motivo en «Mis registros».", fontSize = 14.sp, lineHeight = 20.sp, color = Paleta.Texto2, textAlign = TextAlign.Center)
+            Text("Se envía sola en cuanto haya señal.", fontSize = 14.sp, lineHeight = 20.sp, color = Paleta.Texto2, textAlign = TextAlign.Center)
         } else {
             AvisoSinServicioAlmacen()
         }
@@ -212,8 +213,6 @@ fun GuardadoEnCelular(
 @Composable
 fun PasoAlmacen(n: String, titulo: String) {
     Row(Modifier.padding(top = 2.dp).semantics(mergeDescendants = true) { heading() }, verticalAlignment = Alignment.CenterVertically) {
-        Text(n, color = Paleta.Naranja, fontWeight = FontWeight.Bold, fontSize = 18.sp)
-        Box(Modifier.size(10.dp))
         Text(titulo, fontWeight = FontWeight.SemiBold, fontSize = 18.sp, color = Paleta.Tinta)
     }
 }

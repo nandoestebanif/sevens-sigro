@@ -46,6 +46,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import org.koin.compose.viewmodel.koinViewModel
+import pe.sevens.sigro.dominio.Texto
 import pe.sevens.sigro.dominio.CatalogoTexto
 import pe.sevens.sigro.dominio.ErrorSigro
 import pe.sevens.sigro.dominio.FichaInsumo
@@ -124,7 +125,7 @@ class CatalogoViewModel(private val insumos: RepositorioInsumos) : ViewModel() {
 @Composable
 fun PantallaCatalogo(alVolver: () -> Unit, alAbrir: (FichaInsumo) -> Unit, alNuevo: () -> Unit, vm: CatalogoViewModel = koinViewModel()) {
     val e by vm.estado.collectAsState()
-    PantallaVidrio("Catálogo", plano = { planoCatBuscar(it) }, alVolver = alVolver, subtitulo = "Código único en todas las obras") {
+    PantallaVidrio("Catálogo", plano = { planoCatBuscar(it) }, alVolver = alVolver, subtitulo = "Busca por nombre o código") {
         CampoVidrio(
             e.q, vm::buscar, "Buscar insumo", marcador = "Nombre o código",
             finalIcono = { Icon(Icons.Filled.Search, contentDescription = null, tint = Paleta.Texto3, modifier = Modifier.padding(end = 10.dp)) },
@@ -167,8 +168,8 @@ private fun FilaInsumo(i: FichaInsumo, alPulsar: () -> Unit) {
             Text(i.codigo.take(5), fontSize = 12.sp, fontWeight = FontWeight.ExtraBold, color = Paleta.NaranjaOscuro)
         }
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(i.descripcion, fontSize = 15.sp, fontWeight = FontWeight.Bold, color = Paleta.Tinta, maxLines = 2, overflow = TextOverflow.Ellipsis)
-            Text("Código ${i.codigo} · ${i.unidadCompra}", fontSize = 13.sp, color = Paleta.Texto3)
+            Text(Texto.nombre(i.descripcion), fontSize = 15.sp, fontWeight = FontWeight.Bold, color = Paleta.Tinta, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            Text("Código ${i.codigo} · ${Texto.unidad(i.unidadCompra)}", fontSize = 13.sp, color = Paleta.Texto3)
         }
         Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null, tint = Paleta.Gris, modifier = Modifier.size(20.dp))
     }
@@ -188,7 +189,7 @@ fun sinCerosDeMas(decimal: String): String = if ('.' in decimal) decimal.trimEnd
 
 @Composable
 fun PantallaFichaInsumo(insumo: FichaInsumo, alVolver: () -> Unit, alVerStock: () -> Unit) {
-    PantallaVidrio("Insumo", plano = { planoCatFicha(it) }, alVolver = alVolver, subtitulo = "Código ${insumo.codigo} · el mismo en todas las obras") {
+    PantallaVidrio("Insumo", plano = { planoCatFicha(it) }, alVolver = alVolver, subtitulo = "Código ${insumo.codigo}") {
         Row(
             Modifier.fillMaxWidth().height(150.dp).vidrio(RoundedCornerShape(26.dp)),
             verticalAlignment = Alignment.CenterVertically,
@@ -199,7 +200,7 @@ fun PantallaFichaInsumo(insumo: FichaInsumo, alVolver: () -> Unit, alVerStock: (
             }
         }
         TarjetaVidrio {
-            Text(insumo.descripcion, fontSize = 20.sp, fontWeight = FontWeight.ExtraBold, color = Paleta.Tinta, modifier = Modifier.semantics { heading() })
+            Text(Texto.nombre(insumo.descripcion), fontSize = 20.sp, fontWeight = FontWeight.ExtraBold, color = Paleta.Tinta, modifier = Modifier.semantics { heading() })
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Etiqueta(insumo.tipoLegible, Paleta.NaranjaOscuro, Paleta.NaranjaClaro)
                 when (insumo.activo) {
@@ -227,7 +228,7 @@ fun PantallaFichaInsumo(insumo: FichaInsumo, alVolver: () -> Unit, alVerStock: (
         }
         TarjetaVidrio {
             TituloSeccion("Nombres comerciales")
-            Marcador("Nombres comerciales del insumo (HU-09): el servidor aún no ofrece este dato")
+            
         }
         BotonNegro("Ver stock en esta obra", alVerStock, icono = Icons.Filled.ViewInAr, colorIcono = Paleta.NaranjaVivo, contorno = true)
     }
@@ -345,7 +346,7 @@ fun PantallaInsumoNuevo(alVolver: () -> Unit, alAbrir: (FichaInsumo) -> Unit, vm
                 Text("Ya están en el catálogo", fontSize = 13.sp, color = Paleta.Texto3)
                 e.parecidos.forEach { p ->
                     Row(
-                        Modifier.fillMaxWidth().background(Color.White.copy(alpha = 0.8f), RoundedCornerShape(16.dp))
+                        Modifier.fillMaxWidth().background(Paleta.Superficie.copy(alpha = 0.8f), RoundedCornerShape(16.dp))
                             .clickable(onClickLabel = "Usar este insumo") { alAbrir(p) }.heightIn(min = 52.dp).padding(12.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
@@ -356,7 +357,7 @@ fun PantallaInsumoNuevo(alVolver: () -> Unit, alAbrir: (FichaInsumo) -> Unit, vm
             }
         }
         e.error?.let { AvisoRojo(it) }
-        AvisoNaranja("El código lo genera el sistema al guardar: único e irrepetible, el mismo en todas las obras. Necesita señal.")
+        AvisoNaranja("El código lo pone SIGRO al guardar. Necesita señal.")
         BotonNegro("Registrar insumo", vm::guardar, icono = Icons.Filled.Save, colorIcono = Paleta.NaranjaVivo, cargando = e.guardando, habilitado = e.duplicado == null)
     }
 }

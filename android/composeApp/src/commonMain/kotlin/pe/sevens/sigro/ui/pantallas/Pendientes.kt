@@ -38,10 +38,12 @@ import pe.sevens.sigro.dominio.RegistroLocal
 import pe.sevens.sigro.dominio.RepositorioRegistros
 import pe.sevens.sigro.dominio.RepositorioSalidas
 import pe.sevens.sigro.dominio.SalidaRegistrada
+import pe.sevens.sigro.dominio.Texto
 import pe.sevens.sigro.plataforma.Plataforma
 import pe.sevens.sigro.ui.componentes.AvisoRojo
 import pe.sevens.sigro.ui.componentes.BotonNegro
 import pe.sevens.sigro.ui.componentes.ChipEstado
+import pe.sevens.sigro.ui.componentes.Opciones
 import pe.sevens.sigro.ui.componentes.PantallaVidrio
 import pe.sevens.sigro.ui.componentes.Separador
 import pe.sevens.sigro.ui.componentes.TarjetaVidrio
@@ -73,6 +75,8 @@ data class FilaRegistro(
     /** A1: lo que dijo el servidor al recibirlo. */
     val registradoPor: String? = null,
     val fechaServidor: String? = null,
+    /** La salida original (solo en la cola de salidas): para registrarla de nuevo si fue rechazada. */
+    val salida: SalidaRegistrada? = null,
 )
 
 private fun EstadoEnvio.legible() = when (this) {
@@ -113,7 +117,7 @@ fun unirRegistros(salidas: List<SalidaRegistrada>, registros: List<RegistroLocal
             "${it.motivo} · retira ${it.quienRetira}" + (it.frente?.let { f -> " · $f" } ?: ""),
             it.horaDispositivoMs, it.estado, it.motivoRechazo, it.nota, it.intentos,
             insumo = it.insumo.descripcion, motivo = it.motivo, quienRetira = it.quienRetira,
-            registradoPor = it.registradoPor, fechaServidor = it.fechaServidor,
+            registradoPor = it.registradoPor, fechaServidor = it.fechaServidor, salida = it,
         )
     } + registros.map {
         FilaRegistro(
@@ -139,31 +143,55 @@ class PendientesViewModel(private val salidas: RepositorioSalidas, private val r
     }
 }
 
+/** Qué filas se ven según el filtro de arriba. */
+enum class FiltroRegistros(val texto: String) { TODOS("Todos"), POR_ENVIAR("Por enviar"), RECHAZADOS("Rechazados") }
+
+fun filtrarRegistros(lista: List<FilaRegistro>, f: FiltroRegistros): List<FilaRegistro> = when (f) {
+    FiltroRegistros.TODOS -> lista
+    FiltroRegistros.POR_ENVIAR -> lista.filter { it.estado == EstadoEnvio.PENDIENTE }
+    FiltroRegistros.RECHAZADOS -> lista.filter { it.estado == EstadoEnvio.RECHAZADO }
+}
+
 @Composable
-fun PantallaPendientes(obraId: Int, alVolver: () -> Unit, vm: PendientesViewModel = koinViewModel()) {
+fun PantallaPendientes(
+    obraId: Int,
+    alVolver: () -> Unit,
+    soloRechazados: Boolean = false,
+    alCorregir: (SalidaRegistrada) -> Unit = {},
+    vm: PendientesViewModel = koinViewModel(),
+) {
     val flujo = remember(obraId) { vm.de(obraId) }
     val lista by flujo.collectAsState(initial = emptyList())
     val enviando by vm.enviando.collectAsState()
     val porEnviar = lista.count { it.estado == EstadoEnvio.PENDIENTE }
+    var filtro by rememberSaveable { mutableStateOf(if (soloRechazados) FiltroRegistros.RECHAZADOS else FiltroRegistros.TODOS) }
+    val visibles = filtrarRegistros(lista, filtro)
 
     PantallaVidrio(
         "Mis registros", plano = { planoRegistros(it) }, alVolver = alVolver,
         subtitulo = if (porEnviar > 0) "$porEnviar por enviar" else "Todo enviado",
     ) {
         if (porEnviar > 0) BotonNegro("Enviar ahora", vm::enviarAhora, icono = Icons.Filled.CloudUpload, colorIcono = Paleta.NaranjaVivo, cargando = enviando)
-        if (lista.isEmpty()) {
+        if (lista.isNotEmpty()) Opciones(FiltroRegistros.entries, filtro, { it.texto }, { filtro = it })
+        if (visibles.isEmpty()) {
             TarjetaVidrio {
-                Text("Aún no registraste nada en esta obra", fontSize = 17.sp, fontWeight = FontWeight.Bold, color = Paleta.Tinta)
-                Text("Las salidas, la asistencia y los registros de almacén que guardes aparecen aquí con su estado de envío.", fontSize = 15.sp, lineHeight = 21.sp, color = Paleta.Texto2)
+                Text(
+                    when {
+                        lista.isEmpty() -> "Todavía no hay registros en esta obra"
+                        filtro == FiltroRegistros.RECHAZADOS -> "No hay registros rechazados"
+                        else -> "No hay registros por enviar"
+                    },
+                    fontSize = 17.sp, fontWeight = FontWeight.Bold, color = Paleta.Tinta,
+                )
             }
         }
         var abierto by rememberSaveable { mutableStateOf<String?>(null) }
-        lista.forEach { f -> Fila(f, abierto == f.clave) { abierto = if (abierto == f.clave) null else f.clave } }
+        visibles.forEach { f -> Fila(f, abierto == f.clave, alCorregir) { abierto = if (abierto == f.clave) null else f.clave } }
     }
 }
 
 @Composable
-private fun Fila(f: FilaRegistro, abierto: Boolean, alTocar: () -> Unit) {
+private fun Fila(f: FilaRegistro, abierto: Boolean, alCorregir: (SalidaRegistrada) -> Unit, alTocar: () -> Unit) {
     TarjetaVidrio(
         Modifier.clickable(onClickLabel = if (abierto) "Ocultar detalle" else "Ver detalle", onClick = alTocar)
             .semantics(mergeDescendants = true) {},
@@ -171,13 +199,13 @@ private fun Fila(f: FilaRegistro, abierto: Boolean, alTocar: () -> Unit) {
         Row(verticalAlignment = Alignment.Top) {
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(f.tipo.uppercase(), fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.6.sp, color = Paleta.Naranja)
-                Text(f.titulo, fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Paleta.Tinta)
+                Text(Texto.nombre(f.titulo), fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Paleta.Tinta)
             }
             ChipEstado(f.estado)
         }
         if (f.cantidad != null) {
             Row(verticalAlignment = Alignment.Bottom) {
-                Text(f.cantidad, fontSize = 20.sp, fontWeight = FontWeight.ExtraBold, color = Paleta.Tinta, modifier = Modifier.weight(1f))
+                Text(f.salida?.let { Texto.cantidadConUnidad(it.cantidad, it.insumo.unidad) } ?: f.cantidad, fontSize = 20.sp, fontWeight = FontWeight.ExtraBold, color = Paleta.Tinta, modifier = Modifier.weight(1f))
                 Text(Plataforma.formatearHora(f.horaMs), fontSize = 13.sp, color = Paleta.Texto3)
             }
             Text(f.detalle, fontSize = 14.sp, lineHeight = 20.sp, color = Paleta.Texto2)
@@ -188,10 +216,13 @@ private fun Fila(f: FilaRegistro, abierto: Boolean, alTocar: () -> Unit) {
             }
         }
         // HU-38: un rechazo queda con su motivo; una nota explica por qué sigue en cola.
-        f.motivoRechazo?.let { AvisoRojo("Rechazada: $it") }
+        f.motivoRechazo?.let { AvisoRojo("No se registró: $it") }
+        if (f.estado == EstadoEnvio.RECHAZADO && f.salida != null) {
+            BotonNegro("Corregir y registrar de nuevo", { alCorregir(f.salida) }, contorno = true)
+        }
         if (f.estado == EstadoEnvio.PENDIENTE && f.nota != null) {
             Text(
-                f.nota + if (f.intentos > 0) " (intentos: ${f.intentos})" else "",
+                f.nota,
                 fontSize = 13.sp, lineHeight = 18.sp, color = Paleta.PendienteTexto,
                 modifier = Modifier.fillMaxWidth().background(Paleta.PendienteFondo, RoundedCornerShape(12.dp)).padding(10.dp),
             )
