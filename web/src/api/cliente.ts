@@ -17,10 +17,11 @@ import type {
   AlertaReposicion, AvanceInsumo, Compra, HistorialFactor, InsumoCatalogo, InsumoMaestro,
   LineaCompra, LineaRecepcion, Movimiento, Obra, ObraActiva, Proveedor,
   ParametroReposicion, ResultadoRequerimiento, ResumenTablero, Semana, StockInsumo, TipoComprobante,
+  ReporteSemana, VerificacionRecepcion,
 } from './tipos'
 
 import { ErrorApi } from './error'
-import { catalogoHttp, comprasHttp, obrasHttp, proveedoresHttp, recepcionHttp, reposicionHttp, usaApiReal } from './http'
+import { almacenHttp, avanceHttp, catalogoHttp, comprasHttp, obrasHttp, proveedoresHttp, recepcionHttp, reposicionHttp, semanaHttp, usaApiReal } from './http'
 export { ErrorApi }
 
 export interface ClienteSigro {
@@ -74,7 +75,13 @@ export interface ClienteSigro {
   detalleRecepcion(compraId: string): Promise<LineaRecepcion[]>
   /** HU-35: recibe total o parcialmente; cada línea genera su INGRESO en el
       kárdex por la cantidad recibida — es la recepción la que mueve el stock */
-  registrarRecepcion(compraId: string, lineas: { insumoId: string; cantidad: number }[]): Promise<void>
+  registrarRecepcion(compraId: string, lineas: { insumoId: string; cantidad: number }[], motivoExceso?: string): Promise<void>
+  /** HU-44: saldo inicial, entradas, salidas y saldo final de la semana, solo insumos con movimiento */
+  reporteSemana(numero: number): Promise<ReporteSemana>
+  /** HU-44: el mismo reporte como archivo para Excel (null si no hay servidor) */
+  exportarSemana(numero: number): Promise<Blob | null>
+  /** HU-36: avisa ANTES de guardar si con esta recepción se pasa lo requerido en el S10; no guarda nada */
+  verificarRecepcion(compraId: string, lineas: { insumoId: string; cantidad: number }[]): Promise<VerificacionRecepcion>
   avancePorInsumo(): Promise<AvanceInsumo[]>
   resumenTablero(): Promise<ResumenTablero>
   /** HU-43: saldo por almacén y consolidado, derivado de los movimientos */
@@ -662,6 +669,29 @@ export class ClienteSimulado implements ClienteSigro {
     }))
   }
 
+  async reporteSemana(numero: number): Promise<ReporteSemana> {
+    await espera(150)
+    // la simulación no lleva periodos: el reporte semanal solo se calcula en el servidor
+    const s = (await this.obraActiva())
+    if (numero < 1 || numero > s.semanasTotales) throw new ErrorApi('semana_no_existe', `La obra no tiene la semana ${numero}.`)
+    return { numero, inicio: '', fin: '', cerrada: false, criterio: 'Conecta la web con la API (VITE_API_URL) para ver el reporte semanal.', filas: [] }
+  }
+
+  async exportarSemana(_numero: number): Promise<Blob | null> { return null }
+
+  async verificarRecepcion(compraId: string, lineas: { insumoId: string; cantidad: number }[]): Promise<VerificacionRecepcion> {
+    await espera(100)
+    // la simulación no lleva el requerimiento por insumo: nunca hay exceso (el servidor real sí lo calcula)
+    const c = this.compras.find((x) => x.id === compraId)
+    return {
+      hayExceso: false,
+      lineas: lineas.filter((l) => l.cantidad > 0).map((l) => ({
+        insumoId: l.insumoId, descripcion: c?.lineas.find((x) => x.insumoId === l.insumoId)?.descripcion ?? l.insumoId,
+        unidad: '', requerido: null, conEsta: l.cantidad, exceso: null, excede: false,
+      })),
+    }
+  }
+
   async listarMovimientos(): Promise<Movimiento[]> {
     await espera(140)
     return this.conAnulaciones().sort((a, b) => b.fechaServidor.localeCompare(a.fechaServidor))
@@ -753,7 +783,7 @@ export class ClienteSimulado implements ClienteSigro {
     // HU-26: un mismo insumo no genera avisos repetidos mientras siga bajo el
     // punto: hay a lo sumo UNA alerta por insumo, activa o atendida
     return stock
-      .filter((s) => s.puntoReposicion !== null && s.saldoTotal < s.puntoReposicion)
+      .filter((s) => s.puntoReposicion !== null && s.bajoPunto) // lo decide el servidor (el punto está en unidad de compra)
       .map((s) => {
         const conf = ClienteSimulado.CONFIG_REPOSICION[s.insumoId]
         const avance = AVANCE.find((a) => a.insumoId === s.insumoId)
@@ -866,10 +896,23 @@ class ClienteHttp extends ClienteSimulado {
     return comprasHttp.registrar(datos)
   }
   override listarCompras() { return comprasHttp.listar() }
+  // HU-35 · HU-36: recepción contra el servicio almacén (T-158 de Henry + aviso de exceso T-297)
   override detalleRecepcion(compraId: string) { return recepcionHttp.detalle(compraId) }
-  override registrarRecepcion(compraId: string, lineas: { insumoId: string; cantidad: number }[]) {
-    return recepcionHttp.registrar(compraId, lineas)
+  override verificarRecepcion(compraId: string, lineas: { insumoId: string; cantidad: number }[]) {
+    return recepcionHttp.verificar(compraId, lineas)
   }
+  override registrarRecepcion(compraId: string, lineas: { insumoId: string; cantidad: number }[], motivoExceso?: string) {
+    return recepcionHttp.registrar(compraId, lineas, motivoExceso)
+  }
+  // HU-43 · HU-45: stock, kárdex y reverso (T-190, T-198)
+  override consultarStock() { return almacenHttp.stock() }
+  override listarMovimientos() { return almacenHttp.kardex() }
+  override revertirMovimiento(id: string, motivo: string) { return almacenHttp.revertir(id, motivo) }
+  // HU-44: movimiento semanal (T-311, T-312)
+  override reporteSemana(numero: number) { return semanaHttp.reporte(numero) }
+  override exportarSemana(numero: number) { return semanaHttp.csv(numero) }
+  // HU-23: avance de compra y consumo (T-093)
+  override avancePorInsumo() { return avanceHttp.porInsumo() }
 }
 
 export const api: ClienteSigro = usaApiReal ? new ClienteHttp() : new ClienteSimulado()

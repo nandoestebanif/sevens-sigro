@@ -16,10 +16,12 @@
    ───────────────────────────────────────────────────────────────────────── */
 import { useEffect, useMemo, useState } from 'react'
 import { ErrorApi, api } from '../api/cliente'
-import type { Compra, EstadoCompra, InsumoCatalogo, LineaCompra, LineaRecepcion, Proveedor, TipoComprobante } from '../api/tipos'
+import type { Compra, EstadoCompra, InsumoCatalogo, LineaCompra, LineaRecepcion, Proveedor, TipoComprobante, VerificacionRecepcion } from '../api/tipos'
 import { Campo, Chip, Modal, Vacio, type TonoChip } from '../ui/base'
-import { Aviso, Chips, Encabezado, Fondo, Pildora, TituloSeccion, Vidrio } from '../ui/vidrio'
+import { Aviso, Chips, Encabezado, Fondo, Pildora, TituloSeccion } from '../ui/vidrio'
 import { BuscarOpcion } from '../ui/BuscarOpcion'
+import { usaApiReal } from '../api/http'
+import { desvioPct, precios, type PrecioReferencia } from '../api/oficina'
 import { AltaProveedor } from './Proveedores'
 
 /* HU-35: el estado lo deriva el servidor de las recepciones; aquí solo se pinta */
@@ -40,6 +42,9 @@ function RecepcionCompra({ compra, enCerrar, enListo }: {
   const [cantidades, setCantidades] = useState<Record<string, string>>({})
   const [error, setError] = useState('')
   const [guardando, setGuardando] = useState(false)
+  // HU-36: si con esta recepción se pasa lo requerido en el S10, se avisa ANTES de guardar y se pide el motivo
+  const [exceso, setExceso] = useState<VerificacionRecepcion | null>(null)
+  const [motivo, setMotivo] = useState('')
 
   useEffect(() => {
     setError('')
@@ -53,15 +58,24 @@ function RecepcionCompra({ compra, enCerrar, enListo }: {
     })
   }, [compra.id])
 
+  const lineasARecibir = () =>
+    (detalle ?? []).map((l) => ({ insumoId: l.insumoId, cantidad: Number(String(cantidades[l.insumoId] ?? '').replace(',', '.')) || 0 }))
+
   const recibir = async () => {
     if (!detalle) return
     setGuardando(true)
     setError('')
     try {
-      await api.registrarRecepcion(
-        compra.id,
-        detalle.map((l) => ({ insumoId: l.insumoId, cantidad: Number(cantidades[l.insumoId]) || 0 })),
-      )
+      const lineas = lineasARecibir()
+      if (!exceso) {
+        // primero se verifica contra lo requerido: avisa, no bloquea (regla 7)
+        const v = await api.verificarRecepcion(compra.id, lineas)
+        if (v.hayExceso) { setExceso(v); return }
+      } else if (motivo.trim().length < 3) {
+        setError('Escribe el motivo del exceso: queda en el kárdex junto al ingreso.')
+        return
+      }
+      await api.registrarRecepcion(compra.id, lineas, exceso ? motivo : undefined)
       enListo()
     } catch (e) {
       if (e instanceof ErrorApi) setError(e.message)
@@ -101,7 +115,7 @@ function RecepcionCompra({ compra, enCerrar, enListo }: {
                     <input
                       aria-label={`Cantidad a recibir de ${l.descripcion}`}
                       value={cantidades[l.insumoId] ?? ''}
-                      onChange={(e) => setCantidades((c) => ({ ...c, [l.insumoId]: e.target.value }))}
+                      onChange={(e) => { setExceso(null); setCantidades((c) => ({ ...c, [l.insumoId]: e.target.value })) }}
                       className="campo"
                       style={{ width: 86, height: 40, padding: '0 10px', fontSize: 14, textAlign: 'right' }}
                     />
@@ -111,6 +125,30 @@ function RecepcionCompra({ compra, enCerrar, enListo }: {
             </tbody>
           </table>
           </div>
+          {exceso && (
+            <Aviso tono="aviso" rol="alert">
+              <strong>Con esta recepción se pasa lo requerido en el S10.</strong>
+              <ul style={{ margin: '6px 0 8px', paddingLeft: 18 }}>
+                {exceso.lineas.filter((x) => x.excede).map((x) => (
+                  <li key={x.insumoId} style={{ fontSize: 13 }}>
+                    {x.descripcion}: requerido {x.requerido === null ? 'no está en el requerimiento' : `${x.requerido.toLocaleString('es-PE')} ${x.unidad}`},
+                    {' '}con esta recepción {x.conEsta.toLocaleString('es-PE')} {x.unidad}
+                    {x.exceso !== null && ` (+${x.exceso.toLocaleString('es-PE')})`}
+                  </li>
+                ))}
+              </ul>
+              <span style={{ fontSize: 13 }}>Se puede recibir igual (el requerimiento avisa, no bloquea): indica el motivo.</span>
+              <textarea
+                aria-label="Motivo del exceso"
+                value={motivo}
+                maxLength={300}
+                onChange={(e) => setMotivo(e.target.value)}
+                placeholder="Ej.: reposición por merma en el vaciado de losa"
+                className="campo"
+                style={{ display: 'block', width: '100%', minHeight: 60, marginTop: 8, padding: 10, fontSize: 14, fontFamily: 'inherit', boxSizing: 'border-box' }}
+              />
+            </Aviso>
+          )}
           {error && <p role="alert" style={{ fontSize: 12.5, color: 'var(--grave)', fontWeight: 600 }}>{error}</p>}
           <p style={{ fontSize: 12, color: 'var(--tinta-2)', lineHeight: 1.5 }}>
             Esta recepción es la que mueve el stock: cada línea genera su ingreso en el
@@ -119,7 +157,7 @@ function RecepcionCompra({ compra, enCerrar, enListo }: {
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, justifyContent: 'flex-end' }}>
             <Pildora tipo="secundario" enClic={enCerrar}>Cancelar</Pildora>
             <Pildora enClic={recibir} deshabilitado={guardando || !detalle.length}>
-              {guardando ? 'Registrando…' : 'Registrar recepción'}
+              {guardando ? 'Registrando…' : exceso ? 'Recibir con este motivo' : 'Registrar recepción'}
             </Pildora>
           </div>
         </div>
@@ -177,6 +215,23 @@ export function Compras() {
   const [cantidad, setCantidad] = useState('')
   const [precio, setPrecio] = useState('')
   const [lineas, setLineas] = useState<LineaCompra[]>([])
+  // HU-33 · T-282/T-283: promedio pagado en la obra para comparar el precio (avisa, no bloquea: D13)
+  const [ref, setRef] = useState<PrecioReferencia | null>(null)
+  const [nota, setNota] = useState('')
+  useEffect(() => {
+    setRef(null); setNota('')
+    if (!usaApiReal || !insumoId) return
+    let vivo = true
+    precios.referencia(insumoId).then((r) => {
+      if (!vivo) return
+      setRef(r)
+      // se precarga el promedio (con IGV, como se escribe el precio) solo si aún no se escribió nada
+      if (r.promedio !== null) setPrecio((p) => (p.trim() ? p : (r.promedio! * 1.18).toFixed(2)))
+    }).catch(() => { /* sin referencia no se compara: no se inventa */ })
+    return () => { vivo = false }
+  }, [insumoId])
+  const desvio = desvioPct(Number(String(precio).replace(',', '.')), ref?.promedio ?? null)
+  const fuera = desvio !== null && ref !== null && Math.abs(desvio) > ref.limitePct
 
   const [error, setError] = useState<string | null>(null)
   const [exito, setExito] = useState<Compra | null>(null)
@@ -208,7 +263,9 @@ export function Compras() {
     setLineas((ls) => [...ls, {
       insumoId: ins.id, descripcion: ins.descripcion, unidadCompra: ins.unidadCompra,
       cantidad: cant, precioUnitario: prec,
+      ...(fuera ? { fueraDeLoHabitual: true, notaPrecio: nota.trim() || undefined } : {}),
     }])
+    setNota('')
     setInsumoId('')
     setInsumoTexto('')
     setCantidad('')
@@ -249,53 +306,7 @@ export function Compras() {
       </Chips>
 
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 18, alignItems: 'flex-start' }}>
-        <Vidrio estilo={{ flex: '999 1 560px', display: 'flex', flexDirection: 'column', gap: 12 }} etiqueta="Compras registradas">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 12, flexWrap: 'wrap' }}>
-            <TituloSeccion>Compras registradas</TituloSeccion>
-            <span style={{ fontSize: 13, color: 'var(--tinta-2)' }}>una compra admite varias recepciones hasta completar lo comprado</span>
-          </div>
-          {avisoRecepcion && <Aviso tono="bien" rol="status">{avisoRecepcion}</Aviso>}
-          {compras.length === 0 ? (
-            <Vacio titulo="Todavía no hay compras" detalle="Las que registres aparecerán aquí con su estado de recepción." />
-          ) : (
-            <div style={{ overflowX: 'auto' }}>
-              <table className="tabla-vidrio" style={{ minWidth: 640 }}>
-                <thead>
-                  <tr>
-                    <th>Comprobante</th><th>Fecha</th><th className="n">Insumos</th><th className="n">Total S/</th>
-                    <th>Recepción</th><th aria-label="Acción" />
-                  </tr>
-                </thead>
-                <tbody>
-                  {compras.map((c) => (
-                    <tr key={c.id}>
-                      <td style={{ minWidth: 220 }}>
-                        <div className="n" style={{ fontWeight: 700, textAlign: 'left' }}>
-                          {c.tipoComprobante === 'factura' ? 'Factura' : 'Boleta'} {c.numeroComprobante}
-                        </div>
-                        <div style={{ fontSize: 12.5, color: 'var(--tinta-2)', marginTop: 2 }}>{c.proveedorRazonSocial}</div>
-                      </td>
-                      <td className="n" style={{ whiteSpace: 'nowrap' }}>{c.fecha}</td>
-                      <td className="n">{c.lineas.length} {c.lineas.length === 1 ? 'insumo' : 'insumos'}</td>
-                      <td className="n" style={{ fontWeight: 800, whiteSpace: 'nowrap' }}>{soles(c.totales.total)}</td>
-                      <td><Chip tono={ESTADO_COMPRA[c.estado].tono}>{ESTADO_COMPRA[c.estado].texto}</Chip></td>
-                      <td style={{ textAlign: 'right', width: 100 }}>
-                        {c.estado !== 'recibida' && c.estado !== 'anulada' && (
-                          <Pildora tipo="secundario" chica enClic={() => setRecibiendo(c)}>Recibir</Pildora>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-          <span style={{ fontSize: 13, color: 'var(--tinta-2)', lineHeight: 1.5 }}>
-            Una compra no se edita. El IGV se guarda aparte porque no es costo del insumo (NIC 2).
-          </span>
-        </Vidrio>
-
-        <aside className="vidrio-fuerte" aria-label="Registrar la compra" style={{ flex: '1 1 380px', minWidth: 0, borderRadius: 'var(--radio-vidrio)', padding: '20px 22px', display: 'flex', flexDirection: 'column', gap: 14, boxShadow: 'var(--vidrio-sombra-alta)' }}>
+        <section className="vidrio-fuerte" aria-label="Registrar la compra" style={{ flex: '999 1 560px', minWidth: 0, borderRadius: 'var(--radio-vidrio)', padding: '20px 22px', display: 'flex', flexDirection: 'column', gap: 14, boxShadow: 'var(--vidrio-sombra-alta)' }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
             <TituloSeccion>Registrar la compra</TituloSeccion>
             <p style={{ fontSize: 13, color: 'var(--tinta-2)', lineHeight: 1.5 }}>
@@ -364,6 +375,30 @@ export function Compras() {
             </div>
           </div>
 
+          {ref && (
+            <p style={{ fontSize: 13, color: 'var(--tinta-2)', margin: 0 }}>
+              {ref.promedio === null
+                ? 'Aún no se recibió este insumo en la obra: no hay precio habitual con qué comparar.'
+                : <>Promedio pagado en la obra: <strong>S/ {soles(ref.promedio)}</strong> sin IGV (≈ S/ {soles(ref.promedio * 1.18)} con IGV) por {ref.unidadCompra}
+                  {desvio !== null && <> · este precio: {desvio > 0 ? '+' : ''}{desvio.toLocaleString('es-PE')} %</>}</>}
+            </p>
+          )}
+          {fuera && ref && (
+            <Aviso tono="aviso" rol="status">
+              <strong>Este precio se aparta más de ±{ref.limitePct} % de lo habitual.</strong> Se puede registrar igual; la línea
+              quedará marcada. Si quieres, deja una nota (opcional):
+              <input
+                aria-label="Nota sobre el precio (opcional)"
+                value={nota}
+                maxLength={300}
+                onChange={(e) => setNota(e.target.value)}
+                placeholder="p. ej. alza del proveedor por escasez"
+                className="campo"
+                style={{ display: 'block', width: '100%', height: 40, marginTop: 8, padding: '0 10px', fontSize: 14, boxSizing: 'border-box' }}
+              />
+            </Aviso>
+          )}
+
           {/* líneas agregadas */}
           {lineas.length > 0 && (
             <div style={{ display: 'flex', flexDirection: 'column' }}>
@@ -371,7 +406,8 @@ export function Compras() {
                 <div key={`${l.insumoId}-${i}`} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', borderBottom: '1px solid var(--separador)', fontSize: 14 }}>
                   <span style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
                     <span style={{ fontWeight: 700 }}>{l.descripcion}</span>
-                    <span className="n" style={{ fontSize: 13, color: 'var(--tinta-2)' }}>{l.cantidad} {l.unidadCompra} × S/ {soles(l.precioUnitario)}</span>
+                    <span className="n" style={{ fontSize: 13, color: 'var(--tinta-2)' }}>{l.cantidad} {l.unidadCompra} × S/ {soles(l.precioUnitario)}
+                      {l.fueraDeLoHabitual && <> · <span style={{ color: 'var(--aviso)', fontWeight: 700 }}>fuera de lo habitual</span>{l.notaPrecio ? ` («${l.notaPrecio}»)` : ''}</>}</span>
                   </span>
                   <span className="n" style={{ fontWeight: 700, whiteSpace: 'nowrap' }}>S/ {soles(l.cantidad * l.precioUnitario)}</span>
                   <button
@@ -410,6 +446,42 @@ export function Compras() {
           </Pildora>
           <span style={{ fontSize: 12.5, color: 'var(--tinta-2)' }}>
             Esto no mueve el stock: el material entra al almacén con la recepción.
+          </span>
+        </section>
+
+        {/* lo principal es registrar; las compras ya registradas van al costado, compactas, para recibirlas */}
+        <aside className="vidrio" aria-label="Compras registradas" style={{ flex: '1 1 340px', minWidth: 0, borderRadius: 'var(--radio-vidrio)', padding: '18px 18px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <TituloSeccion>Compras registradas{compras.length ? ` · ${compras.length}` : ''}</TituloSeccion>
+            <span style={{ fontSize: 12.5, color: 'var(--tinta-2)' }}>una compra admite varias recepciones hasta completar lo comprado</span>
+          </div>
+          {avisoRecepcion && <Aviso tono="bien" rol="status">{avisoRecepcion}</Aviso>}
+          {compras.length === 0 ? (
+            <Vacio titulo="Todavía no hay compras" detalle="Las que registres aparecerán aquí con su estado de recepción." />
+          ) : (
+            <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column' }}>
+              {compras.map((c) => (
+                <li key={c.id} style={{ padding: '10px 2px', borderTop: '1px solid var(--separador)', display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8 }}>
+                    <span className="n" style={{ fontWeight: 700 }}>{c.tipoComprobante === 'factura' ? 'Factura' : 'Boleta'} {c.numeroComprobante}</span>
+                    <span className="n" style={{ fontWeight: 800, whiteSpace: 'nowrap' }}>S/ {soles(c.totales.total)}</span>
+                  </div>
+                  <span style={{ fontSize: 12.5, color: 'var(--tinta-2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={c.proveedorRazonSocial}>{c.proveedorRazonSocial}</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                    <span className="n" style={{ fontSize: 12.5, color: 'var(--tinta-2)' }}>{c.fecha} · {c.lineas.length} {c.lineas.length === 1 ? 'insumo' : 'insumos'}</span>
+                    <Chip tono={ESTADO_COMPRA[c.estado].tono}>{ESTADO_COMPRA[c.estado].texto}</Chip>
+                    {c.estado !== 'recibida' && c.estado !== 'anulada' && (
+                      <span style={{ marginLeft: 'auto' }}>
+                        <Pildora tipo="secundario" chica etiqueta={`Recibir la compra ${c.numeroComprobante}`} enClic={() => setRecibiendo(c)}>Recibir</Pildora>
+                      </span>
+                    )}
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+          <span style={{ fontSize: 12.5, color: 'var(--tinta-2)', lineHeight: 1.5 }}>
+            Una compra no se edita. El IGV se guarda aparte porque no es costo del insumo (NIC 2).
           </span>
         </aside>
       </div>

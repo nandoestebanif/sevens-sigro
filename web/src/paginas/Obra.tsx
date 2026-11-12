@@ -18,6 +18,8 @@ import { useEffect, useState } from 'react'
 import { ErrorApi, api } from '../api/cliente'
 import type { Obra, Semana } from '../api/tipos'
 import { Boton, Campo, Chip, Tarjeta, Titulo, Vacio } from '../ui/base'
+import { usaApiReal } from '../api/http'
+import { plazo, type CambioPlazo } from '../api/oficina'
 
 const f = (iso: string) => `${iso.slice(8, 10)}/${iso.slice(5, 7)}/${iso.slice(0, 4)}`
 
@@ -48,7 +50,66 @@ function TiraSemanas({ semanas }: { semanas: Semana[] }) {
   )
 }
 
-function FichaObra({ obra }: { obra: Obra }) {
+/* ── HU-02 · T-331: ampliar el plazo; las semanas nuevas se generan solas y las anteriores no se tocan ── */
+function AmpliarPlazo({ obra, enListo }: { obra: Obra; enListo: () => void }) {
+  const [abierto, setAbierto] = useState(false)
+  const [fecha, setFecha] = useState('')
+  const [motivo, setMotivo] = useState('')
+  const [error, setError] = useState('')
+  const [guardando, setGuardando] = useState(false)
+  const [historial, setHistorial] = useState<CambioPlazo[] | null>(null)
+  useEffect(() => { plazo.historial(obra.id).then(setHistorial).catch(() => setHistorial([])) }, [obra.id, obra.fin])
+
+  const ampliar = async () => {
+    setError('')
+    if (!fecha || fecha <= obra.fin) { setError(`Elige una fecha posterior al fin actual (${f(obra.fin)}).`); return }
+    if (motivo.trim().length < 3) { setError('Escribe el motivo de la ampliación: queda en el historial.'); return }
+    setGuardando(true)
+    try { await plazo.ampliar(obra.id, fecha, motivo); setAbierto(false); setFecha(''); setMotivo(''); enListo() }
+    catch (e) { setError(e instanceof ErrorApi ? e.message : 'No se pudo ampliar el plazo.') }
+    finally { setGuardando(false) }
+  }
+
+  return (
+    <div style={{ marginTop: 14, borderTop: '1px solid var(--separador)', paddingTop: 12, display: 'flex', flexDirection: 'column', gap: 10 }}>
+      {!abierto ? (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
+          <span style={{ fontSize: 12.5, color: 'var(--tinta-3)' }}>
+            ¿Se aprobó una ampliación? El plazo no se pisa: queda el anterior, el nuevo, el motivo y quién lo cambió.
+          </span>
+          <Boton tipo="secundario" enClic={() => setAbierto(true)}>Ampliar plazo</Boton>
+        </div>
+      ) : (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'flex-end' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flex: '0 1 170px' }}>
+            <label htmlFor={`amp-${obra.id}`} style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--tinta-2)' }}>Nuevo fin</label>
+            <input id={`amp-${obra.id}`} type="date" min={obra.fin} value={fecha} onChange={(e) => setFecha(e.target.value)}
+              style={{ height: 42, border: '1px solid var(--borde)', borderRadius: 'var(--radio-chico)', padding: '0 12px', fontSize: 14, fontFamily: 'inherit', background: 'var(--tarjeta)', color: 'var(--tinta)' }} />
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flex: '2 1 240px', minWidth: 0 }}>
+            <Campo id={`amp-m-${obra.id}`} etiqueta="Motivo de la ampliación" valor={motivo} enCambio={setMotivo} marcador="p. ej. adenda aprobada por el cliente" />
+          </div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <Boton tipo="secundario" enClic={() => { setAbierto(false); setError('') }}>Cancelar</Boton>
+            <Boton enClic={ampliar} deshabilitado={guardando}>{guardando ? 'Ampliando…' : 'Ampliar'}</Boton>
+          </div>
+        </div>
+      )}
+      {error && <p role="alert" style={{ fontSize: 13, color: 'var(--grave)', fontWeight: 600 }}>{error}</p>}
+      {historial && historial.length > 0 && (
+        <ul style={{ margin: 0, paddingLeft: 18, fontSize: 12.5, color: 'var(--tinta-2)', lineHeight: 1.6 }}>
+          {historial.map((h, i) => (
+            <li key={i}>
+              {f(h.fechaFinAnterior)} → <strong>{f(h.fechaFinNueva)}</strong> · {h.motivo} · {h.autor}, {f(h.fecha.slice(0, 10))}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  )
+}
+
+function FichaObra({ obra, enCambio }: { obra: Obra; enCambio: () => void }) {
   const cerradas = obra.semanas.filter((s) => s.estado === 'cerrada').length
   const enCurso = obra.semanas.find((s) => s.estado === 'en_curso')
   const ultima = obra.semanas[obra.semanas.length - 1]
@@ -75,6 +136,7 @@ function FichaObra({ obra }: { obra: Obra }) {
         <span>□ por venir</span>
         {ultima.dias < 7 && <span>la última dura {ultima.dias} día{ultima.dias === 1 ? '' : 's'}: el plazo no calza en semanas exactas y el sistema no lo redondea</span>}
       </div>
+      {usaApiReal && <AmpliarPlazo obra={obra} enListo={enCambio} />}
     </Tarjeta>
   )
 }
@@ -160,7 +222,7 @@ export function Obras() {
       {obras === null ? (
         <Tarjeta><Vacio titulo="Cargando…" detalle="Consultando las obras de la empresa." /></Tarjeta>
       ) : (
-        obras.map((o) => <FichaObra key={o.id} obra={o} />)
+        obras.map((o) => <FichaObra key={o.id} obra={o} enCambio={cargar} />)
       )}
     </div>
   )

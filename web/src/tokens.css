@@ -55,7 +55,7 @@
   --fuente: 'Inter', system-ui, sans-serif;
 
   /* velo de los modales */
-  --velo: rgba(28, 29, 31, 0.4);
+  --velo: rgba(28, 29, 31, 0.22);
 }
 
 /* ── modo oscuro: el mismo sistema, segundo juego de valores ──
@@ -92,7 +92,7 @@
 
   --sombra: none;
   --sombra-accion: 0 4px 18px rgba(255, 119, 0, 0.35);
-  --velo: rgba(0, 0, 0, 0.62); /* en oscuro el velo claro no separaba el modal */
+  --velo: rgba(0, 0, 0, 0.5); /* en oscuro el velo claro no separaba el modal */
 }
 
 /* ── escala de texto (panel de accesibilidad) ──
@@ -188,7 +188,13 @@ button {
 .pagina > :nth-child(n + 6) { animation-delay: 0.2s; }
 
 /* modales: el velo funde y la caja aterriza */
-.velo { animation: velo-entra 0.18s ease-out both; }
+.velo {
+  animation: velo-entra 0.18s ease-out both;
+  /* velo suave: oscurece poco y desenfoca el fondo (vidrio), en vez de un corte gris tajante */
+  background: var(--velo);
+  -webkit-backdrop-filter: blur(6px) saturate(115%);
+  backdrop-filter: blur(6px) saturate(115%);
+}
 .modal-caja { animation: modal-entra 0.24s var(--paso) both; }
 .modal-cerrar {
   flex: none; width: 44px; height: 44px; border-radius: 22px; border: 0; background: transparent; /* 44 px: objetivo táctil */
@@ -386,9 +392,10 @@ body { transition: background-color 0.25s ease-out, color 0.25s ease-out; }
 }
 .menu-lateral {
   flex: none; width: 272px; position: sticky; top: 20px;
-  /* el alto de la ventana ÷ escala: con zoom, 100vh solo crecería y el pie del menú quedaría fuera */
-  max-height: calc(100vh / var(--escala) - 40px);
-  max-height: calc(100dvh / var(--escala) - 40px);
+  /* ocupa SIEMPRE el alto de la ventana (de arriba abajo), no el de su contenido: el pie («Salir») queda abajo y
+     el menú no «se encoge» al cerrar un área. Alto ÷ escala: con zoom, 100vh solo crecería y el pie quedaría fuera. */
+  height: calc(100vh / var(--escala) - 40px);
+  height: calc(100dvh / var(--escala) - 40px);
   /* el menú no se desplaza entero: cabecera y pie fijos, solo la lista de opciones (un scroll por zona) */
   overflow: hidden;
   border-radius: var(--radio-menu); padding: 20px 14px 16px;
@@ -450,7 +457,7 @@ body { transition: background-color 0.25s ease-out, color 0.25s ease-out; }
 /* ≤ 900 px ÚTILES (ver src/escala.ts): el menú pasa arriba */
 :root:not([data-ancho='amplio']) .armazon { flex-direction: column; align-items: stretch; padding: 12px; gap: 14px; }
 :root:not([data-ancho='amplio']) .menu-lateral {
-  width: auto; position: static; max-height: none; overflow: visible; scrollbar-gutter: auto;
+  width: auto; position: static; height: auto; max-height: none; overflow: visible; scrollbar-gutter: auto;
   padding: 14px; gap: 12px; border-radius: 24px;
 }
 :root:not([data-ancho='amplio']) .menu-grupos {

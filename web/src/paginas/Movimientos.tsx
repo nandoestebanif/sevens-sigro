@@ -15,6 +15,7 @@
    - El saldo se recalcula considerando ambos movimientos (lo hace la capa API).
    - La consulta permite ver el movimiento anulado y el que lo anuló.
    ───────────────────────────────────────────────────────────────────────── */
+import { usaApiReal } from '../api/http'
 import { useEffect, useState } from 'react'
 import { ErrorApi, api } from '../api/cliente'
 import type { Movimiento, StockInsumo } from '../api/tipos'
@@ -121,7 +122,9 @@ export function Movimientos() {
       />
 
       <Chips>
-        <Chip tono="info">Movimientos y stock: datos de ejemplo · insumos del S10 real</Chip>
+        {usaApiReal
+          ? <Chip tono="bien">Movimientos y stock: del servidor</Chip>
+          : <Chip tono="info">Movimientos y stock: datos de ejemplo · insumos del S10 real</Chip>}
         <Chip tono="neutro">El saldo lo calcula el servidor</Chip>
         <Chip tono="neutro">Costo promedio ponderado (NIC 2)</Chip>
       </Chips>

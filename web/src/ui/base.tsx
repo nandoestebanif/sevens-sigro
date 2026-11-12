@@ -3,6 +3,7 @@
    Todo estilo sale de los tokens. Las pantallas componen con estas piezas y no
    escriben colores ni radios a mano.
    ───────────────────────────────────────────────────────────────────────── */
+import { createPortal } from 'react-dom'
 import { type CSSProperties, type KeyboardEvent, type ReactNode, useEffect, useId, useRef } from 'react'
 
 export function Tarjeta({ children, relleno = true, estilo }: {
@@ -210,12 +211,14 @@ export function Modal({ titulo, children, enCerrar, ancho = 440 }: {
     else if (!e.shiftKey && document.activeElement === z) { e.preventDefault(); a.focus() }
   }
 
-  return (
+  // se dibuja en <body> (portal): dentro del contenido, un ancestro con vidrio (backdrop-filter/transform) vuelve
+  // «position: fixed» relativo a ese bloque y el velo no cubría la pantalla entera ni quedaba centrado.
+  return createPortal(
     <div
       className="velo"
       style={{
-        position: 'fixed', inset: 0, background: 'var(--velo)', padding: 16,
-        display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50,
+        position: 'fixed', inset: 0, padding: 16,
+        display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000,
       }}
       onClick={enCerrar}
     >
@@ -252,5 +255,5 @@ export function Modal({ titulo, children, enCerrar, ancho = 440 }: {
         </div>
       </div>
     </div>
-  )
+  , document.body)
 }
