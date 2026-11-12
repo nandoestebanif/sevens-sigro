@@ -5,9 +5,10 @@ comprado (HU-58). Ninguno lee el esquema `compras`: preguntan aquí, con el toke
 """
 from __future__ import annotations
 
+from datetime import date
 from decimal import Decimal
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
 from app.db import obtener_sesion
@@ -33,11 +34,14 @@ def compra(compra_id: int, s: Session = Depends(obtener_sesion, scope="function"
 
 
 @interno.get("/obras/{obra_id}/comprado")
-def comprado(obra_id: int, s: Session = Depends(obtener_sesion, scope="function")):
-    """HU-58 «Comprado»: valor de las compras registradas (las anuladas no cuentan, D-R2), sin y con IGV."""
+def comprado(obra_id: int, hasta: date | None = Query(None, description="solo compras con fecha de comprobante <= hasta"),
+             s: Session = Depends(obtener_sesion, scope="function")):
+    """HU-58 «Comprado»: valor de las compras registradas (las anuladas no cuentan, D-R2), sin y con IGV. Con `hasta`,
+    solo las del comprobante fechado hasta ese día (fecha de corte)."""
     return fila(s, "SELECT count(*) AS compras, coalesce(sum(base_imponible), 0) AS base_imponible, coalesce(sum(igv), 0) AS igv, "
                    "coalesce(sum(total), 0) AS total, max(fecha) AS hasta, max(creado_en) AS corte "
-                   "FROM compras.compra WHERE proyecto_id = :p AND estado = 'registrada'", p=obra_id)
+                   "FROM compras.compra WHERE proyecto_id = :p AND estado = 'registrada' "
+                   "AND (CAST(:h AS date) IS NULL OR fecha <= CAST(:h AS date))", p=obra_id, h=hasta)
 
 
 @interno.get("/obras/{obra_id}/parametros-reposicion")
