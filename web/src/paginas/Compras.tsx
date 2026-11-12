@@ -27,6 +27,7 @@ const ESTADO_COMPRA: Record<EstadoCompra, { texto: string; tono: TonoChip }> = {
   registrada: { texto: 'Pendiente de recepción', tono: 'aviso' },
   recibida_parcial: { texto: 'Recepción parcial', tono: 'aviso' },
   recibida: { texto: 'Recibida', tono: 'bien' },
+  anulada: { texto: 'Anulada', tono: 'grave' },
 }
 
 /* ── HU-35 · registrar la recepción (total por defecto, el caso habitual) ── */
@@ -41,10 +42,14 @@ function RecepcionCompra({ compra, enCerrar, enListo }: {
   const [guardando, setGuardando] = useState(false)
 
   useEffect(() => {
+    setError('')
     api.detalleRecepcion(compra.id).then((d) => {
       setDetalle(d)
       // por defecto se propone la recepción TOTAL (criterio de la tarjeta)
       setCantidades(Object.fromEntries(d.map((l) => [l.insumoId, String(l.pendiente)])))
+    }).catch((e) => {
+      setDetalle([])
+      setError(e instanceof ErrorApi ? e.message : 'No se pudo consultar el detalle de recepción.')
     })
   }, [compra.id])
 
@@ -113,7 +118,7 @@ function RecepcionCompra({ compra, enCerrar, enListo }: {
           </p>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, justifyContent: 'flex-end' }}>
             <Pildora tipo="secundario" enClic={enCerrar}>Cancelar</Pildora>
-            <Pildora enClic={recibir} deshabilitado={guardando}>
+            <Pildora enClic={recibir} deshabilitado={guardando || !detalle.length}>
               {guardando ? 'Registrando…' : 'Registrar recepción'}
             </Pildora>
           </div>
@@ -181,9 +186,10 @@ export function Compras() {
   const [avisoRecepcion, setAvisoRecepcion] = useState('')
 
   const cargar = () => {
-    api.proveedoresParaComprar().then(setProveedores) // excluye a los de baja (HU-29)
-    api.listarInsumos().then(setInsumos)
-    api.listarCompras().then(setCompras)
+    const alFallar = (e: unknown) => setError(e instanceof ErrorApi ? e.message : 'No se pudieron cargar los datos de compras.')
+    api.proveedoresParaComprar().then(setProveedores).catch(alFallar) // excluye a los de baja (HU-29)
+    api.listarInsumos().then(setInsumos).catch(alFallar)
+    api.listarCompras().then(setCompras).catch(alFallar)
   }
   useEffect(cargar, [])
 
@@ -274,7 +280,7 @@ export function Compras() {
                       <td className="n" style={{ fontWeight: 800, whiteSpace: 'nowrap' }}>{soles(c.totales.total)}</td>
                       <td><Chip tono={ESTADO_COMPRA[c.estado].tono}>{ESTADO_COMPRA[c.estado].texto}</Chip></td>
                       <td style={{ textAlign: 'right', width: 100 }}>
-                        {c.estado !== 'recibida' && (
+                        {c.estado !== 'recibida' && c.estado !== 'anulada' && (
                           <Pildora tipo="secundario" chica enClic={() => setRecibiendo(c)}>Recibir</Pildora>
                         )}
                       </td>

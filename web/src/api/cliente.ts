@@ -20,7 +20,7 @@ import type {
 } from './tipos'
 
 import { ErrorApi } from './error'
-import { catalogoHttp, comprasHttp, obrasHttp, proveedoresHttp, reposicionHttp, usaApiReal } from './http'
+import { catalogoHttp, comprasHttp, obrasHttp, proveedoresHttp, recepcionHttp, reposicionHttp, usaApiReal } from './http'
 export { ErrorApi }
 
 export interface ClienteSigro {
@@ -827,6 +827,10 @@ class ClienteHttp extends ClienteSimulado {
     return comprasHttp.registrar(datos)
   }
   override listarCompras() { return comprasHttp.listar() }
+  override detalleRecepcion(compraId: string) { return recepcionHttp.detalle(compraId) }
+  override registrarRecepcion(compraId: string, lineas: { insumoId: string; cantidad: number }[]) {
+    return recepcionHttp.registrar(compraId, lineas)
+  }
 }
 
 export const api: ClienteSigro = usaApiReal ? new ClienteHttp() : new ClienteSimulado()
