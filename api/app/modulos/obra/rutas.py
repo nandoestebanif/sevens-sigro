@@ -301,6 +301,13 @@ def listar_dispositivos(a: Actor = Depends(exigir("dispositivo.consultar"))):
     return filas(a.sesion, _SQL_DISP + "WHERE d.proyecto_id = :p ORDER BY d.id", p=a.obra_id)
 
 
+@obras.get("/{obra_id}/dispositivos/mios", response_model=list[e.DispositivoOut])
+def mis_dispositivos(a: Actor = Depends(exigir("dispositivo.solicitar"))):
+    """HU-15: el almacenero o el SSOMA ve SOLO sus celulares en esta obra (pendiente, activo o revocado), para que la app
+    sepa si el suyo ya está autorizado. Listar los de todos sigue siendo del administrador y del residente."""
+    return filas(a.sesion, _SQL_DISP + "WHERE d.proyecto_id = :p AND d.usuario_id = :u ORDER BY d.id", p=a.obra_id, u=a.usuario_id)
+
+
 @obras.post("/{obra_id}/dispositivos", response_model=e.DispositivoOut, status_code=201)
 def solicitar_dispositivo(datos: e.DispositivoIn, a: Actor = Depends(exigir("dispositivo.solicitar"))):
     """El almacenero o el SSOMA pide autorizar su celular. Queda pendiente hasta que un administrador lo autorice."""

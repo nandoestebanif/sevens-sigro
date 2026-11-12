@@ -263,10 +263,9 @@ def test_solo_residente_y_admin_registran_el_gerente_consulta(mundo, eq, sunat):
     assert comprar(mundo, eq, p, numero="F001-2", quien="admin").status_code == 201
     for rol in ("almacenero", "ssoma", "gerente"):
         assert comprar(mundo, eq, p, numero="F001-3", quien=rol).status_code == 403, rol
-    for rol in ("residente", "admin", "gerente"):
-        assert len(get(mundo, f"/obras/{eq['proyecto']}/compras", eq[rol]).json()) == 2
-    for rol in ("almacenero", "ssoma"):
-        assert get(mundo, f"/obras/{eq['proyecto']}/compras", eq[rol]).status_code == 403
+    for rol in ("residente", "admin", "gerente", "almacenero"):    # el almacenero las ve para recibirlas (HU-35)
+        assert len(get(mundo, f"/obras/{eq['proyecto']}/compras", eq[rol]).json()) == 2, rol
+    assert get(mundo, f"/obras/{eq['proyecto']}/compras", eq["ssoma"]).status_code == 403
 
 
 def test_las_compras_son_de_su_obra(mundo, eq, sunat):

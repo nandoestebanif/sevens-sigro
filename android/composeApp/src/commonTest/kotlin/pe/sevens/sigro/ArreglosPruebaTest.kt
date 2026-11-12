@@ -269,6 +269,44 @@ class ArreglosPruebaTest {
     }
 
     @Test
+    fun activoEnElServidorEsAutorizadoEnLaApp() = runTest {
+        var codigo = ""
+        val b = Banco { ruta, _, _ ->
+            assertEquals("/api/v1/obras/1/dispositivos/mios", ruta)
+            HttpStatusCode.OK to """[{"id":1,"usuario_id":5,"identificador":"$codigo","estado":"activo"}]"""
+        }
+        codigo = b.dispositivo.identificador()
+        val d = b.dispositivo.estado(1)
+        assertEquals(EstadoDispositivo.AUTORIZADO, d.estado, "el servidor guarda «activo»; antes la app no lo reconocía")
+        assertEquals("Autorizado", d.estadoLegible)
+        assertFalse(EstadoPantallaDispositivo(d).puedePedir, "autorizado: no vuelve a ofrecer «Pedir autorización»")
+        assertEquals(CelularEnObra.AUTORIZADO, celularEnObra(d.estado, consultado = true, visible = d.visible))
+    }
+
+    @Test
+    fun alReinstalarSeAvisaQueHayOtroCelularActivo() = runTest {
+        val b = Banco { _, _, _ ->
+            HttpStatusCode.OK to """[{"id":1,"usuario_id":5,"identificador":"sigro-android-viejo","estado":"activo"}]"""
+        }
+        val d = b.dispositivo.estado(1)
+        assertNull(d.estado, "este celular (código nuevo) todavía no se pidió")
+        assertTrue(d.otroCelularActivo, "el anterior sigue activo: el administrador debe revocarlo")
+        assertTrue(EstadoPantallaDispositivo(d).puedePedir)
+    }
+
+    @Test
+    fun unServidorSinMiosUsaLaListaDeTodos() = runTest {
+        var codigo = ""
+        val b = Banco { ruta, _, _ ->
+            if (ruta.endsWith("/mios")) HttpStatusCode.NotFound to """{"detail":"Not Found"}"""
+            else HttpStatusCode.OK to """[{"id":1,"usuario_id":5,"identificador":"$codigo","estado":"pendiente"}]"""
+        }
+        codigo = b.dispositivo.identificador()
+        assertEquals("pendiente", b.dispositivo.estado(1).estado)
+        assertEquals(listOf("/api/v1/obras/1/dispositivos/mios", "/api/v1/obras/1/dispositivos"), b.rutas)
+    }
+
+    @Test
     fun un409AlPedirEsYaSolicitado() = runTest {
         val b = Banco { _, metodo, _ ->
             if (metodo == "POST") HttpStatusCode.Conflict to """{"codigo":"duplicado","mensaje":"Ya existe."}"""
