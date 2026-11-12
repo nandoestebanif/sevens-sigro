@@ -31,6 +31,7 @@ skinparam TitleFontSize 15
 skinparam TitleFontColor #C2410C
 skinparam ClassBorderColor #1F2A44
 skinparam ClassBackgroundColor #FFF7ED
+
 title HU-31 · Validación de RUC\nDiagrama de actividades del sistema
 |Almacenero|
 start
@@ -47,9 +48,13 @@ endif
 |Integraciones|
 :Consulta SUNAT con tiempo límite;
 if (¿SUNAT respondió?) then (sí)
-  :Devuelve razón social y estado;
+  :Devuelve razón social, estado y condición;
   |API (servicio Compras)|
   :Guarda el proveedor «validado»\ncon la razón social de SUNAT;
+  if (¿No activo o no habido?) then (sí)
+    :Lo marca «con alerta SUNAT»:\nla compra se permite y avisa al residente;
+  else (no)
+  endif
 else (no)
   |API (servicio Compras)|
   :Guarda el proveedor «por validar»;

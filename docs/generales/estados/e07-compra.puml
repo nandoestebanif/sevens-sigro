@@ -31,16 +31,18 @@ skinparam TitleFontSize 15
 skinparam TitleFontColor #C2410C
 skinparam ClassBorderColor #1F2A44
 skinparam ClassBackgroundColor #FFF7ED
+
 hide empty description
 title E07 · Estados de la compra\nHU-32, HU-34, HU-35, HU-36
-[*] --> Registrada : registrar compra (HU-32)\n[comprobante no repetido]
-Registrada : no mueve el stock
-Registrada --> ParcialmenteRecibida : recepción parcial (HU-35)
+[*] --> Registrada : registrar compra (HU-32)\n[comprobante no repetido para ese proveedor]
+Registrada : no mueve el stock;\npendiente = pedido
+Registrada --> ParcialmenteRecibida : recepción parcial (HU-35)\n[recibido ≤ comprado]
 state "Parcialmente recibida" as ParcialmenteRecibida
-ParcialmenteRecibida --> ParcialmenteRecibida : otra recepción parcial
+ParcialmenteRecibida --> ParcialmenteRecibida : otra recepción parcial\n[recibido ≤ comprado]
 ParcialmenteRecibida --> Recibida : se completa lo comprado
 Registrada --> Recibida : recepción total (propuesta por defecto)
-Registrada --> Anulada : anular la compra
+Registrada --> Anulada : anular la compra\n[sin recepciones] / motivo
+note right of ParcialmenteRecibida : Si con lo recibido se pasa lo\nrequerido en el S10, la recepción\npide motivo (HU-36): no cambia el estado
 Recibida --> [*]
 Anulada --> [*]
 @enduml

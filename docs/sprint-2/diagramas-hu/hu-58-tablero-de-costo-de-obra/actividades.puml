@@ -31,26 +31,39 @@ skinparam TitleFontSize 15
 skinparam TitleFontColor #C2410C
 skinparam ClassBorderColor #1F2A44
 skinparam ClassBackgroundColor #FFF7ED
+
 title HU-58 · Tablero de costo de obra\nDiagrama de actividades del sistema
 |Gerente|
 start
-:Abre «Tablero de costo de obra»;
+:Abre «Costo de la obra»;
+:Elige la fecha de corte;
 |Web de oficina|
-:Envía GET /api/v1/obras/{id}/costo/gasto\ncon el token de sesión;
+:Envía GET .../costo/gasto?corte=;
 |API (servicio Costo)|
-:Verifica la sesión y el permiso\ndel rol en esa obra;
-if (¿Sin permiso o sin asignación?) then (sí)
-:Responde 403;
-stop
+:Verifica sesión, rol y asignación;
+|API (servicio Compras)|
+:Comprado = compras registradas sin IGV;
+|API (servicio Almacén)|
+:Recibido = recepciones al costo de compra;
+:Consumido = salidas al costo promedio;
+:En stock = inventario valorizado (HU-56);
+|API (servicio Tareo)|
+:Horas hombre = jornadas por tarifa,\nhoras extra aparte (HU-63);
+|API (servicio Costo)|
+if (¿Recibido − consumido ≠ en stock?) then (sí)
+  :Marca «cifras por conciliar»\ny registra el detalle;
 else (no)
 endif
-:Consulta a Servicio Compras:\nGET /interno/obras/{id}/comprado;
-:Consulta a Servicio Almacén:\nGET /interno/obras/{id}/recibido-consumido;
-:Consulta a Servicio Tareo:\nGET /interno/obras/{id}/horas;
-:Arma los indicadores con su definición y fecha de corte;
-:Declara que es gasto en recursos, no costo total;
+:Arma las 5 cifras con su definición\ny la misma fecha de corte;
 |Web de oficina|
-:Muestra comprado, recibido, consumido, en stock y horas hombre;
+:Muestra el tablero y la tabla por insumo (HU-23);
+:Declara que es gasto en recursos, no costo total:\nfuera gastos generales, subcontratos,\nservicios y planilla;
+|Gerente|
+if (¿Exporta?) then (sí)
+  |Web de oficina|
+  :Genera el PDF con la fecha de corte;
+else (no)
+endif
 |Gerente|
 stop
 @enduml

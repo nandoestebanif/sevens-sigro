@@ -31,34 +31,27 @@ skinparam TitleFontSize 15
 skinparam TitleFontColor #C2410C
 skinparam ClassBorderColor #1F2A44
 skinparam ClassBackgroundColor #FFF7ED
+
 title HU-57 · Consumo contra lo presupuestado\nDiagrama de secuencia
 autonumber
 actor "Gerente" as U
 participant "Web de oficina" as UI
 participant "API Gateway" as GW
-participant "Servicio Costo" as S
-participant "Servicio Compras" as X0
-participant "Servicio Almacén" as X1
+participant "Servicio Costo" as SK
+participant "Servicio Compras" as SC
+participant "Servicio Almacén" as SA
 database "BD · esquema costo" as BD
-U -> UI : Abre «Gasto en recursos → Consumo vs. planificado»
-U -> UI : Ordena por desviación
-UI -> GW : GET /api/v1/obras/{id}/costo/desviacion  (nuevo, Sprint 2)\nAuthorization: Bearer <JWT>
-GW -> S : reenvía la petición
-S -> BD : rol del usuario y asignación a la obra
-BD --> S : permisos
-alt sin permiso o sin asignación
-  S --> GW : 403 Prohibido
-  GW --> UI : 403
-  UI --> U : muestra «No tienes permiso en esta obra»
-else datos válidos
-  S -> X0 : lo planificado por insumo (requerimiento S10)
-  X0 --> S : cantidad y costo planificados
-  S -> X1 : GET /interno/obras/{id}/recibido-consumido
-  X1 --> S : consumo valorizado
-  S -> S : Calcula la desviación en cantidad, importe y porcentaje
-  S -> S : Separa los insumos no planificados
-  S --> GW : 200 OK
-  GW --> UI : respuesta
-  UI --> U : Muestra la desviación por insumo y advierte que lo\nplanificado incluye desperdicio y reserva
-end
+U -> UI : ordenar por desviación en importe
+UI -> GW : GET /api/v1/obras/{id}/costo/desviacion?orden=importe
+GW -> SK : reenvía
+SK -> BD : permisos
+SK -> SC : GET /interno/obras/{id}/planificado
+SC --> SK : cantidad y costo planificados (S10)
+SK -> SA : GET /interno/obras/{id}/recibido-consumido
+SA --> SK : consumo valorizado
+SK -> SK : desviación en cantidad, importe y %
+SK -> SK : separa los no planificados
+SK --> GW : 200 · desviaciones y no planificados
+GW --> UI : 200
+UI --> U : tabla + aviso de desperdicio y reserva
 @enduml

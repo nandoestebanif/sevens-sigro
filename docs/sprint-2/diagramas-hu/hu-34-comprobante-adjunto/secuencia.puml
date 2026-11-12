@@ -31,37 +31,44 @@ skinparam TitleFontSize 15
 skinparam TitleFontColor #C2410C
 skinparam ClassBorderColor #1F2A44
 skinparam ClassBackgroundColor #FFF7ED
+
 title HU-34 · Comprobante adjunto\nDiagrama de secuencia
 autonumber
 actor "Almacenero" as U
 participant "Web de oficina" as UI
 participant "API Gateway" as GW
-participant "Servicio Compras" as S
+participant "Servicio Compras" as SC
+participant "Almacenamiento\nde archivos" as FS
 database "BD · esquema compras" as BD
-U -> UI : Abre la compra y pulsa «Adjuntar comprobante»
-U -> UI : Elige una foto o un PDF de la factura
-UI -> GW : POST /api/v1/obras/{id}/compras/{id}/comprobantes  (nuevo, Sprint 2)\nAuthorization: Bearer <JWT>
-GW -> S : reenvía la petición
-S -> BD : rol del usuario y asignación a la obra
-BD --> S : permisos
-alt sin permiso o sin asignación
-  S --> GW : 403 Prohibido
-  GW --> UI : 403
-  UI --> U : muestra «No tienes permiso en esta obra»
-else No es JPG, PNG ni PDF
-  S --> GW : 415 «Formato no admitido»
-  GW --> UI : 415
-  UI --> U : muestra el motivo junto al campo
-else Supera el tamaño máximo
-  S --> GW : 413 «El archivo es demasiado grande»
-  GW --> UI : 413
-  UI --> U : muestra el motivo junto al campo
-else datos válidos
-  S -> S : Calcula el hash del archivo
-  S -> BD : Guarda el archivo y su registro:\ntipo, tamaño, hash, quién y cuándo
-  S --> GW : 201 Creado
-  GW --> UI : respuesta
-  UI --> U : Lista los comprobantes de la compra con su botón «Descargar»
+U -> UI : suelta F001-4512.pdf (284 KB)
+UI -> UI : tipo PDF/JPG/PNG y ≤ 10 MB
+UI -> GW : POST /api/v1/obras/{id}/compras/{c}/comprobantes\n(multipart, Bearer <JWT>)
+GW -> SC : reenvía
+SC -> BD : permisos y compra de la obra
+alt tipo real no admitido o archivo grande
+  SC --> GW : 415 o 413
+  GW --> UI : error
+  UI --> U : muestra el motivo
+else archivo válido
+  SC -> SC : huella SHA-256
+  SC -> FS : guarda el archivo (clave = huella)
+  FS --> SC : ubicación
+  SC -> BD : registro del comprobante
+  SC --> GW : 201 · comprobante
+  GW --> UI : 201
+  UI --> U : aparece en la lista con «Descargar»
 end
-note over UI, BD : Una compra admite varios archivos. Dónde se guarda el archivo se decide en un ADR
+U -> UI : «Descargar»
+UI -> GW : GET .../comprobantes/{a}
+GW -> SC : reenvía
+SC -> FS : lee el archivo
+SC -> SC : compara la huella guardada
+SC --> GW : 200 · archivo
+GW --> UI : archivo
+U -> UI : «Anular» + motivo
+UI -> GW : POST .../comprobantes/{a}/anulacion
+GW -> SC : reenvía
+SC -> BD : estado «anulado» con motivo (no borra)
+SC --> GW : 200
+GW --> UI : 200
 @enduml

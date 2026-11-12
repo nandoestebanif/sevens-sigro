@@ -31,25 +31,28 @@ skinparam TitleFontSize 15
 skinparam TitleFontColor #C2410C
 skinparam ClassBorderColor #1F2A44
 skinparam ClassBackgroundColor #FFF7ED
+
 title HU-43 · Consulta de stock\nDiagrama de actividades del sistema
 |Residente de obra|
 start
 :Abre «Stock» (web) o «Consultar stock» (app);
 :Elige un almacén o «Consolidado»;
-|Web de oficina|
-:Envía GET /api/v1/obras/{id}/almacen/stock\ncon el token de sesión;
-|API (servicio Almacén)|
-:Verifica la sesión y el permiso\ndel rol en esa obra;
-if (¿Sin permiso o sin asignación?) then (sí)
-:Responde 403;
-stop
-else (no)
+|Web / App|
+if (¿Hay señal?) then (sí)
+  :Envía GET /api/v1/obras/{id}/almacen/stock;
+  |API (servicio Almacén)|
+  :Verifica sesión, rol y asignación;
+  :Deriva el saldo de los movimientos\n(no existe un campo «saldo»);
+  :Toma la fecha y hora del último\nmovimiento considerado;
+  :Compara con el punto de reposición (HU-25);
+  |Web / App|
+  :Muestra saldo por almacén y consolidado,\ncon su hora de corte;
+  :La app guarda la copia para usarla sin señal;
+else (no, solo app)
+  :Muestra la última copia guardada\ncon «Sin señal · actualizado a las HH:MM»;
+  note right: La app nunca calcula el saldo
 endif
-:Deriva el saldo de los movimientos: no hay campo saldo;
-:Toma la fecha y hora del último movimiento considerado;
 :Marca los insumos bajo su punto de reposición;
-|Web de oficina|
-:Muestra saldo por almacén y consolidado, con su hora de corte;
 |Residente de obra|
 stop
 @enduml

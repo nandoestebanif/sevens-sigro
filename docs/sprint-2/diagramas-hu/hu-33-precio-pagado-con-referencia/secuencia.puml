@@ -31,6 +31,7 @@ skinparam TitleFontSize 15
 skinparam TitleFontColor #C2410C
 skinparam ClassBorderColor #1F2A44
 skinparam ClassBackgroundColor #FFF7ED
+
 title HU-33 · Precio pagado con referencia\nDiagrama de secuencia
 autonumber
 actor "Almacenero" as U

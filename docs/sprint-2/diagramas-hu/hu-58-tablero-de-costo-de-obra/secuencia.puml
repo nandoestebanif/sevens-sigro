@@ -31,36 +31,29 @@ skinparam TitleFontSize 15
 skinparam TitleFontColor #C2410C
 skinparam ClassBorderColor #1F2A44
 skinparam ClassBackgroundColor #FFF7ED
+
 title HU-58 · Tablero de costo de obra\nDiagrama de secuencia
 autonumber
 actor "Gerente" as U
 participant "Web de oficina" as UI
 participant "API Gateway" as GW
-participant "Servicio Costo" as S
-participant "Servicio Compras" as X0
-participant "Servicio Almacén" as X1
-participant "Servicio Tareo" as X2
-database "BD · esquema costo" as BD
-U -> UI : Abre «Tablero de costo de obra»
-UI -> GW : GET /api/v1/obras/{id}/costo/gasto\nAuthorization: Bearer <JWT>
-GW -> S : reenvía la petición
-S -> BD : rol del usuario y asignación a la obra
-BD --> S : permisos
-alt sin permiso o sin asignación
-  S --> GW : 403 Prohibido
-  GW --> UI : 403
-  UI --> U : muestra «No tienes permiso en esta obra»
-else datos válidos
-  S -> X0 : GET /interno/obras/{id}/comprado
-  X0 --> S : valor comprado
-  S -> X1 : GET /interno/obras/{id}/recibido-consumido
-  X1 --> S : recibido, consumido y en stock
-  S -> X2 : GET /interno/obras/{id}/horas
-  X2 --> S : horas normales y extra
-  S -> S : Arma los indicadores con su definición y fecha de corte
-  S -> S : Declara que es gasto en recursos, no costo total
-  S --> GW : 200 OK
-  GW --> UI : respuesta
-  UI --> U : Muestra comprado, recibido, consumido, en stock y horas hombre
-end
+participant "Servicio Costo" as SK
+participant "Servicio Compras" as SC
+participant "Servicio Almacén" as SA
+participant "Servicio Tareo" as ST
+U -> UI : abre «Costo de la obra» · corte 11/11 18:00
+UI -> GW : GET /api/v1/obras/{id}/costo/gasto?corte=2026-11-11T18:00
+GW -> SK : reenvía
+SK -> SK : verifica rol y asignación
+SK -> SC : GET /interno/obras/{id}/comprado?corte=
+SC --> SK : S/ 318,940
+SK -> SA : GET /interno/obras/{id}/recibido-consumido?corte=
+SA --> SK : recibido 303,668 · consumido 262,400 · stock 41,268
+SK -> ST : GET /interno/obras/{id}/horas?corte=
+ST --> SK : 7,480 h · S/ 178,520 (412 h extra aparte)
+SK -> SK : comprueba recibido − consumido = stock
+SK -> SK : 5 cifras con definición y corte
+SK --> GW : 200 · tablero
+GW --> UI : 200
+UI --> U : tablero + aviso «gasto en recursos, no costo total»
 @enduml

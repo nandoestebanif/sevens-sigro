@@ -31,13 +31,21 @@ skinparam TitleFontSize 15
 skinparam TitleFontColor #C2410C
 skinparam ClassBorderColor #1F2A44
 skinparam ClassBackgroundColor #FFF7ED
+
 hide empty description
 title E06 · Estados del proveedor\nHU-29, HU-30, HU-31
 [*] --> PorValidar : alta desde la compra (HU-30)\n[RUC con dígito verificador válido]
 state "Por validar" as PorValidar
-PorValidar --> Validado : SUNAT responde: RUC activo (HU-31)
-PorValidar --> PorValidar : SUNAT no responde\n/ se reintenta después
-Validado --> DeBaja : dar de baja
+PorValidar : la compra se puede registrar;\nqueda marcada para el residente
+PorValidar --> Validado : SUNAT responde: activo y habido (HU-31)\n/ autocompleta la razón social
+PorValidar --> ConAlerta : SUNAT responde: no activo o no habido
+state "Con alerta SUNAT" as ConAlerta
+ConAlerta : se puede comprar;\ncada compra avisa al residente
+PorValidar --> PorValidar : SUNAT no responde a tiempo\n/ se reintenta solo
+Validado --> PorValidar : «Validar de nuevo»
+ConAlerta --> PorValidar : «Validar de nuevo»
+Validado --> DeBaja : dar de baja (HU-29)
+ConAlerta --> DeBaja : dar de baja (HU-29)
 state "De baja" as DeBaja
 DeBaja : no aparece en compras nuevas;\nsus compras se conservan
 DeBaja --> [*]

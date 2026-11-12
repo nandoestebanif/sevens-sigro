@@ -31,26 +31,27 @@ skinparam TitleFontSize 15
 skinparam TitleFontColor #C2410C
 skinparam ClassBorderColor #1F2A44
 skinparam ClassBackgroundColor #FFF7ED
+
 title HU-57 · Consumo contra lo presupuestado\nDiagrama de actividades del sistema
 |Gerente|
 start
-:Abre «Gasto en recursos → Consumo vs. planificado»;
-:Ordena por desviación;
+:Abre «Gasto en recursos»;
+:Ordena por desviación en importe;
 |Web de oficina|
-:Envía GET /api/v1/obras/{id}/costo/desviacion\ncon el token de sesión;
+:Envía GET .../costo/desviacion?orden=importe;
 |API (servicio Costo)|
-:Verifica la sesión y el permiso\ndel rol en esa obra;
-if (¿Sin permiso o sin asignación?) then (sí)
-:Responde 403;
-stop
-else (no)
-endif
-:Consulta a Servicio Compras:\nlo planificado por insumo (requerimiento S10);
-:Consulta a Servicio Almacén:\nGET /interno/obras/{id}/recibido-consumido;
-:Calcula la desviación en cantidad, importe y porcentaje;
+:Verifica sesión, rol y asignación;
+|API (servicio Compras)|
+:Entrega lo planificado por insumo\n(cantidad y costo del reporte de recursos S10);
+|API (servicio Almacén)|
+:Entrega el consumo valorizado por insumo\n(salidas al costo promedio, HU-55);
+|API (servicio Costo)|
+:Desviación = consumido − planificado\nen cantidad, importe y %;
+:Compara con el avance del plazo de la obra;
 :Separa los insumos no planificados;
 |Web de oficina|
-:Muestra la desviación por insumo y advierte que lo\nplanificado incluye desperdicio y reserva;
+:Muestra la tabla ordenada y aparte\nlos no planificados;
+:Advierte que lo planificado ya incluye\ndesperdicio y reserva;
 |Gerente|
 stop
 @enduml

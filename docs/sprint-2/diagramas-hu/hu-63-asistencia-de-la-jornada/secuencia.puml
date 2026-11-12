@@ -1,0 +1,63 @@
+@startuml
+skinparam defaultFontName "DejaVu Sans"
+skinparam defaultFontSize 12
+skinparam shadowing false
+skinparam roundCorner 8
+skinparam ArrowColor #1F2A44
+skinparam ActivityBorderColor #1F2A44
+skinparam ActivityBackgroundColor #FFF7ED
+skinparam ActivityDiamondBackgroundColor #FEF3C7
+skinparam ActivityDiamondBorderColor #92400E
+skinparam SwimlaneTitleFontStyle bold
+skinparam SwimlaneTitleFontColor #1F2A44
+skinparam SwimlaneBorderColor #9CA3AF
+skinparam PartitionBorderColor #9CA3AF
+skinparam ParticipantBorderColor #1F2A44
+skinparam ParticipantBackgroundColor #FFF7ED
+skinparam ActorBorderColor #1F2A44
+skinparam ActorBackgroundColor #FFF7ED
+skinparam DatabaseBorderColor #1F2A44
+skinparam DatabaseBackgroundColor #E0E7FF
+skinparam SequenceLifeLineBorderColor #9CA3AF
+skinparam SequenceGroupBorderColor #C2410C
+skinparam SequenceGroupHeaderFontColor #C2410C
+skinparam StateBorderColor #1F2A44
+skinparam StateBackgroundColor #FFF7ED
+skinparam StateStartColor #1F2A44
+skinparam StateEndColor #1F2A44
+skinparam NoteBackgroundColor #F3F4F6
+skinparam NoteBorderColor #9CA3AF
+skinparam TitleFontSize 15
+skinparam TitleFontColor #C2410C
+skinparam ClassBorderColor #1F2A44
+skinparam ClassBackgroundColor #FFF7ED
+
+title HU-63 · Asistencia de la jornada\nDiagrama de secuencia
+autonumber
+actor "Almacenero" as U
+participant "App del almacenero" as APP
+participant "API Gateway" as GW
+participant "Servicio Tareo" as ST
+database "BD · esquema tareo" as BD
+U -> APP : asistencia del día (8 h normales, 2 h extra)
+APP -> APP : guarda en Room con uuid_cliente (PENDIENTE)
+alt sin señal
+  APP --> U : «Guardado en el celular»
+  APP -> APP : WorkManager reintenta al volver la señal
+end
+APP -> GW : POST /api/v1/obras/{id}/jornadas (uuid_cliente)
+GW -> ST : reenvía
+ST -> BD : permisos y celular autorizado
+alt uuid_cliente ya recibido
+  ST --> GW : 200 · misma respuesta (idempotente)
+else fecha fuera del plazo
+  ST --> GW : 422
+else asistencia repetida ese día
+  ST --> GW : 409 «Use corrección»
+else válida
+  ST -> BD : guarda la jornada
+  ST --> GW : 201
+end
+GW --> APP : respuesta
+APP --> U : ENVIADO o RECHAZADO con motivo
+@enduml

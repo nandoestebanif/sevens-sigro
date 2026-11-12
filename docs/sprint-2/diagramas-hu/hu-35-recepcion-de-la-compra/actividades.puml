@@ -31,6 +31,7 @@ skinparam TitleFontSize 15
 skinparam TitleFontColor #C2410C
 skinparam ClassBorderColor #1F2A44
 skinparam ClassBackgroundColor #FFF7ED
+
 title HU-35 · Recepción de la compra\nDiagrama de actividades del sistema
 |Almacenero|
 start
@@ -44,6 +45,10 @@ start
 if (¿Recibe más de lo comprado de algún insumo?) then (sí)
   :Responde 422 «No puede recibir más de lo comprado»;
   stop
+else (no)
+endif
+if (¿Con esto se pasa lo requerido en el S10?) then (sí)
+  :Pide el motivo (HU-36);
 else (no)
 endif
 :Guarda la recepción;
