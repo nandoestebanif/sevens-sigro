@@ -93,11 +93,23 @@ export interface InsumoMaestro {
   codigo: string
   nombre: string
   um: string
+  unidadS10?: string
+  factorConversion?: number
   medida: string // vacía cuando el tipo no la lleva
   marca: string // opcional; se exige solo en los tipos que la requieren
   precioPromedio: number
   estado: 'activo' | 'por_verificar'
   creadoEl: string // ISO
+}
+
+/** HU-17: historial inmutable de cambios del factor de conversión */
+export interface HistorialFactor {
+  id: string
+  factorAnterior: number
+  factorNuevo: number
+  motivo: string
+  cambiadoPor: string
+  cambiadoEn: string
 }
 
 /** Fila del avance de compra y consumo (HU-23) y del saldo por comprar (HU-24).

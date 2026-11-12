@@ -15,8 +15,8 @@ import { ErrorApi } from './error'
 import { conReintentos, type OpcionesReintento } from './reintentos'
 import { faltaFactor } from './unidades'
 import type {
-  AvanceInsumo, Compra, InsumoCatalogo, InsumoMaestro, LineaCompra, Obra, ObraActiva, ParametroReposicion, Proveedor,
-  ResultadoRequerimiento, Semana, TipoComprobante,
+  AvanceInsumo, Compra, HistorialFactor, InsumoCatalogo, InsumoMaestro, LineaCompra, Obra, ObraActiva,
+  ParametroReposicion, Proveedor, ResultadoRequerimiento, Semana, TipoComprobante,
 } from './tipos'
 
 export const API_URL: string = (import.meta.env.VITE_API_URL ?? '').replace(/\/$/, '')
@@ -211,6 +211,8 @@ let idPorCodigo = new Map<string, number>()
 let descPorCodigo = new Map<string, string>()
 const aMaestro = (i: InsumoApi): InsumoMaestro => ({
   codigo: i.codigo, nombre: i.descripcion, um: i.unidadCompra,
+  unidadS10: i.unidadS10,
+  factorConversion: Number(i.factorConversion || 1),
   medida: '', marca: '', // la API guarda la descripción completa; marca y precio no son del catálogo
   precioPromedio: 0,     // el precio sale de las compras de cada obra, no del maestro
   estado: i.verificado ? 'activo' : 'por_verificar', creadoEl: '',
@@ -256,6 +258,30 @@ export const catalogoHttp = {
   async aplicarS10(filas: { codigo: string; descripcion: string; unidad: string; tipo: string }[]) {
     return pedir<{ creados: number; actualizados: number; sinCambios: number; advertencias: string[] }>(
       'POST', '/catalogo/insumos/importar-s10', { insumos: filas })
+  },
+  /** HU-17: declara o actualiza el factor de conversión (unidades S10 por unidad de compra) */
+  async cambiarFactor(codigo: string, factor: number, motivo: string): Promise<InsumoMaestro> {
+    if (!Number.isFinite(factor) || factor <= 0) throw new ErrorApi('factor', 'El factor debe ser mayor a cero.')
+    if (motivo.trim().length < 3) throw new ErrorApi('motivo', 'Escribe el motivo del cambio (mínimo 3 caracteres).')
+    const id = await idDe(codigo)
+    return aMaestro(await pedir<InsumoApi>('POST', `/catalogo/insumos/${id}/factor-conversion`, {
+      factor,
+      motivo: motivo.trim(),
+    }))
+  },
+  async historialFactor(codigo: string): Promise<HistorialFactor[]> {
+    const id = await idDe(codigo)
+    const xs = await pedir<{
+      id: number; factorAnterior: string; factorNuevo: string; motivo: string; cambiadoPor: number; cambiadoEn: string
+    }[]>('GET', `/catalogo/insumos/${id}/factor-conversion/historial`)
+    return xs.map((h) => ({
+      id: String(h.id),
+      factorAnterior: Number(h.factorAnterior),
+      factorNuevo: Number(h.factorNuevo),
+      motivo: h.motivo,
+      cambiadoPor: `Usuario #${h.cambiadoPor}`,
+      cambiadoEn: h.cambiadoEn,
+    }))
   },
 }
 
