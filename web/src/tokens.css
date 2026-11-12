@@ -386,9 +386,10 @@ body { transition: background-color 0.25s ease-out, color 0.25s ease-out; }
 }
 .menu-lateral {
   flex: none; width: 272px; position: sticky; top: 20px;
-  /* el alto de la ventana ÷ escala: con zoom, 100vh solo crecería y el pie del menú quedaría fuera */
-  max-height: calc(100vh / var(--escala) - 40px);
-  max-height: calc(100dvh / var(--escala) - 40px);
+  /* ocupa SIEMPRE el alto de la ventana (de arriba abajo), no el de su contenido: el pie («Salir») queda abajo y
+     el menú no «se encoge» al cerrar un área. Alto ÷ escala: con zoom, 100vh solo crecería y el pie quedaría fuera. */
+  height: calc(100vh / var(--escala) - 40px);
+  height: calc(100dvh / var(--escala) - 40px);
   /* el menú no se desplaza entero: cabecera y pie fijos, solo la lista de opciones (un scroll por zona) */
   overflow: hidden;
   border-radius: var(--radio-menu); padding: 20px 14px 16px;
@@ -450,7 +451,7 @@ body { transition: background-color 0.25s ease-out, color 0.25s ease-out; }
 /* ≤ 900 px ÚTILES (ver src/escala.ts): el menú pasa arriba */
 :root:not([data-ancho='amplio']) .armazon { flex-direction: column; align-items: stretch; padding: 12px; gap: 14px; }
 :root:not([data-ancho='amplio']) .menu-lateral {
-  width: auto; position: static; max-height: none; overflow: visible; scrollbar-gutter: auto;
+  width: auto; position: static; height: auto; max-height: none; overflow: visible; scrollbar-gutter: auto;
   padding: 14px; gap: 12px; border-radius: 24px;
 }
 :root:not([data-ancho='amplio']) .menu-grupos {
