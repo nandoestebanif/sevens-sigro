@@ -76,6 +76,20 @@ export interface LineaRecepcion {
   pendiente: number
 }
 
+/** HU-36: lo que se va a recibir contra lo requerido en el S10, ANTES de guardar. Avisa, no bloquea (regla 7). */
+export interface VerificacionRecepcion {
+  hayExceso: boolean
+  lineas: {
+    insumoId: string
+    descripcion: string
+    unidad: string // unidad del S10, la del requerimiento
+    requerido: number | null // null: el insumo no está en el requerimiento
+    conEsta: number // lo ya recibido más lo de ahora
+    exceso: number | null
+    excede: boolean
+  }[]
+}
+
 /** Insumo tal como lo necesita el formulario de compra. */
 export interface InsumoCatalogo {
   id: string
@@ -135,6 +149,8 @@ export interface AvanceInsumo {
   /** HU-24: falta por comprar = requerido − comprado, nunca negativa */
   saldoPorComprar: number
   desviacionPuntos: number // consumido − avance del plazo
+  /** HU-23: true si el servidor aún no puede dar lo recibido y lo consumido (se muestra «—», no 0) */
+  sinDatoAlmacen?: boolean
 }
 
 /** HU-57: los insumos no planificados se informan aparte,

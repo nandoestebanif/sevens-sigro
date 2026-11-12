@@ -18,6 +18,8 @@ import type {
   AvanceInsumo, Compra, EstadoCompra, HistorialFactor, InsumoCatalogo, InsumoMaestro, LineaCompra, LineaRecepcion,
   Obra, ObraActiva, ParametroReposicion, Proveedor, ResultadoRequerimiento, Semana, TipoComprobante,
 } from './tipos'
+// importes propios de almacén y semana: en su línea, para no chocar con la lista de arriba
+import type { Movimiento, StockInsumo, VerificacionRecepcion } from './tipos'
 
 export const API_URL: string = (import.meta.env.VITE_API_URL ?? '').replace(/\/$/, '')
 export const usaApiReal = API_URL !== ''
@@ -444,7 +446,23 @@ export const recepcionHttp = {
       }
     })
   },
-  async registrar(compraId: string, lineas: { insumoId: string; cantidad: number }[]): Promise<void> {
+  /** HU-36 · T-297: lo mismo que se va a recibir, para avisar ANTES de guardar si pasa lo requerido (avisa, no bloquea) */
+  async verificar(compraId: string, lineas: { insumoId: string; cantidad: number }[]): Promise<VerificacionRecepcion> {
+    const v = await pedir<VerificacionApi>('POST', `/obras/${await obraId()}/almacen/recepciones/verificacion`, {
+      compraId: Number(compraId),
+      lineas: lineas.filter((l) => l.cantidad > 0).map((l) => ({ insumoId: Number(l.insumoId), cantidad: l.cantidad })),
+    })
+    if (v.lineas.some((l) => !descPorId.has(l.insumoId))) await todos()
+    return {
+      hayExceso: v.hayExceso,
+      lineas: v.lineas.map((l) => ({
+        insumoId: String(l.insumoId), descripcion: descPorId.get(l.insumoId) ?? l.insumoCodigo, unidad: l.unidad,
+        requerido: l.requerido === null ? null : num(l.requerido), conEsta: num(l.conEsta),
+        exceso: l.exceso === null ? null : num(l.exceso), excede: l.excede,
+      })),
+    }
+  },
+  async registrar(compraId: string, lineas: { insumoId: string; cantidad: number }[], motivoExceso?: string): Promise<void> {
     const cId = Number(compraId)
     if (!Number.isInteger(cId) || cId < 1) throw new ErrorApi('no_existe', 'Esa compra no existe.')
     const conCantidad = lineas.filter((l) => l.cantidad > 0)
@@ -457,6 +475,127 @@ export const recepcionHttp = {
         insumoId: Number(l.insumoId),
         cantidad: l.cantidad,
       })),
+      // HU-36: si la verificación avisó exceso, el servidor exige el motivo; queda en el kárdex
+      ...(motivoExceso && motivoExceso.trim() ? { motivoExceso: motivoExceso.trim() } : {}),
     })
+  },
+}
+
+/* ── almacén (HU-35, HU-36, HU-43, HU-45) y avance (HU-23) ──────────────────
+   El saldo, el kárdex y el estado de una compra los calcula el servidor (regla 2): aquí solo se traducen nombres y
+   unidades. La web identifica los insumos por su código (regla 8); la API, por su id: la traducción vive aquí. */
+const almacen = async () => `/obras/${await obraId()}/almacen`
+
+async function codigoDe(id: number): Promise<string> {
+  if (!codigoPorId.has(id)) await todos()
+  return codigoPorId.get(id) ?? String(id)
+}
+async function descripcionDe(codigo: string): Promise<string> {
+  if (!descPorCodigo.has(codigo)) await todos()
+  return descPorCodigo.get(codigo) ?? codigo
+}
+
+interface VerificacionApi {
+  compraId: number; hayExceso: boolean
+  lineas: { insumoId: number; insumoCodigo: string; unidad: string; requerido: string | null; yaRecibido: string;
+    conEsta: string; exceso: string | null; excede: boolean }[]
+}
+interface MovimientoApi {
+  id: number; uuidCliente: string; tipo: string; sentido: number; proyectoId: number; almacenId: number; insumoId: number
+  insumoCodigo: string | null; unidad: string | null; cantidad: string; costoUnitario: string; motivo: string | null
+  quienRetira: string | null; origen: string | null; recepcionId: number | null; revierteAId: number | null
+  registradoPor: number; fechaServidor: string; revertidoPorId?: number | null; recepcionMotivoExceso?: string | null
+}
+interface StockFilaApi {
+  almacenId: number | null; almacen: string | null; insumoId: number; insumoCodigo: string; descripcion: string
+  unidad: string; cantidad: string; ultimoMovimientoEn: string; puntoReposicion: string | null; bajoPuntoReposicion: boolean | null
+}
+interface StockApi { corte: string | null; porAlmacen: StockFilaApi[]; consolidado: StockFilaApi[]; advertencias: string[] }
+interface AlmacenApi { id: number; nombre: string }
+
+/** el id del servidor se muestra como en el lienzo (M-0007) y se lee de vuelta al corregir */
+export const idMovimiento = (id: number) => `M-${String(id).padStart(4, '0')}`
+const idServidor = (id: string) => Number(id.replace(/^M-0*/, '')) || Number(id)
+
+/** el texto del motivo según el tipo: una salida dice quién retiró; una recepción, de qué compra viene */
+function motivoDe(m: MovimientoApi): string {
+  if (m.motivo) return m.quienRetira ? `${m.motivo} · retira ${m.quienRetira}` : m.motivo
+  if (m.tipo === 'ingreso_compra') {
+    return m.recepcionMotivoExceso ? `Recepción de compra · motivo del exceso de esa recepción: ${m.recepcionMotivoExceso}` : 'Recepción de compra'
+  }
+  if (m.origen) return `Ingreso sin compra (${m.origen})`
+  return m.tipo.replace(/_/g, ' ')
+}
+
+async function aMovimiento(m: MovimientoApi, nombres: Map<number, string>, oId: string): Promise<Movimiento> {
+  const codigo = m.insumoCodigo ?? (await codigoDe(m.insumoId))
+  const yo = sesionActual()?.usuario
+  return {
+    id: idMovimiento(m.id), obraId: oId, uuidCliente: m.uuidCliente, fechaServidor: m.fechaServidor,
+    almacen: nombres.get(m.almacenId) ?? `Almacén ${m.almacenId}`,
+    insumoId: codigo, descripcion: await descripcionDe(codigo), unidad: m.unidad ?? '',
+    tipo: m.tipo === 'reverso' ? 'reverso' : m.sentido > 0 ? 'ingreso' : 'salida',
+    cantidad: num(m.cantidad), costoUnitario: num(m.costoUnitario), motivo: motivoDe(m),
+    autor: yo && yo.id === m.registradoPor ? yo.nombre : `Usuario ${m.registradoPor}`,
+    reversaA: m.revierteAId ? idMovimiento(m.revierteAId) : null,
+    anuladoPor: m.revertidoPorId ? idMovimiento(m.revertidoPorId) : null,
+  }
+}
+
+async function nombresDeAlmacen(): Promise<Map<number, string>> {
+  try {
+    return new Map((await pedir<AlmacenApi[]>('GET', `/obras/${await obraId()}/almacenes`)).map((a) => [a.id, a.nombre]))
+  } catch { return new Map() }   // sin la lista se muestra «Almacén 3»: el dato no se inventa
+}
+
+export const almacenHttp = {
+  /** HU-43: por almacén y de toda la obra, con la hora del último movimiento; nada se suma en la web */
+  async stock(): Promise<StockInsumo[]> {
+    const s = await pedir<StockApi>('GET', `${await almacen()}/stock`)
+    return s.consolidado.map((c) => ({
+      insumoId: c.insumoCodigo, descripcion: c.descripcion, unidad: c.unidad,
+      porAlmacen: s.porAlmacen.filter((p) => p.insumoId === c.insumoId).map((p) => ({ almacen: p.almacen ?? '', saldo: num(p.cantidad) })),
+      saldoTotal: num(c.cantidad),
+      puntoReposicion: c.puntoReposicion === null ? null : num(c.puntoReposicion),
+      bajoPunto: c.bajoPuntoReposicion === true,
+      ultimoMovimiento: c.ultimoMovimientoEn,
+    })).sort((a, b) => Number(b.bajoPunto) - Number(a.bajoPunto))
+  },
+  /** kárdex completo, del más reciente al más antiguo; el anulado y el que lo anuló vienen del servidor */
+  async kardex(): Promise<Movimiento[]> {
+    const [xs, nombres, oId] = await Promise.all([pedir<MovimientoApi[]>('GET', `${await almacen()}/kardex`), nombresDeAlmacen(), obraId()])
+    const movs = await Promise.all(xs.map((m) => aMovimiento(m, nombres, oId)))
+    return movs.sort((a, b) => b.fechaServidor.localeCompare(a.fechaServidor))
+  },
+  /** HU-45: corregir = un movimiento inverso que apunta al original; el original no se toca */
+  async revertir(id: string, motivo: string): Promise<Movimiento> {
+    if (motivo.trim().length < 5) throw new ErrorApi('motivo', 'El motivo es obligatorio: sin motivo no hay rastro que valga.')
+    const [m, nombres, oId] = await Promise.all([
+      pedir<MovimientoApi>('POST', `${await almacen()}/movimientos/${idServidor(id)}/reverso`, { uuidCliente: nuevoUuid(), motivo: motivo.trim() }),
+      nombresDeAlmacen(), obraId(),
+    ])
+    return aMovimiento(m, nombres, oId)
+  },
+}
+
+/* ── HU-23: requerido, comprado, recibido y consumido por insumo, en unidad de compra (lo calcula compras) ── */
+interface AvanceApi {
+  pendiente: string[]
+  filas: { insumoId: number; insumoCodigo: string; descripcion: string; unidadCompra: string; requerido: string; comprado: string
+    recibido: string | null; consumido: string | null; saldoPorComprar: string; pctComprado: string; pctRecibido: string | null
+    pctConsumido: string | null }[]
+}
+export const avanceHttp = {
+  async porInsumo(): Promise<AvanceInsumo[]> {
+    const a = await pedir<AvanceApi>('GET', `/obras/${await obraId()}/avance`)
+    return a.filas.map((f) => ({
+      insumoId: f.insumoCodigo, codigo: f.insumoCodigo, descripcion: f.descripcion, unidadS10: f.unidadCompra, unidadCompra: f.unidadCompra,
+      fase: 'Toda la obra', critico: false,
+      planificadoCantidad: num(f.requerido), planificadoImporte: 0, compradoCantidad: num(f.comprado),
+      compradoPct: num(f.pctComprado), recibidoPct: num(f.pctRecibido), consumidoPct: num(f.pctConsumido),
+      gastado: 0, saldoPorComprar: num(f.saldoPorComprar), desviacionPuntos: 0,
+      // null: el servidor declaró que aún no puede calcularlo (a.pendiente); la pantalla lo muestra como «—»
+      sinDatoAlmacen: f.recibido === null,
+    }))
   },
 }
