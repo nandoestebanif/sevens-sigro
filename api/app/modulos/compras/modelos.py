@@ -217,6 +217,7 @@ class ParametroReposicion(Base):
     insumo_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("catalogo.insumo.id", name="fk_parametro_reposicion_insumo_id_insumo"))
     stock_seguridad: Mapped[Decimal] = mapped_column(Numeric(18, 4))
     punto_reposicion: Mapped[Decimal] = mapped_column(Numeric(18, 4))
+    nivel_maximo: Mapped[Decimal | None] = mapped_column(Numeric(18, 4))   # migración 0016 (D07): opcional, > punto
     registrado_por: Mapped[int] = mapped_column(BigInteger, ForeignKey("obra.usuario.id", name="fk_parametro_reposicion_registrado_por_usuario"))
     vigente_desde: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
