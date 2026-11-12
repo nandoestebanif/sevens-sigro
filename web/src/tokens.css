@@ -55,7 +55,7 @@
   --fuente: 'Inter', system-ui, sans-serif;
 
   /* velo de los modales */
-  --velo: rgba(28, 29, 31, 0.4);
+  --velo: rgba(28, 29, 31, 0.22);
 }
 
 /* ── modo oscuro: el mismo sistema, segundo juego de valores ──
@@ -92,7 +92,7 @@
 
   --sombra: none;
   --sombra-accion: 0 4px 18px rgba(255, 119, 0, 0.35);
-  --velo: rgba(0, 0, 0, 0.62); /* en oscuro el velo claro no separaba el modal */
+  --velo: rgba(0, 0, 0, 0.5); /* en oscuro el velo claro no separaba el modal */
 }
 
 /* ── escala de texto (panel de accesibilidad) ──
@@ -188,7 +188,13 @@ button {
 .pagina > :nth-child(n + 6) { animation-delay: 0.2s; }
 
 /* modales: el velo funde y la caja aterriza */
-.velo { animation: velo-entra 0.18s ease-out both; }
+.velo {
+  animation: velo-entra 0.18s ease-out both;
+  /* velo suave: oscurece poco y desenfoca el fondo (vidrio), en vez de un corte gris tajante */
+  background: var(--velo);
+  -webkit-backdrop-filter: blur(6px) saturate(115%);
+  backdrop-filter: blur(6px) saturate(115%);
+}
 .modal-caja { animation: modal-entra 0.24s var(--paso) both; }
 .modal-cerrar {
   flex: none; width: 44px; height: 44px; border-radius: 22px; border: 0; background: transparent; /* 44 px: objetivo táctil */
