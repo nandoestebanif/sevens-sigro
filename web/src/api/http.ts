@@ -12,6 +12,7 @@
    web sigue con el cliente simulado, para que nadie quede bloqueado.
    ───────────────────────────────────────────────────────────────────────── */
 import { ErrorApi } from './error'
+import { conReintentos, type OpcionesReintento } from './reintentos'
 import { faltaFactor } from './unidades'
 import type {
   AvanceInsumo, Compra, InsumoCatalogo, InsumoMaestro, LineaCompra, Obra, ObraActiva, ParametroReposicion, Proveedor,
@@ -81,18 +82,35 @@ export async function pedir<T>(metodo: 'GET' | 'POST', ruta: string, cuerpo?: ob
     throw new ErrorApi('sesion_vencida', 'Tu sesión venció. Vuelve a ingresar.')
   }
   const texto = await r.text()
-  const datos = texto ? JSON.parse(texto) : null
+  let datos: any = null
+  try {
+    datos = texto ? JSON.parse(texto) : null
+  } catch {
+    // el 502 de Render mientras un servicio despierta es una página HTML, no {codigo, mensaje}
+    if (r.ok) throw new ErrorApi('respuesta_invalida', 'El servidor respondió algo que SIGRO no entiende.', r.status)
+  }
   if (!r.ok) {
     const d = (datos && (datos.codigo ? datos : datos.detail)) || {}
     // Pydantic antepone «Value error, » a las validaciones propias: al usuario le basta el mensaje
     const mensaje = typeof d.mensaje === 'string' ? d.mensaje.replace(/^([a-z_]+: )?Value error, /, '') : null
-    throw new ErrorApi(d.codigo ?? `http_${r.status}`, mensaje ?? 'El servidor rechazó la operación.')
+    throw new ErrorApi(d.codigo ?? `http_${r.status}`, mensaje ?? 'El servidor rechazó la operación.', r.status)
   }
   return convertir(datos, aCamel) as T
 }
 
-export async function iniciarSesion(usuario: string, clave: string): Promise<Sesion> {
-  const s = await pedir<Sesion>('POST', '/auth/login', { usuario, clave })
+/** HU-12. Si el servidor está despertando (502, 503 o sin red) se reintenta solo, hasta 3 veces con espera
+    creciente: la persona no ve «no se pudo ingresar» por algo que no hizo. Un 401 es la respuesta de verdad. */
+export async function iniciarSesion(usuario: string, clave: string, o: OpcionesReintento = {}): Promise<Sesion> {
+  let s: Sesion
+  try {
+    s = await conReintentos(() => pedir<Sesion>('POST', '/auth/login', { usuario, clave }), o)
+  } catch (e) {
+    if (e instanceof ErrorApi && e.estado === 401) {
+      // usuario inexistente y clave errónea, el mismo mensaje: no se revela cuál de los dos falló
+      throw new ErrorApi('credenciales_invalidas', 'Usuario o contraseña incorrectos.', 401)
+    }
+    throw e
+  }
   guardarSesion({ token: s.token, usuario: s.usuario, obras: s.obras })
   return s
 }
