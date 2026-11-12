@@ -122,3 +122,143 @@ Un bus de mensajes (RabbitMQ, Kafka): para el volumen de una obra, el outbox con
 - Las pruebas levantan todos los servicios en el mismo proceso, cada uno con su usuario de base, y se hablan
   por el mismo contrato HTTP; `pruebas/test_microservicios.py` verifica las cinco reglas de arriba.
 
+
+## ADR-10 · Ambiente de pruebas en un solo nodo (03/11/2026)
+**Contexto.** El ambiente de pruebas (HT-01, ADR-06) corría en Render con **ocho servicios Docker gratuitos**, uno
+por microservicio, y dos problemas que no se arreglan con código:
+- **La red privada no sirve en el plan gratuito.** Un servicio gratuito puede *enviar* tráfico privado pero no
+  *recibirlo* («Free web services can't receive private network traffic»). El gateway llamaba a cada servicio por
+  `https://sigro-<servicio>.onrender.com`, es decir **pasando por Cloudflare**, y Cloudflare empezó a responder
+  **429**: el 03/11 `/salud/servicios` mostró catálogo, compras, tareo e integraciones con `error_429`, y almacén y
+  costo con 502. El sondeo de la pantalla de arranque (7 llamadas cada 2 s) lo precipitó (hotfix en el PR #26),
+  pero cualquier uso normal multiplica las llamadas gateway → servicio → obras (`/interno/autorizar` en cada petición).
+- **Cada servicio duerme por separado.** Tras 15 min sin tráfico, Render duerme cada servicio y despertarlo tarda
+  ~25 s (medido: 25,2 s para obras sola, `docs/rendimiento-render.md`). Una petición que cruza gateway → servicio →
+  obras podía pagar tres despertares.
+
+**Decisión.** Solo en el **ambiente de pruebas**, todos los microservicios corren en **un solo servicio gratuito,
+`sigro-api`**: un contenedor (`api/Dockerfile.pruebas`) con **un proceso por microservicio**. El gateway atiende
+`$PORT` (el único puerto que Render publica); obras, catálogo, compras, tareo, almacén, costo e integraciones
+escuchan en `127.0.0.1:8001–8007`, notificaciones en `8008`, y el relevo corre sin puerto. Un supervisor de
+biblioteca estándar (`infra/un_nodo/supervisor.py`) reinicia el proceso que se cae (espera 1, 2, 4 … 30 s),
+reenvía `SIGTERM` y pone el nombre del proceso en cada línea de log. Se hablan por `http://127.0.0.1:800x`: sin TLS,
+sin Cloudflare, sin 429. La región es **ohio**, la misma de Neon (`aws-us-east-2`). La web (`sigro-web`, estática)
+llama a su propio dominio y Render **reescribe** `/api/*` y `/salud/*` hacia `sigro-api` («Destination can be either
+a path or a full, publicly accessible URL»): el navegador no habla con otro origen, así que no hay CORS ni preflight
+y no se cruza con el *challenge* de Cloudflare en `sigro-api`.
+
+**Qué se mantiene igual (y se sigue verificando).**
+
+| Regla de ADR-09 | En el nodo único |
+|---|---|
+| Un esquema y un usuario de base por servicio | Igual. Cada proceso recibe **solo su** cadena: `SIGRO_DB_OBRAS` → `SIGRO_APP_DATABASE_URL` de obras, y así. Ningún proceso ve la cadena de otro (`api/pruebas/test_un_nodo.py`). La base sigue negando el esquema ajeno por permisos (migración 0009) |
+| Comunicación solo por API (`/interno` con `X-Servicio-Token`) o eventos (outbox) | Igual. Cambia solo la dirección: `127.0.0.1:800x` en lugar de `onrender.com` |
+| Control de acceso en obras en cada petición (regla 9) | Igual: `POST /interno/autorizar` en cada petición, ahora sin salir del contenedor |
+| Código e imagen propios, podados | Producción sigue con `api/Dockerfile` (una imagen podada por servicio) y `docker-compose.yml` **sin cambios**; CI sigue construyendo cada imagen podada (`test_microservicios.py`). La imagen de pruebas lleva todo el código, pero cada proceso importa solo su `app.servicios.<servicio>` |
+| Fallos aislados | Un proceso que se cae no tumba a los demás: el supervisor lo reinicia y mientras tanto solo sus rutas responden 503. Si falta la variable de base de un servicio, ese servicio no arranca y el resto sí |
+| Secretos solo donde se usan | El gateway y las integraciones no reciben cadenas de base ni el secreto JWT; `FACTILIZA_TOKEN` solo va a integraciones |
+
+**Descartado.**
+- *Seguir con ocho servicios gratuitos* y bajar el tráfico interno: no quita el paso por Cloudflare ni los ocho
+  despertares; el 429 vuelve con el uso normal.
+- *Planes pagos o `type: pserv` con red privada*: resuelve las dos cosas y es lo que corresponde a producción, pero
+  el presupuesto del ambiente de pruebas es cero (ADR-06).
+- *Un solo proceso Python que monte todas las apps*: menos memoria todavía, pero los servicios compartirían
+  proceso, memoria, conexión y fallos, y dejaría de ser una arquitectura de microservicios. La precarga con `fork()`
+  consigue la mayor parte del ahorro sin juntar procesos. **Revisado el 04/11/2026: se adopta, ver abajo.**
+- *honcho / supervisord*: honcho no reinicia un proceso caído (si uno muere, para todos) y supervisord agrega una
+  dependencia y su configuración para lo que hacen unas 300 líneas de biblioteca estándar (que además
+  hacen la precarga con `fork()`).
+- *Otra nube gratuita* (Fly.io, Railway): cambiar de proveedor a mitad del Sprint 2 cuesta más que esta decisión, y
+  sus niveles gratuitos tienen límites parecidos.
+
+**Consecuencias que se aceptan.**
+- **Memoria: 512 MB y 0,1 CPU para diez procesos.** Solo cabe con precarga y `fork()` (ver «Memoria», abajo). Si no
+  alcanza, `SIGRO_UN_NODO_EXTRAS=0` quita relevo y notificaciones: los avisos y los hechos de costo esperan en
+  `outbox.evento`, sin perderse. Con 0,1 CPU, una importación del S10 hace más lentas las demás peticiones.
+- **Un solo punto de fallo en pruebas**: si `sigro-api` cae o se redespliega, cae todo el ambiente a la vez. En
+  pruebas es aceptable; en producción no, y por eso producción no cambia.
+- **Un solo despertar** en lugar de uno por servicio; a cambio, el arranque en frío suma el de los diez procesos.
+- **Notificaciones pierde su base al dormir** (sistema de archivos efímero): la campana del usuario se vacía al
+  redesplegar; el evento original queda en `outbox.evento`.
+- La reescritura de `sigro-web` hacia `sigro-api` depende de que Render reenvíe métodos y cabeceras; Render no lo
+  documenta. Se prueba con el login (un POST) al migrar y, si falla, `VITE_API_URL` vuelve a apuntar a `sigro-api`
+  (la API ya acepta ese origen por `SIGRO_CORS`).
+- La app del almacenero apunta a `https://sigro-api.onrender.com` (antes `sigro-gateway`).
+
+**Memoria.** Medido en CI (job `un-nodo`, Linux, contenedor con `--memory 512m` como Render gratis, datos reales del
+cliente), con la prueba de humo completa por el gateway:
+
+| Cómo se lanzan los procesos | Diez procesos vivos | PSS total | Contenedor | Resultado |
+|---|---|---|---|---|
+| Cada servicio con su propio intérprete (run 41674366797) | **no**: el núcleo mata obras, catálogo, almacén y costo al arrancar (código -9) y quedan en bucle de reinicio | 488 MB con compras ya muerta | 450 MiB / 512 (88 %) | **no cabe** |
+| **Precarga + `fork()`** (run 41675739156) | **sí**, sin un solo reinicio | **398 MB** | **366 MiB / 512 (71,5 %)** | humo en verde |
+
+Por eso el supervisor, en Linux, carga **una vez** las bibliotecas comunes del venv de la API (FastAPI, pydantic,
+SQLAlchemy, psycopg, httpx, uvicorn…) y crea cada servicio con `fork()` seguido de `gc.freeze()`, como
+`gunicorn --preload`. Cada servicio **sigue siendo un proceso aparte**: su PID, su entorno (`os.environ` se
+reemplaza en el hijo por el suyo), su cadena de base, su pool de conexiones y sus fallos; lo que comparten son las
+páginas de solo lectura de esas bibliotecas (copia al escribir). El código `app.*` se importa recién en el hijo,
+con su entorno. Cada servicio de la API bajó de ~55 MB a 25–41 MB de PSS. Integraciones y notificaciones fijan
+otras versiones de FastAPI y se lanzan con su propio intérprete (~45–49 MB cada uno). Margen: ~146 MiB para picos
+(una importación del S10, un catálogo grande). Si el log de Render muestra `terminó con código -9`, primero
+`SIGRO_UN_NODO_EXTRAS=0` (relevo y notificaciones fuera, ~75 MB) y después, si hace falta, subir el plan de
+`sigro-api`. `SIGRO_UN_NODO_FORK=0` vuelve a un intérprete por servicio (solo para diagnosticar).
+
+**Cómo se vuelve atrás.** `render.yaml` anterior (ocho servicios) está en la historia de Git; el paso a un nodo
+(`docs/despliegue-pruebas.md`) deja los servicios viejos **suspendidos** antes de borrarlos.
+
+### Revisión del 04/11/2026 · un proceso, varias apps ASGI, por el límite de 512 MB
+
+**Contexto.** Ya desplegado, `sigro-api` murió en Render con «Ran out of memory (used over 512MB)», aunque en CI los
+diez procesos cabían en 366 MiB. Dos causas: (1) diez intérpretes Python, aun con precarga + `fork()`, dejan poco
+margen y cada uno va copiando páginas al escribir; (2) **cada login reserva 64 MiB** mientras Argon2id verifica la
+contraseña (`memory_cost` por defecto de argon2-cffi): los logins corren en hilos y varios a la vez se suman sin
+tope. Medido el 04/11 en una PC con Windows (psutil, todas las apps cargadas en un proceso): **20 verificaciones a la
+vez llevaron el proceso a 1 365 MB**.
+
+**Decisión.** En el ambiente de pruebas todo corre en **un solo proceso Python** (`infra/un_nodo/un_proceso.py`):
+un event loop asyncio con un `uvicorn.Server` por app (`workers=1`, `lifespan="on"`, sin `--reload`), el gateway en
+`$PORT` y el resto en `127.0.0.1:8001–8008`, más el relevo del outbox como tarea asyncio. Si un servidor cae, se
+registra y el proceso termina con código 1 para que Render lo reinicie. Además, en `api/`: argon2 corre como mucho
+`SIGRO_ARGON2_SIMULTANEOS` (2) verificaciones a la vez, sin cambiar los parámetros del hash; el pool por servicio
+baja a 1..`POOL_MAX` (3) conexiones (Neon -pooler multiplexa del otro lado); y `/salud/servicios` informa
+`memoria_mb` (pico de RSS del proceso, `resource.getrusage`) para vigilarlo en Render.
+
+**Qué cambia respecto de la tabla «Qué se mantiene igual».**
+
+| Regla | Con un proceso |
+|---|---|
+| Un esquema y un usuario de base por servicio | **Igual en la base**: cada app abre su propio motor con su usuario. Como todas comparten `os.environ`, la cadena se elige por `contexto.SERVICIO` de la petición en curso (`app.config.url_de_base`): obras → `SIGRO_DB_OBRAS`, y así. Sin servicio, o sin su variable, falla y nunca toma la de otro (`api/pruebas/test_un_proceso.py`). La base sigue negando el esquema ajeno por permisos (0009) |
+| Comunicación solo por API o eventos | Igual: el gateway y los servicios siguen llamándose por HTTP a `127.0.0.1:puerto`, con un `httpx.AsyncClient` compartido en el gateway. El código de los servicios no cambia |
+| Fallos aislados | **Ya no**: un fallo que tumba el proceso tumba todo el ambiente, y Render lo reinicia entero. Un servicio sin su variable de base sigue sin levantarse sin afectar al resto |
+| Secretos solo donde se usan | **Ya no a nivel de proceso**: todas las apps ven las mismas variables. Se acepta solo en pruebas, con usuarios de base distintos por servicio y sin la cadena de dueño (el lanzador quita `SIGRO_DATABASE_URL` y `SIGRO_APP_DATABASE_URL`) |
+| Dependencias propias de cada servicio | Integraciones y notificaciones corren con las versiones de FastAPI, uvicorn, httpx y pydantic de la API (un solo venv). CI corre las pruebas de notificaciones y la importación real del S10 con ese conjunto |
+
+**Para la exposición.** Los servicios **siguen siendo independientes y desplegables por separado**: cada uno es su
+app, su imagen podada (`api/Dockerfile`), su esquema y su usuario, y en producción corren en su propio contenedor
+(`docker-compose.yml`, sin cambios). Juntarlos en un proceso es una decisión de **despliegue del ambiente de pruebas**
+por el plan gratuito de 512 MB, no de arquitectura: ningún servicio lee la base de otro ni llama a otro por dentro
+del proceso.
+
+**Memoria medida.**
+
+| Dónde | Qué | RSS |
+|---|---|---|
+| PC Windows, psutil (04/11) | Proceso único con todas las apps y el relevo, en reposo | 102 MB |
+| PC Windows, psutil (04/11) | Ídem, con 20 logins + 20 `GET /obras` a la vez **sin base** (no llegan a argon2) | 113 MB pico |
+| PC Windows, psutil (04/11) | Apps cargadas + 20 verificaciones argon2 a la vez, **sin límite** | 1 365 MB pico |
+| PC Windows, psutil (04/11) | Ídem, con `SIGRO_ARGON2_SIMULTANEOS=2` | 212 MB pico |
+| CI, job `un-nodo` (Linux, `--memory 512m`, base real; run 41864595180) | Proceso único tras la prueba de humo, antes de la carga | 180,5 MB pico · 116,7 MB actual |
+| CI, job `un-nodo` (ídem) | **20 logins + 20 `GET /obras` a la vez** (`infra/un_nodo/carga.py`), los 40 con 200 | **247,1 MB pico** (meta < 300) · 119,3 MB actual · contenedor 91 MiB / 512 al final, sin OOM |
+
+La carga completa con base real no se pudo correr en la PC del autor (sin Docker ni PostgreSQL con `btree_gist`); la
+corre CI en cada PR y falla si el pico pasa de 300 MB. Antes, con diez procesos, el mismo job medía 398 MB de PSS tras
+la prueba de humo, sin esta carga. Sin Docker, `infra/un_nodo/medir_memoria.py` hace la misma
+medición con psutil contra cualquier base. El arreglo anterior (`supervisor.py`, un intérprete por servicio) queda
+para diagnóstico.
+
+**Consecuencias.** Un solo punto de fallo también dentro del contenedor. Un solo threadpool para todos los
+endpoints síncronos (`SIGRO_HILOS`, 60): una petición de almacén ocupa un hilo y su `/interno/autorizar` otro. Con
+`POOL_MAX=3`, 20 logins a la vez hacen fila por conexión (y cada uno la retiene mientras espera su turno de argon2):
+con 0,1 CPU el último puede tardar varios segundos, dentro de los 10 s de `pool_timeout`.

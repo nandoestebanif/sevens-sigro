@@ -1,124 +1,69 @@
-# SIGRO · ambiente de PRUEBAS (HT-01) en Render, plan gratuito. La base vive en Neon (PostgreSQL gestionado, gratis).
+# SIGRO · ambiente de PRUEBAS (HT-01) en Render, plan gratuito, EN UN SOLO NODO (ADR-10). Base en Neon.
 # Guía paso a paso: docs/despliegue-pruebas.md
 #
-# Render crea un servicio web por microservicio. Los nombres definen las URL (https://<nombre>.onrender.com):
-# si Render agrega un sufijo porque el nombre está tomado, corrige las SIGRO_URL_* del grupo «sigro-comun».
-# Los servicios gratuitos se duermen tras 15 min sin uso: la primera petición tarda ~1 min en despertar la cadena.
+# La arquitectura lógica NO cambia: siguen siendo microservicios separados, cada uno con su app, su puerto, su esquema
+# y su usuario de base. Lo único que cambia en pruebas es DÓNDE corren: todas las apps viven en UN proceso Python de un
+# contenedor gratuito («sigro-api», api/Dockerfile.pruebas, por el límite de 512 MB) y se hablan por 127.0.0.1, sin
+# pasar por Cloudflare. Motivo (ADR-10): en el
+# plan gratuito un servicio no puede RECIBIR tráfico por la red privada, así que gateway → servicio pasaba por
+# Cloudflare y recibía 429; y cada servicio dormía por separado (~25 s en frío cada uno).
+# Producción y docker-compose.yml siguen con un contenedor por servicio (api/Dockerfile).
+#
+# Región: ohio, la misma zona que Neon (aws-us-east-2). Render fija la región AL CREAR el servicio.
+# Quitar servicios de este archivo NO los borra en Render: los ocho servicios viejos se borran a mano, al final
+# (docs/despliegue-pruebas.md, «Pasar a un nodo»).
 
-envVarGroups:
-  - name: sigro-comun
+services:
+  - type: web
+    name: sigro-api
+    runtime: docker
+    region: ohio        # misma zona que Neon (aws-us-east-2). Se fija al CREAR: no se puede cambiar después
+    plan: free
+    dockerContext: .                       # la raíz: la imagen lleva api/, integraciones/ y notificaciones/
+    dockerfilePath: ./api/Dockerfile.pruebas
+    healthCheckPath: /salud                # el /salud del gateway: el único puerto público ($PORT)
     envVars:
       - key: SIGRO_ENTORNO
         value: pruebas
       - key: SIGRO_JWT_SECRET
         generateValue: true
-      - key: SIGRO_SERVICIO_TOKEN
+      - key: SIGRO_SERVICIO_TOKEN          # entre servicios; integraciones lo recibe como SERVICIO_TOKEN
         generateValue: true
-      - key: SIGRO_CORS
-        value: https://sigro-web.onrender.com
-      - key: SIGRO_URL_OBRAS
-        value: https://sigro-obras.onrender.com
-      - key: SIGRO_URL_CATALOGO
-        value: https://sigro-catalogo.onrender.com
-      - key: SIGRO_URL_COMPRAS
-        value: https://sigro-compras.onrender.com
-      - key: SIGRO_URL_TAREO
-        value: https://sigro-tareo.onrender.com
-      - key: SIGRO_INTEGRACIONES_URL
-        value: https://sigro-integraciones.onrender.com
-
-services:
-  - type: web
-    name: sigro-gateway
-    runtime: docker
-    plan: free
-    dockerContext: ./api
-    dockerfilePath: ./api/Dockerfile
-    healthCheckPath: /salud
-    envVars:
-      - fromGroup: sigro-comun
-      - key: SERVICIO          # Render pasa las variables como build args: la imagen se poda a este servicio
-        value: gateway
-      - key: SIGRO_SERVICIO
-        value: gateway
-
-  - type: web
-    name: sigro-obras
-    runtime: docker
-    plan: free
-    dockerContext: ./api
-    dockerfilePath: ./api/Dockerfile
-    healthCheckPath: /salud
-    envVars:
-      - fromGroup: sigro-comun
-      - key: SERVICIO
-        value: obras
-      - key: SIGRO_SERVICIO
-        value: obras
-      - key: SIGRO_APP_DATABASE_URL   # postgresql+psycopg://sigro_obras:<clave>@<host-neon-pooler>/neondb?sslmode=require
+      - key: SIGRO_CORS                    # la web entra por su propio dominio (rewrite /api/*); se deja por si se
+        value: https://sigro-web.onrender.com   # vuelve a llamar a sigro-api directo
+      # Una cadena por servicio, cada una con SU usuario (sigro_<servicio>) y el host -pooler de Neon:
+      #   postgresql+psycopg://sigro_<servicio>:<su clave>@<host-neon-pooler>/neondb?sslmode=require
+      # Cada app usa SOLO la suya, elegida por el servicio de la petición en curso (app/config.py · url_de_base).
+      # Si falta una, ese servicio no arranca y /salud/servicios lo muestra «no_responde».
+      - key: SIGRO_DB_OBRAS
         sync: false
-
-  - type: web
-    name: sigro-catalogo
-    runtime: docker
-    plan: free
-    dockerContext: ./api
-    dockerfilePath: ./api/Dockerfile
-    healthCheckPath: /salud
-    envVars:
-      - fromGroup: sigro-comun
-      - key: SERVICIO
-        value: catalogo
-      - key: SIGRO_SERVICIO
-        value: catalogo
-      - key: SIGRO_APP_DATABASE_URL
+      - key: SIGRO_DB_CATALOGO
         sync: false
-
-  - type: web
-    name: sigro-compras
-    runtime: docker
-    plan: free
-    dockerContext: ./api
-    dockerfilePath: ./api/Dockerfile
-    healthCheckPath: /salud
-    envVars:
-      - fromGroup: sigro-comun
-      - key: SERVICIO
-        value: compras
-      - key: SIGRO_SERVICIO
-        value: compras
-      - key: SIGRO_APP_DATABASE_URL
+      - key: SIGRO_DB_COMPRAS
         sync: false
-
-  - type: web
-    name: sigro-tareo
-    runtime: docker
-    plan: free
-    dockerContext: ./api
-    dockerfilePath: ./api/Dockerfile
-    healthCheckPath: /salud
-    envVars:
-      - fromGroup: sigro-comun
-      - key: SERVICIO
-        value: tareo
-      - key: SIGRO_SERVICIO
-        value: tareo
-      - key: SIGRO_APP_DATABASE_URL
+      - key: SIGRO_DB_TAREO
         sync: false
-
-  - type: web
-    name: sigro-integraciones
-    runtime: docker
-    plan: free
-    dockerContext: ./integraciones
-    dockerfilePath: ./integraciones/Dockerfile
-    healthCheckPath: /salud
-    envVars:
-      - key: FACTILIZA_TOKEN      # se escribe en el panel de Render, nunca en el repositorio
+      - key: SIGRO_DB_ALMACEN
         sync: false
-      # La web ya no llama a Integraciones: el S10 entra por el gateway (POST /api/v1/catalogo/importaciones-s10)
-      # y el catálogo lo reenvía con X-Servicio-Token. Falta activar aquí SERVICIO_TOKEN con el mismo valor que
-      # SIGRO_SERVICIO_TOKEN de «sigro-comun» (plan, tarea 2).
+      - key: SIGRO_DB_COSTO
+        sync: false
+      - key: SIGRO_DB_RELEVO               # solo si SIGRO_UN_NODO_EXTRAS=1
+        sync: false
+      - key: FACTILIZA_TOKEN               # integraciones (SUNAT/RENIEC); nunca en el repositorio
+        sync: false
+      # Relevo y notificaciones dentro del mismo nodo. ADR-10, «Memoria» (04/11): todo corre en UN proceso Python
+      # (infra/un_nodo/un_proceso.py); la memoria se ve en /salud/servicios → memoria_mb. Si vuelve el OOM, poner "0".
+      - key: SIGRO_UN_NODO_EXTRAS
+        value: "1"
+      # Pool por servicio de 1 a 3 conexiones (app/db.py): Neon -pooler ya multiplexa del otro lado.
+      - key: SIGRO_DB_POOL
+        value: "1"
+      - key: POOL_MAX
+        value: "3"
+      - key: SIGRO_DB_RECICLAR_S
+        value: "240"
+      - key: SIGRO_SERVER_TIMING
+        value: "1"
 
   - type: web
     name: sigro-web
@@ -126,12 +71,18 @@ services:
     buildCommand: cd web && npm ci && npm run build
     staticPublishPath: ./web/dist
     envVars:
+      # La web llama a SU PROPIO dominio y Render reescribe /api/* y /salud/* hacia sigro-api (abajo): el navegador
+      # no habla con otro origen (sin CORS ni preflight). Si la prueba de «Pasar a un nodo» falla, cambiar a
+      # https://sigro-api.onrender.com y volver a desplegar la web (la API ya acepta ese origen por SIGRO_CORS).
       - key: VITE_API_URL
-        value: https://sigro-gateway.onrender.com
-    routes:
+        value: https://sigro-web.onrender.com
+    routes:                                # en orden: lo específico antes que el comodín de la SPA
+      - type: rewrite
+        source: /api/*
+        destination: https://sigro-api.onrender.com/api/*
+      - type: rewrite
+        source: /salud/*
+        destination: https://sigro-api.onrender.com/salud/*
       - type: rewrite
         source: /*
         destination: /index.html
-
-# Fuera del plan gratuito (se agregan cuando haga falta):
-#   relevo y notificaciones: los avisos se acumulan en outbox.evento y no se pierden; se entregan cuando se despliegue el relevo.

@@ -1,26 +1,36 @@
-"""PROPUESTA (no aplicada) · Microservicios almacen y costo: modelo físico de movimientos, saldo, kárdex y costo promedio.
+"""Microservicios almacen y costo: libro de movimientos, saldo y kárdex derivados, costo promedio ponderado y gasto.
 
-Estado: BORRADOR para revisión de Adiel (solo él crea migraciones). Vive en `migraciones/propuestas/`, fuera de
-`versions/`, así que Alembic no la aplica. Para adoptarla: moverla a `versions/` (y renumerar si hace falta).
-Se probó contra una base migrada hasta 0009 con `docs/propuestas/probar_0010.py` (escenarios de las HU 35 a 47).
+Aprobada por Víctor Adiel Luján (Product Owner, dueño de las migraciones) el 01/11/2026 con las opciones
+recomendadas de `docs/propuestas/LEEME.md`. Escrita por Claude Code a pedido de Fernando Istaña tras esa aprobación.
 
-Decisiones físicas (cada una sostiene una regla del CLAUDE.md):
+Decisiones tomadas (01/11/2026):
+  D1  El costo promedio ponderado es POR ALMACÉN (regla 4 del CLAUDE.md); HU-55 se corrigió para decir lo mismo.
+  D2  outbox.evento gana `destino` ('aviso' | 'integracion'). El CHECK de destinatarios aplica solo a 'aviso':
+      un evento de integración (movimiento -> costo) no tiene personas a quien avisar.
+  D3  El dispositivo (regla 5) lo valida obras en POST /interno/autorizar (campo `dispositivo`): 403 si no está
+      activo para esa persona en esa obra. Aquí solo queda su id.
+  D4  En un periodo cerrado almacén solo admite reversos (como tareo); lo valida el servicio con
+      /interno/obras/{id}/periodos y aquí queda el periodo_id que fijó.
+  D5  HU-41 «saldo de otra obra» solo si esa obra no está en el sistema (lo valida el servicio preguntando a obras);
+      exige el nombre de la obra de origen en `origen_detalle`.
+  Límites conocidos (D6): el candado usa los id como int (vale hasta 2 147 483 647); el promedio se redondea a
+  6 decimales y el residuo es menor que 0,000001 por unidad.
+
+Reglas del CLAUDE.md que sostiene el motor:
   R1  movimiento, recepción, traslado, líneas de conteo: libros (solo INSERT, disparador + permisos).
   R2  NO hay columna de saldo ni de costo promedio: ambos se derivan de los movimientos (vistas `saldo`, `kardex`).
   R3  `uuid_cliente` NOT NULL y UNIQUE en todo lo que nace en un dispositivo o en un formulario.
   R4  la salida toma el promedio ponderado vigente y lo CONGELA en su fila; el disparador lo calcula bajo un
       candado por (almacén, insumo), así dos salidas simultáneas no pueden dejar el saldo en negativo.
-  R5  el dispositivo se valida en el servicio (obras: POST /interno/autorizar con `dispositivo`); aquí queda su id.
   R9  todo lleva proyecto_id; (almacen_id, proyecto_id) es FK compuesta a la réplica local de almacenes.
 
-Microservicios sin claves foráneas hacia otros esquemas DESDE EL DÍA 1 (la fase 2 del ADR-09 aplicada de entrada):
-  lo que viene de otro servicio se guarda como réplica local (`almacen_ref`, `insumo_ref`) que el servicio llena al
-  validar contra obras y catálogo por /interno (hoy) o por eventos (fase 2). compra_id, periodo_id, dispositivo_id y
-  registrado_por son referencias lógicas: se validan por API y no se declaran FK.
+Sin claves foráneas hacia otros esquemas (la fase 2 del ADR-09 aplicada de entrada): lo ajeno vive en réplicas
+locales (`almacen_ref`, `insumo_ref`) que el servicio llena al validar contra obras y catálogo por /interno.
+compra_id, periodo_id, dispositivo_id y registrado_por son referencias lógicas validadas por API.
 
-El servicio costo es un MODELO DE LECTURA: no decide nada, recibe hechos ya valorizados (salidas con su costo
-congelado, compras, horas) y responde los reportes de valorización y gasto (HU-55 a HU-59). El promedio NO vive en
-costo: tiene que calcularse en la misma transacción que la salida, y esa transacción es de almacén.
+El servicio costo es un MODELO DE LECTURA: recibe por eventos (outbox, destino 'integracion') los hechos ya
+valorizados por almacén y responde el gasto en recursos (HU-58). El promedio NO vive en costo: se calcula en la
+misma transacción que la salida, y esa transacción es de almacén.
 
 Revision ID: 0010
 Revises: 0009
@@ -66,10 +76,12 @@ def upgrade() -> None:
           codigo          text        NOT NULL,
           descripcion     text        NOT NULL,
           unidad          text        NOT NULL,           -- unidad del S10: en ella se cuentan los movimientos
+          tipo            text        NOT NULL,           -- familia del recurso (costo la usa para el gasto, HU-58)
           activo          boolean     NOT NULL,
           sincronizado_en timestamptz NOT NULL DEFAULT now(),
           CONSTRAINT pk_insumo_ref PRIMARY KEY (id),
-          CONSTRAINT uq_insumo_ref_codigo UNIQUE (codigo)
+          CONSTRAINT uq_insumo_ref_codigo UNIQUE (codigo),
+          CONSTRAINT ck_insumo_ref_tipo CHECK (tipo IN ('material', 'equipo'))   -- mano de obra y subcontratos no pasan por almacén
         )""")
     for t in ("almacen.almacen_ref", "almacen.insumo_ref"):
         sin_borrado(t)
@@ -195,7 +207,7 @@ def upgrade() -> None:
           CONSTRAINT ck_movimiento_por_tipo CHECK (CASE tipo
             WHEN 'ingreso_compra'     THEN sentido = 1  AND recepcion_id IS NOT NULL
             WHEN 'ingreso_sin_compra' THEN sentido = 1  AND origen IN ({_lista(ORIGENES_SIN_COMPRA)}) AND costo_unitario > 0
-                                           AND (origen <> 'otro' OR btrim(coalesce(origen_detalle, '')) <> '')
+                                           AND (origen NOT IN ('otro', 'saldo_otra_obra') OR btrim(coalesce(origen_detalle, '')) <> '')
             WHEN 'salida'             THEN sentido = -1 AND btrim(coalesce(motivo, '')) <> '' AND btrim(coalesce(quien_retira, '')) <> ''
             WHEN 'traslado_salida'    THEN sentido = -1 AND traslado_id IS NOT NULL
             WHEN 'traslado_ingreso'   THEN sentido = 1  AND traslado_id IS NOT NULL
@@ -335,9 +347,9 @@ def upgrade() -> None:
           evento_id      bigint        NOT NULL,
           proyecto_id    bigint        NOT NULL,
           familia        text          NOT NULL,            -- las tres familias de recursos del CLAUDE.md
-          clase          text          NOT NULL,            -- consumo · ingreso · compra · horas
+          clase          text          NOT NULL,            -- ingreso · consumo · traslado · ajuste (almacén) · compra · horas
           insumo_codigo  text          NOT NULL,            -- R6/R8: el control es por insumo y su código único
-          cantidad       numeric(18,4) NOT NULL,
+          cantidad       numeric(18,4) NOT NULL,            -- con signo: + entra al stock de la obra, - sale (un reverso invierte)
           unidad         text          NOT NULL,
           costo_unitario numeric(18,6) NOT NULL,
           importe        numeric(18,2) GENERATED ALWAYS AS (round(cantidad * costo_unitario, 2)) STORED,
@@ -348,7 +360,7 @@ def upgrade() -> None:
           CONSTRAINT fk_hecho_evento FOREIGN KEY (evento_id) REFERENCES costo.evento_recibido (evento_id),
           CONSTRAINT uq_hecho_referencia UNIQUE (referencia, clase),
           CONSTRAINT ck_hecho_familia CHECK (familia IN ('material', 'mano_obra', 'equipo')),
-          CONSTRAINT ck_hecho_clase CHECK (clase IN ('consumo', 'ingreso', 'compra', 'horas')),
+          CONSTRAINT ck_hecho_clase CHECK (clase IN ('ingreso', 'consumo', 'traslado', 'ajuste', 'compra', 'horas')),
           CONSTRAINT ck_hecho_moneda CHECK (moneda IN ('PEN', 'USD'))
         )""")
     op.execute("CREATE INDEX ix_hecho_proyecto ON costo.hecho (proyecto_id, familia, fecha)")
@@ -356,8 +368,29 @@ def upgrade() -> None:
         solo_insertar(t)
     op.execute("""
         CREATE VIEW costo.gasto_por_obra AS                 -- HU-58: gasto en RECURSOS, no costo total de la obra
-        SELECT proyecto_id, familia, moneda, sum(importe) AS gasto, max(fecha) AS hasta
-          FROM costo.hecho WHERE clase IN ('consumo', 'horas') GROUP BY proyecto_id, familia, moneda""")
+        SELECT proyecto_id, familia, moneda,
+               coalesce(sum(importe) FILTER (WHERE clase = 'ingreso'), 0)  AS recibido,
+               coalesce(-sum(importe) FILTER (WHERE clase = 'consumo'), 0) AS consumido,
+               coalesce(sum(importe) FILTER (WHERE clase IN ('ingreso', 'consumo', 'traslado', 'ajuste')), 0) AS en_stock,
+               max(fecha) AS hasta, count(DISTINCT evento_id) AS eventos
+          FROM costo.hecho GROUP BY proyecto_id, familia, moneda""")
+
+    # ───────────────────────────── D2: la bandeja de salida también lleva eventos de integración
+    op.execute("ALTER TABLE outbox.evento ADD COLUMN destino text NOT NULL DEFAULT 'aviso'")
+    op.execute("ALTER TABLE outbox.evento ADD CONSTRAINT ck_evento_destino CHECK (destino IN ('aviso', 'integracion'))")
+    op.execute("ALTER TABLE outbox.evento DROP CONSTRAINT ck_evento_destinatarios")
+    # Si la base ya estuvo en 0010 y se bajó (quedaron eventos de integración, sin destinatarios), se los vuelve a
+    # clasificar: es la columna nueva, no se toca su contenido. El disparador de inmutabilidad se suspende solo aquí.
+    op.execute("ALTER TABLE outbox.evento DISABLE TRIGGER tg_evento_cambios")
+    op.execute("UPDATE outbox.evento SET destino = 'integracion' WHERE CASE WHEN jsonb_typeof(payload -> 'destinatarios') = 'array' "
+               "THEN jsonb_array_length(payload -> 'destinatarios') = 0 ELSE true END")
+    op.execute("ALTER TABLE outbox.evento ENABLE TRIGGER tg_evento_cambios")
+    op.execute("""
+        ALTER TABLE outbox.evento ADD CONSTRAINT ck_evento_destinatarios CHECK (
+          destino <> 'aviso' OR CASE WHEN jsonb_typeof(payload -> 'destinatarios') = 'array'
+                                     THEN jsonb_array_length(payload -> 'destinatarios') > 0
+                                     ELSE false END
+        )""")
 
     # ───────────────────────────── roles: cada servicio, solo su esquema
     for rol in ("sigro_svc_almacen", "sigro_svc_costo"):
@@ -376,7 +409,19 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
+    # Los roles son del clúster: aquí solo se retiran sus privilegios en ESTA base.
     for rol in ("sigro_svc_almacen", "sigro_svc_costo"):
         op.execute(f"DROP OWNED BY {rol}")
     op.execute("DROP SCHEMA costo CASCADE")
     op.execute("DROP SCHEMA almacen CASCADE")
+    # outbox vuelve a ser solo de avisos. Nada se borra (R10): si quedaron eventos de integración, el CHECK original
+    # se restituye NOT VALID (rige para lo nuevo, no reescribe la historia).
+    op.execute("ALTER TABLE outbox.evento DROP CONSTRAINT ck_evento_destinatarios")
+    op.execute("ALTER TABLE outbox.evento DROP CONSTRAINT ck_evento_destino")
+    op.execute("ALTER TABLE outbox.evento DROP COLUMN destino")
+    op.execute("""
+        ALTER TABLE outbox.evento ADD CONSTRAINT ck_evento_destinatarios CHECK (
+          CASE WHEN jsonb_typeof(payload -> 'destinatarios') = 'array'
+               THEN jsonb_array_length(payload -> 'destinatarios') > 0
+               ELSE false END
+        ) NOT VALID""")

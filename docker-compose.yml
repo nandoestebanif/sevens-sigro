@@ -7,8 +7,11 @@
 #   gateway ─┬─ obras ──────────── esquema obra       (identidad, obras, accesos, dispositivos)
 #            ├─ catalogo ───────── esquema catalogo   (insumos)
 #            ├─ compras ─────────── esquema compras    (proveedores, compras, requerimiento) ── integraciones (SUNAT/RENIEC/S10)
-#            └─ tareo ───────────── esquema tareo      (trabajadores, asistencia)
+#            ├─ tareo ───────────── esquema tareo      (trabajadores, asistencia)
+#            ├─ almacen ─────────── esquema almacen    (movimientos, saldo, kárdex, costo promedio)
+#            └─ costo ───────────── esquema costo      (gasto en recursos, modelo de lectura)
 #   obras, compras ─ outbox ─ relevo ─ notificaciones (avisos)
+#   almacen ──────── outbox ─ relevo ─ costo          (eventos de integración)
 name: sigro
 
 x-servicio: &servicio
@@ -24,6 +27,8 @@ x-comun: &comun
   SIGRO_URL_CATALOGO: http://catalogo:8000
   SIGRO_URL_COMPRAS: http://compras:8000
   SIGRO_URL_TAREO: http://tareo:8000
+  SIGRO_URL_ALMACEN: http://almacen:8000
+  SIGRO_URL_COSTO: http://costo:8000
   SIGRO_INTEGRACIONES_URL: http://integraciones:8000
   SIGRO_NOTIFICACIONES_URL: http://notificaciones:8000
 
@@ -50,6 +55,8 @@ services:
       SIGRO_CLAVE_CATALOGO: ${SIGRO_CLAVE_CATALOGO:?define SIGRO_CLAVE_CATALOGO en .env}
       SIGRO_CLAVE_COMPRAS: ${SIGRO_CLAVE_COMPRAS:?define SIGRO_CLAVE_COMPRAS en .env}
       SIGRO_CLAVE_TAREO: ${SIGRO_CLAVE_TAREO:?define SIGRO_CLAVE_TAREO en .env}
+      SIGRO_CLAVE_ALMACEN: ${SIGRO_CLAVE_ALMACEN:?define SIGRO_CLAVE_ALMACEN en .env}
+      SIGRO_CLAVE_COSTO: ${SIGRO_CLAVE_COSTO:?define SIGRO_CLAVE_COSTO en .env}
       SIGRO_CLAVE_RELEVO: ${SIGRO_CLAVE_RELEVO:?define SIGRO_CLAVE_RELEVO en .env}
     volumes: ["./infra:/infra:ro"]
     user: root
@@ -60,7 +67,7 @@ services:
     build: {context: ./api, args: {SERVICIO: gateway}}
     environment: *comun
     ports: ["8000:8000"]
-    depends_on: [obras, catalogo, compras, tareo]
+    depends_on: [obras, catalogo, compras, tareo, almacen, costo]
     restart: unless-stopped
 
   obras:
@@ -90,6 +97,20 @@ services:
     environment:
       <<: *comun
       SIGRO_APP_DATABASE_URL: postgresql+psycopg://sigro_tareo:${SIGRO_CLAVE_TAREO}@db:5432/sigro
+
+  almacen:
+    <<: *servicio
+    build: {context: ./api, args: {SERVICIO: almacen}}
+    environment:
+      <<: *comun
+      SIGRO_APP_DATABASE_URL: postgresql+psycopg://sigro_almacen:${SIGRO_CLAVE_ALMACEN}@db:5432/sigro
+
+  costo:
+    <<: *servicio
+    build: {context: ./api, args: {SERVICIO: costo}}
+    environment:
+      <<: *comun
+      SIGRO_APP_DATABASE_URL: postgresql+psycopg://sigro_costo:${SIGRO_CLAVE_COSTO}@db:5432/sigro
 
   relevo:                       # entrega la bandeja de salida (outbox) al microservicio de Notificaciones
     <<: *servicio

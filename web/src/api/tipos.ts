@@ -109,6 +109,8 @@ export interface AvanceInsumo {
   unidadS10: string
   /** HU-23: todo se expresa en la unidad de compra */
   unidadCompra: string
+  /** HU-17: true si la unidad de compra y la del S10 difieren y el factor sigue en 1; null si no se sabe */
+  faltaFactor?: boolean | null
   fase: string
   critico: boolean
   planificadoCantidad: number

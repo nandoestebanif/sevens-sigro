@@ -1,0 +1,137 @@
+package pe.sevens.sigro
+
+import pe.sevens.sigro.dominio.EstadoDispositivo
+import pe.sevens.sigro.dominio.EstadoEnvio
+import pe.sevens.sigro.dominio.Insumo
+import pe.sevens.sigro.dominio.ObraAsignada
+import pe.sevens.sigro.dominio.RegistroLocal
+import pe.sevens.sigro.dominio.SalidaRegistrada
+import pe.sevens.sigro.dominio.TipoRegistro
+import pe.sevens.sigro.ui.pantallas.unirRegistros
+import pe.sevens.sigro.dominio.FichaInsumo
+import pe.sevens.sigro.ui.pantallas.EstadoCatalogo
+import pe.sevens.sigro.ui.pantallas.sinCerosDeMas
+import pe.sevens.sigro.ui.pantallas.textoFactor
+import pe.sevens.sigro.ui.pantallas.saldoParaMostrar
+import pe.sevens.sigro.ui.pantallas.validarRecepcion
+import pe.sevens.sigro.ui.pantallas.validarIngreso
+import pe.sevens.sigro.ui.pantallas.validarTraslado
+import pe.sevens.sigro.ui.pantallas.validarConteo
+import pe.sevens.sigro.ui.pantallas.LineaConteo
+import pe.sevens.sigro.ui.pantallas.EstadoCierre
+import pe.sevens.sigro.dominio.LineaAlmacen
+import pe.sevens.sigro.dominio.CompraParaRecibir
+import pe.sevens.sigro.dominio.LineaCompra
+import pe.sevens.sigro.ui.pantallas.CelularEnObra
+import pe.sevens.sigro.ui.pantallas.EstadoPantallaDispositivo
+import pe.sevens.sigro.ui.pantallas.celularEnObra
+import pe.sevens.sigro.ui.pantallas.filtrarObras
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertTrue
+
+/* Lógica de las pantallas del Sprint 2 que vive fuera de Compose (la pantalla solo pinta). */
+
+class PantallasSprint2Test {
+
+    @Test
+    fun obrasSeBuscanSinTildesNiMayusculas() {
+        val obras = listOf(ObraAsignada(1, "Multifamiliar Flores", "almacenero"), ObraAsignada(2, "Edificio Pachacámac", "ssoma"))
+        assertEquals(listOf(2), filtrarObras(obras, "pachacamac").map { it.id })
+        assertEquals(listOf(1), filtrarObras(obras, "  FLORES ").map { it.id })
+        assertEquals(2, filtrarObras(obras, "").size)
+    }
+
+    @Test
+    fun estadoDelCelularPorObra() {
+        assertEquals(CelularEnObra.AUTORIZADO, celularEnObra("autorizado", consultado = true))
+        assertEquals(CelularEnObra.PENDIENTE, celularEnObra("pendiente", consultado = true))
+        assertEquals(CelularEnObra.SIN_SOLICITAR, celularEnObra(null, consultado = true))
+        assertEquals(CelularEnObra.SIN_CONSULTAR, celularEnObra("autorizado", consultado = false), "sin señal no se adivina")
+    }
+
+    @Test
+    fun misRegistrosUneLasDosColasConLoMasRecientePrimero() {
+        val salida = SalidaRegistrada(
+            "s1", 1, Insumo(1, "1151", "CEMENTO PORTLAND TIPO I - 42.5 KG", "bolsas"), "25", "Vaciado", "Maestro de obra",
+            null, 2_000L, EstadoEnvio.RECHAZADO, "No hay stock suficiente.", null, 1,
+        )
+        val jornada = RegistroLocal("r1", 1, TipoRegistro.JORNADA, "Trabajador 01", "Presente · 8 h", 3_000L, EstadoEnvio.PENDIENTE, null, null, 0)
+        val filas = unirRegistros(listOf(salida), listOf(jornada))
+        assertEquals(listOf("r1", "s1"), filas.map { it.clave })
+        assertEquals("25 bolsas", filas[1].cantidad)
+        assertEquals("No hay stock suficiente.", filas[1].motivoRechazo, "HU-38: el rechazo se ve con su motivo")
+        assertEquals("Asistencia", filas[0].tipo)
+    }
+
+    @Test
+    fun miCelularSoloPidePermisoSinSolicitarORevocado() {
+        fun p(estado: String?) = EstadoPantallaDispositivo(EstadoDispositivo("sigro-android-x", estado)).puedePedir
+        assertTrue(p(null)); assertTrue(p("revocado"))
+        assertFalse(p("pendiente")); assertFalse(p("autorizado"))
+        assertFalse(EstadoPantallaDispositivo().puedePedir, "mientras consulta no se ofrece el botón")
+    }
+
+    @Test
+    fun fichaMuestraElFactorSoloSiHayUnoDeclarado() {
+        val acero = FichaInsumo(1, "1147", "FIERRO CORRUGADO DE 1/2\" x 9m", "unidades", "kg", "8.9400", "material", true, true)
+        assertEquals("1 unidades = 8.94 kg", textoFactor(acero))
+        assertTrue(textoFactor(acero.copy(factorConversion = "1", unidadS10 = "unidades"))!!.startsWith("Sin factor"), "HU-17: sin factor, misma unidad")
+        assertEquals(null, textoFactor(acero.copy(factorConversion = null)), "sin señal no se inventa")
+        assertEquals("10", sinCerosDeMas("10"))
+    }
+
+    @Test
+    fun resumenDeLaBusquedaDelCatalogo() {
+        assertEquals("Sin coincidencias", EstadoCatalogo(q = "zzz").resumen)
+        assertTrue(EstadoCatalogo(q = "fierro", total = 90, resultados = List(40) { FichaInsumo(it, "$it", "X", "u") }).resumen.contains("afina"))
+    }
+
+    @Test
+    fun stockNoSeCalculaEnElCelular() {
+        assertEquals("[lo calcula el servidor]", saldoParaMostrar(null, "bolsas"), "regla 2: sin saldo del servidor no hay número")
+        assertEquals("38 bolsas", saldoParaMostrar("38", "bolsas"))
+    }
+
+    @Test
+    fun entradaNoRecibeMasDeLoComprado() {
+        val c = CompraParaRecibir(1, "[Proveedor]", "Factura [número]", "2026-10-27", listOf(
+            LineaCompra("1151", "CEMENTO PORTLAND TIPO I - 42.5 KG", "100", "bolsas"),
+            LineaCompra("423", "ARENA GRUESA", "6", "metro cúbico"),
+        ))
+        assertTrue(validarRecepcion(c, mapOf(0 to "60", 1 to "0")).isEmpty(), "una parte puede llegar después")
+        assertTrue(validarRecepcion(c, mapOf(0 to "101", 1 to "6")).containsKey(0), "HU-35: no más de lo comprado")
+        assertTrue(validarRecepcion(c, mapOf(0 to "0", 1 to "0")).containsKey(-1), "al menos una cantidad")
+    }
+
+    @Test
+    fun ingresoSinCompraExigeCosto() {
+        val arena = Insumo(423, "423", "ARENA GRUESA", "metro cúbico")
+        assertEquals(setOf("costo"), validarIngreso(arena, "1,5", "").keys, "HU-41: sin costo no se valoriza")
+        assertTrue(validarIngreso(arena, "1,5", "60").isEmpty())
+        assertEquals(setOf("insumo", "cantidad", "costo"), validarIngreso(null, "", "").keys)
+    }
+
+    @Test
+    fun trasladoExigeDestinoYCantidades() {
+        val cemento = Insumo(1151, "1151", "CEMENTO PORTLAND TIPO I - 42.5 KG", "bolsas")
+        assertEquals(setOf("destino", "lineas"), validarTraslado(null, emptyList()).keys)
+        assertEquals(setOf("0"), validarTraslado(ObraAsignada(2, "Otra", ""), listOf(LineaAlmacen(cemento, "0"))).keys)
+        assertTrue(validarTraslado(ObraAsignada(2, "Otra", ""), listOf(LineaAlmacen(cemento, "20"))).isEmpty())
+    }
+
+    @Test
+    fun conteoAdmiteCeroYExigeAlgoContado() {
+        val arena = Insumo(423, "423", "ARENA GRUESA", "metro cúbico")
+        assertTrue(validarConteo(listOf(LineaConteo(arena, "0"))).isEmpty(), "contar cero es válido")
+        assertEquals(setOf("0"), validarConteo(listOf(LineaConteo(arena, ""))).keys)
+        assertEquals(setOf("lineas"), validarConteo(emptyList()).keys)
+    }
+
+    @Test
+    fun cierreExigeConfirmarLosSaldos() {
+        assertFalse(EstadoCierre("2026-11-01").puedeGuardar)
+        assertTrue(EstadoCierre("2026-11-01", confirmo = true).puedeGuardar)
+    }
+}

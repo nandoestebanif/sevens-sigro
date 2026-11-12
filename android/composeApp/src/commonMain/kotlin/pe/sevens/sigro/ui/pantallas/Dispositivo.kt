@@ -2,24 +2,27 @@ package pe.sevens.sigro.ui.pantallas
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.Row
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.ErrorOutline
+import androidx.compose.material.icons.filled.HelpOutline
+import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.VerifiedUser
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -30,18 +33,24 @@ import org.koin.compose.viewmodel.koinViewModel
 import pe.sevens.sigro.dominio.ErrorSigro
 import pe.sevens.sigro.dominio.EstadoDispositivo
 import pe.sevens.sigro.dominio.RepositorioDispositivo
-import pe.sevens.sigro.ui.componentes.AvisoError
-import pe.sevens.sigro.ui.componentes.AvisoInfo
-import pe.sevens.sigro.ui.componentes.BarraSuperior
-import pe.sevens.sigro.ui.componentes.BotonGrande
+import pe.sevens.sigro.ui.componentes.AvisoRojo
+import pe.sevens.sigro.ui.componentes.BotonNegro
+import pe.sevens.sigro.ui.componentes.Etiqueta
+import pe.sevens.sigro.ui.componentes.PantallaVidrio
+import pe.sevens.sigro.ui.componentes.TarjetaVidrio
+import pe.sevens.sigro.ui.componentes.planoCelular
+import pe.sevens.sigro.ui.tema.Paleta
 
-/* HU-15 · el celular pide ser el dispositivo autorizado de la obra. */
+/* 1.4 · Mi celular (lienzo Celular.dc.html, HU-15): el celular pide ser el dispositivo autorizado de la obra. */
 
 data class EstadoPantallaDispositivo(
     val dispositivo: EstadoDispositivo? = null,
     val cargando: Boolean = false,
     val error: String? = null,
-)
+) {
+    /** Sin solicitar o revocado: puede (volver a) pedir autorización. Cambiar de celular exige al administrador. */
+    val puedePedir: Boolean get() = dispositivo != null && (dispositivo.estado == null || dispositivo.estado == "revocado")
+}
 
 class DispositivoViewModel(private val repo: RepositorioDispositivo) : ViewModel() {
     private val _e = MutableStateFlow(EstadoPantallaDispositivo())
@@ -64,35 +73,47 @@ class DispositivoViewModel(private val repo: RepositorioDispositivo) : ViewModel
     }
 }
 
+private data class ChipCelular(val icono: ImageVector, val color: Color, val fondo: Color)
+
+private fun chip(estado: String?): ChipCelular = when (estado) {
+    "autorizado" -> ChipCelular(Icons.Filled.CheckCircle, Paleta.EnviadoTexto, Paleta.EnviadoFondo)
+    "pendiente", EstadoDispositivo.YA_SOLICITADO -> ChipCelular(Icons.Filled.Schedule, Paleta.PendienteTexto, Paleta.PendienteFondo)
+    "revocado" -> ChipCelular(Icons.Filled.ErrorOutline, Paleta.RechazadoTexto, Paleta.RechazadoFondo)
+    else -> ChipCelular(Icons.Filled.HelpOutline, Color(0xFF334155), Color(0xFFE2E8F0))
+}
+
 @Composable
-fun PantallaDispositivo(obraId: Int, alVolver: () -> Unit, vm: DispositivoViewModel = koinViewModel()) {
+fun PantallaDispositivo(obraId: Int, alVolver: () -> Unit, obraNombre: String? = null, vm: DispositivoViewModel = koinViewModel()) {
     val e by vm.estado.collectAsState()
     LaunchedEffect(obraId) { vm.cargar(obraId) }
 
-    Scaffold(
-        topBar = { BarraSuperior("Mi celular", "Autorización para registrar en esta obra", alVolver = alVolver) },
-        containerColor = MaterialTheme.colorScheme.background,
-    ) { pad ->
-        Column(
-            Modifier.fillMaxSize().padding(pad).padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp),
-        ) {
-            Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
-                Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text("Código de este celular", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text(e.dispositivo?.identificador ?: "…", fontFamily = FontFamily.Monospace, style = MaterialTheme.typography.bodyLarge)
-                    Text("Estado: ${e.dispositivo?.estadoLegible ?: "consultando…"}", style = MaterialTheme.typography.titleMedium)
+    PantallaVidrio(
+        "Mi celular", plano = { planoCelular(it) }, alVolver = alVolver,
+        subtitulo = obraNombre?.let { "Autorización en $it" } ?: "Autorización para registrar en esta obra",
+    ) {
+        TarjetaVidrio(Modifier.semantics(mergeDescendants = true) {}) {
+            Text("Código de este celular", fontSize = 14.sp, color = Paleta.Texto3)
+            Text(e.dispositivo?.identificador ?: "…", fontFamily = FontFamily.Monospace, fontSize = 15.sp, color = Paleta.Tinta)
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("Estado:", fontSize = 17.sp, fontWeight = FontWeight.SemiBold, color = Paleta.Tinta)
+                val d = e.dispositivo
+                if (d == null) {
+                    Text("consultando…", fontSize = 15.sp, color = Paleta.Texto3)
+                } else {
+                    val c = chip(d.estado)
+                    Etiqueta(d.estadoLegible, c.color, c.fondo, c.icono)
                 }
             }
-            AnimatedVisibility(e.error != null) { AvisoError(e.error.orEmpty()) }
-
-            val estado = e.dispositivo?.estado
-            if (estado == null || estado == "revocado") {
-                BotonGrande("Pedir autorización", { vm.solicitar(obraId) }, icono = Icons.Filled.VerifiedUser, cargando = e.cargando)
-            }
-            AvisoInfo(
+        }
+        AnimatedVisibility(e.error != null) { AvisoRojo(e.error.orEmpty()) }
+        if (e.puedePedir) {
+            BotonNegro("Pedir autorización", { vm.solicitar(obraId) }, icono = Icons.Filled.VerifiedUser, colorIcono = Paleta.NaranjaVivo, cargando = e.cargando)
+        }
+        TarjetaVidrio {
+            Text(
                 "El administrador autoriza el celular desde la web. Un registro que llegue de un celular no autorizado " +
                     "lo rechaza el servidor y queda en «Mis registros» con el motivo.",
+                fontSize = 15.sp, lineHeight = 22.sp, color = Color(0xFF7C2D12),
             )
         }
     }

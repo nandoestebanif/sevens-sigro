@@ -1,0 +1,16 @@
+/* Inter servida desde la propia web (antes: Google Fonts, dos orígenes más y una hoja de estilo que bloqueaba el pintado).
+   - Una sola fuente VARIABLE cubre los pesos 400 a 800 que usa el diseño (un archivo en lugar de cinco).
+   - Subconjunto latino (español completo, «», —, …, €): 47 KiB en woff2. Lo que no esté en el rango cae a system-ui.
+   - font-display: swap → el texto se ve de inmediato con la fuente del sistema y cambia a Inter al llegar.
+   - index.html la precarga (<link rel="preload">) para que llegue junto con el JS y no después del CSS.
+   Origen: @fontsource-variable/inter 5.3.0 (OFL-1.1, public/fuentes/LICENSE-Inter.txt). */
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url('/fuentes/inter-latin-variable.woff2') format('woff2-variations'),
+       url('/fuentes/inter-latin-variable.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329,
+    U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
