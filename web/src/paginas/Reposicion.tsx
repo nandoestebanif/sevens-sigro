@@ -10,6 +10,7 @@
      filtrado, listo para convertirse en la solicitud de materiales (HU-66).
    Lienzo W5 «Reposición» (estilo vidrio).
    ───────────────────────────────────────────────────────────────────────── */
+import { usaApiReal } from '../api/http'
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { api } from '../api/cliente'
@@ -113,7 +114,9 @@ export function Reposicion() {
         />
 
         <Chips>
-          <Chip tono="info">Comprado y stock: datos de ejemplo · lo requerido es el S10 real</Chip>
+          {usaApiReal
+            ? <Chip tono="bien">Requerido, comprado y stock: del servidor</Chip>
+            : <Chip tono="info">Comprado y stock: datos de ejemplo · lo requerido es el S10 real</Chip>}
           <Chip tono="neutro">El requerimiento avisa, no bloquea</Chip>
         </Chips>
 
