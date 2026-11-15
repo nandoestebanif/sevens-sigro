@@ -38,6 +38,10 @@ export interface LineaCompra {
   cantidad: number
   unidadCompra: string
   precioUnitario: number
+  /** HU-33: nota opcional si el precio se sale de lo habitual (no es obligatoria, D13) */
+  notaPrecio?: string
+  /** HU-33: solo para mostrar en el formulario; lo que vale lo marca el servidor */
+  fueraDeLoHabitual?: boolean
 }
 
 export type EstadoCompra = 'registrada' | 'recibida_parcial' | 'recibida' | 'anulada'
@@ -74,6 +78,40 @@ export interface LineaRecepcion {
   pedido: number
   recibido: number
   pendiente: number
+}
+
+/** HU-44: entradas y salidas de una semana (periodo de la obra), por insumo y almacén. Lo calcula el servidor. */
+export interface FilaSemana {
+  almacen: string
+  insumoId: string // código del insumo
+  descripcion: string
+  unidad: string
+  saldoInicial: number
+  entradas: number
+  salidas: number // un reverso resta en la columna de lo que anula: puede salir negativa
+  saldoFinal: number
+}
+export interface ReporteSemana {
+  numero: number
+  inicio: string
+  fin: string
+  cerrada: boolean
+  criterio: string
+  filas: FilaSemana[]
+}
+
+/** HU-36: lo que se va a recibir contra lo requerido en el S10, ANTES de guardar. Avisa, no bloquea (regla 7). */
+export interface VerificacionRecepcion {
+  hayExceso: boolean
+  lineas: {
+    insumoId: string
+    descripcion: string
+    unidad: string // unidad del S10, la del requerimiento
+    requerido: number | null // null: el insumo no está en el requerimiento
+    conEsta: number // lo ya recibido más lo de ahora
+    exceso: number | null
+    excede: boolean
+  }[]
 }
 
 /** Insumo tal como lo necesita el formulario de compra. */
@@ -135,6 +173,8 @@ export interface AvanceInsumo {
   /** HU-24: falta por comprar = requerido − comprado, nunca negativa */
   saldoPorComprar: number
   desviacionPuntos: number // consumido − avance del plazo
+  /** HU-23: true si el servidor aún no puede dar lo recibido y lo consumido (se muestra «—», no 0) */
+  sinDatoAlmacen?: boolean
 }
 
 /** HU-57: los insumos no planificados se informan aparte,
