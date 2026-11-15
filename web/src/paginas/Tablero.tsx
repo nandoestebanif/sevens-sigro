@@ -13,10 +13,16 @@
    - Los insumos no planificados se informan aparte y no tocan la desviación.
    - El reporte declara su alcance (gasto en recursos ≠ costo total) y advierte
      que lo planificado incluye desperdicio: exceder avisa, no bloquea.
+   HU-58 (T-325, T-326): con el servidor configurado, la parte de arriba son las
+   cinco cifras reales del gasto (GastoRecursos.tsx) y reemplaza al prototipo.
+   La comparación por insumo (HU-57, HU-23) sigue con datos de ejemplo hasta
+   conectarla con /costo/desviacion y /avance (T-214, T-093) y lo dice.
    ───────────────────────────────────────────────────────────────────────── */
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { api } from '../api/cliente'
+import { usaApiReal } from '../api/http'
+import { GastoRecursos } from './GastoRecursos'
 import type { AvanceInsumo, ResumenTablero } from '../api/tipos'
 import { Chip, Medidor, Vacio, type TonoChip } from '../ui/base'
 import { Chips, Encabezado, Fondo, Kpi, Segmentado, TituloSeccion, Vidrio, estiloPildora } from '../ui/vidrio'
@@ -61,36 +67,49 @@ export function Tablero() {
       <div className="pagina" style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
         <Encabezado
           titulo="Gasto en recursos"
-          sub={`Presupuesto 2701006 del S10 · semana ${r.semana} de ${r.semanasTotales} · lo consumido contra lo planificado en el reporte de recursos`}
+          sub={usaApiReal
+            ? 'Cuánto se compró, se recibió, se consumió y queda en stock en la obra, al mismo corte y con su definición.'
+            : `Presupuesto 2701006 del S10 · semana ${r.semana} de ${r.semanasTotales} · lo consumido contra lo planificado en el reporte de recursos`}
           acciones={<Link to="/compras" className="foco-vidrio" style={estiloPildora()}>+ Registrar compra</Link>}
         />
 
-        <Chips>
-          <Chip tono="info">Consumo y compras: datos de ejemplo · lo planificado es el S10 real</Chip>
-          <Chip tono="neutro">Avance del plazo: {pct1(r.avancePlazoPct)} %</Chip>
-        </Chips>
-
-        <Vidrio estilo={{ borderLeft: '4px solid var(--accion)', padding: '14px 20px' }} etiqueta="Alcance del reporte">
-          <p style={{ fontSize: 14, color: 'var(--tinta-2)', lineHeight: 1.55 }}>
-            <strong style={{ color: 'var(--tinta)' }}>Esto es el gasto en recursos, no el costo total de la obra.</strong>{' '}
-            Incluye material, herramientas y horas hombre. No incluye gastos generales,
-            subcontratos, servicios ni planilla. Y lo planificado ya incluye el desperdicio:
-            excederlo avisa, nunca bloquea.
-          </p>
-        </Vidrio>
-
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 14 }}>
-          <Kpi rotulo="Planificado en recursos" prefijo="S/" valor={soles(planificado)} pie="Materiales, herramientas y horas hombre del S10" />
-          <Kpi rotulo="Gastado a la fecha" prefijo="S/" valor={soles(r.gastoTotal)} pie={`${pct1(gastoPct)} % de lo planificado`} />
-          <Kpi
-            rotulo="Desviación del gasto" valor={pts(desvioGlobal)} color={colorDesvio(desvioGlobal)}
-            pie={`Gasto ${pct1(gastoPct)} % frente a ${pct1(r.avancePlazoPct)} % del plazo`}
-          />
-          <Kpi rotulo="Avance del plazo" valor={`${pct1(r.avancePlazoPct)} %`} pie={`semana ${r.semana} de ${r.semanasTotales}`} />
-        </div>
+        {usaApiReal ? (
+          <>
+            <GastoRecursos />
+            <Chips>
+              <Chip tono="info">Comparación por insumo: datos de ejemplo hasta conectar /costo/desviacion (T-214)</Chip>
+            </Chips>
+          </>
+        ) : (
+          <>
+          <Chips>
+            <Chip tono="info">Consumo y compras: datos de ejemplo · lo planificado es el S10 real</Chip>
+            <Chip tono="neutro">Avance del plazo: {pct1(r.avancePlazoPct)} %</Chip>
+          </Chips>
+  
+          <Vidrio estilo={{ borderLeft: '4px solid var(--accion)', padding: '14px 20px' }} etiqueta="Alcance del reporte">
+            <p style={{ fontSize: 14, color: 'var(--tinta-2)', lineHeight: 1.55 }}>
+              <strong style={{ color: 'var(--tinta)' }}>Esto es el gasto en recursos, no el costo total de la obra.</strong>{' '}
+              Incluye material, herramientas y horas hombre. No incluye gastos generales,
+              subcontratos, servicios ni planilla. Y lo planificado ya incluye el desperdicio:
+              excederlo avisa, nunca bloquea.
+            </p>
+          </Vidrio>
+  
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 14 }}>
+            <Kpi rotulo="Planificado en recursos" prefijo="S/" valor={soles(planificado)} pie="Materiales, herramientas y horas hombre del S10" />
+            <Kpi rotulo="Gastado a la fecha" prefijo="S/" valor={soles(r.gastoTotal)} pie={`${pct1(gastoPct)} % de lo planificado`} />
+            <Kpi
+              rotulo="Desviación del gasto" valor={pts(desvioGlobal)} color={colorDesvio(desvioGlobal)}
+              pie={`Gasto ${pct1(gastoPct)} % frente a ${pct1(r.avancePlazoPct)} % del plazo`}
+            />
+            <Kpi rotulo="Avance del plazo" valor={`${pct1(r.avancePlazoPct)} %`} pie={`semana ${r.semana} de ${r.semanasTotales}`} />
+          </div>
+          </>
+        )}
 
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 18, alignItems: 'flex-start' }}>
-          <div style={{ flex: '999 1 520px', minWidth: 0, display: 'flex', flexDirection: 'column', gap: 18 }}>
+          {!usaApiReal && <div style={{ flex: '999 1 520px', minWidth: 0, display: 'flex', flexDirection: 'column', gap: 18 }}>
             <Vidrio estilo={{ display: 'flex', flexDirection: 'column', gap: 18 }} etiqueta="Por familia de recurso">
               <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', gap: 8, alignItems: 'baseline' }}>
                 <TituloSeccion>Por familia de recurso</TituloSeccion>
@@ -115,10 +134,10 @@ export function Tablero() {
               </p>
             </Vidrio>
 
-          </div>
+          </div>}
 
           <aside style={{ flex: '1 1 280px', minWidth: 0, display: 'flex', flexDirection: 'column', gap: 18 }}>
-            <Vidrio estilo={{ display: 'flex', flexDirection: 'column', gap: 10 }} etiqueta="Plazo de la obra">
+            {!usaApiReal && <Vidrio estilo={{ display: 'flex', flexDirection: 'column', gap: 10 }} etiqueta="Plazo de la obra">
               <TituloSeccion>Plazo de la obra</TituloSeccion>
               <div
                 role="img" aria-label={`Avance del plazo: ${r.avancePlazoPct} por ciento`}
@@ -129,7 +148,7 @@ export function Tablero() {
               <span className="n" style={{ fontSize: 14, color: 'var(--tinta-2)' }}>
                 Semana {r.semana} de {r.semanasTotales} · {pct1(r.avancePlazoPct)} % del plazo
               </span>
-            </Vidrio>
+            </Vidrio>}
 
             <Vidrio estilo={{ display: 'flex', flexDirection: 'column', gap: 10 }} etiqueta="No planificados">
               <TituloSeccion>No planificados · aparte</TituloSeccion>
