@@ -48,7 +48,7 @@ persona está asignada.
 | Agregar un insumo no planificado | C | — | R | R | — |
 | **Compras y recepciones** | | | | | |
 | Consultar y registrar proveedores | R | — | R | R | C |
-| Registrar la compra y su comprobante | — | — | R | R | C |
+| Registrar la compra y su comprobante (CR-05) | R | — | R | R | C |
 | Consultar las compras para recibirlas | C | — | R | R | C |
 | Registrar la recepción de la compra | R | — | C | C | C |
 | **Movimiento de almacén** | | | | | |

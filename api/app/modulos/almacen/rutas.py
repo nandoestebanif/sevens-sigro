@@ -624,6 +624,53 @@ def stock(almacen_id: int | None = Query(None, ge=1), a: Actor = Depends(exigir(
     return {"criterio": CRITERIO, "corte": corte, "por_almacen": por_almacen, "consolidado": consolidado, "advertencias": advertencias}
 
 
+# ------------------------------------------------------------------ HU-44 entradas y salidas de la semana
+CRITERIO_SEMANA = ("Semana = periodo de la obra (HU-03). Saldo inicial: todo lo registrado en periodos anteriores. Entradas y "
+                   "salidas: lo registrado en la semana; un reverso resta en la columna del movimiento que anula. Unidad del S10. "
+                   "Solo insumos con movimiento en la semana.")
+
+_SQL_SEMANA = """
+    WITH m AS (
+        SELECT m.almacen_id, m.insumo_id, m.periodo_id, m.sentido * m.cantidad AS efecto,
+               coalesce(o.sentido, m.sentido) AS lado
+          FROM almacen.movimiento m LEFT JOIN almacen.movimiento o ON o.id = m.revierte_a_id
+         WHERE m.proyecto_id = :p AND (CAST(:a AS bigint) IS NULL OR m.almacen_id = :a)),
+    sem AS (SELECT DISTINCT almacen_id, insumo_id FROM m WHERE periodo_id = :per)
+    SELECT sem.almacen_id, r.nombre AS almacen, sem.insumo_id, i.codigo AS insumo_codigo, i.descripcion, i.unidad,
+           coalesce(sum(m.efecto) FILTER (WHERE m.periodo_id = ANY(CAST(:antes AS bigint[]))), 0)            AS saldo_inicial,
+           coalesce(sum(m.efecto) FILTER (WHERE m.periodo_id = :per AND m.lado > 0), 0)                       AS entradas,
+           coalesce(-sum(m.efecto) FILTER (WHERE m.periodo_id = :per AND m.lado < 0), 0)                      AS salidas
+      FROM sem JOIN m ON m.almacen_id = sem.almacen_id AND m.insumo_id = sem.insumo_id
+      JOIN almacen.insumo_ref i ON i.id = sem.insumo_id
+      JOIN almacen.almacen_ref r ON r.id = sem.almacen_id
+     GROUP BY sem.almacen_id, r.nombre, sem.insumo_id, i.codigo, i.descripcion, i.unidad
+     ORDER BY r.nombre, i.codigo"""
+
+
+@router.get("/semana", response_model=e.SemanaOut)
+def semana(numero: int = Query(ge=1), almacen_id: int | None = Query(None, ge=1), formato: str = Query("json", pattern="^(json|csv)$"),
+           a: Actor = Depends(exigir("stock.consultar"))):
+    """HU-44: se elige la semana (periodo) y se ve, por insumo y almacén, saldo inicial, entradas, salidas y saldo final,
+    solo de los insumos que se movieron esa semana. `formato=csv` lo descarga para cuadrar el almacén en una hoja."""
+    periodos = internos.json_de(contexto.OBRAS, "GET", f"/interno/obras/{a.obra_id}/periodos")
+    p = next((x for x in periodos if x["numero"] == numero), None)
+    if p is None:
+        raise ErrorSigro(404, "semana_no_existe", f"La obra no tiene la semana {numero}.")
+    antes = [x["id"] for x in periodos if str(x["fecha_inicio"]) < str(p["fecha_inicio"])]
+    rows = filas(a.sesion, _SQL_SEMANA, p=a.obra_id, a=almacen_id, per=p["id"], antes=antes)
+    for r in rows:
+        r["saldo_final"] = r["saldo_inicial"] + r["entradas"] - r["salidas"]
+    if formato == "csv":
+        cab = "almacen;codigo;insumo;unidad;saldo_inicial;entradas;salidas;saldo_final"
+        cuerpo = "\n".join(";".join(str(x).replace(";", ",") for x in (
+            r["almacen"], r["insumo_codigo"], r["descripcion"], r["unidad"], r["saldo_inicial"], r["entradas"], r["salidas"],
+            r["saldo_final"])) for r in rows)
+        return Response(content="\ufeff" + cab + "\n" + cuerpo + "\n", media_type="text/csv; charset=utf-8",
+                        headers={"Content-Disposition": f'attachment; filename="semana-{numero}.csv"'})
+    return {"periodo_id": p["id"], "numero": p["numero"], "fecha_inicio": p["fecha_inicio"], "fecha_fin": p["fecha_fin"],
+            "estado": p["estado"], "criterio": CRITERIO_SEMANA, "filas": rows}
+
+
 @router.get("/kardex", response_model=list[e.KardexFilaOut])
 def kardex(insumo_id: int | None = Query(None, ge=1), almacen_id: int | None = Query(None, ge=1),
            a: Actor = Depends(exigir("stock.consultar"))):

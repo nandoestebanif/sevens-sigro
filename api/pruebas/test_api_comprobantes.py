@@ -127,11 +127,15 @@ def test_tras_anular_se_sube_el_correcto_y_la_compra_lo_muestra_vigente(mundo, e
 
 
 # ---------------------------------------------------------------- permisos y alcance (regla 9, en el servidor)
-def test_el_almacenero_consulta_pero_no_sube_ni_anula(mundo, eq, compra):
+def test_quien_registra_la_compra_sube_y_anula_su_comprobante_y_el_gerente_solo_consulta(mundo, eq, compra):
+    # CR-05 (PO, 13/11): el almacenero también registra la compra, así que también sube y anula su comprobante
     j = subir(mundo, eq, compra).json()
-    assert subir(mundo, eq, compra, PNG, "x.png", quien="almacenero", tipo="image/png").status_code == 403
-    assert mundo.http.post(ruta(eq, compra, f"/{j['id']}/anulacion"), headers=mundo.con(eq["almacenero"]), json={"motivo": "Foto movida"}).status_code == 403
+    k = subir(mundo, eq, compra, PNG, "x.png", quien="almacenero", tipo="image/png")
+    assert k.status_code == 201, k.text
+    assert mundo.http.post(ruta(eq, compra, f"/{k.json()['id']}/anulacion"), headers=mundo.con(eq["almacenero"]), json={"motivo": "Foto movida"}).status_code == 200
     assert mundo.http.get(ruta(eq, compra), headers=mundo.con(eq["almacenero"])).status_code == 200
+    assert subir(mundo, eq, compra, PNG, "y.png", quien="gerente", tipo="image/png").status_code == 403
+    assert mundo.http.post(ruta(eq, compra, f"/{j['id']}/anulacion"), headers=mundo.con(eq["gerente"]), json={"motivo": "No"}).status_code == 403
 
 
 def test_otra_obra_no_ve_ni_descarga_los_comprobantes(mundo, eq, compra):

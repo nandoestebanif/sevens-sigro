@@ -15,6 +15,16 @@ class Insumo(Base):
     __table_args__ = (
         UniqueConstraint("codigo", name="uq_insumo_codigo"),
         Index("ix_insumo_codigo_upper", text("upper(codigo)")),      # migración 0011
+        # migración 0016 (D09): mismo material, medida y marca = mismo insumo, sin importar mayúsculas ni espacios
+        Index(
+            "uq_insumo_material_medida_marca",
+            text("catalogo.normalizar(descripcion)"),
+            text("COALESCE(catalogo.normalizar(medida), ''::text)"),
+            text("COALESCE(catalogo.normalizar(marca), ''::text)"),
+            unique=True,
+            postgresql_where=text("medida IS NOT NULL OR marca IS NOT NULL"),
+        ),
+        Index("ix_insumo_material_normalizado", text("catalogo.normalizar(descripcion)")),
         {"schema": "catalogo"},
     )
 
@@ -25,6 +35,9 @@ class Insumo(Base):
     unidad_compra: Mapped[str] = mapped_column(Text)
     factor_conversion: Mapped[Decimal] = mapped_column(Numeric(18, 6), server_default="1")
     tipo: Mapped[str] = mapped_column(Text)
+    medida: Mapped[str | None] = mapped_column(Text)   # migración 0016 (D08): ya no va dentro del nombre
+    norma: Mapped[str | None] = mapped_column(Text)
+    marca: Mapped[str | None] = mapped_column(Text)
     activo: Mapped[bool] = mapped_column(Boolean, server_default=text("true"))
     verificado: Mapped[bool] = mapped_column(Boolean, server_default=text("false"))
     creado_por: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("obra.usuario.id", name="fk_insumo_creado_por_usuario"))
