@@ -102,6 +102,75 @@ def test_solo_residente_y_administrador_importan_y_ajustan(mundo, eq):
     assert importar(mundo, eq, [fila("0221000000")], quien="admin").status_code == 200
 
 
+# ═══════════════════════════════════ T-340 · insumo que el S10 no trae, agregado a mano
+def agregar(mundo, eq, codigo="0203020004", cantidad="120", precio="4.54", motivo="Partida adicional de muro", quien="residente"):
+    return post(mundo, f"/obras/{eq['proyecto']}/requerimiento", eq[quien],
+                insumo_codigo=codigo, cantidad=cantidad, precio=precio, motivo=motivo)
+
+
+def test_agregar_a_mano_queda_marcado_con_su_motivo_y_autor(mundo, eq):
+    importar(mundo, eq, [fila("0221000000")])
+    r = agregar(mundo, eq)
+    assert r.status_code == 201, r.text
+    j = r.json()
+    assert j["origen"] == "manual" and j["motivo_alta"] == "Partida adicional de muro" and j["costo_planificado"] == "544.80"
+    v = {x["insumo_codigo"]: x for x in get(mundo, f"/obras/{eq['proyecto']}/requerimiento", eq["gerente"]).json()}
+    assert v["0221000000"]["origen"] == "s10" and v["0221000000"]["motivo_alta"] is None
+    assert v["0203020004"]["origen"] == "manual"
+    assert mundo.f.q1("SELECT creado_por AS id FROM compras.requerimiento WHERE id=%s", (j["id"],)) == eq["residente"]
+    # lo agregado a mano cuenta para el saldo por comprar como cualquier otra línea
+    s = {x["insumo_codigo"]: x for x in get(mundo, f"/obras/{eq['proyecto']}/saldo-por-comprar", eq["residente"]).json()}
+    assert s["0203020004"]["requerido"] == "120.0000"
+
+
+def test_agregar_no_duplica_lo_ya_planificado_ni_acepta_insumos_fuera_del_catalogo(mundo, eq):
+    importar(mundo, eq, [fila("0221000000")])
+    r = agregar(mundo, eq, codigo="0221000000")
+    assert r.status_code == 409 and r.json()["codigo"] == "ya_planificado"
+    assert agregar(mundo, eq, codigo="9999999999").json()["codigo"] == "insumo_desconocido"
+    assert agregar(mundo, eq).status_code == 201
+    assert agregar(mundo, eq).status_code == 409                                    # dos veces, tampoco
+    assert len(get(mundo, f"/obras/{eq['proyecto']}/requerimiento", eq["residente"]).json()) == 2
+
+
+def test_agregar_exige_motivo_cantidad_positiva_y_no_acepta_campos_de_mas(mundo, eq):
+    assert agregar(mundo, eq, motivo="").status_code == 422
+    assert agregar(mundo, eq, cantidad="0").status_code == 422
+    assert agregar(mundo, eq, precio="-1").status_code == 422
+    r = post(mundo, f"/obras/{eq['proyecto']}/requerimiento", eq["residente"], insumo_codigo="0203020004", cantidad="1",
+             precio="1", motivo="Partida nueva", origen="s10")
+    assert r.status_code == 422
+
+
+def test_lo_agregado_a_mano_se_ajusta_con_motivo_y_reimportar_el_s10_no_lo_pisa(mundo, eq):
+    rid = agregar(mundo, eq).json()["id"]
+    r = post(mundo, f"/obras/{eq['proyecto']}/requerimiento/{rid}/ajustar", eq["admin"], cantidad="150", motivo="Metrado corregido")
+    assert r.status_code == 200 and r.json()["origen"] == "manual"
+    imp = importar(mundo, eq, [fila("0203020004", "36357", "4.54")]).json()
+    assert imp["creados"] == 0 and "No se pisó" in imp["advertencias"][0]
+    assert get(mundo, f"/obras/{eq['proyecto']}/requerimiento", eq["residente"]).json()[0]["cantidad_planificada"] == "150.0000"
+
+
+def test_agregar_solo_residente_y_administrador_y_en_su_obra(mundo, eq):
+    for rol in ("almacenero", "ssoma", "gerente"):
+        assert agregar(mundo, eq, quien=rol).status_code == 403, rol
+    otra = mundo.f.obra_completa()
+    assert post(mundo, f"/obras/{otra['proyecto']}/requerimiento", eq["residente"], insumo_codigo="0203020004",
+                cantidad="1", precio="1", motivo="Partida nueva").status_code == 403
+    assert agregar(mundo, eq, quien="admin").status_code == 201
+
+
+def test_el_motor_no_deja_cambiar_el_origen_ni_el_motivo_de_alta(mundo, eq):
+    rid = agregar(mundo, eq).json()["id"]
+    for sql in ("UPDATE compras.requerimiento SET origen='s10', motivo_alta=NULL WHERE id=%s RETURNING 1",
+                "UPDATE compras.requerimiento SET motivo_alta='otro' WHERE id=%s RETURNING 1"):
+        mundo.f.c.execute("SAVEPOINT intento")                                        # cada intento, por separado
+        with pytest.raises(psycopg.errors.Error) as e:
+            mundo.f.q1(sql, (rid,))
+        mundo.f.c.execute("ROLLBACK TO SAVEPOINT intento")
+        assert "SIGRO-Q1" in str(e.value) or "permission" in str(e.value).lower()
+
+
 def test_importar_rechaza_vacio_negativos_y_campos_de_mas(mundo, eq):
     assert importar(mundo, eq, []).status_code == 422
     assert importar(mundo, eq, [fila("0221000000", cantidad="-1")]).status_code == 422
@@ -221,7 +290,25 @@ def test_avance_en_unidad_de_compra_con_porcentaje_sobre_el_requerimiento(mundo,
     assert a["requerido"] == "5106.3202" and a["comprado"] == "1000.0000" and a["pct_comprado"] == "19.58"
 
 
-def test_avance_declara_lo_que_depende_de_almacen_en_vez_de_inventarlo(mundo, eq):
+def test_avance_sin_movimientos_trae_recibido_y_consumido_en_cero(mundo, eq):
+    """Almacén responde y no hay movimientos: 0 es un dato real, no un hueco."""
+    importar(mundo, eq, [fila("0221000000")])
+    d = get(mundo, f"/obras/{eq['proyecto']}/avance", eq["gerente"]).json()
+    assert d["pendiente"] == []
+    f0 = d["filas"][0]
+    assert (f0["recibido"], f0["consumido"], f0["pct_recibido"], f0["pct_consumido"]) == ("0.0000", "0.0000", "0.00", "0.00")
+
+
+def test_avance_declara_lo_que_depende_de_almacen_si_no_responde_en_vez_de_inventarlo(mundo, eq, monkeypatch):
+    from app import internos
+    from app.errores import ErrorSigro
+    real = internos.json_de
+
+    def almacen_caido(servicio, metodo, ruta, **kw):
+        if servicio == "almacen":
+            raise ErrorSigro(503, "servicio_no_disponible", "almacén no respondió")
+        return real(servicio, metodo, ruta, **kw)
+    monkeypatch.setattr(internos, "json_de", almacen_caido)
     importar(mundo, eq, [fila("0221000000")])
     d = get(mundo, f"/obras/{eq['proyecto']}/avance", eq["gerente"]).json()
     assert d["pendiente"] and "almacén" in d["pendiente"][0]
