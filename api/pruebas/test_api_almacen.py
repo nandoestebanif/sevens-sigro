@@ -612,3 +612,29 @@ def test_semana_inexistente_y_acceso_desde_otra_obra(mundo, ob):
     assert get(mundo, f"/obras/{ob['proyecto']}/almacen/semana", ob["residente"], numero=999).status_code == 404
     otra = mundo.f.obra_completa()
     assert get(mundo, f"/obras/{ob['proyecto']}/almacen/semana", otra["residente"], numero=1).status_code == 403
+
+
+def test_ht11_plazo_semana_en_kardex_y_cierre_de_periodo(mundo, ob):
+    p = ob["proyecto"]
+    # T-329 (D01): movimiento con fecha fuera del plazo de la obra -> 422 fuera_de_plazo
+    antes = ingreso(mundo, ob, 5, 20, fecha="2026-10-18")
+    despues = ingreso(mundo, ob, 5, 20, fecha="2026-12-07")
+    assert antes.status_code == 422 and antes.json()["codigo"] == "fuera_de_plazo"
+    assert despues.status_code == 422 and despues.json()["codigo"] == "fuera_de_plazo"
+
+    # T-330 (D02): cada movimiento queda asociado a su semana y /kardex expone semana_numero
+    periodos = get(mundo, f"/obras/{p}/periodos", ob["residente"]).json()
+    s1 = periodos[0]
+    ok = ingreso(mundo, ob, 10, 20, fecha=str(s1["fecha_inicio"]))
+    assert ok.status_code == 201
+    kardex = get(mundo, f"/obras/{p}/almacen/kardex", ob["residente"]).json()
+    assert kardex[-1]["semana_numero"] == s1["numero"] and kardex[-1]["periodo_id"] == s1["id"]
+
+    # T-332 (D04): residente/admin pueden cerrar la semana; otros roles reciben 403 y movimientos nuevos 409
+    assert post(mundo, f"/obras/{p}/periodos/{s1['numero']}/cerrar", ob["almacenero"]).status_code == 403
+    cierre = post(mundo, f"/obras/{p}/periodos/{s1['numero']}/cerrar", ob["residente"])
+    assert cierre.status_code == 200 and cierre.json()["estado"] == "cerrado"
+    rechazado = ingreso(mundo, ob, 3, 20, fecha=str(s1["fecha_inicio"]))
+    assert rechazado.status_code == 409 and rechazado.json()["codigo"] == "periodo_cerrado"
+    assert str(s1["fecha_inicio"]) in rechazado.json()["mensaje"]
+    assert post(mundo, f"/obras/{p}/periodos/999/cerrar", ob["admin"]).status_code == 404

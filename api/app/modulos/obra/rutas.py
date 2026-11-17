@@ -213,6 +213,21 @@ def listar_periodos(a: Actor = Depends(exigir("periodo.consultar"))):
     )
 
 
+@obras.post("/{obra_id}/periodos/{numero}/cerrar", response_model=e.PeriodoOut)
+def cerrar_periodo(numero: int, a: Actor = Depends(exigir("periodo.cerrar"))):
+    """HT-11 D4: cierra una semana; desde ese momento solo admite correcciones con reverso."""
+    p = fila(
+        a.sesion,
+        "UPDATE obra.periodo SET estado = 'cerrado', cerrado_en = coalesce(cerrado_en, now()), "
+        "cerrado_por = coalesce(cerrado_por, :u) WHERE proyecto_id = :p AND numero = :n "
+        "RETURNING id, numero, fecha_inicio, fecha_fin, estado",
+        u=a.usuario_id, p=a.obra_id, n=numero,
+    )
+    if p is None:
+        raise ErrorSigro(404, "no_existe", f"La obra no tiene la semana {numero}.")
+    return p
+
+
 # ---------------------------------------------------------------------- almacenes
 @obras.get("/{obra_id}/almacenes", response_model=list[e.AlmacenOut])
 def listar_almacenes(a: Actor = Depends(exigir("almacen.consultar"))):
