@@ -45,6 +45,14 @@ def test_dia_del_hecho_y_periodo():
         dom.exigir_periodo_abierto(periodos[0], es_reverso=False)
     dom.exigir_periodo_abierto(periodos[0], es_reverso=True)
     dom.exigir_periodo_abierto(None, es_reverso=False)
+    assert dom.resolver_periodo(periodos, date(2026, 10, 27), es_reverso=False)["id"] == 2
+    assert dom.resolver_periodo(periodos, date(2026, 10, 20), es_reverso=True)["id"] == 1
+    with pytest.raises(dom.ReglaAlmacen, match="cerrado") as err_cerrado:
+        dom.resolver_periodo(periodos, date(2026, 10, 20), es_reverso=False)
+    assert err_cerrado.value.estado == 409 and err_cerrado.value.codigo == "periodo_cerrado"
+    with pytest.raises(dom.ReglaAlmacen, match="fuera del plazo") as err_plazo:
+        dom.resolver_periodo(periodos, date(2026, 12, 1), es_reverso=False)
+    assert err_plazo.value.estado == 422 and err_plazo.value.codigo == "fuera_de_plazo"
 
 
 def test_unidades_costo_sin_igv_y_uuid_derivado():

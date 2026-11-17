@@ -15,6 +15,7 @@ ACCIONES: dict[str, frozenset[str]] = {
     "proyecto.ampliar_plazo": frozenset({RESIDENTE, ADMIN}),          # gerente "A": pendiente D-A2
     "proyecto.consultar": TODOS,
     "periodo.consultar": TODOS,
+    "periodo.cerrar": frozenset({RESIDENTE, ADMIN}),
     "almacen.registrar": frozenset({ALMACENERO, RESIDENTE, ADMIN}),
     "almacen.consultar": frozenset({ALMACENERO, RESIDENTE, ADMIN, GERENTE}),
     # --- usuarios y accesos

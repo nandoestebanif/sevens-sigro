@@ -68,8 +68,27 @@ def periodo_de(periodos: list[dict], dia: date) -> dict | None:
 def exigir_periodo_abierto(periodo: dict | None, es_reverso: bool) -> None:
     """D4: en un periodo cerrado solo entran reversos (como en tareo)."""
     if periodo is not None and periodo["estado"] == "cerrado" and not es_reverso:
-        raise ReglaAlmacen(409, "periodo_cerrado",
-                           f"El periodo {periodo['numero']} está cerrado: solo admite correcciones con reverso.")
+        rango = f"{periodo['fecha_inicio']} al {periodo['fecha_fin']}"
+        raise ReglaAlmacen(
+            409, "periodo_cerrado",
+            f"El periodo {periodo['numero']} ({rango}) está cerrado: no admite movimientos nuevos, solo correcciones con reverso.",
+        )
+
+
+def resolver_periodo(periodos: list[dict], dia: date, es_reverso: bool) -> dict:
+    """D1 y D4: el movimiento pertenece a una semana dentro del plazo de la obra; si está cerrada, solo admite reversos."""
+    if not periodos:
+        raise ReglaAlmacen(422, "fuera_de_plazo", "La obra no tiene periodos configurados.")
+    p = periodo_de(periodos, dia)
+    if p is None:
+        inicio = min(_a_fecha(x["fecha_inicio"]) for x in periodos)
+        fin = max(_a_fecha(x["fecha_fin"]) for x in periodos)
+        raise ReglaAlmacen(
+            422, "fuera_de_plazo",
+            f"La fecha del movimiento ({dia}) está fuera del plazo de la obra ({inicio} al {fin}).",
+        )
+    exigir_periodo_abierto(p, es_reverso)
+    return p
 
 
 def a_unidad_s10(cantidad: Decimal, unidad: str | None, insumo: dict) -> Decimal:
