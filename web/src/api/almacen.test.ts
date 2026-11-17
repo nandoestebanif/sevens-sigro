@@ -134,4 +134,21 @@ describe('movimiento semanal (HU-44)', () => {
     expect(r).toMatchObject({ numero: 4, inicio: '2026-11-09', cerrada: false,
       filas: [{ insumoId: 'SIGRO-00001', almacen: 'Almacén central', saldoInicial: 70, entradas: 50, salidas: -18, saldoFinal: 138 }] })
   })
+
+  it('HU-55 · HT-11 D2: el kárdex incluye semana e importe valorizado', async () => {
+    const movConSemana = {
+      id: 12, uuid_cliente: 'u2', tipo: 'salida_consumo', sentido: -1, proyecto_id: 1, almacen_id: 1, insumo_id: 1,
+      insumo_codigo: 'SIGRO-00001', unidad: 'bls', cantidad: '10', costo_unitario: '26.5', motivo: 'Losa 1',
+      quien_retira: 'Maestro', origen: null, recepcion_id: null, revierte_a_id: null, registrado_por: 2,
+      fecha_servidor: '2026-11-12T15:00:00Z', revertido_por_id: null, recepcion_motivo_exceso: null, semana_numero: 4,
+    }
+    servidor({
+      ...OBRAS,
+      'GET /api/v1/catalogo/insumos': INSUMOS,
+      'GET /api/v1/obras/1/almacenes': [{ id: 1, nombre: 'Almacén central', tipo: 'central', estado: 'activo' }],
+      'GET /api/v1/obras/1/almacen/kardex': [movConSemana],
+    })
+    const [m] = await almacenHttp.kardex()
+    expect(m).toMatchObject({ id: 'M-0012', tipo: 'salida', semana: 4, importe: 265 })
+  })
 })

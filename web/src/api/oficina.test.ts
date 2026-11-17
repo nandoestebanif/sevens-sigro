@@ -1,6 +1,7 @@
 /* HT-11 y HU-17, HU-33: rutas y cuerpos de las acciones de oficina, con fetch simulado. */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { desvioPct, nombresDeLaObra, olvidarNombres, plazo, precios, proveedores, requerimiento } from './oficina'
+import { rucValido } from './sunat'
 
 let pedidos: { url: string; metodo: string; cuerpo: any }[] = []
 function servidor(rutas: Record<string, unknown>) {
@@ -80,5 +81,31 @@ describe('T-345 · nombres de quien registró', () => {
     servidor({ ...OBRAS })   // 403 en asignaciones (p. ej. almacenero)
     const m2 = await nombresDeLaObra()
     expect([...m2.entries()]).toEqual([[3, 'Residente']])
+  })
+})
+
+describe('T-275 · T-276 · HU-31 validación SUNAT y cierre de semana', () => {
+  it('verifica el dígito verificador SUNAT en local', () => {
+    expect(rucValido('20131312955')).toBe(true)
+    expect(rucValido('20131312954')).toBe(false)
+    expect(rucValido('99131312955')).toBe(false)
+  })
+
+  it('revalida un proveedor contra el servidor y cierra semana en periodos', async () => {
+    servidor({
+      ...OBRAS,
+      'POST /api/v1/proveedores/7/validar': {
+        id: 7, ruc: '20131312955', razon_social: 'PROVEEDOR PRUEBA SAC', estado: 'con_alerta_sunat',
+        alerta_sunat: 'BAJA DEFINITIVA', consultado_en: '2026-11-17T10:00:00Z',
+        compras_registradas: 2, ultima_compra: '2026-11-10', advertencia: null,
+      },
+      'POST /api/v1/obras/1/periodos/4/cerrar': {
+        id: 14, numero: 4, fecha_inicio: '2026-11-09', fecha_fin: '2026-11-15', estado: 'cerrado',
+      },
+    })
+    const prov = await proveedores.validar('7')
+    expect(prov).toMatchObject({ id: '7', estado: 'con_alerta_sunat', alertaSunat: 'BAJA DEFINITIVA' })
+    await plazo.cerrarSemana('1', 4)
+    expect(pedidos.some((p) => p.metodo === 'POST' && p.url.endsWith('/api/v1/obras/1/periodos/4/cerrar'))).toBe(true)
   })
 })

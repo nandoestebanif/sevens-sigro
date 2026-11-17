@@ -15,7 +15,7 @@ import { ErrorApi } from './error'
 import { conReintentos, type OpcionesReintento } from './reintentos'
 import { faltaFactor } from './unidades'
 import type {
-  AvanceInsumo, Compra, EstadoCompra, HistorialFactor, InsumoCatalogo, InsumoMaestro, LineaCompra, LineaRecepcion,
+  AvanceInsumo, Compra, ComprobanteCompra, EstadoCompra, HistorialFactor, InsumoCatalogo, InsumoMaestro, LineaCompra, LineaRecepcion,
   Obra, ObraActiva, ParametroReposicion, Proveedor, ResultadoRequerimiento, Semana, TipoComprobante,
 } from './tipos'
 // importes propios de almacén y semana: en su línea, para no chocar con la lista de arriba
@@ -62,6 +62,17 @@ function convertir(v: unknown, f: (k: string) => string): unknown {
   return v
 }
 
+function construirErrorHttp(r: Response, texto: string): ErrorApi {
+  let datos: any = null
+  try {
+    datos = texto ? JSON.parse(texto) : null
+  } catch { /* el 502 de Render mientras un servicio despierta es HTML */ }
+  const d = (datos && (datos.codigo ? datos : datos.detail)) || {}
+  // Pydantic antepone «Value error, » a las validaciones propias: al usuario le basta el mensaje
+  const mensaje = typeof d.mensaje === 'string' ? d.mensaje.replace(/^([a-z_]+: )?Value error, /, '') : null
+  return new ErrorApi(d.codigo ?? `http_${r.status}`, mensaje ?? 'El servidor rechazó la operación.', r.status)
+}
+
 /* ── una petición ── */
 export async function pedir<T>(metodo: 'GET' | 'POST', ruta: string, cuerpo?: object): Promise<T> {
   const s = sesionActual()
@@ -84,20 +95,13 @@ export async function pedir<T>(metodo: 'GET' | 'POST', ruta: string, cuerpo?: ob
     throw new ErrorApi('sesion_vencida', 'Tu sesión venció. Vuelve a ingresar.')
   }
   const texto = await r.text()
-  let datos: any = null
+  if (!r.ok) throw construirErrorHttp(r, texto)
   try {
-    datos = texto ? JSON.parse(texto) : null
+    return convertir(texto ? JSON.parse(texto) : null, aCamel) as T
   } catch {
     // el 502 de Render mientras un servicio despierta es una página HTML, no {codigo, mensaje}
-    if (r.ok) throw new ErrorApi('respuesta_invalida', 'El servidor respondió algo que SIGRO no entiende.', r.status)
+    throw new ErrorApi('respuesta_invalida', 'El servidor respondió algo que SIGRO no entiende.', r.status)
   }
-  if (!r.ok) {
-    const d = (datos && (datos.codigo ? datos : datos.detail)) || {}
-    // Pydantic antepone «Value error, » a las validaciones propias: al usuario le basta el mensaje
-    const mensaje = typeof d.mensaje === 'string' ? d.mensaje.replace(/^([a-z_]+: )?Value error, /, '') : null
-    throw new ErrorApi(d.codigo ?? `http_${r.status}`, mensaje ?? 'El servidor rechazó la operación.', r.status)
-  }
-  return convertir(datos, aCamel) as T
 }
 
 /** HU-12. Si el servidor está despertando (502, 503 o sin red) se reintenta solo, hasta 3 veces con espera
@@ -181,13 +185,15 @@ export const obrasHttp = {
   },
 }
 
-/* ── proveedores (HU-29, HU-30) ── */
+/* ── proveedores (HU-29, HU-30, HU-31) ── */
 interface ProveedorApi {
   id: number; ruc: string; razonSocial: string; estado: Proveedor['estado']
+  alertaSunat?: string | null; consultadoEn?: string | null; advertencia?: string | null
   comprasRegistradas: number; ultimaCompra: string | null
 }
 const aProveedor = (p: ProveedorApi): Proveedor => ({
   id: String(p.id), ruc: p.ruc, razonSocial: p.razonSocial, estado: p.estado,
+  alertaSunat: p.alertaSunat ?? null, consultadoEn: p.consultadoEn ?? null, advertencia: p.advertencia ?? null,
   diasEntrega: null, // la API aún no registra días de entrega
   comprasRegistradas: p.comprasRegistradas, ultimaCompra: p.ultimaCompra,
 })
@@ -200,6 +206,9 @@ export const proveedoresHttp = {
   },
   async crear(ruc: string, razonSocial: string): Promise<Proveedor> {
     return aProveedor(await pedir<ProveedorApi>('POST', '/proveedores', { ruc: ruc.trim(), razonSocial: razonSocial.trim() }))
+  },
+  async validar(id: string): Promise<Proveedor> {
+    return aProveedor(await pedir<ProveedorApi>('POST', `/proveedores/${id}/validar`))
   },
 }
 
@@ -348,13 +357,19 @@ export const reposicionHttp = {
     return pedir<ResultadoRequerimiento>('POST', `/obras/${await obraId()}/requerimiento/importar`, { filas })
   },
 }
-/* ── compras (HU-32) y recepción (HU-35) ── */
+/* ── compras (HU-32, HU-34) y recepción (HU-35) ── */
 interface CompraApi {
   id: number; proveedorId: number; proveedorRazonSocial: string
-  comprobantesVigentes?: number
+  proveedorEstado?: Proveedor['estado']; proveedorAlertaSunat?: string | null
+  comprobantesVigentes?: number; advertencias?: string[]
   tipoComprobante: TipoComprobante; numeroComprobante: string; fecha: string
   estado: 'registrada' | 'anulada'; totales: { base: string; igv: string; total: string }
   lineas: { insumoCodigo: string; descripcion: string; cantidad: string; unidadCompra: string; precioUnitario: string }[]
+}
+interface ComprobanteApi {
+  id: number; compraId: number; nombre: string; tipoMime: ComprobanteCompra['tipoMime']
+  tamanoBytes: number; sha256: string; estado: ComprobanteCompra['estado']
+  subidoPor: number; subidoEn: string; anuladoPor: number | null; anuladoEn: string | null; motivoAnulacion: string | null
 }
 interface RecepcionLineaApi {
   insumoId: number; unidadCompra: string; pedido: string; recibido: string; pendiente: string
@@ -366,9 +381,15 @@ function estadoRecepcionDeCompra(lineas: RecepcionLineaApi[]): EstadoCompra {
   if (recibido <= 0) return 'registrada'
   return pendiente <= 0 ? 'recibida' : 'recibida_parcial'
 }
+const aComprobante = (c: ComprobanteApi): ComprobanteCompra => ({
+  id: String(c.id), compraId: String(c.compraId), nombre: c.nombre, tipoMime: c.tipoMime,
+  tamanoBytes: c.tamanoBytes, sha256: c.sha256, estado: c.estado, subidoPor: c.subidoPor,
+  subidoEn: c.subidoEn, anuladoPor: c.anuladoPor, anuladoEn: c.anuladoEn, motivoAnulacion: c.motivoAnulacion,
+})
 const aCompra = (c: CompraApi, oId: string, estado?: EstadoCompra): Compra => ({
   id: String(c.id), obraId: oId, proveedorId: String(c.proveedorId),
-  proveedorRazonSocial: c.proveedorRazonSocial, tipoComprobante: c.tipoComprobante,
+  proveedorRazonSocial: c.proveedorRazonSocial, proveedorEstado: c.proveedorEstado,
+  proveedorAlertaSunat: c.proveedorAlertaSunat ?? null, tipoComprobante: c.tipoComprobante,
   numeroComprobante: c.numeroComprobante, fecha: c.fecha,
   estado: estado ?? (c.estado === 'anulada' ? 'anulada' : 'registrada'),
   lineas: c.lineas.map((l) => ({
@@ -377,6 +398,8 @@ const aCompra = (c: CompraApi, oId: string, estado?: EstadoCompra): Compra => ({
   })),
   totales: { base: num(c.totales.base), igv: num(c.totales.igv), total: num(c.totales.total) },
   adjunto: (c.comprobantesVigentes ?? 0) > 0,
+  comprobantesVigentes: c.comprobantesVigentes ?? 0,
+  advertencias: c.advertencias,
 })
 const nuevoUuid = () =>
   typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
@@ -417,6 +440,60 @@ export const comprasHttp = {
       const r = estados[i]
       return aCompra(c, oId, r.status === 'fulfilled' ? r.value : (c.estado === 'anulada' ? 'anulada' : 'registrada'))
     })
+  },
+  async listarComprobantes(compraId: string): Promise<ComprobanteCompra[]> {
+    const oId = await obraId()
+    return (await pedir<ComprobanteApi[]>('GET', `/obras/${oId}/compras/${compraId}/comprobantes`)).map(aComprobante)
+  },
+  async subirComprobante(compraId: string, archivo: File): Promise<ComprobanteCompra> {
+    const s = sesionActual()
+    const oId = await obraId()
+    const form = new FormData()
+    form.append('archivo', archivo)
+    let r: Response
+    try {
+      r = await fetch(`${API_URL}/api/v1/obras/${oId}/compras/${compraId}/comprobantes`, {
+        method: 'POST',
+        headers: s ? { Authorization: `Bearer ${s.token}` } : {},
+        body: form,
+      })
+    } catch {
+      throw new ErrorApi('sin_conexion', 'No se pudo conectar con el servidor de SIGRO. Revisa tu conexión e inténtalo de nuevo.')
+    }
+    if (r.status === 401 && s) {
+      guardarSesion(null)
+      throw new ErrorApi('sesion_vencida', 'Tu sesión venció. Vuelve a ingresar.')
+    }
+    const texto = await r.text()
+    if (!r.ok) throw construirErrorHttp(r, texto)
+    return aComprobante(convertir(JSON.parse(texto), aCamel) as ComprobanteApi)
+  },
+  async descargarComprobante(compraId: string, adjuntoId: string): Promise<Blob> {
+    const s = sesionActual()
+    const oId = await obraId()
+    let r: Response
+    try {
+      r = await fetch(`${API_URL}/api/v1/obras/${oId}/compras/${compraId}/comprobantes/${adjuntoId}`, {
+        headers: s ? { Authorization: `Bearer ${s.token}` } : {},
+      })
+    } catch {
+      throw new ErrorApi('sin_conexion', 'No se pudo conectar con el servidor de SIGRO. Revisa tu conexión e inténtalo de nuevo.')
+    }
+    if (r.status === 401 && s) {
+      guardarSesion(null)
+      throw new ErrorApi('sesion_vencida', 'Tu sesión venció. Vuelve a ingresar.')
+    }
+    if (!r.ok) throw construirErrorHttp(r, await r.text())
+    return r.blob()
+  },
+  async anularComprobante(compraId: string, adjuntoId: string, motivo: string): Promise<ComprobanteCompra> {
+    if (motivo.trim().length < 5) throw new ErrorApi('motivo', 'El motivo de anulación requiere al menos 5 caracteres.')
+    const oId = await obraId()
+    return aComprobante(await pedir<ComprobanteApi>(
+      'POST',
+      `/obras/${oId}/compras/${compraId}/comprobantes/${adjuntoId}/anulacion`,
+      { motivo: motivo.trim() },
+    ))
   },
 }
 
@@ -506,6 +583,23 @@ interface MovimientoApi {
   insumoCodigo: string | null; unidad: string | null; cantidad: string; costoUnitario: string; motivo: string | null
   quienRetira: string | null; origen: string | null; recepcionId: number | null; revierteAId: number | null
   registradoPor: number; fechaServidor: string; revertidoPorId?: number | null; recepcionMotivoExceso?: string | null
+  periodoId?: number | null; semanaNumero?: number | null
+}
+function diaLimaDe(iso: string): string | null {
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return iso.slice(0, 10) || null
+  return d.toLocaleDateString('en-CA', { timeZone: 'America/Lima' })
+}
+function semanaDeMovimiento(m: MovimientoApi, periodos: PeriodoApi[]): number | null {
+  if (m.semanaNumero != null) return m.semanaNumero
+  if (m.periodoId != null) {
+    const porId = periodos.find((p) => p.id === m.periodoId)
+    if (porId) return porId.numero
+  }
+  const dia = diaLimaDe(m.fechaServidor)
+  if (!dia) return null
+  const porFecha = periodos.find((p) => dia >= p.fechaInicio && dia <= p.fechaFin)
+  return porFecha ? porFecha.numero : null
 }
 interface StockFilaApi {
   almacenId: number | null; almacen: string | null; insumoId: number; insumoCodigo: string; descripcion: string
@@ -528,15 +622,26 @@ function motivoDe(m: MovimientoApi): string {
   return m.tipo.replace(/_/g, ' ')
 }
 
-async function aMovimiento(m: MovimientoApi, nombres: Map<number, string>, oId: string, personas = new Map<number, string>()): Promise<Movimiento> {
+async function aMovimiento(
+  m: MovimientoApi,
+  nombres: Map<number, string>,
+  oId: string,
+  personas = new Map<number, string>(),
+  periodos: PeriodoApi[] = [],
+): Promise<Movimiento> {
   const codigo = m.insumoCodigo ?? (await codigoDe(m.insumoId))
   const yo = sesionActual()?.usuario
+  const cantidad = num(m.cantidad)
+  const costoUnitario = num(m.costoUnitario)
   return {
     id: idMovimiento(m.id), obraId: oId, uuidCliente: m.uuidCliente, fechaServidor: m.fechaServidor,
     almacen: nombres.get(m.almacenId) ?? `Almacén ${m.almacenId}`,
     insumoId: codigo, descripcion: await descripcionDe(codigo), unidad: m.unidad ?? '',
     tipo: m.tipo === 'reverso' ? 'reverso' : m.sentido > 0 ? 'ingreso' : 'salida',
-    cantidad: num(m.cantidad), costoUnitario: num(m.costoUnitario), motivo: motivoDe(m),
+    cantidad, costoUnitario,
+    importe: Number((cantidad * costoUnitario).toFixed(2)),
+    semana: semanaDeMovimiento(m, periodos),
+    motivo: motivoDe(m),
     // T-345: quién lo registró (nombre si la obra lo deja ver) — la hora es la del servidor (fechaServidor)
     autor: personas.get(m.registradoPor) ?? (yo && yo.id === m.registradoPor ? yo.nombre : `Usuario ${m.registradoPor}`),
     reversaA: m.revierteAId ? idMovimiento(m.revierteAId) : null,
@@ -566,10 +671,14 @@ export const almacenHttp = {
   /** kárdex completo, del más reciente al más antiguo; el anulado y el que lo anuló vienen del servidor */
   async kardex(): Promise<Movimiento[]> {
     const { nombresDeLaObra } = await import('./oficina')
-    const [xs, nombres, oId, personas] = await Promise.all([
-      pedir<MovimientoApi[]>('GET', `${await almacen()}/kardex`), nombresDeAlmacen(), obraId(), nombresDeLaObra(),
+    const oId = await obraId()
+    const [xs, nombres, personas] = await Promise.all([
+      pedir<MovimientoApi[]>('GET', `${await almacen()}/kardex`), nombresDeAlmacen(), nombresDeLaObra(),
     ])
-    const movs = await Promise.all(xs.map((m) => aMovimiento(m, nombres, oId, personas)))
+    const periodos = xs.some((m) => m.semanaNumero == null)
+      ? await pedir<PeriodoApi[]>('GET', `/obras/${oId}/periodos`).catch(() => [] as PeriodoApi[])
+      : []
+    const movs = await Promise.all(xs.map((m) => aMovimiento(m, nombres, oId, personas, periodos)))
     return movs.sort((a, b) => b.fechaServidor.localeCompare(a.fechaServidor))
   },
   /** HU-45: corregir = un movimiento inverso que apunta al original; el original no se toca */

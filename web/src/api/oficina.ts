@@ -17,12 +17,19 @@ export const plazo = {
   async historial(obra: string): Promise<CambioPlazo[]> {
     return pedir<CambioPlazo[]>('GET', `/obras/${obra}/plazo-historial`)
   },
+  async cerrarSemana(obra: string, numero: number): Promise<void> {
+    await pedir('POST', `/obras/${obra}/periodos/${numero}/cerrar`)
+  },
 }
 
 /* ── HU-29 · T-344: la baja es un estado con fecha; el proveedor deja de salir en compras nuevas ── */
 export const proveedores = {
   async darDeBaja(id: string): Promise<void> {
     await pedir('POST', `/proveedores/${id}/baja`)
+  },
+  async validar(id: string) {
+    const { proveedoresHttp } = await import('./http')
+    return proveedoresHttp.validar(id)
   },
 }
 
