@@ -41,3 +41,43 @@ fun stockConocido(stock: StockObra?, insumo: Insumo?, almacenId: Int?): String? 
     return "Último stock: $cuanto" + (hora?.let { " · $it" } ?: "")
 }
 
+
+/* ── Revisión del 17/11 (prueba de Fernando en celular) ─────────────────────────────────────────────
+   1. La salida solo ofrece lo que hay en el almacén elegido, no todo el catálogo.
+   2. «Retira» se elige entre los trabajadores activos de la obra. */
+
+/** Un insumo que se puede sacar: el dato es el último saldo que dio el SERVIDOR (regla 2: no se calcula aquí). */
+data class InsumoConStock(val insumo: Insumo, val cantidad: String)
+
+/**
+ * Insumos con saldo mayor a cero en el almacén elegido (o en toda la obra si aún no se eligió), filtrados por
+ * nombre o código. `null` cuando el celular todavía no tiene ningún stock guardado: entonces no se puede filtrar
+ * y la pantalla cae al catálogo, diciéndolo.
+ */
+fun insumosConStock(stock: StockObra?, almacenId: Int?, texto: String): List<InsumoConStock>? {
+    if (stock == null) return null
+    val filas = if (almacenId != null) stock.porAlmacen.filter { it.almacenId == almacenId } else stock.consolidado
+    val t = texto.trim().lowercase()
+    return filas
+        .filter { (it.cantidad.toDoubleOrNull() ?: 0.0) > 0.0 }
+        .filter { t.isEmpty() || it.descripcion.lowercase().contains(t) || it.codigo.lowercase().contains(t) }
+        .distinctBy { it.insumoId }
+        .sortedBy { it.descripcion.lowercase() }
+        .map { InsumoConStock(Insumo(it.insumoId, it.codigo, it.descripcion, it.unidad), it.cantidad) }
+}
+
+/** Trabajadores activos (sin fecha de salida) cuyo nombre contiene lo escrito, sin importar tildes ni mayúsculas. */
+fun trabajadoresQueCoinciden(nombres: List<String>, texto: String): List<String> {
+    fun norm(s: String) = s.lowercase()
+        .replace('á', 'a').replace('é', 'e').replace('í', 'i').replace('ó', 'o').replace('ú', 'u').replace('ñ', 'n')
+        .replace(Regex("\\s+"), " ").trim()
+    val t = norm(texto)
+    return nombres.distinctBy { norm(it) }.filter { t.isEmpty() || norm(it).contains(t) }.sortedBy { norm(it) }
+}
+
+/** Con la lista de la obra cargada, quien retira debe ser uno de ellos (así el registro dice exactamente quién fue). */
+fun errorQuienRetira(quien: String, trabajadores: List<String>): String? {
+    if (trabajadores.isEmpty()) return null // sin lista en el celular: se acepta lo escrito, como antes
+    val ok = trabajadores.any { it.trim().equals(quien.trim(), ignoreCase = true) }
+    return if (ok) null else "Elige a alguien de la obra. Si no aparece, regístralo primero como trabajador de la obra."
+}
