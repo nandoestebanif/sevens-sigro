@@ -13,6 +13,8 @@
    ───────────────────────────────────────────────────────────────────────── */
 import { useEffect, useState } from 'react'
 import { ErrorApi, api } from '../api/cliente'
+import { sesionActual, usaApiReal } from '../api/http'
+import { plazo } from '../api/oficina'
 import type { ReporteSemana } from '../api/tipos'
 import { Chip, Vacio } from '../ui/base'
 import { Aviso, Chips, Encabezado, Fondo, Pildora, TituloSeccion, Vidrio } from '../ui/vidrio'
@@ -21,22 +23,47 @@ const n = (x: number) => x.toLocaleString('es-PE', { maximumFractionDigits: 4 })
 const dia = (iso: string) => (iso ? `${iso.slice(8, 10)}/${iso.slice(5, 7)}` : '')
 
 export function Semana() {
+  const [obraId, setObraId] = useState('')
   const [total, setTotal] = useState(0)
   const [numero, setNumero] = useState<number | null>(null)
   const [r, setR] = useState<ReporteSemana | null>(null)
   const [error, setError] = useState('')
+  const [aviso, setAviso] = useState('')
   const [bajando, setBajando] = useState(false)
+  const [cerrando, setCerrando] = useState(false)
+  const [confirmarCierre, setConfirmarCierre] = useState(false)
+
+  const rol = sesionActual()?.obras.find((x) => String(x.id) === obraId)?.rol ?? sesionActual()?.obras[0]?.rol
+  const puedeCerrar = usaApiReal && (rol === 'residente' || rol === 'administrador')
 
   // por defecto, la semana en curso de la obra activa
   useEffect(() => {
-    api.obraActiva().then((o) => { setTotal(o.semanasTotales); setNumero(Math.max(1, Math.min(o.semana || 1, o.semanasTotales || 1))) })
+    api.obraActiva().then((o) => {
+      setObraId(o.id)
+      setTotal(o.semanasTotales)
+      setNumero(Math.max(1, Math.min(o.semana || 1, o.semanasTotales || 1)))
+    })
   }, [])
 
   useEffect(() => {
     if (numero === null) return
-    setR(null); setError('')
+    setR(null); setError(''); setAviso(''); setConfirmarCierre(false)
     api.reporteSemana(numero).then(setR).catch((e) => setError(e instanceof ErrorApi ? e.message : 'No se pudo cargar la semana.'))
   }, [numero])
+
+  const cerrar = async () => {
+    if (!obraId || numero === null) return
+    setCerrando(true); setError(''); setAviso('')
+    try {
+      await plazo.cerrarSemana(obraId, numero)
+      setConfirmarCierre(false)
+      setAviso(`Semana ${numero} cerrada. Desde ahora solo admite correcciones con reverso.`)
+      const actualizado = await api.reporteSemana(numero)
+      setR(actualizado)
+    } catch (e) {
+      setError(e instanceof ErrorApi ? e.message : 'No se pudo cerrar la semana.')
+    } finally { setCerrando(false) }
+  }
 
   const descargar = async () => {
     if (numero === null) return
@@ -60,13 +87,27 @@ export function Semana() {
         <Encabezado
           titulo="Movimiento semanal"
           sub="Entradas y salidas de una semana de la obra, por insumo, para cuadrar el almacén con el corte que ya se usa."
-          acciones={<Pildora tipo="secundario" enClic={descargar} deshabilitado={bajando || !r}>{bajando ? 'Descargando…' : 'Descargar CSV'}</Pildora>}
+          acciones={
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+              {puedeCerrar && r && !r.cerrada && !confirmarCierre && (
+                <Pildora tipo="secundario" enClic={() => setConfirmarCierre(true)}>Cerrar semana {numero}</Pildora>
+              )}
+              {puedeCerrar && r && !r.cerrada && confirmarCierre && (
+                <>
+                  <Pildora tipo="primario" enClic={cerrar} deshabilitado={cerrando}>{cerrando ? 'Cerrando…' : `Confirmar cierre S${numero}`}</Pildora>
+                  <Pildora tipo="secundario" enClic={() => setConfirmarCierre(false)} deshabilitado={cerrando}>Cancelar</Pildora>
+                </>
+              )}
+              <Pildora tipo="secundario" enClic={descargar} deshabilitado={bajando || !r}>{bajando ? 'Descargando…' : 'Descargar CSV'}</Pildora>
+            </div>
+          }
         />
         <Chips>
           <Chip tono="neutro">Lo calcula el servidor desde el libro</Chip>
           <Chip tono="neutro">Solo insumos con movimiento en la semana</Chip>
           {r?.cerrada && <Chip tono="aviso">Semana cerrada: solo admite reversos</Chip>}
         </Chips>
+        {aviso && <Aviso tono="bien" rol="status">{aviso}</Aviso>}
 
         <Vidrio estilo={{ display: 'flex', flexDirection: 'column', gap: 12 }} etiqueta="Reporte de la semana">
           <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>

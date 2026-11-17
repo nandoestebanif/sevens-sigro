@@ -13,7 +13,7 @@ function servidor(responder: (url: string, metodo: string) => { estado: number; 
     pedidos.push({
       url,
       metodo,
-      cuerpo: init.body ? JSON.parse(String(init.body)) : undefined,
+      cuerpo: typeof init.body === 'string' ? JSON.parse(init.body) : init.body,
       autorizacion: h.Authorization ?? null,
     })
     const r = responder(url, metodo)
@@ -168,5 +168,38 @@ describe('recepcionHttp (T-158 · HU-35)', () => {
     expect(e).toBeInstanceOf(ErrorApi)
     expect(e.codigo).toBe('vacia')
     expect(pedidos).toHaveLength(0)
+  })
+
+  it('HU-34: adjunta, lista, descarga y anula comprobantes con motivo', async () => {
+    const comp = {
+      id: 99, compra_id: 7, nombre: 'factura-f001.pdf', tipo_mime: 'application/pdf',
+      tamano_bytes: 2048, sha256: 'abc123def456', estado: 'vigente',
+      subido_por: 3, subido_en: '2026-11-17T10:00:00Z', anulado_por: null, anulado_en: null, motivo_anulacion: null,
+    }
+    servidor((url, metodo) => {
+      if (url.endsWith('/api/v1/obras')) return { estado: 200, cuerpo: [OBRA] }
+      if (url.endsWith('/compras/7/comprobantes') && metodo === 'POST') return { estado: 201, cuerpo: comp }
+      if (url.endsWith('/compras/7/comprobantes') && metodo === 'GET') return { estado: 200, cuerpo: [comp] }
+      if (url.endsWith('/compras/7/comprobantes/99') && metodo === 'GET') return { estado: 200, cuerpo: 'PDF' }
+      if (url.endsWith('/compras/7/comprobantes/99/anulacion') && metodo === 'POST') {
+        return { estado: 200, cuerpo: { ...comp, estado: 'anulado', motivo_anulacion: 'archivo equivocado' } }
+      }
+      return { estado: 404 }
+    })
+
+    const file = new File(['%PDF-1.4'], 'factura-f001.pdf', { type: 'application/pdf' })
+    const subido = await comprasHttp.subirComprobante('7', file)
+    expect(subido).toMatchObject({ id: '99', compraId: '7', nombre: 'factura-f001.pdf', estado: 'vigente' })
+    expect(pedidos.find((p) => p.url.endsWith('/compras/7/comprobantes') && p.metodo === 'POST')?.cuerpo).toBeInstanceOf(FormData)
+
+    const lista = await comprasHttp.listarComprobantes('7')
+    expect(lista).toHaveLength(1)
+
+    const blob = await comprasHttp.descargarComprobante('7', '99')
+    expect(blob).toBeInstanceOf(Blob)
+
+    const anulado = await comprasHttp.anularComprobante('7', '99', 'archivo equivocado')
+    expect(anulado).toMatchObject({ estado: 'anulado', motivoAnulacion: 'archivo equivocado' })
+    await expect(comprasHttp.anularComprobante('7', '99', 'abc')).rejects.toMatchObject({ codigo: 'motivo' })
   })
 })

@@ -14,14 +14,16 @@
 // los 284 insumos del S10 solo los usa el cliente simulado: van en su propio trozo, fuera del arranque
 const insumosS10 = () => import('../datos/insumos-s10').then((m) => m.INSUMOS_S10)
 import type {
-  AlertaReposicion, AvanceInsumo, Compra, HistorialFactor, InsumoCatalogo, InsumoMaestro,
+  AlertaReposicion, AvanceInsumo, Compra, ComprobanteCompra, HistorialFactor, InsumoCatalogo, InsumoMaestro,
   LineaCompra, LineaRecepcion, Movimiento, Obra, ObraActiva, Proveedor,
   ParametroReposicion, ResultadoRequerimiento, ResumenTablero, Semana, StockInsumo, TipoComprobante,
   ReporteSemana, VerificacionRecepcion,
 } from './tipos'
 
 import { ErrorApi } from './error'
+import { desviacion, type Desviacion, type OrdenDesviacion } from './costo'
 import { almacenHttp, avanceHttp, catalogoHttp, comprasHttp, obrasHttp, proveedoresHttp, recepcionHttp, reposicionHttp, semanaHttp, usaApiReal } from './http'
+import { rucValido } from './sunat'
 export { ErrorApi }
 
 export interface ClienteSigro {
@@ -52,6 +54,8 @@ export interface ClienteSigro {
   /** solo los que admiten compras nuevas: excluye a los dados de baja (HU-29) */
   proveedoresParaComprar(): Promise<Proveedor[]>
   crearProveedor(datos: { ruc: string; razonSocial: string; validadoEnSunat?: boolean }): Promise<Proveedor>
+  /** HU-31: vuelve a consultar SUNAT (o valida dígito en simulación) */
+  validarProveedor(id: string): Promise<Proveedor>
   listarInsumos(): Promise<InsumoCatalogo[]>
   /** el catálogo maestro completo de la empresa (los 2 243 reales + los creados) */
   listarMaestro(): Promise<InsumoMaestro[]>
@@ -71,6 +75,11 @@ export interface ClienteSigro {
     lineas: LineaCompra[]
   }): Promise<Compra>
   listarCompras(): Promise<Compra[]>
+  /** HU-34: adjuntar, listar, descargar y anular comprobantes digitales */
+  listarComprobantes(compraId: string): Promise<ComprobanteCompra[]>
+  subirComprobante(compraId: string, archivo: File): Promise<ComprobanteCompra>
+  descargarComprobante(compraId: string, adjuntoId: string): Promise<Blob | null>
+  anularComprobante(compraId: string, adjuntoId: string, motivo: string): Promise<ComprobanteCompra>
   /** HU-35: pedido, recibido y pendiente por insumo (lo calcula el servidor) */
   detalleRecepcion(compraId: string): Promise<LineaRecepcion[]>
   /** HU-35: recibe total o parcialmente; cada línea genera su INGRESO en el
@@ -83,7 +92,7 @@ export interface ClienteSigro {
   /** HU-36: avisa ANTES de guardar si con esta recepción se pasa lo requerido en el S10; no guarda nada */
   verificarRecepcion(compraId: string, lineas: { insumoId: string; cantidad: number }[]): Promise<VerificacionRecepcion>
   avancePorInsumo(): Promise<AvanceInsumo[]>
-  resumenTablero(): Promise<ResumenTablero>
+  resumenTablero(orden?: OrdenDesviacion): Promise<ResumenTablero>
   /** HU-43: saldo por almacén y consolidado, derivado de los movimientos */
   consultarStock(): Promise<StockInsumo[]>
   /** kárdex completo, del más reciente al más antiguo, con anuladoPor derivado */
@@ -354,6 +363,23 @@ export class ClienteSimulado implements ClienteSigro {
     return nuevo
   }
 
+  async validarProveedor(id: string): Promise<Proveedor> {
+    const proveedores = await this.cargarProveedores()
+    await espera(160)
+    const p = proveedores.find((x) => x.id === id)
+    if (!p) throw new ErrorApi('no_existe', 'Ese proveedor no existe.')
+    if (p.estado === 'de_baja') return p
+    if (!rucValido(p.ruc)) {
+      p.estado = 'sin_validar'
+      p.alertaSunat = /^\d{8}$/.test(p.ruc) ? null : 'RUC sin dígito verificador válido.'
+    } else {
+      p.estado = 'validado'
+      p.alertaSunat = null
+    }
+    p.consultadoEn = new Date().toISOString()
+    return { ...p }
+  }
+
   async aplicarImportacionS10(filas: { codigo: string; descripcion: string; unidad: string; tipo: string }[]) {
     await espera(400)
     const existentes = new Set((await insumosS10()).map((i) => i.codigo))
@@ -582,6 +608,59 @@ export class ClienteSimulado implements ClienteSigro {
     return this.compras.filter((c) => c.obraId === this.obraActivaId)
   }
 
+  private comprobantesPorCompra = new Map<string, ComprobanteCompra[]>()
+  private blobsComprobantes = new Map<string, Blob>()
+
+  async listarComprobantes(compraId: string): Promise<ComprobanteCompra[]> {
+    await espera(80)
+    return [...(this.comprobantesPorCompra.get(compraId) ?? [])]
+  }
+
+  async subirComprobante(compraId: string, archivo: File): Promise<ComprobanteCompra> {
+    await espera(160)
+    const c = this.compras.find((x) => x.id === compraId)
+    if (!c) throw new ErrorApi('no_existe', 'Esa compra no existe.')
+    if (!['application/pdf', 'image/jpeg', 'image/png'].includes(archivo.type)) {
+      throw new ErrorApi('tipo_archivo', 'Solo se admiten archivos PDF, JPG o PNG.')
+    }
+    if (archivo.size > 5 * 1024 * 1024) throw new ErrorApi('tamano_archivo', 'El archivo supera los 5 MB permitidos.')
+    const id = String(Date.now())
+    const item: ComprobanteCompra = {
+      id, compraId, nombre: archivo.name, tipoMime: archivo.type as ComprobanteCompra['tipoMime'],
+      tamanoBytes: archivo.size, sha256: 'simulado-' + id, estado: 'vigente',
+      subidoPor: 1, subidoEn: new Date().toISOString(), anuladoPor: null, anuladoEn: null, motivoAnulacion: null,
+    }
+    const lista = [...(this.comprobantesPorCompra.get(compraId) ?? []), item]
+    this.comprobantesPorCompra.set(compraId, lista)
+    this.blobsComprobantes.set(id, archivo)
+    c.comprobantesVigentes = lista.filter((x) => x.estado === 'vigente').length
+    c.adjunto = c.comprobantesVigentes > 0
+    return item
+  }
+
+  async descargarComprobante(_compraId: string, adjuntoId: string): Promise<Blob | null> {
+    await espera(60)
+    return this.blobsComprobantes.get(adjuntoId) ?? null
+  }
+
+  async anularComprobante(compraId: string, adjuntoId: string, motivo: string): Promise<ComprobanteCompra> {
+    await espera(120)
+    if (motivo.trim().length < 5) throw new ErrorApi('motivo', 'El motivo de anulación requiere al menos 5 caracteres.')
+    const lista = this.comprobantesPorCompra.get(compraId) ?? []
+    const item = lista.find((x) => x.id === adjuntoId)
+    if (!item) throw new ErrorApi('no_existe', 'Ese comprobante no existe.')
+    item.estado = 'anulado'
+    item.anuladoPor = 1
+    item.anuladoEn = new Date().toISOString()
+    item.motivoAnulacion = motivo.trim()
+    const c = this.compras.find((x) => x.id === compraId)
+    if (c) {
+      c.comprobantesVigentes = lista.filter((x) => x.estado === 'vigente').length
+      c.adjunto = c.comprobantesVigentes > 0
+    }
+    return { ...item }
+  }
+
   /** HU-35: el estado de la compra nunca se setea a mano: se deriva de lo recibido */
   private estadoDeCompra(c: Compra): Compra['estado'] {
     const rec = this.recibido[c.id] ?? {}
@@ -665,6 +744,8 @@ export class ClienteSimulado implements ClienteSigro {
   private conAnulaciones(): Movimiento[] {
     return this.movsDeObra().map((m) => ({
       ...m,
+      importe: m.importe ?? Number((m.cantidad * m.costoUnitario).toFixed(2)),
+      semana: m.semana ?? null,
       anuladoPor: this.movimientos.find((r) => r.reversaA === m.id)?.id ?? null,
     }))
   }
@@ -809,7 +890,7 @@ export class ClienteSimulado implements ClienteSigro {
       })
   }
 
-  async resumenTablero(): Promise<ResumenTablero> {
+  async resumenTablero(_orden: OrdenDesviacion = 'importe'): Promise<ResumenTablero> {
     await espera(220)
     const activa = await this.obraActiva()
     if (this.obraActivaId !== 'o1') {
@@ -866,6 +947,7 @@ class ClienteHttp extends ClienteSimulado {
     // el veredicto de SUNAT lo decide el servidor (HU-31), no la pantalla
     return proveedoresHttp.crear(datos.ruc, datos.razonSocial)
   }
+  override validarProveedor(id: string) { return proveedoresHttp.validar(id) }
   override listarMaestro() { return catalogoHttp.maestro() }
   override listarInsumos() { return catalogoHttp.insumos() }
   override crearInsumoCatalogo(datos: { nombre: string; um: string; medida?: string; marca?: string }) {
@@ -896,6 +978,10 @@ class ClienteHttp extends ClienteSimulado {
     return comprasHttp.registrar(datos)
   }
   override listarCompras() { return comprasHttp.listar() }
+  override listarComprobantes(compraId: string) { return comprasHttp.listarComprobantes(compraId) }
+  override subirComprobante(compraId: string, archivo: File) { return comprasHttp.subirComprobante(compraId, archivo) }
+  override descargarComprobante(compraId: string, adjuntoId: string) { return comprasHttp.descargarComprobante(compraId, adjuntoId) }
+  override anularComprobante(compraId: string, adjuntoId: string, motivo: string) { return comprasHttp.anularComprobante(compraId, adjuntoId, motivo) }
   // HU-35 · HU-36: recepción contra el servicio almacén (T-158 de Henry + aviso de exceso T-297)
   override detalleRecepcion(compraId: string) { return recepcionHttp.detalle(compraId) }
   override verificarRecepcion(compraId: string, lineas: { insumoId: string; cantidad: number }[]) {
@@ -911,8 +997,103 @@ class ClienteHttp extends ClienteSimulado {
   // HU-44: movimiento semanal (T-311, T-312)
   override reporteSemana(numero: number) { return semanaHttp.reporte(numero) }
   override exportarSemana(numero: number) { return semanaHttp.csv(numero) }
-  // HU-23: avance de compra y consumo (T-093)
+  // HU-23 · HU-57: avance de compra/consumo y desviación contra lo planificado
   override avancePorInsumo() { return avanceHttp.porInsumo() }
+  override async resumenTablero(orden: OrdenDesviacion = 'importe'): Promise<ResumenTablero> {
+    const [obra, desp, avp] = await Promise.allSettled([
+      obrasHttp.activa(),
+      desviacion(orden),
+      avanceHttp.porInsumo(),
+    ])
+    const activa = obra.status === 'fulfilled' ? obra.value : await super.obraActiva()
+    const dev: Desviacion | null = desp.status === 'fulfilled' ? desp.value : null
+    const avance: AvanceInsumo[] = avp.status === 'fulfilled' ? avp.value : []
+    const porCodigo = new Map(avance.map((a) => [a.codigo, a]))
+    if (!dev) {
+      return {
+        gastoTotal: 0,
+        avancePlazoPct: 0,
+        semana: activa.semana,
+        semanasTotales: activa.semanasTotales,
+        familias: [
+          { familia: 'materiales', etiqueta: 'Materiales', gastado: 0, planificado: 0, pct: 0 },
+          { familia: 'herramientas', etiqueta: 'Herramientas y equipos', gastado: 0, planificado: 0, pct: 0 },
+          { familia: 'horas_hombre', etiqueta: 'Horas hombre', gastado: 0, planificado: 0, pct: 0 },
+        ],
+        insumos: avance,
+        noPlanificados: [],
+      }
+    }
+    const insumos: AvanceInsumo[] = dev.insumos.map((d) => {
+      const av = porCodigo.get(d.insumoCodigo)
+      return {
+        insumoId: d.insumoCodigo,
+        codigo: d.insumoCodigo,
+        descripcion: d.descripcion,
+        unidadS10: av?.unidadS10 ?? d.unidad,
+        unidadCompra: av?.unidadCompra ?? d.unidad,
+        faltaFactor: av?.faltaFactor ?? null,
+        fase: av?.fase ?? d.tipo,
+        critico: d.lectura === 'sobre_lo_esperado',
+        planificadoCantidad: d.planificadoCantidad,
+        planificadoImporte: d.planificadoImporte,
+        compradoCantidad: av?.compradoCantidad ?? 0,
+        compradoPct: av?.compradoPct ?? 0,
+        recibidoPct: av?.recibidoPct ?? 0,
+        consumidoPct: d.consumidoPctPlanificado,
+        gastado: d.consumidoImporte,
+        saldoPorComprar: av?.saldoPorComprar ?? 0,
+        desviacionPuntos: d.ritmoPt,
+        sinDatoAlmacen: av?.sinDatoAlmacen ?? false,
+        unidad: d.unidad,
+        tipo: d.tipo,
+        esperadoCantidad: d.esperadoCantidad,
+        esperadoImporte: d.esperadoImporte,
+        consumidoCantidad: d.consumidoCantidad,
+        desviacionCantidad: d.desviacionCantidad,
+        desviacionImporte: d.desviacionImporte,
+        desviacionPct: d.desviacionPct,
+        efectoCantidad: d.efectoCantidad,
+        efectoPrecio: d.efectoPrecio,
+        lectura: d.lectura,
+      }
+    })
+    return {
+      gastoTotal: dev.totales.consumidoImporte,
+      avancePlazoPct: dev.avancePlazoPct,
+      semana: activa.semana,
+      semanasTotales: activa.semanasTotales,
+      familias: [
+        {
+          familia: 'materiales',
+          etiqueta: 'Materiales',
+          gastado: dev.totales.consumidoImporte,
+          planificado: dev.totales.planificadoImporte,
+          pct: dev.totales.planificadoImporte > 0
+            ? Number(((dev.totales.consumidoImporte / dev.totales.planificadoImporte) * 100).toFixed(1))
+            : 0,
+        },
+      ],
+      insumos,
+      noPlanificados: dev.noPlanificados.map((np) => ({
+        insumoCodigo: np.insumoCodigo,
+        descripcion: np.descripcion,
+        unidad: np.unidad,
+        tipo: np.tipo,
+        consumidoCantidad: np.consumidoCantidad,
+        gastado: np.consumidoImporte,
+        motivo: `${np.consumidoCantidad.toLocaleString('es-PE')} ${np.unidad} (${np.tipo}) consumidos sin partida en S10`,
+      })),
+      declaracion: dev.declaracion,
+      avisoPlanificado: dev.aviso,
+      supuesto: dev.supuesto,
+      corte: dev.corte,
+      esperadoTotal: dev.totales.esperadoImporte,
+      desviacionTotalImporte: dev.totales.desviacionImporte,
+      desviacionTotalPct: dev.totales.desviacionPct,
+      noPlanificadosImporte: dev.noPlanificadosImporte,
+    }
+  }
 }
 
 export const api: ClienteSigro = usaApiReal ? new ClienteHttp() : new ClienteSimulado()

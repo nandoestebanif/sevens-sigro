@@ -97,3 +97,127 @@ export function fechaCorte(iso: string | null): string {
   if (Number.isNaN(d.getTime())) return iso
   return d.toLocaleString('es-PE', { timeZone: 'America/Lima', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false })
 }
+
+/* ── HU-57 · consumo real contra lo planificado en el S10 ── */
+export type OrdenDesviacion = 'importe' | 'porcentaje' | 'cantidad' | 'codigo'
+
+export interface InsumoDesviacion {
+  insumoCodigo: string
+  descripcion: string
+  unidad: string
+  tipo: string
+  planificadoCantidad: number
+  precioPlanificado: number
+  planificadoImporte: number
+  esperadoCantidad: number
+  esperadoImporte: number
+  consumidoCantidad: number
+  consumidoImporte: number
+  costoReal: number | null
+  consumidoPctPlanificado: number
+  ritmoPt: number
+  desviacionCantidad: number
+  desviacionImporte: number
+  desviacionPct: number | null
+  efectoCantidad: number
+  efectoPrecio: number | null
+  lectura: string
+}
+
+export interface NoPlanificadoDesviacion {
+  insumoCodigo: string
+  descripcion: string
+  unidad: string
+  tipo: string
+  consumidoCantidad: number
+  consumidoImporte: number
+}
+
+export interface Desviacion {
+  declaracion: string
+  aviso: string
+  supuesto: string
+  moneda: string
+  corte: string
+  avancePlazoPct: number
+  toleranciaPct: number
+  orden: OrdenDesviacion
+  totales: {
+    planificadoImporte: number
+    esperadoImporte: number
+    consumidoImporte: number
+    desviacionImporte: number
+    desviacionPct: number | null
+  }
+  insumos: InsumoDesviacion[]
+  noPlanificados: NoPlanificadoDesviacion[]
+  noPlanificadosImporte: number
+}
+
+interface DesviacionApi {
+  declaracion: string; aviso: string; supuesto: string; moneda: string; corte: string
+  avancePlazoPct: string; toleranciaPct: string; orden: OrdenDesviacion
+  totales: { planificadoImporte: string; esperadoImporte: string; consumidoImporte: string; desviacionImporte: string; desviacionPct: string | null }
+  insumos: {
+    insumoCodigo: string; descripcion: string; unidad: string; tipo: string
+    planificadoCantidad: string; precioPlanificado: string; planificadoImporte: string
+    esperadoCantidad: string; esperadoImporte: string; consumidoCantidad: string; consumidoImporte: string
+    costoReal: string | null; consumidoPctPlanificado: string; ritmoPt: string
+    desviacionCantidad: string; desviacionImporte: string; desviacionPct: string | null
+    efectoCantidad: string; efectoPrecio: string | null; lectura: string
+  }[]
+  noPlanificados: { insumoCodigo: string; descripcion: string; unidad: string; tipo: string; consumidoCantidad: string; consumidoImporte: string }[]
+  noPlanificadosImporte: string
+}
+
+export async function desviacion(orden: OrdenDesviacion = 'importe', corte?: string): Promise<Desviacion> {
+  const r = await pedir<DesviacionApi>('GET', `/obras/${await obraId()}/costo/desviacion${consulta({ orden, corte })}`)
+  return {
+    declaracion: r.declaracion,
+    aviso: r.aviso,
+    supuesto: r.supuesto,
+    moneda: r.moneda,
+    corte: r.corte,
+    avancePlazoPct: num(r.avancePlazoPct),
+    toleranciaPct: num(r.toleranciaPct),
+    orden: r.orden,
+    totales: {
+      planificadoImporte: num(r.totales.planificadoImporte),
+      esperadoImporte: num(r.totales.esperadoImporte),
+      consumidoImporte: num(r.totales.consumidoImporte),
+      desviacionImporte: num(r.totales.desviacionImporte),
+      desviacionPct: n0(r.totales.desviacionPct),
+    },
+    insumos: r.insumos.map((i) => ({
+      insumoCodigo: i.insumoCodigo,
+      descripcion: i.descripcion,
+      unidad: i.unidad,
+      tipo: i.tipo,
+      planificadoCantidad: num(i.planificadoCantidad),
+      precioPlanificado: num(i.precioPlanificado),
+      planificadoImporte: num(i.planificadoImporte),
+      esperadoCantidad: num(i.esperadoCantidad),
+      esperadoImporte: num(i.esperadoImporte),
+      consumidoCantidad: num(i.consumidoCantidad),
+      consumidoImporte: num(i.consumidoImporte),
+      costoReal: n0(i.costoReal),
+      consumidoPctPlanificado: num(i.consumidoPctPlanificado),
+      ritmoPt: num(i.ritmoPt),
+      desviacionCantidad: num(i.desviacionCantidad),
+      desviacionImporte: num(i.desviacionImporte),
+      desviacionPct: n0(i.desviacionPct),
+      efectoCantidad: num(i.efectoCantidad),
+      efectoPrecio: n0(i.efectoPrecio),
+      lectura: i.lectura,
+    })),
+    noPlanificados: r.noPlanificados.map((np) => ({
+      insumoCodigo: np.insumoCodigo,
+      descripcion: np.descripcion,
+      unidad: np.unidad,
+      tipo: np.tipo,
+      consumidoCantidad: num(np.consumidoCantidad),
+      consumidoImporte: num(np.consumidoImporte),
+    })),
+    noPlanificadosImporte: num(r.noPlanificadosImporte),
+  }
+}
