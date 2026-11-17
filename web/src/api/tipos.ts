@@ -15,6 +15,9 @@ export interface Proveedor {
   ruc: string // único en todo el sistema; lo garantiza el servidor
   razonSocial: string
   estado: EstadoProveedor
+  alertaSunat?: string | null
+  consultadoEn?: string | null
+  advertencia?: string | null
   /** días que tarda en entregar; alimenta el punto de reposición */
   diasEntrega: number | null
   comprasRegistradas: number
@@ -59,6 +62,8 @@ export interface Compra {
   obraId: string // la compra pertenece a una obra (regla 9: el alcance es la obra)
   proveedorId: string
   proveedorRazonSocial: string // denormalizada para listar sin otra consulta
+  proveedorEstado?: EstadoProveedor
+  proveedorAlertaSunat?: string | null
   tipoComprobante: TipoComprobante
   numeroComprobante: string // serie-número, p. ej. F001-4512
   fecha: string // ISO (yyyy-mm-dd)
@@ -66,6 +71,24 @@ export interface Compra {
   lineas: LineaCompra[]
   totales: TotalesCompra // registrados con la compra (criterio de HU-32)
   adjunto: boolean // la foto de la factura, una por compra
+  comprobantesVigentes?: number
+  advertencias?: string[]
+}
+
+/** HU-34: comprobante digital (PDF o imagen) adjunto a una compra; anular exige motivo. */
+export interface ComprobanteCompra {
+  id: string
+  compraId: string
+  nombre: string
+  tipoMime: 'application/pdf' | 'image/jpeg' | 'image/png'
+  tamanoBytes: number
+  sha256: string
+  estado: 'vigente' | 'anulado'
+  subidoPor: number
+  subidoEn: string
+  anuladoPor: number | null
+  anuladoEn: string | null
+  motivoAnulacion: string | null
 }
 
 /** HU-35: pedido, recibido y pendiente por insumo de una compra.
@@ -175,12 +198,28 @@ export interface AvanceInsumo {
   desviacionPuntos: number // consumido − avance del plazo
   /** HU-23: true si el servidor aún no puede dar lo recibido y lo consumido (se muestra «—», no 0) */
   sinDatoAlmacen?: boolean
+  /** HU-57: datos de desviación calculados en /costo/desviacion */
+  unidad?: string
+  tipo?: string
+  esperadoCantidad?: number
+  esperadoImporte?: number
+  consumidoCantidad?: number
+  desviacionCantidad?: number
+  desviacionImporte?: number
+  desviacionPct?: number | null
+  efectoCantidad?: number
+  efectoPrecio?: number | null
+  lectura?: string
 }
 
 /** HU-57: los insumos no planificados se informan aparte,
     para no distorsionar la desviación de los planificados. */
 export interface InsumoNoPlanificado {
+  insumoCodigo?: string
   descripcion: string
+  unidad?: string
+  tipo?: string
+  consumidoCantidad?: number
   gastado: number
   motivo: string
 }
@@ -201,6 +240,15 @@ export interface ResumenTablero {
   familias: GastoFamilia[]
   insumos: AvanceInsumo[]
   noPlanificados: InsumoNoPlanificado[]
+  /** HU-57: resumen real del endpoint /costo/desviacion */
+  declaracion?: string
+  avisoPlanificado?: string | null
+  supuesto?: string
+  corte?: string
+  esperadoTotal?: number
+  desviacionTotalImporte?: number
+  desviacionTotalPct?: number | null
+  noPlanificadosImporte?: number
 }
 
 /* ── almacén · kárdex (HU-43 · HU-45) ──
@@ -229,6 +277,10 @@ export interface Movimiento {
   /** derivado al consultar (el original jamás se modifica):
       id del reverso que lo anuló, si existe */
   anuladoPor: string | null
+  /** importe valorizado al costo congelado (cantidad × costoUnitario) */
+  importe?: number
+  /** número de semana/periodo del movimiento (HT-11 D2) */
+  semana?: number | null
 }
 
 export interface SaldoAlmacen {

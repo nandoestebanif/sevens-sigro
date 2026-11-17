@@ -18,8 +18,19 @@ export interface RucSunat {
 // En desarrollo el micro corre local; en producción esto sale de la configuración.
 const URL_INTEGRACIONES = 'http://localhost:8001'
 
+/** Valida el dígito verificador oficial SUNAT (módulo 11) de un RUC de 11 dígitos. */
+export function rucValido(ruc: string): boolean {
+  if (!/^(10|15|16|17|20)\d{9}$/.test(ruc)) return false
+  const pesos = [5, 4, 3, 2, 7, 6, 5, 4, 3, 2]
+  let suma = 0
+  for (let i = 0; i < 10; i++) suma += Number(ruc[i]) * pesos[i]
+  const resto = 11 - (suma % 11)
+  const digito = resto === 10 ? 0 : resto === 11 ? 1 : resto
+  return digito === Number(ruc[10])
+}
+
 export async function consultarRucEnSunat(ruc: string): Promise<RucSunat | null> {
-  if (!/^\d{11}$/.test(ruc)) return null
+  if (!rucValido(ruc)) return null
   try {
     const control = new AbortController()
     const temporizador = setTimeout(() => control.abort(), 6000)

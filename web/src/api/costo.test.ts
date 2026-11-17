@@ -1,6 +1,6 @@
 /* HU-56 y HU-58: la web pide al servicio costo y muestra lo que llega, sin sumar. Fetch simulado. */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { fechaCorte, gasto, inventario } from './costo'
+import { desviacion, fechaCorte, gasto, inventario } from './costo'
 
 let urls: string[] = []
 function servidor(rutas: Record<string, unknown>) {
@@ -55,5 +55,30 @@ describe('HU-56 · inventario valorizado', () => {
   it('la fecha de corte se lee en hora de Lima', () => {
     expect(fechaCorte('2026-11-15T04:59:59Z')).toContain('14/11/2026')
     expect(fechaCorte(null)).toBe('—')
+  })
+})
+
+describe('HU-57 · desviación por insumo', () => {
+  it('pide con orden elegido y convierte totales, efectos y no planificados', async () => {
+    servidor({ ...OBRAS, '/api/v1/obras/1/costo/desviacion': {
+      declaracion: 'solo recursos', aviso: 'incluye desperdicio', supuesto: 'lineal', moneda: 'PEN',
+      corte: '2026-11-15T18:00:00Z', avance_plazo_pct: '25.0', tolerancia_pct: '10', orden: 'porcentaje',
+      totales: { planificado_importe: '4000.00', esperado_importe: '1000.00', consumido_importe: '1300.00', desviacion_importe: '300.00', desviacion_pct: '30.0' },
+      insumos: [{
+        insumo_codigo: '0221000000', descripcion: 'CEMENTO', unidad: 'bls', tipo: 'material',
+        planificado_cantidad: '100', precio_planificado: '40.00', planificado_importe: '4000.00',
+        esperado_cantidad: '25', esperado_importe: '1000.00', consumido_cantidad: '30', consumido_importe: '1300.00',
+        costo_real: '43.33', consumido_pct_planificado: '30.0', ritmo_pt: '5.0',
+        desviacion_cantidad: '5.0', desviacion_importe: '300.00', desviacion_pct: '30.0',
+        efecto_cantidad: '200.00', efecto_precio: '100.00', lectura: 'sobre_lo_esperado',
+      }],
+      no_planificados: [{ insumo_codigo: 'NP-1', descripcion: 'IMPERMEABILIZANTE', unidad: 'gal', tipo: 'material', consumido_cantidad: '2', consumido_importe: '120.00' }],
+      no_planificados_importe: '120.00',
+    } })
+    const d = await desviacion('porcentaje')
+    expect(urls[urls.length - 1]).toBe('/api/v1/obras/1/costo/desviacion?orden=porcentaje')
+    expect(d.totales).toEqual({ planificadoImporte: 4000, esperadoImporte: 1000, consumidoImporte: 1300, desviacionImporte: 300, desviacionPct: 30 })
+    expect(d.insumos[0]).toMatchObject({ insumoCodigo: '0221000000', efectoCantidad: 200, efectoPrecio: 100, lectura: 'sobre_lo_esperado' })
+    expect(d.noPlanificados[0]).toMatchObject({ insumoCodigo: 'NP-1', consumidoImporte: 120 })
   })
 })

@@ -16,7 +16,7 @@
    ───────────────────────────────────────────────────────────────────────── */
 import { useEffect, useMemo, useState } from 'react'
 import { ErrorApi, api } from '../api/cliente'
-import type { Compra, EstadoCompra, InsumoCatalogo, LineaCompra, LineaRecepcion, Proveedor, TipoComprobante, VerificacionRecepcion } from '../api/tipos'
+import type { Compra, ComprobanteCompra, EstadoCompra, InsumoCatalogo, LineaCompra, LineaRecepcion, Proveedor, TipoComprobante, VerificacionRecepcion } from '../api/tipos'
 import { Campo, Chip, Modal, Vacio, type TonoChip } from '../ui/base'
 import { Aviso, Chips, Encabezado, Fondo, Pildora, TituloSeccion } from '../ui/vidrio'
 import { BuscarOpcion } from '../ui/BuscarOpcion'
@@ -196,6 +196,155 @@ function Etiqueta({ htmlFor, children }: { htmlFor: string; children: string }) 
   )
 }
 
+/* ── HU-34 · adjuntar, descargar y anular comprobantes digitales (sin borrar el archivo original) ── */
+function ComprobantesCompra({ compra, enCerrar, enCambio }: {
+  compra: Compra
+  enCerrar: () => void
+  enCambio: () => void
+}) {
+  const [lista, setLista] = useState<ComprobanteCompra[] | null>(null)
+  const [error, setError] = useState('')
+  const [aviso, setAviso] = useState('')
+  const [subiendo, setSubiendo] = useState(false)
+  const [anulandoId, setAnulandoId] = useState<string | null>(null)
+  const [motivoAnulacion, setMotivoAnulacion] = useState('')
+  const [procesandoAnulacion, setProcesandoAnulacion] = useState(false)
+
+  const recargar = () => {
+    setError('')
+    api.listarComprobantes(compra.id).then(setLista).catch((e) => setError(e instanceof ErrorApi ? e.message : 'No se pudieron cargar los comprobantes.'))
+  }
+  useEffect(recargar, [compra.id])
+
+  const subir = async (archivo: File | null) => {
+    if (!archivo) return
+    setSubiendo(true); setError(''); setAviso('')
+    try {
+      await api.subirComprobante(compra.id, archivo)
+      setAviso(`Comprobante «${archivo.name}» adjuntado correctamente.`)
+      recargar()
+      enCambio()
+    } catch (e) {
+      setError(e instanceof ErrorApi ? e.message : 'No se pudo adjuntar el comprobante.')
+    } finally {
+      setSubiendo(false)
+    }
+  }
+
+  const descargar = async (c: ComprobanteCompra) => {
+    setError(''); setAviso('')
+    try {
+      const blob = await api.descargarComprobante(compra.id, c.id)
+      if (!blob) { setAviso('En modo demostración solo se descargan archivos subidos en esta sesión.'); return }
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = c.nombre
+      a.click()
+      URL.revokeObjectURL(url)
+    } catch (e) {
+      setError(e instanceof ErrorApi ? e.message : 'No se pudo descargar el comprobante.')
+    }
+  }
+
+  const anular = async (c: ComprobanteCompra) => {
+    setProcesandoAnulacion(true); setError(''); setAviso('')
+    try {
+      await api.anularComprobante(compra.id, c.id, motivoAnulacion)
+      setAnulandoId(null)
+      setMotivoAnulacion('')
+      setAviso(`Comprobante «${c.nombre}» marcado como anulado (se conserva el historial).`)
+      recargar()
+      enCambio()
+    } catch (e) {
+      setError(e instanceof ErrorApi ? e.message : 'No se pudo anular el comprobante.')
+    } finally {
+      setProcesandoAnulacion(false)
+    }
+  }
+
+  const peso = (bytes: number) => bytes >= 1024 * 1024
+    ? `${(bytes / (1024 * 1024)).toFixed(2)} MB`
+    : `${Math.max(1, Math.round(bytes / 1024))} KB`
+
+  return (
+    <Modal titulo={`Comprobantes · ${compra.numeroComprobante}`} enCerrar={enCerrar}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <p style={{ fontSize: 13.5, color: 'var(--tinta-2)', margin: 0 }}>
+          {compra.proveedorRazonSocial} · {compra.fecha}. Formatos permitidos: PDF, JPG o PNG (máximo 5 MB).
+        </p>
+
+        {compra.estado !== 'anulada' && (
+          <label style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 13, fontWeight: 600, color: 'var(--tinta-2)' }}>
+            Adjuntar archivo
+            <input
+              type="file"
+              accept="application/pdf,image/jpeg,image/png,.pdf,.jpg,.jpeg,.png"
+              disabled={subiendo}
+              onChange={(e) => {
+                const file = e.target.files?.[0] ?? null
+                e.target.value = ''
+                void subir(file)
+              }}
+              style={{ fontSize: 13.5 }}
+            />
+          </label>
+        )}
+
+        {subiendo && <span style={{ fontSize: 13, color: 'var(--tinta-2)' }}>Subiendo comprobante…</span>}
+        {error && <Aviso tono="grave" rol="alert">{error}</Aviso>}
+        {aviso && <Aviso tono="bien" rol="status">{aviso}</Aviso>}
+
+        {lista === null ? (
+          <Vacio titulo="Cargando…" detalle="Consultando comprobantes adjuntos de la compra." />
+        ) : lista.length === 0 ? (
+          <Vacio titulo="Sin comprobantes adjuntos" detalle="Esta compra aún no tiene factura o boleta digital cargada." />
+        ) : (
+          <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {lista.map((c) => (
+              <li key={c.id} style={{ background: 'var(--vidrio-celda)', borderRadius: 14, padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                  <strong style={{ fontSize: 13.5 }}>{c.nombre}</strong>
+                  <Chip tono={c.estado === 'vigente' ? 'bien' : 'grave'}>{c.estado === 'vigente' ? 'Vigente' : 'Anulado'}</Chip>
+                </div>
+                <div className="n" style={{ fontSize: 12, color: 'var(--tinta-2)' }}>
+                  {peso(c.tamanoBytes)} · {c.subidoEn.slice(0, 10)} · huella {c.sha256.slice(0, 12)}…
+                </div>
+                {c.estado === 'anulado' && c.motivoAnulacion && (
+                  <div style={{ fontSize: 12.5, color: 'var(--grave)' }}>Motivo de anulación: {c.motivoAnulacion}</div>
+                )}
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                  <Pildora tipo="secundario" chica enClic={() => void descargar(c)}>Descargar</Pildora>
+                  {c.estado === 'vigente' && anulandoId !== c.id && (
+                    <Pildora tipo="secundario" chica enClic={() => { setAnulandoId(c.id); setMotivoAnulacion(''); setError('') }}>Anular</Pildora>
+                  )}
+                </div>
+                {anulandoId === c.id && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8, paddingTop: 6, borderTop: '1px solid var(--separador)' }}>
+                    <Campo
+                      id={`motivo-comp-${c.id}`}
+                      etiqueta="Motivo de anulación (mínimo 5 caracteres)"
+                      valor={motivoAnulacion}
+                      enCambio={setMotivoAnulacion}
+                      marcador="p. ej. Se subió archivo equivocado"
+                    />
+                    <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                      <Pildora tipo="secundario" chica enClic={() => setAnulandoId(null)} deshabilitado={procesandoAnulacion}>Cancelar</Pildora>
+                      <Pildora chica enClic={() => void anular(c)} deshabilitado={procesandoAnulacion}>
+                        {procesandoAnulacion ? 'Anulando…' : 'Confirmar anulación'}
+                      </Pildora>
+                    </div>
+                  </div>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </Modal>
+  )
+}
+
 export function Compras() {
   const [proveedores, setProveedores] = useState<Proveedor[]>([])
   const [insumos, setInsumos] = useState<InsumoCatalogo[]>([])
@@ -238,6 +387,9 @@ export function Compras() {
   const [altaAbierta, setAltaAbierta] = useState(false)
   const [guardando, setGuardando] = useState(false)
   const [recibiendo, setRecibiendo] = useState<Compra | null>(null)
+  const [comprobantesDe, setComprobantesDe] = useState<Compra | null>(null)
+  const [archivoComprobante, setArchivoComprobante] = useState<File | null>(null)
+  const [inputArchivoClave, setInputArchivoClave] = useState(0)
   const [avisoRecepcion, setAvisoRecepcion] = useState('')
 
   const cargar = () => {
@@ -280,9 +432,21 @@ export function Compras() {
       const compra = await api.registrarCompra({
         proveedorId, tipoComprobante: tipo, numeroComprobante: numero, fecha, lineas,
       })
+      if (archivoComprobante) {
+        try {
+          await api.subirComprobante(compra.id, archivoComprobante)
+          compra.adjunto = true
+          compra.comprobantesVigentes = (compra.comprobantesVigentes ?? 0) + 1
+        } catch (errAdj) {
+          const msg = errAdj instanceof ErrorApi ? errAdj.message : 'Error al subir el archivo.'
+          setError(`La compra ${compra.numeroComprobante} se registró, pero no se pudo adjuntar el comprobante: ${msg}`)
+        }
+      }
       setExito(compra)
       setLineas([])
       setNumero('')
+      setArchivoComprobante(null)
+      setInputArchivoClave((k) => k + 1)
       cargar()
     } catch (e) {
       if (e instanceof ErrorApi) setError(e.message)
@@ -434,11 +598,26 @@ export function Compras() {
             ))}
           </div>
 
+          <label style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 13, fontWeight: 600, color: 'var(--tinta-2)' }}>
+            Comprobante digital (PDF, JPG o PNG, opcional — máx. 5 MB)
+            <input
+              key={inputArchivoClave}
+              id="c-archivo"
+              type="file"
+              accept="application/pdf,image/jpeg,image/png,.pdf,.jpg,.jpeg,.png"
+              onChange={(e) => setArchivoComprobante(e.target.files?.[0] ?? null)}
+              style={{ fontSize: 13.5 }}
+            />
+          </label>
+
           {error && <Aviso tono="grave" rol="alert">{error}</Aviso>}
           {exito && (
             <Aviso tono="bien" rol="status">
               Compra {exito.numeroComprobante} registrada. El stock no se movió: se moverá con la recepción, desde la app.
             </Aviso>
+          )}
+          {exito?.advertencias && exito.advertencias.length > 0 && (
+            <Aviso tono="aviso" rol="status">{exito.advertencias.join(' · ')}</Aviso>
           )}
 
           <Pildora enClic={registrar} deshabilitado={guardando} anchoCompleto>
@@ -460,7 +639,9 @@ export function Compras() {
             <Vacio titulo="Todavía no hay compras" detalle="Las que registres aparecerán aquí con su estado de recepción." />
           ) : (
             <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column' }}>
-              {compras.map((c) => (
+              {compras.map((c) => {
+                const vigentes = c.comprobantesVigentes ?? (c.adjunto ? 1 : 0)
+                return (
                 <li key={c.id} style={{ padding: '10px 2px', borderTop: '1px solid var(--separador)', display: 'flex', flexDirection: 'column', gap: 4 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8 }}>
                     <span className="n" style={{ fontWeight: 700 }}>{c.tipoComprobante === 'factura' ? 'Factura' : 'Boleta'} {c.numeroComprobante}</span>
@@ -470,14 +651,22 @@ export function Compras() {
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                     <span className="n" style={{ fontSize: 12.5, color: 'var(--tinta-2)' }}>{c.fecha} · {c.lineas.length} {c.lineas.length === 1 ? 'insumo' : 'insumos'}</span>
                     <Chip tono={ESTADO_COMPRA[c.estado].tono}>{ESTADO_COMPRA[c.estado].texto}</Chip>
-                    {c.estado !== 'recibida' && c.estado !== 'anulada' && (
-                      <span style={{ marginLeft: 'auto' }}>
-                        <Pildora tipo="secundario" chica etiqueta={`Recibir la compra ${c.numeroComprobante}`} enClic={() => setRecibiendo(c)}>Recibir</Pildora>
-                      </span>
+                    <Chip tono={vigentes > 0 ? 'bien' : 'neutro'}>
+                      {vigentes > 0 ? (vigentes === 1 ? '1 comprobante' : `${vigentes} comprobantes`) : 'Sin comprobante'}
+                    </Chip>
+                    {c.proveedorEstado === 'con_alerta_sunat' && (
+                      <Chip tono="aviso">{c.proveedorAlertaSunat ? `SUNAT: ${c.proveedorAlertaSunat}` : 'Alerta SUNAT'}</Chip>
                     )}
+                    <span style={{ marginLeft: 'auto', display: 'inline-flex', gap: 6, flexWrap: 'wrap' }}>
+                      <Pildora tipo="secundario" chica etiqueta={`Comprobantes de ${c.numeroComprobante}`} enClic={() => setComprobantesDe(c)}>Comprobantes</Pildora>
+                      {c.estado !== 'recibida' && c.estado !== 'anulada' && (
+                        <Pildora tipo="secundario" chica etiqueta={`Recibir la compra ${c.numeroComprobante}`} enClic={() => setRecibiendo(c)}>Recibir</Pildora>
+                      )}
+                    </span>
                   </div>
                 </li>
-              ))}
+                )
+              })}
             </ul>
           )}
           <span style={{ fontSize: 12.5, color: 'var(--tinta-2)', lineHeight: 1.5 }}>
@@ -495,6 +684,13 @@ export function Compras() {
             setRecibiendo(null)
             cargar()
           }}
+        />
+      )}
+      {comprobantesDe && (
+        <ComprobantesCompra
+          compra={comprobantesDe}
+          enCerrar={() => setComprobantesDe(null)}
+          enCambio={cargar}
         />
       )}
       {altaAbierta && (

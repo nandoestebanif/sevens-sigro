@@ -21,11 +21,12 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { api } from '../api/cliente'
+import { fechaCorte, type OrdenDesviacion } from '../api/costo'
 import { usaApiReal } from '../api/http'
 import { GastoRecursos } from './GastoRecursos'
 import type { AvanceInsumo, ResumenTablero } from '../api/tipos'
 import { Chip, Medidor, Vacio, type TonoChip } from '../ui/base'
-import { Chips, Encabezado, Fondo, Kpi, Segmentado, TituloSeccion, Vidrio, estiloPildora } from '../ui/vidrio'
+import { Aviso, Chips, Encabezado, Fondo, Kpi, Segmentado, TituloSeccion, Vidrio, estiloPildora } from '../ui/vidrio'
 
 const soles = (v: number) => v.toLocaleString('es-PE', { maximumFractionDigits: 0 })
 const FAM_COLOR: Record<string, string> = {
@@ -36,14 +37,16 @@ const FAM_COLOR: Record<string, string> = {
 const tonoDesvio = (p: number): TonoChip => (p <= 1 ? 'bien' : p <= 4 ? 'aviso' : 'grave')
 const colorDesvio = (p: number) => (p <= 1 ? 'var(--bien)' : p <= 4 ? 'var(--aviso)' : 'var(--grave)')
 const pts = (p: number) => `${p > 0 ? '+' : ''}${p.toLocaleString('es-PE', { maximumFractionDigits: 1 })} pt`
+const signoSoles = (v: number) => `${v > 0 ? '+' : v < 0 ? '−' : ''}S/ ${Math.abs(v).toLocaleString('es-PE', { maximumFractionDigits: 0 })}`
 
 export function Tablero() {
   const [r, setR] = useState<ResumenTablero | null>(null)
   const [soloDesviados, setSoloDesviados] = useState(false)
+  const [orden, setOrden] = useState<OrdenDesviacion>('importe')
   useEffect(() => {
     // «sigro-panel-listo»: la entrada a la obra (App.tsx) espera a que el panel tenga sus cifras para mostrarse
-    api.resumenTablero().then(setR).finally(() => window.dispatchEvent(new Event('sigro-panel-listo')))
-  }, [])
+    api.resumenTablero(orden).then(setR).finally(() => window.dispatchEvent(new Event('sigro-panel-listo')))
+  }, [orden])
 
   if (!r) {
     return (
@@ -58,7 +61,10 @@ export function Tablero() {
   const planificado = r.familias.reduce((s, f) => s + f.planificado, 0)
   const gastoPct = planificado > 0 ? (r.gastoTotal / planificado) * 100 : 0
   const desvioGlobal = Math.round((gastoPct - r.avancePlazoPct) * 10) / 10
-  const filas: AvanceInsumo[] = soloDesviados ? r.insumos.filter((f) => f.desviacionPuntos > 1) : r.insumos
+  const conDesviacionReal = Boolean(r.corte)
+  const filas: AvanceInsumo[] = soloDesviados
+    ? r.insumos.filter((f) => f.lectura === 'sobre_lo_esperado' || f.desviacionPuntos > 1)
+    : r.insumos
   const pct1 = (v: number) => v.toLocaleString('es-PE', { maximumFractionDigits: 1 })
 
   return (
@@ -77,8 +83,26 @@ export function Tablero() {
           <>
             <GastoRecursos />
             <Chips>
-              <Chip tono="info">Comparación por insumo: datos de ejemplo hasta conectar /costo/desviacion (T-214)</Chip>
+              {conDesviacionReal ? (
+                <>
+                  <Chip tono="bien">Desviación real · corte {fechaCorte(r.corte ?? null)}</Chip>
+                  <Chip tono="neutro">Avance del plazo: {pct1(r.avancePlazoPct)} %</Chip>
+                  {r.desviacionTotalImporte !== undefined && (
+                    <Chip tono={r.desviacionTotalImporte > 0 ? 'aviso' : 'bien'}>
+                      Desviación acumulada: {signoSoles(r.desviacionTotalImporte)}
+                      {r.desviacionTotalPct !== null && r.desviacionTotalPct !== undefined ? ` (${r.desviacionTotalPct > 0 ? '+' : ''}${pct1(r.desviacionTotalPct)} %)` : ''}
+                    </Chip>
+                  )}
+                </>
+              ) : (
+                <Chip tono="neutro">Comparación de desviación por insumo no disponible para este perfil</Chip>
+              )}
             </Chips>
+            {r.avisoPlanificado && (
+              <Aviso tono="info">
+                <strong>{r.avisoPlanificado}</strong>{r.supuesto ? ` ${r.supuesto}` : ''}
+              </Aviso>
+            )}
           </>
         ) : (
           <>
@@ -172,10 +196,29 @@ export function Tablero() {
         <Vidrio estilo={{ display: 'flex', flexDirection: 'column', gap: 12 }} etiqueta="Insumos y su desviación">
           <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', gap: 10, alignItems: 'center' }}>
             <TituloSeccion>Insumos y su desviación</TituloSeccion>
-            <Segmentado
-              etiqueta="Filtro de insumos" valor={soloDesviados} enCambio={setSoloDesviados}
-              opciones={[{ valor: false, texto: 'Todos' }, { valor: true, texto: 'Solo desviados' }]}
-            />
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center' }}>
+              {conDesviacionReal && (
+                <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 600, color: 'var(--tinta-2)' }}>
+                  Ordenar
+                  <select
+                    aria-label="Ordenar desviación por"
+                    className="campo"
+                    value={orden}
+                    onChange={(e) => setOrden(e.target.value as OrdenDesviacion)}
+                    style={{ height: 36, padding: '0 10px', fontSize: 13, borderRadius: 12 }}
+                  >
+                    <option value="importe">Mayor desviación S/</option>
+                    <option value="porcentaje">Mayor desviación %</option>
+                    <option value="cantidad">Mayor desviación cantidad</option>
+                    <option value="codigo">Código SKU</option>
+                  </select>
+                </label>
+              )}
+              <Segmentado
+                etiqueta="Filtro de insumos" valor={soloDesviados} enCambio={setSoloDesviados}
+                opciones={[{ valor: false, texto: 'Todos' }, { valor: true, texto: 'Solo desviados' }]}
+              />
+            </div>
           </div>
           {r.insumos.length === 0 ? (
             <Vacio titulo="Sin requerimiento todavía" detalle="Importa la Relación de insumos del S10 para comparar lo gastado contra lo planificado." />
@@ -184,8 +227,14 @@ export function Tablero() {
               <table className="tabla-vidrio" style={{ minWidth: 900 }}>
                 <thead>
                   <tr>
-                    <th>Insumo</th><th className="n">Planificado S/</th><th className="n">Comprado</th><th className="n">Recibido</th>
-                    <th className="n">Consumido</th><th className="n">Falta comprar</th><th className="n">Gastado S/</th><th className="n">Desviación</th>
+                    <th>Insumo</th>
+                    <th className="n">Planificado S/</th>
+                    {conDesviacionReal ? <th className="n">Esperado S/</th> : <th className="n">Comprado</th>}
+                    <th className="n">Recibido</th>
+                    <th className="n">Consumido</th>
+                    <th className="n">Falta comprar</th>
+                    <th className="n">Gastado S/</th>
+                    <th className="n">Desviación</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -193,20 +242,40 @@ export function Tablero() {
                     <tr key={f.insumoId}>
                       <td style={{ minWidth: 220 }}>
                         <div style={{ fontWeight: 600 }}>{f.descripcion}</div>
-                        <div className="n" style={{ fontSize: 12, color: 'var(--tinta-2)', marginTop: 2, textAlign: 'left' }}>SKU {f.codigo}</div>
+                        <div className="n" style={{ fontSize: 12, color: 'var(--tinta-2)', marginTop: 2, textAlign: 'left' }}>
+                          SKU {f.codigo}{conDesviacionReal && f.unidad ? ` · ${f.consumidoCantidad?.toLocaleString('es-PE', { maximumFractionDigits: 2 }) ?? 0} ${f.unidad} consumidos` : ''}
+                        </div>
                       </td>
                       <td className="n">{soles(f.planificadoImporte)}</td>
-                      <td className="n">{f.compradoPct} %</td>
-                      <td className="n">{f.recibidoPct} %</td>
+                      {conDesviacionReal ? (
+                        <td className="n">{soles(f.esperadoImporte ?? 0)}</td>
+                      ) : (
+                        <td className="n">{f.compradoPct} %</td>
+                      )}
+                      <td className="n">{f.sinDatoAlmacen ? '—' : `${f.recibidoPct} %`}</td>
                       <td>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 9, justifyContent: 'flex-end' }}>
-                          <Medidor pct={f.consumidoPct} marcaPct={r.avancePlazoPct} color={colorDesvio(f.desviacionPuntos)} ancho={88} />
-                          <span className="n" style={{ width: 52, textAlign: 'right' }}>{f.consumidoPct} %</span>
-                        </div>
+                        {f.sinDatoAlmacen ? (
+                          <div className="n" style={{ color: 'var(--tinta-2)' }}>—</div>
+                        ) : (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 9, justifyContent: 'flex-end' }}>
+                            <Medidor pct={f.consumidoPct} marcaPct={r.avancePlazoPct} color={colorDesvio(f.desviacionPuntos)} ancho={88} />
+                            <span className="n" style={{ width: 52, textAlign: 'right' }}>{f.consumidoPct} %</span>
+                          </div>
+                        )}
                       </td>
                       <td className="n" style={{ whiteSpace: 'nowrap' }}>{f.saldoPorComprar.toLocaleString('es-PE')} {f.unidadCompra}</td>
                       <td className="n" style={{ fontWeight: 700 }}>{soles(f.gastado)}</td>
-                      <td className="n"><Chip tono={tonoDesvio(f.desviacionPuntos)}>{pts(f.desviacionPuntos)}</Chip></td>
+                      <td className="n">
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2 }}>
+                          <Chip tono={tonoDesvio(f.desviacionPuntos)}>{pts(f.desviacionPuntos)}</Chip>
+                          {f.desviacionImporte !== undefined && (
+                            <span style={{ fontSize: 12, color: 'var(--tinta-2)', whiteSpace: 'nowrap' }}>
+                              {signoSoles(f.desviacionImporte)}
+                              {f.efectoCantidad !== undefined ? ` (cant ${signoSoles(f.efectoCantidad)})` : ''}
+                            </span>
+                          )}
+                        </div>
+                      </td>
                     </tr>
                   ))}
                 </tbody>

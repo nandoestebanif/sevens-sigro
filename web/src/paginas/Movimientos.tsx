@@ -189,12 +189,13 @@ export function Movimientos() {
               <thead>
                 <tr>
                   <th>Mov.</th><th>Fecha (servidor)</th><th>Tipo</th><th>Insumo y motivo</th>
-                  <th className="n">Cantidad</th><th className="n">Costo cong.</th><th aria-label="Acción" />
+                  <th className="n">Cantidad</th><th className="n">Costo cong.</th><th className="n">Importe</th><th aria-label="Acción" />
                 </tr>
               </thead>
               <tbody>
                 {kardex.map((m) => {
                   const anulado = m.anuladoPor !== null
+                  const importe = m.importe ?? Number((m.cantidad * m.costoUnitario).toFixed(2))
                   return (
                     <tr key={m.id} style={{ background: m.tipo === 'reverso' ? 'var(--aviso-tinte)' : undefined }}>
                       <td className="n" style={{ color: 'var(--tinta-2)', whiteSpace: 'nowrap', textAlign: 'left' }}>{m.id}</td>
@@ -210,6 +211,7 @@ export function Movimientos() {
                         </div>
                         <div style={{ fontSize: 12.5, color: 'var(--tinta-2)', marginTop: 2 }}>
                           {m.motivo} · {m.almacen} · {m.autor}
+                          {m.semana != null && ` · Semana ${m.semana}`}
                           {m.reversaA && <strong> · anula a {m.reversaA}</strong>}
                           {anulado && <strong style={{ color: 'var(--aviso)' }}> · anulado por {m.anuladoPor}</strong>}
                         </div>
@@ -218,6 +220,9 @@ export function Movimientos() {
                         {TIPO[m.tipo].signo} {n(m.cantidad)} {m.unidad}
                       </td>
                       <td className="n" style={{ whiteSpace: 'nowrap' }}>S/ {m.costoUnitario.toFixed(2)}</td>
+                      <td className="n" style={{ fontWeight: 700, whiteSpace: 'nowrap', textDecoration: anulado ? 'line-through' : 'none', color: anulado ? 'var(--tinta-2)' : 'var(--tinta)' }}>
+                        S/ {importe.toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </td>
                       <td style={{ textAlign: 'right' }}>
                         {m.tipo !== 'reverso' && !anulado && (
                           <Pildora tipo="secundario" chica enClic={() => setCorrigiendo(m)}>Corregir</Pildora>

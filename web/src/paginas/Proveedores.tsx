@@ -18,11 +18,11 @@
 import { usaApiReal } from '../api/http'
 import { useEffect, useMemo, useState } from 'react'
 import { ErrorApi, api } from '../api/cliente'
-import { consultarRucEnSunat, type RucSunat } from '../api/sunat'
+import { consultarRucEnSunat, rucValido, type RucSunat } from '../api/sunat'
 import { proveedores as proveedoresOficina } from '../api/oficina'
 import type { EstadoProveedor, Proveedor } from '../api/tipos'
 import { Campo, Chip, Modal, Vacio, type TonoChip } from '../ui/base'
-import { Chips, Encabezado, Fondo, Pildora, Vidrio } from '../ui/vidrio'
+import { Aviso, Chips, Encabezado, Fondo, Pildora, Vidrio } from '../ui/vidrio'
 
 const ESTADO: Record<EstadoProveedor, { texto: string; tono: TonoChip }> = {
   validado: { texto: 'Validado en SUNAT', tono: 'bien' },
@@ -41,16 +41,22 @@ export function AltaProveedor({ enCerrar, enCreado }: {
   const [guardando, setGuardando] = useState(false)
   const [sunat, setSunat] = useState<RucSunat | null>(null)
   const [consultando, setConsultando] = useState(false)
+  const [avisoRuc, setAvisoRuc] = useState('')
 
-  // HU-31: con los 11 dígitos puestos, se consulta SUNAT (vía el micro de
-  // integraciones) y la razón social se llena sola. Si el micro está apagado,
-  // no pasa nada: se escribe a mano y queda «sin validar».
+  // HU-31: con los 11 dígitos puestos y dígito verificador válido, se consulta SUNAT
+  // y la razón social se llena sola. Si el micro está apagado, queda «sin validar».
   const alCambiarRuc = async (v: string) => {
     setRuc(v)
     setSunat(null)
-    if (/^\d{11}$/.test(v.trim())) {
+    setAvisoRuc('')
+    const limpio = v.trim()
+    if (/^\d{11}$/.test(limpio)) {
+      if (!rucValido(limpio)) {
+        setAvisoRuc('El dígito verificador de este RUC no coincide con la fórmula SUNAT.')
+        return
+      }
       setConsultando(true)
-      const r = await consultarRucEnSunat(v.trim())
+      const r = await consultarRucEnSunat(limpio)
       setConsultando(false)
       if (r) {
         setSunat(r)
@@ -91,6 +97,9 @@ export function AltaProveedor({ enCerrar, enCreado }: {
         />
         {consultando && (
           <span style={{ fontSize: 12.5, color: 'var(--tinta-2)' }}>Consultando en SUNAT…</span>
+        )}
+        {avisoRuc && (
+          <Aviso tono="aviso" rol="status">{avisoRuc}</Aviso>
         )}
         {sunat && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
@@ -157,11 +166,39 @@ export function Proveedores() {
   const [altaAbierta, setAltaAbierta] = useState(false)
   const [tope, setTope] = useState(60)
   const [bajando, setBajando] = useState<Proveedor | null>(null)
+  const [validandoId, setValidandoId] = useState<string | null>(null)
+  const [avisoValidacion, setAvisoValidacion] = useState<{ tono: 'bien' | 'aviso' | 'grave'; texto: string } | null>(null)
 
   const cargar = () => api.listarProveedores().then(setTodos)
   useEffect(() => {
     cargar()
   }, [])
+
+  const revalidar = async (p: Proveedor) => {
+    setValidandoId(p.id)
+    setAvisoValidacion(null)
+    try {
+      const actualizado = await api.validarProveedor(p.id)
+      setTodos((prev) => prev ? prev.map((x) => (x.id === p.id ? actualizado : x)) : prev)
+      if (actualizado.estado === 'validado') {
+        setAvisoValidacion({ tono: 'bien', texto: `${actualizado.razonSocial}: validado en SUNAT.` })
+      } else if (actualizado.estado === 'con_alerta_sunat') {
+        setAvisoValidacion({
+          tono: 'aviso',
+          texto: `${actualizado.razonSocial}: con alerta SUNAT (${actualizado.alertaSunat ?? 'revisar condición'}).`,
+        })
+      } else {
+        setAvisoValidacion({
+          tono: 'aviso',
+          texto: `${actualizado.razonSocial}: ${actualizado.advertencia ?? 'no se pudo completar la consulta SUNAT.'}`,
+        })
+      }
+    } catch (e) {
+      setAvisoValidacion({ tono: 'grave', texto: e instanceof ErrorApi ? e.message : 'No se pudo validar en SUNAT.' })
+    } finally {
+      setValidandoId(null)
+    }
+  }
 
   const visibles = useMemo(() => {
     if (!todos) return null
@@ -189,6 +226,8 @@ export function Proveedores() {
           ? <Chip tono="info">Compras y última compra: del servidor · días de entrega: aún sin registrar</Chip>
           : <Chip tono="info">Compras, entrega y última compra: datos de ejemplo</Chip>}
       </Chips>
+
+      {avisoValidacion && <Aviso tono={avisoValidacion.tono} rol="status">{avisoValidacion.texto}</Aviso>}
 
       <Vidrio estilo={{ display: 'flex', flexDirection: 'column', gap: 12 }} etiqueta="Lista de proveedores">
         <label className="vidrio-fuerte" style={{ height: 52, borderRadius: 26, padding: '0 18px', display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -219,7 +258,7 @@ export function Proveedores() {
                 <tr>
                   <th>Proveedor</th><th>RUC</th><th>Estado</th>
                   <th className="n">Entrega</th><th className="n">Compras</th><th className="n">Última compra</th>
-                  {usaApiReal && <th aria-label="Acción" />}
+                  <th aria-label="Acción" />
                 </tr>
               </thead>
               <tbody>
@@ -227,17 +266,33 @@ export function Proveedores() {
                   <tr key={p.id}>
                     <td style={{ fontWeight: 600, minWidth: 260 }}>{p.razonSocial}</td>
                     <td className="n" style={{ textAlign: 'left', color: 'var(--tinta-2)' }}>{p.ruc}</td>
-                    <td><Chip tono={ESTADO[p.estado].tono}>{ESTADO[p.estado].texto}</Chip></td>
+                    <td>
+                      <Chip tono={ESTADO[p.estado].tono}>{ESTADO[p.estado].texto}</Chip>
+                      {p.alertaSunat && (
+                        <div style={{ fontSize: 12, color: 'var(--aviso)', marginTop: 4, lineHeight: 1.3 }}>{p.alertaSunat}</div>
+                      )}
+                    </td>
                     <td className="n" style={{ whiteSpace: 'nowrap' }}>{p.diasEntrega == null ? '—' : `${p.diasEntrega} días`}</td>
                     <td className="n">{p.comprasRegistradas}</td>
                     <td className="n" style={{ whiteSpace: 'nowrap' }}>{p.ultimaCompra ?? '—'}</td>
-                    {usaApiReal && (
-                      <td style={{ textAlign: 'right' }}>
-                        {p.estado !== 'de_baja' && (
+                    <td style={{ textAlign: 'right' }}>
+                      <div style={{ display: 'inline-flex', gap: 6, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                        {p.estado !== 'de_baja' && /^\d{11}$/.test(p.ruc) && (
+                          <Pildora
+                            tipo="secundario"
+                            chica
+                            etiqueta={`Validar en SUNAT a ${p.razonSocial}`}
+                            deshabilitado={validandoId === p.id}
+                            enClic={() => revalidar(p)}
+                          >
+                            {validandoId === p.id ? 'Validando…' : 'Validar de nuevo'}
+                          </Pildora>
+                        )}
+                        {usaApiReal && p.estado !== 'de_baja' && (
                           <Pildora tipo="secundario" chica etiqueta={`Dar de baja a ${p.razonSocial}`} enClic={() => setBajando(p)}>Dar de baja</Pildora>
                         )}
-                      </td>
-                    )}
+                      </div>
+                    </td>
                   </tr>
                 ))}
               </tbody>
