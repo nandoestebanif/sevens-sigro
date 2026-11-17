@@ -21,6 +21,7 @@ class Estricto(BaseModel):
 class DesdeDispositivo(Estricto):
     uuid_cliente: UUID                                   # regla 3: clave de idempotencia nacida en el dispositivo
     hora_dispositivo_ms: int | None = Field(None, ge=0)  # HU-37: solo informativa; la que vale es la del servidor
+    fecha: date | None = Field(None, description="HT-11 D01: fecha opcional del movimiento; si se omite, se usa la hora del dispositivo o la del servidor.")
     dispositivo: str | None = Field(None, min_length=8, max_length=128)   # regla 5
 
 
@@ -228,6 +229,7 @@ class KardexFilaOut(MovimientoOut):
     revertido_por_id: int | None
     saldo_despues: Decimal
     promedio_despues: Decimal | None
+    semana_numero: int | None = None
 
 
 class ConteoLineaOut(BaseModel):

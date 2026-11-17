@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import json
 from collections.abc import Iterable
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from decimal import Decimal
 from uuid import UUID
 
@@ -108,15 +108,15 @@ def _insumos(s: Session, ids: Iterable[int], para_registrar: bool = True) -> dic
     return salida
 
 
-def _periodo(obra_id: int, hora_ms: int | None, es_reverso: bool, dia=None) -> int | None:
-    """D4: el periodo lo fija el servidor según el día del hecho; uno cerrado solo admite reversos."""
+def _periodo(obra_id: int, hora_ms: int | None, es_reverso: bool, dia: date | None = None) -> int:
+    """D1 y D4: el periodo lo fija el servidor según el día del hecho dentro del plazo; uno cerrado solo admite reversos."""
     periodos = internos.json_de(contexto.OBRAS, "GET", f"/interno/obras/{obra_id}/periodos")
-    p = dom.periodo_de(periodos, dia or dom.fecha_del_hecho(hora_ms, datetime.now(timezone.utc)))
+    fecha_hecho = dom._a_fecha(dia) if dia is not None else dom.fecha_del_hecho(hora_ms, datetime.now(timezone.utc))
     try:
-        dom.exigir_periodo_abierto(p, es_reverso)
+        p = dom.resolver_periodo(periodos, fecha_hecho, es_reverso)
     except dom.ReglaAlmacen as r:
         raise _error(r)
-    return p["id"] if p else None
+    return p["id"]
 
 
 def _fecha_dispositivo(hora_ms: int | None) -> datetime | None:
@@ -220,7 +220,7 @@ def registrar_salida(d: e.SalidaIn, respuesta: Response, a: Actor = Depends(exig
         s, respuesta, a.obra_id, "almacen.salida_registrada",
         uuid_cliente=d.uuid_cliente, proyecto_id=a.obra_id, almacen_id=alm["id"], insumo_id=d.insumo_id, tipo="salida",
         sentido=-1, cantidad=cantidad, motivo=d.motivo, quien_retira=d.quien_retira, frente=d.frente or None,
-        periodo_id=_periodo(a.obra_id, d.hora_dispositivo_ms, False), dispositivo_id=disp, registrado_por=a.usuario_id,
+        periodo_id=_periodo(a.obra_id, d.hora_dispositivo_ms, False, dia=d.fecha), dispositivo_id=disp, registrado_por=a.usuario_id,
         fecha_dispositivo=_fecha_dispositivo(d.hora_dispositivo_ms))
 
 
@@ -253,7 +253,7 @@ def registrar_ingreso(d: e.IngresoIn, respuesta: Response, a: Actor = Depends(ex
         s, respuesta, a.obra_id, "almacen.ingreso_registrado",
         uuid_cliente=d.uuid_cliente, proyecto_id=a.obra_id, almacen_id=alm["id"], insumo_id=d.insumo_id,
         tipo="ingreso_sin_compra", sentido=1, cantidad=cantidad, costo_unitario=costo, origen=d.origen,
-        origen_detalle=d.origen_detalle, periodo_id=_periodo(a.obra_id, d.hora_dispositivo_ms, False), dispositivo_id=disp,
+        origen_detalle=d.origen_detalle, periodo_id=_periodo(a.obra_id, d.hora_dispositivo_ms, False, dia=d.fecha), dispositivo_id=disp,
         registrado_por=a.usuario_id, fecha_dispositivo=_fecha_dispositivo(d.hora_dispositivo_ms))
 
 
@@ -277,7 +277,7 @@ def revertir(movimiento_id: int, d: e.ReversoIn, respuesta: Response, a: Actor =
         s, respuesta, a.obra_id, "almacen.movimiento_revertido",
         uuid_cliente=d.uuid_cliente, proyecto_id=a.obra_id, almacen_id=o["almacen_id"], insumo_id=o["insumo_id"], tipo="reverso",
         sentido=-o["sentido"], cantidad=o["cantidad"], costo_unitario=o["costo_unitario"], motivo=d.motivo,
-        revierte_a_id=o["id"], periodo_id=_periodo(a.obra_id, d.hora_dispositivo_ms, True), dispositivo_id=disp,
+        revierte_a_id=o["id"], periodo_id=_periodo(a.obra_id, d.hora_dispositivo_ms, True, dia=d.fecha), dispositivo_id=disp,
         registrado_por=a.usuario_id, fecha_dispositivo=_fecha_dispositivo(d.hora_dispositivo_ms))
 
 
@@ -394,7 +394,7 @@ def registrar_recepcion(d: e.RecepcionIn, respuesta: Response, a: Actor = Depend
             raise ErrorSigro(422, "exceso_sin_motivo", f"Con esta recepción se pasa lo requerido ({codigos}): indica el motivo del exceso "
                              "o recibe solo hasta lo requerido.")
         advertencias.append(f"Se recibió más de lo requerido ({codigos}); queda el motivo en el kárdex.")
-    periodo = _periodo(a.obra_id, d.hora_dispositivo_ms, False)
+    periodo = _periodo(a.obra_id, d.hora_dispositivo_ms, False, dia=d.fecha)
     rec = fila(s, "INSERT INTO almacen.recepcion (uuid_cliente, proyecto_id, almacen_id, compra_id, motivo_exceso, registrado_por, "
                   "dispositivo_id, fecha_dispositivo) VALUES (:u, :p, :a, :c, :m, :r, :d, :f) RETURNING id, uuid_cliente",
                u=str(d.uuid_cliente), p=a.obra_id, a=alm["id"], c=d.compra_id, m=d.motivo_exceso, r=a.usuario_id, d=disp,
@@ -447,8 +447,8 @@ def registrar_traslado(d: e.TrasladoIn, respuesta: Response, a: Actor = Depends(
     if origen["id"] == destino["id"]:
         raise ErrorSigro(422, "traslado_al_mismo_almacen", "El almacén de destino debe ser distinto del de origen.")
     _insumos(s, [l.insumo_id for l in d.lineas])
-    per_o = _periodo(a.obra_id, d.hora_dispositivo_ms, False)
-    per_d = per_o if destino_obra == a.obra_id else _periodo(destino_obra, d.hora_dispositivo_ms, False)
+    per_o = _periodo(a.obra_id, d.hora_dispositivo_ms, False, dia=d.fecha)
+    per_d = per_o if destino_obra == a.obra_id else _periodo(destino_obra, d.hora_dispositivo_ms, False, dia=d.fecha)
     t = fila(s, "INSERT INTO almacen.traslado (uuid_cliente, origen_proyecto_id, origen_almacen_id, destino_proyecto_id, "
                 "destino_almacen_id, motivo, registrado_por) VALUES (:u, :op, :oa, :dp, :da, :m, :r) RETURNING id, uuid_cliente",
              u=str(d.uuid_cliente), op=a.obra_id, oa=origen["id"], dp=destino_obra, da=destino["id"], m=d.motivo, r=a.usuario_id)
@@ -494,7 +494,7 @@ def anular_traslado(traslado_id: int, d: e.AnularIn, respuesta: Response, a: Act
             s, uuid_cliente=dom.uuid_derivado(d.uuid_cliente, "reverso", m["id"]), proyecto_id=m["proyecto_id"],
             almacen_id=m["almacen_id"], insumo_id=m["insumo_id"], tipo="reverso", sentido=-m["sentido"], cantidad=m["cantidad"],
             costo_unitario=m["costo_unitario"], motivo=d.motivo, revierte_a_id=m["id"],
-            periodo_id=_periodo(m["proyecto_id"], d.hora_dispositivo_ms, True), dispositivo_id=disp, registrado_por=a.usuario_id,
+            periodo_id=_periodo(m["proyecto_id"], d.hora_dispositivo_ms, True, dia=d.fecha), dispositivo_id=disp, registrado_por=a.usuario_id,
             fecha_dispositivo=_fecha_dispositivo(d.hora_dispositivo_ms)))
     _publicar(s, "almacen.traslado_anulado", a.obra_id, nuevos)
     return {"id": t["id"], "uuid_cliente": t["uuid_cliente"], "movimientos": nuevos}
@@ -676,12 +676,24 @@ def kardex(insumo_id: int | None = Query(None, ge=1), almacen_id: int | None = Q
            a: Actor = Depends(exigir("stock.consultar"))):
     """Cada movimiento con el saldo y el promedio que dejó; se ve el anulado (`revertido_por_id`) y el que lo anuló."""
     cols = _COLS.replace("m.", "k.")
-    return filas(a.sesion, f"SELECT {cols}, r.motivo_exceso AS recepcion_motivo_exceso, k.revertido_por_id, k.saldo_despues, k.promedio_despues "
+    movs = filas(a.sesion, f"SELECT {cols}, r.motivo_exceso AS recepcion_motivo_exceso, k.revertido_por_id, k.saldo_despues, k.promedio_despues "
                            "FROM almacen.kardex k JOIN almacen.insumo_ref i ON i.id = k.insumo_id "
                            "LEFT JOIN almacen.recepcion r ON r.id = k.recepcion_id "
                            "WHERE k.proyecto_id = :p AND (CAST(:i AS bigint) IS NULL OR k.insumo_id = :i) "
                            "AND (CAST(:a AS bigint) IS NULL OR k.almacen_id = :a) ORDER BY k.id LIMIT 2000",
                  p=a.obra_id, i=insumo_id, a=almacen_id)
+    if movs:
+        periodos = internos.json_de(contexto.OBRAS, "GET", f"/interno/obras/{a.obra_id}/periodos")
+        num_por_id = {p["id"]: p["numero"] for p in periodos}
+        for r in movs:
+            numero = num_por_id.get(r.get("periodo_id"))
+            if numero is None and r.get("fecha_servidor") is not None:
+                fs = r["fecha_servidor"]
+                dia = fs.astimezone(dom.LIMA).date() if isinstance(fs, datetime) and fs.tzinfo else dom._a_fecha(fs)
+                per = dom.periodo_de(periodos, dia)
+                numero = per["numero"] if per else None
+            r["semana_numero"] = numero
+    return movs
 
 
 routers = [router]

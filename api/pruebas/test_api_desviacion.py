@@ -70,7 +70,7 @@ def pedir(mundo, ob, quien="gerente", **params):
 
 def mover(mundo, ob, codigo, cantidad, costo, insumo):
     assert ingreso(mundo, ob, cantidad, costo, insumo=insumo).status_code == 201
-    assert salida(mundo, ob, cantidad, insumo_id=insumo).status_code == 201
+    assert salida(mundo, ob, cantidad, insumo_id=insumo, hora_dispositivo_ms=None).status_code == 201
 
 
 def test_compara_cantidad_importe_y_porcentaje_contra_lo_planificado(mundo, ob):
