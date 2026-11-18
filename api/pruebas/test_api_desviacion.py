@@ -1,7 +1,8 @@
 """HU-57 · consumo contra lo planificado, por insumo, en cantidad, importe y porcentaje."""
 from __future__ import annotations
 
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
+from zoneinfo import ZoneInfo
 from decimal import Decimal as D
 
 import pytest
@@ -10,7 +11,7 @@ from app.modulos.costo.rutas import avance_plazo, comparar, ordenar
 from pruebas.test_api_almacen import ingreso, salida  # noqa: F401
 
 U = "/api/v1"
-HOY = date.today()
+HOY = datetime.now(ZoneInfo("America/Lima")).date()   # el servidor cuenta el plazo en hora de Lima, CI corre en UTC
 
 
 # ---------------------------------------------------------------- dominio puro (sin base)
