@@ -564,7 +564,7 @@
      "interno"
     ],
     "summary": "Horas",
-    "description": "Horas de las jornadas vigentes de la obra, con las extra aparte, y la fecha de la última jornada (corte).",
+    "description": "Horas de las jornadas vigentes de la obra, con las extra aparte, y la fecha de la última jornada (corte).\nCon `hasta`, solo las jornadas hasta ese día (fecha de corte del tablero).",
     "operationId": "horas_interno_obras__obra_id__horas_get",
     "parameters": [
      {
@@ -575,6 +575,25 @@
        "type": "integer",
        "title": "Obra Id"
       }
+     },
+     {
+      "name": "hasta",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string",
+         "format": "date"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "solo jornadas con fecha <= hasta",
+       "title": "Hasta"
+      },
+      "description": "solo jornadas con fecha <= hasta"
      },
      {
       "name": "x-servicio-token",

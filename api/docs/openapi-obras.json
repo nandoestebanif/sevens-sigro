@@ -540,6 +540,64 @@
     }
    }
   },
+  "/api/v1/obras/{obra_id}/periodos/{numero}/cerrar": {
+   "post": {
+    "tags": [
+     "obra"
+    ],
+    "summary": "Cerrar Periodo",
+    "description": "HT-11 D4: cierra una semana; desde ese momento solo admite correcciones con reverso.",
+    "operationId": "cerrar_periodo_api_v1_obras__obra_id__periodos__numero__cerrar_post",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "numero",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "title": "Numero"
+      }
+     },
+     {
+      "name": "obra_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "minimum": 1,
+       "title": "Obra Id"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/PeriodoOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
   "/api/v1/obras/{obra_id}/almacenes": {
    "get": {
     "tags": [
@@ -917,6 +975,59 @@
        "application/json": {
         "schema": {
          "$ref": "#/components/schemas/DispositivoOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/obras/{obra_id}/dispositivos/mios": {
+   "get": {
+    "tags": [
+     "obra"
+    ],
+    "summary": "Mis Dispositivos",
+    "description": "HU-15: el almacenero o el SSOMA ve SOLO sus celulares en esta obra (pendiente, activo o revocado), para que la app\nsepa si el suyo ya está autorizado. Listar los de todos sigue siendo del administrador y del residente.",
+    "operationId": "mis_dispositivos_api_v1_obras__obra_id__dispositivos_mios_get",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "obra_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "minimum": 1,
+       "title": "Obra Id"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "type": "array",
+         "items": {
+          "$ref": "#/components/schemas/DispositivoOut"
+         },
+         "title": "Response Mis Dispositivos Api V1 Obras  Obra Id  Dispositivos Mios Get"
         }
        }
       }
