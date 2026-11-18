@@ -36,7 +36,10 @@ export function rucValido(ruc: string): boolean {
 export async function consultarRucEnSunat(ruc: string): Promise<RucSunat | null> {
   if (!rucValido(ruc)) return null
   try {
-    return await pedir<RucSunat>('GET', `/proveedores/consulta-ruc/${ruc}`)
+    // `pedir` entrega las claves en camelCase (razonSocial…): aquí se vuelven a la forma que usa la pantalla.
+    const r = await pedir<{ ruc: string; razonSocial: string; estadoSunat: string; condicion: string; direccion: string | null; aptoParaComprar: boolean }>(
+      'GET', `/proveedores/consulta-ruc/${ruc}`)
+    return deServidor(r)
   } catch {
     return null // SUNAT o el micro sin respuesta: se escribe a mano y queda «por validar»
   }
@@ -49,4 +52,13 @@ export function errorAltaProveedor(ruc: string, razon: string): { campo: 'ruc' |
   if (r.length === 11 && !rucValido(r)) return { campo: 'ruc', texto: 'El dígito verificador de este RUC no coincide con la fórmula SUNAT.' }
   if (razon.trim().length < 3) return { campo: 'razon', texto: 'Escribe la razón social (o el nombre, si es un DNI). Si SUNAT no responde, va a mano.' }
   return null
+}
+
+/** Respuesta del servidor (camelCase, tras `pedir`) → RucSunat. Sin razón social no se autocompleta nada. */
+export function deServidor(r: { ruc: string; razonSocial?: string; estadoSunat?: string; condicion?: string; direccion?: string | null; aptoParaComprar?: boolean } | null): RucSunat | null {
+  if (!r || !r.razonSocial) return null
+  return {
+    ruc: r.ruc, razon_social: r.razonSocial, estado_sunat: r.estadoSunat ?? '', condicion: r.condicion ?? '',
+    direccion: r.direccion ?? null, apto_para_comprar: !!r.aptoParaComprar,
+  }
 }
