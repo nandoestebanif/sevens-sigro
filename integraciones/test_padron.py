@@ -69,3 +69,9 @@ def test_sin_token_responde_503_y_la_api_deja_por_validar(monkeypatch):
 def test_por_defecto_sigue_factiliza(monkeypatch):
     monkeypatch.delenv("PADRON_PROVEEDOR")
     assert integ._proveedor() == "factiliza"
+
+
+def test_repara_el_apostrofo_que_llega_como_control(monkeypatch):
+    """Respuesta real de apisperu del 18/11: «SEVEN\u0092S INGENIEROS S.A.C.»."""
+    monkeypatch.setattr(integ.httpx, "AsyncClient", _cliente_que_devuelve({"ruc": "20606456892", "razonSocial": "SEVEN\u0092S INGENIEROS S.A.C.", "estado": "ACTIVO", "condicion": "HABIDO"}))
+    assert asyncio.run(integ.consultar_ruc("20606456892")).razon_social == "SEVEN'S INGENIEROS S.A.C."
