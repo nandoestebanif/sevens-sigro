@@ -1,0 +1,21 @@
+sequenceDiagram
+    autonumber
+    actor U as Gerente / Residente / Administrador
+    participant W as Web (gateway)
+    participant K as costo
+    participant O as obras
+    participant A as almacen
+    participant CT as catalogo
+    U->>W: GET /obras/{id}/costo/inventario?corte=AAAA-MM-DD o AAAA-MM-DDTHH:MM
+    W->>K: reenvía con la sesión
+    K->>O: POST /interno/autorizar (costo.consultar, obra)
+    O-->>K: permitido · el almacenero recibe 403
+    K->>K: corte en hora de Lima (día = fin de ese día) · si es futuro, se ajusta a «ahora»
+    K->>A: GET /interno/obras/{id}/saldos-valorizados?corte=
+    A->>A: Σ sentido × cantidad × costo de los movimientos hasta el corte (sin saldo guardado)
+    A-->>K: por insumo y almacén: cantidad y valor
+    K->>CT: POST /interno/insumos/buscar (ids)
+    CT-->>K: código, descripción y unidad
+    K->>K: promedio ponderado vigente = valor / cantidad
+    K-->>U: inventario valorizado con el corte efectivo y el aviso si se ajustó
+    Note over U,A: Todas las cifras de la respuesta comparten el mismo corte

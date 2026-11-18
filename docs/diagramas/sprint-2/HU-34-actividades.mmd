@@ -1,0 +1,25 @@
+flowchart TD
+    subgraph Usuario["Residente / Almacenero"]
+        A([Inicio: la compra ya está registrada]) --> B[Elegir el comprobante: JPG, PNG o PDF]
+        B --> C[Subir]
+    end
+    subgraph Sistema
+        C --> D{¿Tamaño ≤ 10 MB?}
+        D -- no --> X1[Rechazar: archivo demasiado grande]
+        D -- sí --> E{¿La firma del archivo es JPG, PNG o PDF?}
+        E -- no --> X2[Rechazar: tipo no admitido]
+        E -- sí --> F{¿Misma huella sha256 ya adjunta a la compra?}
+        F -- sí --> X3[Rechazar 409: ya está adjunto]
+        F -- no --> G[Guardar el comprobante y sus bytes en Neon]
+        G --> H[Listar con autor, fecha, tipo y tamaño]
+    end
+    subgraph Corregir["¿Es el comprobante equivocado?"]
+        H --> I{¿Corregir?}
+        I -- no --> Z([Fin])
+        I -- sí --> J[Anular con motivo: queda autor y fecha]
+        J --> K[El anulado sigue listado y descargable]
+        K --> B
+    end
+    X1 --> Z
+    X2 --> Z
+    X3 --> Z

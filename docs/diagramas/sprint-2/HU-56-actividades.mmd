@@ -1,0 +1,17 @@
+flowchart TD
+    subgraph Usuario["Gerente / Residente / Administrador"]
+        A([Abrir Inventario valorizado]) --> B[Elegir almacén o consolidado y fecha de corte]
+    end
+    subgraph Sistema
+        B --> C{¿Tiene permiso y está asignado a la obra?}
+        C -- no --> X1[403: se rechaza en el servidor]
+        C -- sí --> D{¿El corte es futuro?}
+        D -- sí --> E[Ajustar el corte a «ahora» y avisarlo en la respuesta]
+        D -- no --> F[Usar el corte pedido, en hora de Lima]
+        E --> G[Reconstruir desde el libro: Σ sentido × cantidad × costo hasta el corte]
+        F --> G
+        G --> H[Promedio ponderado vigente = valor / cantidad]
+        H --> I[Mostrar cantidad, promedio y valor por insumo, y el total]
+    end
+    X1 --> Z([Fin])
+    I --> Z
