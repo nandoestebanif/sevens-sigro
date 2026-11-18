@@ -31,6 +31,7 @@
      "costo"
     ],
     "summary": "Gasto",
+    "description": "HU-58. Cinco cifras con su definición y UNA sola fecha de corte. Recibido, consumido y en stock salen del libro de\nAlmacén (el mismo cálculo del inventario, HU-56); comprado de Compras y las horas de Tareo. Si no cuadran entre sí, la\nrespuesta lo marca (`por_conciliar`) en vez de mostrar números que se contradicen.",
     "operationId": "gasto_api_v1_obras__obra_id__costo_gasto_get",
     "security": [
      {
@@ -47,6 +48,24 @@
        "minimum": 1,
        "title": "Obra Id"
       }
+     },
+     {
+      "name": "corte",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "AAAA-MM-DD o AAAA-MM-DDTHH:MM, hora de Lima; por defecto, ahora",
+       "title": "Corte"
+      },
+      "description": "AAAA-MM-DD o AAAA-MM-DDTHH:MM, hora de Lima; por defecto, ahora"
      }
     ],
     "responses": {
@@ -56,6 +75,186 @@
        "application/json": {
         "schema": {
          "$ref": "#/components/schemas/GastoOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/obras/{obra_id}/costo/inventario": {
+   "get": {
+    "tags": [
+     "costo"
+    ],
+    "summary": "Inventario",
+    "description": "Capital detenido en almacén: por insumo, cantidad × costo promedio ponderado a la fecha de corte (HU-56). Se\nreconstruye del libro de movimientos en Almacén; aquí solo se agrupa y se calcula el peso de cada insumo.",
+    "operationId": "inventario_api_v1_obras__obra_id__costo_inventario_get",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "obra_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "minimum": 1,
+       "title": "Obra Id"
+      }
+     },
+     {
+      "name": "almacen",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "string",
+       "description": "`todos` (consolidado de la obra) o el id de un almacén",
+       "default": "todos",
+       "title": "Almacen"
+      },
+      "description": "`todos` (consolidado de la obra) o el id de un almacén"
+     },
+     {
+      "name": "corte",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "AAAA-MM-DD o AAAA-MM-DDTHH:MM, hora de Lima; por defecto, ahora",
+       "title": "Corte"
+      },
+      "description": "AAAA-MM-DD o AAAA-MM-DDTHH:MM, hora de Lima; por defecto, ahora"
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/InventarioOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/obras/{obra_id}/costo/desviacion": {
+   "get": {
+    "tags": [
+     "costo"
+    ],
+    "summary": "Desviacion",
+    "description": "HU-57. Por insumo: consumo real (cantidad e importe al costo congelado) contra lo planificado por el S10, en cantidad,\nimporte y porcentaje, comparado con el avance del plazo. Los insumos consumidos que el S10 no planificó van aparte.",
+    "operationId": "desviacion_api_v1_obras__obra_id__costo_desviacion_get",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "obra_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "minimum": 1,
+       "title": "Obra Id"
+      }
+     },
+     {
+      "name": "orden",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "string",
+       "description": "importe (por defecto) | porcentaje | cantidad | codigo",
+       "default": "importe",
+       "title": "Orden"
+      },
+      "description": "importe (por defecto) | porcentaje | cantidad | codigo"
+     },
+     {
+      "name": "corte",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "AAAA-MM-DD o AAAA-MM-DDTHH:MM, hora de Lima; por defecto, ahora",
+       "title": "Corte"
+      },
+      "description": "AAAA-MM-DD o AAAA-MM-DDTHH:MM, hora de Lima; por defecto, ahora"
+     },
+     {
+      "name": "tolerancia",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "number",
+         "maximum": 100.0,
+         "minimum": 0.0
+        },
+        {
+         "type": "string",
+         "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+        }
+       ],
+       "description": "% de desviación que aún se lee «en rango»",
+       "default": "10",
+       "title": "Tolerancia"
+      },
+      "description": "% de desviación que aún se lee «en rango»"
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/DesviacionOut"
         }
        }
       }
@@ -133,6 +332,41 @@
  },
  "components": {
   "schemas": {
+   "AlmacenValorizadoOut": {
+    "properties": {
+     "almacen_id": {
+      "type": "integer",
+      "title": "Almacen Id"
+     },
+     "almacen": {
+      "type": "string",
+      "title": "Almacen"
+     },
+     "insumos": {
+      "type": "integer",
+      "title": "Insumos"
+     },
+     "valor": {
+      "type": "string",
+      "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+      "title": "Valor"
+     },
+     "porcentaje": {
+      "type": "string",
+      "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+      "title": "Porcentaje"
+     }
+    },
+    "type": "object",
+    "required": [
+     "almacen_id",
+     "almacen",
+     "insumos",
+     "valor",
+     "porcentaje"
+    ],
+    "title": "AlmacenValorizadoOut"
+   },
    "CifraOut": {
     "properties": {
      "clave": {
@@ -200,6 +434,220 @@
     },
     "type": "object",
     "title": "DatosIn"
+   },
+   "DesviacionInsumoOut": {
+    "properties": {
+     "insumo_codigo": {
+      "type": "string",
+      "title": "Insumo Codigo"
+     },
+     "descripcion": {
+      "type": "string",
+      "title": "Descripcion"
+     },
+     "unidad": {
+      "type": "string",
+      "title": "Unidad"
+     },
+     "tipo": {
+      "type": "string",
+      "title": "Tipo"
+     },
+     "planificado_cantidad": {
+      "type": "string",
+      "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+      "title": "Planificado Cantidad"
+     },
+     "precio_planificado": {
+      "type": "string",
+      "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+      "title": "Precio Planificado"
+     },
+     "planificado_importe": {
+      "type": "string",
+      "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+      "title": "Planificado Importe"
+     },
+     "esperado_cantidad": {
+      "type": "string",
+      "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+      "title": "Esperado Cantidad"
+     },
+     "esperado_importe": {
+      "type": "string",
+      "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+      "title": "Esperado Importe"
+     },
+     "consumido_cantidad": {
+      "type": "string",
+      "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+      "title": "Consumido Cantidad"
+     },
+     "consumido_importe": {
+      "type": "string",
+      "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+      "title": "Consumido Importe"
+     },
+     "costo_real": {
+      "anyOf": [
+       {
+        "type": "string",
+        "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Costo Real"
+     },
+     "consumido_pct_planificado": {
+      "type": "string",
+      "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+      "title": "Consumido Pct Planificado"
+     },
+     "ritmo_pt": {
+      "type": "string",
+      "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+      "title": "Ritmo Pt"
+     },
+     "desviacion_cantidad": {
+      "type": "string",
+      "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+      "title": "Desviacion Cantidad"
+     },
+     "desviacion_importe": {
+      "type": "string",
+      "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+      "title": "Desviacion Importe"
+     },
+     "desviacion_pct": {
+      "anyOf": [
+       {
+        "type": "string",
+        "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Desviacion Pct"
+     },
+     "efecto_cantidad": {
+      "type": "string",
+      "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+      "title": "Efecto Cantidad"
+     },
+     "efecto_precio": {
+      "type": "string",
+      "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+      "title": "Efecto Precio"
+     },
+     "lectura": {
+      "type": "string",
+      "title": "Lectura"
+     }
+    },
+    "type": "object",
+    "required": [
+     "insumo_codigo",
+     "descripcion",
+     "unidad",
+     "tipo",
+     "planificado_cantidad",
+     "precio_planificado",
+     "planificado_importe",
+     "esperado_cantidad",
+     "esperado_importe",
+     "consumido_cantidad",
+     "consumido_importe",
+     "costo_real",
+     "consumido_pct_planificado",
+     "ritmo_pt",
+     "desviacion_cantidad",
+     "desviacion_importe",
+     "desviacion_pct",
+     "efecto_cantidad",
+     "efecto_precio",
+     "lectura"
+    ],
+    "title": "DesviacionInsumoOut"
+   },
+   "DesviacionOut": {
+    "properties": {
+     "declaracion": {
+      "type": "string",
+      "title": "Declaracion"
+     },
+     "aviso": {
+      "type": "string",
+      "title": "Aviso"
+     },
+     "supuesto": {
+      "type": "string",
+      "title": "Supuesto"
+     },
+     "moneda": {
+      "type": "string",
+      "title": "Moneda"
+     },
+     "corte": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Corte"
+     },
+     "avance_plazo_pct": {
+      "type": "string",
+      "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+      "title": "Avance Plazo Pct"
+     },
+     "tolerancia_pct": {
+      "type": "string",
+      "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+      "title": "Tolerancia Pct"
+     },
+     "orden": {
+      "type": "string",
+      "title": "Orden"
+     },
+     "totales": {
+      "$ref": "#/components/schemas/TotalesDesviacionOut"
+     },
+     "insumos": {
+      "items": {
+       "$ref": "#/components/schemas/DesviacionInsumoOut"
+      },
+      "type": "array",
+      "title": "Insumos"
+     },
+     "no_planificados": {
+      "items": {
+       "$ref": "#/components/schemas/NoPlanificadoOut"
+      },
+      "type": "array",
+      "title": "No Planificados"
+     },
+     "no_planificados_importe": {
+      "type": "string",
+      "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+      "title": "No Planificados Importe"
+     }
+    },
+    "type": "object",
+    "required": [
+     "declaracion",
+     "aviso",
+     "supuesto",
+     "moneda",
+     "corte",
+     "avance_plazo_pct",
+     "tolerancia_pct",
+     "orden",
+     "totales",
+     "insumos",
+     "no_planificados",
+     "no_planificados_importe"
+    ],
+    "title": "DesviacionOut"
    },
    "EventoIn": {
     "properties": {
@@ -296,12 +744,40 @@
       "type": "string",
       "title": "Moneda"
      },
+     "corte": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Corte"
+     },
      "cifras": {
       "items": {
        "$ref": "#/components/schemas/CifraOut"
       },
       "type": "array",
       "title": "Cifras"
+     },
+     "otros_movimientos": {
+      "anyOf": [
+       {
+        "type": "string",
+        "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Otros Movimientos"
+     },
+     "por_conciliar": {
+      "type": "boolean",
+      "title": "Por Conciliar"
+     },
+     "conciliacion": {
+      "items": {
+       "type": "string"
+      },
+      "type": "array",
+      "title": "Conciliacion"
      },
      "por_familia": {
       "items": {
@@ -319,7 +795,11 @@
      "declaracion",
      "criterio",
      "moneda",
+     "corte",
      "cifras",
+     "otros_movimientos",
+     "por_conciliar",
+     "conciliacion",
      "por_familia",
      "horas_hombre"
     ],
@@ -476,6 +956,217 @@
      "corte"
     ],
     "title": "HorasOut"
+   },
+   "InsumoValorizadoOut": {
+    "properties": {
+     "insumo_codigo": {
+      "type": "string",
+      "title": "Insumo Codigo"
+     },
+     "descripcion": {
+      "type": "string",
+      "title": "Descripcion"
+     },
+     "unidad": {
+      "type": "string",
+      "title": "Unidad"
+     },
+     "tipo": {
+      "type": "string",
+      "title": "Tipo"
+     },
+     "cantidad": {
+      "type": "string",
+      "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+      "title": "Cantidad"
+     },
+     "costo_promedio": {
+      "anyOf": [
+       {
+        "type": "string",
+        "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Costo Promedio"
+     },
+     "valor": {
+      "type": "string",
+      "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+      "title": "Valor"
+     },
+     "porcentaje": {
+      "type": "string",
+      "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+      "title": "Porcentaje"
+     },
+     "ultimo_movimiento_en": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Ultimo Movimiento En"
+     }
+    },
+    "type": "object",
+    "required": [
+     "insumo_codigo",
+     "descripcion",
+     "unidad",
+     "tipo",
+     "cantidad",
+     "costo_promedio",
+     "valor",
+     "porcentaje",
+     "ultimo_movimiento_en"
+    ],
+    "title": "InsumoValorizadoOut"
+   },
+   "InventarioOut": {
+    "properties": {
+     "declaracion": {
+      "type": "string",
+      "title": "Declaracion"
+     },
+     "criterio": {
+      "type": "string",
+      "title": "Criterio"
+     },
+     "moneda": {
+      "type": "string",
+      "title": "Moneda"
+     },
+     "almacen": {
+      "type": "string",
+      "title": "Almacen"
+     },
+     "corte": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Corte"
+     },
+     "corte_ajustado": {
+      "type": "boolean",
+      "title": "Corte Ajustado",
+      "default": false
+     },
+     "valor_total": {
+      "type": "string",
+      "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+      "title": "Valor Total"
+     },
+     "por_almacen": {
+      "items": {
+       "$ref": "#/components/schemas/AlmacenValorizadoOut"
+      },
+      "type": "array",
+      "title": "Por Almacen"
+     },
+     "por_insumo": {
+      "items": {
+       "$ref": "#/components/schemas/InsumoValorizadoOut"
+      },
+      "type": "array",
+      "title": "Por Insumo"
+     }
+    },
+    "type": "object",
+    "required": [
+     "declaracion",
+     "criterio",
+     "moneda",
+     "almacen",
+     "corte",
+     "valor_total",
+     "por_almacen",
+     "por_insumo"
+    ],
+    "title": "InventarioOut"
+   },
+   "NoPlanificadoOut": {
+    "properties": {
+     "insumo_codigo": {
+      "type": "string",
+      "title": "Insumo Codigo"
+     },
+     "descripcion": {
+      "type": "string",
+      "title": "Descripcion"
+     },
+     "unidad": {
+      "type": "string",
+      "title": "Unidad"
+     },
+     "tipo": {
+      "type": "string",
+      "title": "Tipo"
+     },
+     "consumido_cantidad": {
+      "type": "string",
+      "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+      "title": "Consumido Cantidad"
+     },
+     "consumido_importe": {
+      "type": "string",
+      "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+      "title": "Consumido Importe"
+     }
+    },
+    "type": "object",
+    "required": [
+     "insumo_codigo",
+     "descripcion",
+     "unidad",
+     "tipo",
+     "consumido_cantidad",
+     "consumido_importe"
+    ],
+    "title": "NoPlanificadoOut"
+   },
+   "TotalesDesviacionOut": {
+    "properties": {
+     "planificado_importe": {
+      "type": "string",
+      "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+      "title": "Planificado Importe"
+     },
+     "esperado_importe": {
+      "type": "string",
+      "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+      "title": "Esperado Importe"
+     },
+     "consumido_importe": {
+      "type": "string",
+      "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+      "title": "Consumido Importe"
+     },
+     "desviacion_importe": {
+      "type": "string",
+      "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+      "title": "Desviacion Importe"
+     },
+     "desviacion_pct": {
+      "anyOf": [
+       {
+        "type": "string",
+        "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Desviacion Pct"
+     }
+    },
+    "type": "object",
+    "required": [
+     "planificado_importe",
+     "esperado_importe",
+     "consumido_importe",
+     "desviacion_importe",
+     "desviacion_pct"
+    ],
+    "title": "TotalesDesviacionOut"
    },
    "ValidationError": {
     "properties": {

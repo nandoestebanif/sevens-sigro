@@ -1,0 +1,27 @@
+sequenceDiagram
+    autonumber
+    actor G as Gerente / Residente
+    participant W as Web (gateway)
+    participant K as costo
+    participant O as obras
+    participant A as almacen
+    participant C as compras
+    participant T as tareo
+    G->>W: GET /obras/{id}/costo/gasto?corte=
+    W->>K: reenvía con la sesión
+    K->>O: POST /interno/autorizar (costo.consultar)
+    O-->>K: permitido
+    K->>A: GET /interno/obras/{id}/resumen-valorizado?corte=
+    A-->>K: recibido, consumido, en stock y otros movimientos (mismo libro del inventario)
+    K->>C: GET /interno/obras/{id}/comprado?hasta=día
+    C-->>K: comprado (base imponible)
+    K->>T: GET /interno/obras/{id}/horas?hasta=día
+    T-->>K: horas normales y extra
+    K->>K: ¿recibido − consumido + otros = en stock?
+    K->>K: ¿el libro coincide con el modelo de costo (eventos del outbox)?
+    alt no cuadra o un servicio no respondió
+        K-->>G: cifras con por_conciliar = true y el detalle de qué no cuadra
+    else cuadra
+        K-->>G: 5 cifras con su definición y un solo corte
+    end
+    Note over G,T: El gasto es en recursos, no el costo total de la obra. Las horas se informan sin valorizar hasta tener la tarifa (HU-65).

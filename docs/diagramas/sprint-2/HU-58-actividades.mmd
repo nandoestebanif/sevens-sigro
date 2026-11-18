@@ -1,0 +1,26 @@
+flowchart TD
+    subgraph Usuario["Gerente / Residente"]
+        A([Abrir Gasto en recursos]) --> B[Elegir la fecha de corte]
+    end
+    subgraph Sistema
+        B --> C{¿Tiene permiso en la obra?}
+        C -- no --> X1[403]
+        C -- sí --> D[Fijar UN corte para todas las cifras]
+        D --> E[Almacén: recibido, consumido y en stock del libro]
+        D --> F[Compras: comprado]
+        D --> G[Tareo: horas normales y extra]
+        E --> H{¿Recibido − consumido + otros = en stock?}
+        H -- no --> R[Marcar por_conciliar con el detalle]
+        H -- sí --> I{¿Coincide con el modelo de costo por eventos?}
+        I -- no --> R
+        I -- sí --> J[Cifras definitivas]
+        F --> K{¿Respondió el servicio?}
+        K -- no --> R
+        R --> L[Mostrar las cifras como por conciliar]
+        J --> M[Mostrar 5 cifras con su definición]
+        G --> N[Horas sin valorizar hasta HU-65]
+    end
+    X1 --> Z([Fin])
+    L --> Z
+    M --> Z
+    N --> Z

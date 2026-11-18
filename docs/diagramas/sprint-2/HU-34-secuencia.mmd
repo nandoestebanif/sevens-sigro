@@ -1,0 +1,28 @@
+sequenceDiagram
+    autonumber
+    actor U as Residente / Almacenero
+    participant W as Web (gateway /api/v1)
+    participant C as compras
+    participant O as obras
+    participant DB as Neon · compras
+    U->>W: POST /obras/{id}/compras/{compra}/comprobantes (archivo)
+    W->>C: reenvía con la sesión
+    C->>O: POST /interno/autorizar (compra.registrar, obra)
+    O-->>C: permitido (solo si está asignado a la obra)
+    C->>C: la compra pertenece a la obra
+    C->>C: tamaño ≤ 10 MB
+    C->>C: tipo por la firma del archivo (JPG, PNG o PDF), no por la extensión
+    C->>DB: ¿misma huella sha256 ya adjunta a esta compra?
+    alt duplicado
+        C-->>U: 409 el mismo archivo ya está adjunto
+    else nuevo
+        C->>DB: INSERT compra_adjunto + compra_adjunto_contenido (bytea)
+        C-->>U: 201 comprobante (huella, tipo, tamaño, autor, fecha)
+    end
+    Note over U,DB: Un comprobante nunca se borra ni se reemplaza
+    U->>W: POST .../comprobantes/{id}/anulacion (motivo)
+    W->>C: reenvía
+    C->>O: autorizar
+    C->>DB: UPDATE solo anulado_por, anulado_en y motivo (el disparador rechaza cualquier otro cambio o DELETE)
+    C-->>U: 200 anulado con su motivo
+    Note over U,C: El anulado sigue listado y descargable. Se sube el correcto como uno nuevo.
