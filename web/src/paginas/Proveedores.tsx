@@ -60,7 +60,7 @@ export function AltaProveedor({ enCerrar, enCreado }: {
       setConsultando(false)
       if (r) {
         setSunat(r)
-        setRazon(r.razon_social)
+        setRazon(r.razon_social ?? '')
       }
     }
   }
