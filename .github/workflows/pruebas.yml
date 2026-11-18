@@ -82,6 +82,7 @@ jobs:
       - name: Notificaciones e integraciones con las versiones de la API (en el proceso único comparten venv)
         run: |
           (cd notificaciones && python -m pytest -q -p no:cacheprovider)
+          (cd integraciones && python -m pytest -q -p no:cacheprovider test_padron.py)
           (cd integraciones && SERVICIO_TOKEN=t python -c "
           from fastapi.testclient import TestClient
           import main

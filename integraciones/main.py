@@ -66,6 +66,53 @@ _cache: dict[str, tuple[float, "RucNormalizado"]] = {}
 _cache_dni: dict[str, tuple[float, "DniNormalizado"]] = {}
 
 
+# ── Proveedor del padrón (SUNAT/RENIEC) ────────────────────────────────────────────────────
+# PADRON_PROVEEDOR = «factiliza» (por defecto) o «apisperu». El 18/11/2026 venció el plan de
+# Factiliza: con apisperu (dniruc.apisperu.com, token en APISPERU_TOKEN) se sigue consultando sin
+# tocar la API de SIGRO, porque todo se normaliza aquí. Los tokens viven solo en el entorno.
+APISPERU_RUC_URL = "https://dniruc.apisperu.com/api/v1/ruc/{ruc}"
+APISPERU_DNI_URL = "https://dniruc.apisperu.com/api/v1/dni/{dni}"
+
+
+def _proveedor() -> str:
+    return (os.environ.get("PADRON_PROVEEDOR") or "factiliza").strip().lower()
+
+
+async def _consultar_apisperu(url: str) -> dict:
+    """Llama a apisperu con su token y devuelve el registro (acepta respuesta plana o dentro de «data»)."""
+    token = os.environ.get("APISPERU_TOKEN")
+    if not token:
+        raise HTTPException(503, "APISPERU_TOKEN no está configurado.")
+    try:
+        async with httpx.AsyncClient(timeout=8.0) as cliente:
+            r = await cliente.get(url, headers={"Authorization": f"Bearer {token}"})
+    except httpx.HTTPError:
+        raise HTTPException(503, "apisperu no respondió; reintentar después.")
+    if r.status_code != 200:
+        codigo = 422 if r.status_code in (400, 404) else 503
+        raise HTTPException(codigo, f"apisperu respondió {r.status_code}.")
+    cuerpo = r.json()
+    datos = cuerpo.get("data") if isinstance(cuerpo.get("data"), dict) else cuerpo
+    if not datos or datos.get("success") is False:
+        raise HTTPException(503, "apisperu devolvió una respuesta sin datos.")
+    return datos
+
+
+def _de(d: dict, *claves: str) -> str:
+    """El primer valor no vacío entre varios nombres posibles (cada proveedor los llama distinto)."""
+    for c in claves:
+        v = d.get(c)
+        if v not in (None, ""):
+            return str(v).strip()
+    return ""
+
+
+async def _padron(tipo: str, numero: str) -> dict:
+    if _proveedor() == "apisperu":
+        return await _consultar_apisperu((APISPERU_RUC_URL if tipo == "ruc" else APISPERU_DNI_URL).format(**{tipo: numero}))
+    return await _consultar_factiliza((FACTILIZA_URL if tipo == "ruc" else FACTILIZA_DNI_URL).format(**{tipo: numero}))
+
+
 async def _consultar_factiliza(url: str) -> dict:
     """Llama a Factiliza con el token del entorno y devuelve el bloque data.
     Toda la política común vive aquí: sin token → 503, upstream caído → 503,
@@ -115,7 +162,9 @@ class DniNormalizado(BaseModel):
 def salud() -> dict:
     return {
         "servicio": "integraciones",
+        "padron_proveedor": _proveedor(),
         "factiliza_configurado": bool(os.environ.get("FACTILIZA_TOKEN")),
+        "apisperu_configurado": bool(os.environ.get("APISPERU_TOKEN")),
         # False = modo desarrollo: cualquiera que alcance el puerto puede llamar
         "exige_token_de_servicio": bool(os.environ.get("SERVICIO_TOKEN")),
     }
@@ -130,16 +179,19 @@ async def consultar_ruc(ruc: str) -> RucNormalizado:
     if en_cache and time.time() - en_cache[0] < TTL_SEGUNDOS:
         return en_cache[1]
 
-    datos = await _consultar_factiliza(FACTILIZA_URL.format(ruc=ruc))
+    datos = await _padron("ruc", ruc)
 
-    estado = (datos.get("estado") or "").strip().upper()
-    condicion = (datos.get("condicion") or "").strip().upper()
+    estado = _de(datos, "estado").upper()
+    condicion = _de(datos, "condicion").upper()
+    razon = _de(datos, "nombre_o_razon_social", "razonSocial", "razon_social", "nombre")
+    if not razon:
+        raise HTTPException(503, "SUNAT devolvió un registro sin razón social.")
     normalizado = RucNormalizado(
-        ruc=str(datos.get("numero") or ruc),
-        razon_social=(datos.get("nombre_o_razon_social") or "").strip(),
+        ruc=_de(datos, "numero", "ruc") or ruc,
+        razon_social=razon,
         estado_sunat=estado or "DESCONOCIDO",
         condicion=condicion or "DESCONOCIDA",
-        direccion=(datos.get("direccion_completa") or None),
+        direccion=_de(datos, "direccion_completa", "direccion") or None,
         apto_para_comprar=(estado == "ACTIVO" and condicion == "HABIDO"),
     )
     _cache[ruc] = (time.time(), normalizado)
@@ -158,12 +210,12 @@ async def consultar_dni(dni: str) -> DniNormalizado:
     if en_cache and time.time() - en_cache[0] < TTL_SEGUNDOS:
         return en_cache[1]
 
-    datos = await _consultar_factiliza(FACTILIZA_DNI_URL.format(dni=dni))
+    datos = await _padron("dni", dni)
 
-    nombres = (datos.get("nombres") or "").strip()
-    paterno = (datos.get("apellido_paterno") or "").strip()
-    materno = (datos.get("apellido_materno") or "").strip()
-    completo = (datos.get("nombre_completo") or f"{nombres} {paterno} {materno}").strip()
+    nombres = _de(datos, "nombres")
+    paterno = _de(datos, "apellido_paterno", "apellidoPaterno")
+    materno = _de(datos, "apellido_materno", "apellidoMaterno")
+    completo = _de(datos, "nombre_completo", "nombreCompleto") or f"{nombres} {paterno} {materno}".strip()
     if not completo:
         raise HTTPException(503, "RENIEC (vía Factiliza) devolvió un registro sin nombre.")
 
