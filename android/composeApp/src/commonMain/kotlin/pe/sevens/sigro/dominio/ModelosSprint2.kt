@@ -405,3 +405,24 @@ object ValidarAlmacen {
     /** HU-41: el costo unitario es obligatorio, sin él no se valoriza. */
     fun costo(texto: String): String? = if (cantidad(texto) != null) "Escribe el costo unitario en soles" else null
 }
+
+/* ── Asistencia · revisión del 17/11 (prueba de Fernando en celular) ── */
+object AsistenciaDia {
+    private const val DIA_MS = 86_400_000L
+
+    /** Hoy y hasta 6 días atrás (lo olvidado de la semana); el servidor rechaza lo que caiga fuera del plazo de la obra. */
+    fun diasElegibles(ahoraMs: Long, fechaIso: (Long) -> String, dias: Int = 7): List<String> =
+        (0 until dias).map { fechaIso(ahoraMs - it * DIA_MS) }
+
+    /** Busca por nombre o cuadrilla, sin tildes ni mayúsculas. */
+    fun filtrar(marcas: List<MarcaAsistencia>, texto: String): List<MarcaAsistencia> {
+        fun n(s: String) = s.lowercase().replace('á', 'a').replace('é', 'e').replace('í', 'i').replace('ó', 'o')
+            .replace('ú', 'u').replace('ñ', 'n').trim()
+        val t = n(texto)
+        if (t.isEmpty()) return marcas
+        return marcas.filter { n(it.trabajador.nombre).contains(t) || n(it.trabajador.cuadrilla).contains(t) }
+    }
+
+    /** «8 normales · 3 extra»: las horas extra no se mezclan con las normales (HU-63 c2). */
+    fun textoHoras(r: ResumenAsistencia): String = "${r.horas - r.extras} normales · ${r.extras} extra"
+}

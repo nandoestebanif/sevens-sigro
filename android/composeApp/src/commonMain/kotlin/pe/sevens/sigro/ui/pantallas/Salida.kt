@@ -99,6 +99,11 @@ import pe.sevens.sigro.ui.tema.Paleta
 data class EstadoSalida(
     val busqueda: String = "",
     val resultados: List<Insumo> = emptyList(),
+    /** Lo que hay en el almacén elegido según el último stock del servidor; null = sin stock guardado (cae al catálogo). */
+    val disponibles: List<InsumoConStock>? = null,
+    /** Trabajadores activos de la obra: «Retira» se elige entre ellos. */
+    val trabajadoresObra: List<String> = emptyList(),
+    val buscandoQuien: Boolean = false,
     val insumo: Insumo? = null,
     val cantidad: String = "",
     val motivo: String = "",
@@ -134,12 +139,14 @@ class SalidaViewModel(
         almacen.cargar(obraId)
         viewModelScope.launch {
             val previas = runCatching { salidas.salidasDeObra(obraId).first() }.getOrDefault(emptyList())
+            runCatching { trabajadores?.actualizar(obraId) } // con señal trae la lista al día; sin señal usa la guardada
             val nombres = runCatching { trabajadores?.deObra(obraId)?.first()?.filter { it.fechaSalida == null }?.map { it.nombre } }.getOrNull().orEmpty()
-            _e.update { it.copy(sugerencias = sugerenciasSalida(previas, nombres)) }
+            _e.update { it.copy(sugerencias = sugerenciasSalida(previas, nombres), trabajadoresObra = nombres) }
         }
         viewModelScope.launch {
             val s = runCatching { stock?.stock(obraId) }.getOrNull()
             _e.update { it.copy(stock = s) }
+            recalcularDisponibles()
         }
     }
 
@@ -150,10 +157,16 @@ class SalidaViewModel(
     fun elegirAlmacen(obraId: Int, a: AlmacenObra) {
         almacen.elegir(obraId, a)
         _e.update { it.copy(errores = it.errores - "almacen") }
+        recalcularDisponibles(a.id)
     }
+
+    /** Solo lo que hay en el almacén elegido (dato del servidor, no calculado aquí). */
+    private fun recalcularDisponibles(almacenId: Int? = almacen.estado.value.elegido?.id) =
+        _e.update { it.copy(disponibles = insumosConStock(it.stock, almacenId, it.busqueda)) }
 
     fun buscar(texto: String) {
         _e.update { it.copy(busqueda = texto) }
+        if (_e.value.stock != null) { recalcularDisponibles(); return }
         busquedaJob?.cancel()
         if (texto.trim().length < 2) { _e.update { it.copy(resultados = emptyList()) }; return }
         busquedaJob = viewModelScope.launch {
@@ -164,16 +177,18 @@ class SalidaViewModel(
     }
 
     fun elegir(i: Insumo) = _e.update { it.copy(insumo = i, busqueda = "", resultados = emptyList(), errores = it.errores - "insumo") }
-    fun quitarInsumo() = _e.update { it.copy(insumo = null) }
+    fun quitarInsumo() { _e.update { it.copy(insumo = null) }; recalcularDisponibles() }
     fun cantidad(v: String) = _e.update { it.copy(cantidad = v, errores = it.errores - "cantidad") }
     fun motivo(v: String) = _e.update { it.copy(motivo = v, errores = it.errores - "motivo") }
-    fun quienRetira(v: String) = _e.update { it.copy(quienRetira = v, errores = it.errores - "quienRetira") }
+    fun quienRetira(v: String) = _e.update { it.copy(quienRetira = v, buscandoQuien = it.trabajadoresObra.isNotEmpty(), errores = it.errores - "quienRetira") }
+    fun elegirQuien(nombre: String) = _e.update { it.copy(quienRetira = nombre, buscandoQuien = false, errores = it.errores - "quienRetira") }
     fun frente(v: String) = _e.update { it.copy(frente = v) }
 
     fun guardar(obraId: Int) {
         val s = _e.value
         val alm = almacen.estado.value
         val errores = ValidarSalida.errores(s.insumo, s.cantidad, s.motivo, s.quienRetira) +
+            (errorQuienRetira(s.quienRetira, s.trabajadoresObra)?.takeIf { s.quienRetira.trim().length >= 3 }?.let { mapOf("quienRetira" to it) } ?: emptyMap()) +
             (if (alm.falta) mapOf("almacen" to "Elige de qué almacén sale") else emptyMap())
         if (errores.isNotEmpty()) { _e.update { it.copy(errores = errores) }; return }
         _e.update { it.copy(guardando = true) }
@@ -185,7 +200,10 @@ class SalidaViewModel(
     }
 
     /** Otra salida: se conserva quién retira y el frente, que suelen repetirse en la misma jornada. */
-    fun otra() = _e.update { EstadoSalida(quienRetira = it.quienRetira, frente = it.frente) }
+    fun otra() {
+        _e.update { EstadoSalida(quienRetira = it.quienRetira, frente = it.frente, stock = it.stock, trabajadoresObra = it.trabajadoresObra, sugerencias = it.sugerencias) }
+        recalcularDisponibles()
+    }
 }
 
 /* Lienzo Salida.dc.html y Guardada.dc.html, pasados al vidrio sobre el fondo de estanterías. */
@@ -226,19 +244,25 @@ fun PantallaSalida(obraId: Int, alVolver: () -> Unit, base: SalidaRegistrada? = 
                             error = e.errores["insumo"],
                             finalIcono = { Icon(Icons.Filled.Search, contentDescription = null, tint = Paleta.Texto3, modifier = Modifier.padding(end = 10.dp)) },
                         )
-                        if (e.resultados.isNotEmpty()) {
-                            Column(Modifier.fillMaxWidth().background(Paleta.Superficie.copy(alpha = 0.9f), RoundedCornerShape(20.dp))) {
-                                e.resultados.take(8).forEachIndexed { i, ins ->
-                                    if (i > 0) Box(Modifier.fillMaxWidth().height(1.dp).background(Paleta.Separador))
-                                    Column(
-                                        Modifier.fillMaxWidth().clickable { vm.elegir(ins) }.heightIn(min = 60.dp)
-                                            .padding(horizontal = 16.dp, vertical = 10.dp),
-                                        verticalArrangement = Arrangement.spacedBy(2.dp),
-                                    ) {
-                                        Text(Texto.nombre(ins.descripcion), fontSize = 16.sp, color = Paleta.Tinta)
-                                        Text("${ins.codigo} · ${Texto.unidad(ins.unidad)}", fontSize = 14.sp, color = Paleta.Texto3)
-                                    }
+                        val disp = insumosConStock(e.stock, almacen.elegido?.id, e.busqueda)
+                        if (disp != null) {
+                            // Solo lo que hay en el almacén elegido (último stock del servidor).
+                            if (disp.isNotEmpty()) {
+                                ListaVidrio(disp.take(8)) { x ->
+                                    FilaElegible(Texto.nombre(x.insumo.descripcion),
+                                        "${x.insumo.codigo} · hay ${Texto.cantidadConUnidad(x.cantidad, x.insumo.unidad)}") { vm.elegir(x.insumo) }
                                 }
+                                if (disp.size > 8) Text("Hay ${disp.size} insumos con stock: escribe para acotar.", fontSize = 14.sp, color = Paleta.Texto2)
+                            } else if (e.busqueda.isNotBlank()) {
+                                Text("No hay stock de eso en este almacén.", fontSize = 15.sp, color = Paleta.Texto2)
+                            } else {
+                                Text("Este almacén no tiene stock según la última actualización.", fontSize = 15.sp, color = Paleta.Texto2)
+                            }
+                        } else if (e.resultados.isNotEmpty()) {
+                            Text("Sin stock guardado en el celular: se muestra todo el catálogo. Abre «Stock» con señal para ver solo lo que hay.",
+                                fontSize = 14.sp, color = Paleta.Texto2)
+                            ListaVidrio(e.resultados.take(8)) { ins ->
+                                FilaElegible(Texto.nombre(ins.descripcion), "${ins.codigo} · ${Texto.unidad(ins.unidad)}") { vm.elegir(ins) }
                             }
                         } else if (e.busqueda.trim().length >= 2) {
                             Text("Nada coincide. Prueba con otra palabra.", fontSize = 15.sp, color = Paleta.Texto2)
@@ -260,8 +284,19 @@ fun PantallaSalida(obraId: Int, alVolver: () -> Unit, base: SalidaRegistrada? = 
                 ) {
                     CampoVidrio(e.motivo, vm::motivo, "Motivo", marcador = "Ej.: vaciado de losa 3.er piso", error = e.errores["motivo"])
                     Sugerencias(e.sugerencias.motivos, e.motivo, vm::motivo)
-                    CampoVidrio(e.quienRetira, vm::quienRetira, "Retira", marcador = "Nombre de quien lo lleva", error = e.errores["quienRetira"])
-                    Sugerencias(e.sugerencias.quienes, e.quienRetira, vm::quienRetira)
+                    CampoVidrio(
+                        e.quienRetira, vm::quienRetira, "Retira",
+                        marcador = if (e.trabajadoresObra.isNotEmpty()) "Busca entre los ${e.trabajadoresObra.size} trabajadores de la obra" else "Nombre de quien lo lleva",
+                        error = e.errores["quienRetira"],
+                        finalIcono = { Icon(Icons.Filled.Search, contentDescription = null, tint = Paleta.Texto3, modifier = Modifier.padding(end = 10.dp)) },
+                    )
+                    if (e.trabajadoresObra.isNotEmpty() && e.buscandoQuien) {
+                        val quienes = trabajadoresQueCoinciden(e.trabajadoresObra, e.quienRetira)
+                        if (quienes.isEmpty()) Text("Nadie de la obra se llama así.", fontSize = 15.sp, color = Paleta.Texto2)
+                        else ListaVidrio(quienes.take(6)) { n -> FilaElegible(n, null) { vm.elegirQuien(n) } }
+                    } else if (e.trabajadoresObra.isEmpty()) {
+                        Sugerencias(e.sugerencias.quienes, e.quienRetira, vm::quienRetira)
+                    }
                     CampoVidrio(e.frente, vm::frente, "Frente o cuadrilla (opcional)")
                     Sugerencias(e.sugerencias.frentes, e.frente, vm::frente)
                 }
@@ -269,6 +304,29 @@ fun PantallaSalida(obraId: Int, alVolver: () -> Unit, base: SalidaRegistrada? = 
                 BotonNegro("Guardar salida", { vm.guardar(obraId) }, icono = Icons.Filled.Save, cargando = e.guardando, modifier = Modifier.padding(top = 4.dp))
             }
         }
+    }
+}
+
+/** Lista de opciones sobre vidrio, separadas por una línea (insumos, trabajadores). */
+@Composable
+private fun <T> ListaVidrio(items: List<T>, fila: @Composable (T) -> Unit) {
+    Column(Modifier.fillMaxWidth().background(Paleta.Superficie.copy(alpha = 0.9f), RoundedCornerShape(20.dp))) {
+        items.forEachIndexed { i, x ->
+            if (i > 0) Box(Modifier.fillMaxWidth().height(1.dp).background(Paleta.Separador))
+            fila(x)
+        }
+    }
+}
+
+@Composable
+private fun FilaElegible(titulo: String, detalle: String?, alElegir: () -> Unit) {
+    Column(
+        Modifier.fillMaxWidth().clickable(onClickLabel = "Elegir «$titulo»") { alElegir() }.heightIn(min = 56.dp)
+            .padding(horizontal = 16.dp, vertical = 10.dp),
+        verticalArrangement = Arrangement.spacedBy(2.dp),
+    ) {
+        Text(titulo, fontSize = 16.sp, color = Paleta.Tinta)
+        if (detalle != null) Text(detalle, fontSize = 14.sp, color = Paleta.Texto3)
     }
 }
 
