@@ -64,3 +64,28 @@ class SalidaAlmacenTest {
         assertNull(errorQuienRetira("Pedro", emptyList())) // sin lista en el celular se acepta lo escrito
     }
 }
+
+class AsistenciaRevisionTest {
+    private fun t(id: Int, nombre: String, cuadrilla: String) = pe.sevens.sigro.dominio.Trabajador(
+        id, 1, nombre, "DNI", "4000000$id", "OPERARIO", cuadrilla, "2026-11-01", null)
+    private val marcas = listOf(
+        pe.sevens.sigro.dominio.MarcaAsistencia(t(1, "Fernando Istaña", "cuadrilla"), pe.sevens.sigro.dominio.EstadoAsistencia.PRESENTE),
+        pe.sevens.sigro.dominio.MarcaAsistencia(t(2, "Andrey Mestanza", "encofrado"), pe.sevens.sigro.dominio.EstadoAsistencia.PRESENTE),
+    )
+
+    @Test fun buscaPorNombreOCuadrillaSinTildes() {
+        assertEquals(listOf(1), pe.sevens.sigro.dominio.AsistenciaDia.filtrar(marcas, "istana").map { it.trabajador.id })
+        assertEquals(listOf(2), pe.sevens.sigro.dominio.AsistenciaDia.filtrar(marcas, "ENCOF").map { it.trabajador.id })
+        assertEquals(2, pe.sevens.sigro.dominio.AsistenciaDia.filtrar(marcas, " ").size)
+    }
+
+    @Test fun lasExtrasNoSeMezclanConLasNormales() {
+        val r = pe.sevens.sigro.dominio.ResumenAsistencia(presentes = 1, ausentes = 0, permisos = 0, horas = 11, extras = 3)
+        assertEquals("8 normales · 3 extra", pe.sevens.sigro.dominio.AsistenciaDia.textoHoras(r))
+    }
+
+    @Test fun ofreceHoyYLosSeisDiasAnteriores() {
+        val dias = pe.sevens.sigro.dominio.AsistenciaDia.diasElegibles(10 * 86_400_000L, { "d" + it / 86_400_000L })
+        assertEquals(listOf("d10", "d9", "d8", "d7", "d6", "d5", "d4"), dias)
+    }
+}
