@@ -2,6 +2,8 @@ package pe.sevens.sigro.ui.pantallas
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -50,6 +52,7 @@ import kotlinx.coroutines.launch
 import org.koin.compose.viewmodel.koinViewModel
 import pe.sevens.sigro.dominio.Texto
 import pe.sevens.sigro.dominio.Asistencia
+import pe.sevens.sigro.dominio.AsistenciaDia
 import pe.sevens.sigro.dominio.Categoria
 import pe.sevens.sigro.dominio.ErrorSigro
 import pe.sevens.sigro.dominio.EstadoAsistencia
@@ -327,6 +330,8 @@ data class EstadoAsistenciaDia(
     val yaMarcados: Set<Int> = emptySet(),
     val guardando: Boolean = false,
     val guardadas: Int? = null,
+    val busqueda: String = "",
+    val dias: List<String> = emptyList(),
 ) {
     /** Solo los que faltan registrar hoy: el día ya guardado no admite dos asistencias (HU-63). */
     val porMarcar: List<MarcaAsistencia> get() = marcas.filter { it.trabajador.id !in yaMarcados }
@@ -337,8 +342,19 @@ class AsistenciaViewModel(
     private val registros: RepositorioRegistros,
     private val programador: ProgramadorSincronizacion,
 ) : ViewModel() {
-    private val _e = MutableStateFlow(EstadoAsistenciaDia(fecha = Plataforma.fechaIso(Plataforma.ahoraMs())))
+    private val _e = MutableStateFlow(EstadoAsistenciaDia(
+        fecha = Plataforma.fechaIso(Plataforma.ahoraMs()),
+        dias = AsistenciaDia.diasElegibles(Plataforma.ahoraMs(), Plataforma::fechaIso),
+    ))
     val estado = _e.asStateFlow()
+
+    fun buscar(t: String) = _e.update { it.copy(busqueda = t) }
+
+    /** Otro día de la semana (lo que se olvidó marcar); se vuelve a armar la lista para esa fecha. */
+    fun elegirDia(obraId: Int, fecha: String) {
+        _e.update { it.copy(fecha = fecha, guardadas = null) }
+        cargar(obraId)
+    }
 
     /** Arma la lista con los activos de la fecha (los de baja no aparecen, HU-62). Todos empiezan presentes con 8 h. */
     fun cargar(obraId: Int) {
@@ -383,13 +399,19 @@ fun PantallaAsistencia(obraId: Int, alVolver: () -> Unit, alRegistros: () -> Uni
     val e by vm.estado.collectAsState()
     LaunchedEffect(obraId) { vm.cargar(obraId) }
     val r = remember(e.porMarcar) { Asistencia.resumir(e.porMarcar) }
+    val esHoy = e.dias.firstOrNull() == e.fecha
+    val diaTxt = if (esHoy) "hoy" else "del ${Texto.fecha(e.fecha)}"
+    val registrados = e.marcas.count { it.trabajador.id in e.yaMarcados }
 
     PantallaVidrio("Asistencia", plano = { planoAsistencia(it) }, alVolver = alVolver, subtitulo = "Uno por trabajador y día") {
         TarjetaVidrio {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
-                    Text("Hoy · ${Texto.fecha(e.fecha)}", fontSize = 17.sp, fontWeight = FontWeight.Bold, color = Paleta.Tinta)
-                    
+                    Text("${if (esHoy) "Hoy" else "Día"} · ${Texto.fecha(e.fecha)}", fontSize = 17.sp, fontWeight = FontWeight.Bold, color = Paleta.Tinta)
+                    Text(
+                        "Ya registrados: $registrados de ${e.marcas.size}" + if (e.porMarcar.isNotEmpty()) " · por guardar: ${e.porMarcar.size}" else "",
+                        fontSize = 14.sp, color = Paleta.Texto2,
+                    )
                 }
             }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -397,7 +419,26 @@ fun PantallaAsistencia(obraId: Int, alVolver: () -> Unit, alRegistros: () -> Uni
                 Mini(r.ausentes, "Ausentes", ColoresEstado.getValue(EstadoAsistencia.AUSENTE))
                 Mini(r.permisos, "Permiso", ColoresEstado.getValue(EstadoAsistencia.PERMISO))
             }
-            Text("${r.horas} horas · ${r.extras} extra", fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = Paleta.Tinta)
+            Text("Por guardar: " + AsistenciaDia.textoHoras(r), fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = Paleta.Tinta)
+            // Día a registrar: hoy o lo olvidado de la semana (el servidor valida el plazo de la obra).
+            Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                e.dias.forEachIndexed { i, d ->
+                    val activo = d == e.fecha
+                    Box(
+                        Modifier.heightIn(min = 40.dp)
+                            .background(if (activo) Paleta.NaranjaClaro else Paleta.Superficie.copy(alpha = 0.8f), RoundedCornerShape(20.dp))
+                            .clickable(onClickLabel = "Registrar el ${Texto.fecha(d)}") { vm.elegirDia(obraId, d) }
+                            .padding(horizontal = 14.dp, vertical = 9.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(when (i) { 0 -> "Hoy"; 1 -> "Ayer"; else -> Texto.fecha(d) }, fontSize = 14.sp, fontWeight = FontWeight.SemiBold,
+                            color = Paleta.Tinta, maxLines = 1)
+                    }
+                }
+            }
+        }
+        if (e.marcas.size > 3) {
+            CampoVidrio(e.busqueda, vm::buscar, "Buscar trabajador", marcador = "Nombre o cuadrilla")
         }
         e.guardadas?.let { n ->
             Row(
@@ -417,7 +458,9 @@ fun PantallaAsistencia(obraId: Int, alVolver: () -> Unit, alRegistros: () -> Uni
                 Text("Abre «Trabajadores» con señal para bajar la lista; después la asistencia se toma sin señal.", fontSize = 15.sp, lineHeight = 21.sp, color = Paleta.Texto2)
             }
         }
-        e.marcas.forEach { m ->
+        val visibles = AsistenciaDia.filtrar(e.marcas, e.busqueda)
+        if (e.marcas.isNotEmpty() && visibles.isEmpty()) Text("Nadie de la obra coincide con «${e.busqueda}».", fontSize = 15.sp, color = Paleta.Texto2)
+        visibles.forEach { m ->
             val ya = m.trabajador.id in e.yaMarcados
             TarjetaVidrio {
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -425,7 +468,7 @@ fun PantallaAsistencia(obraId: Int, alVolver: () -> Unit, alRegistros: () -> Uni
                         Text(m.trabajador.nombre, fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Paleta.Tinta)
                         Text("${m.trabajador.categoriaLegible} · ${m.trabajador.cuadrilla}", fontSize = 13.sp, color = Paleta.Texto3)
                     }
-                    if (ya) Etiqueta("Ya registrado hoy", Paleta.EnviadoTexto, Paleta.EnviadoFondo, Icons.Filled.CheckCircle)
+                    if (ya) Etiqueta(if (esHoy) "Ya registrado hoy" else "Ya registrado", Paleta.EnviadoTexto, Paleta.EnviadoFondo, Icons.Filled.CheckCircle)
                 }
                 if (!ya) {
                     Opciones(
@@ -442,12 +485,12 @@ fun PantallaAsistencia(obraId: Int, alVolver: () -> Unit, alRegistros: () -> Uni
             }
         }
         BotonNegro(
-            "Guardar asistencia de hoy", { vm.guardar(obraId) }, icono = Icons.Filled.Save, colorIcono = Paleta.NaranjaVivo,
+            "Guardar asistencia de $diaTxt", { vm.guardar(obraId) }, icono = Icons.Filled.Save, colorIcono = Paleta.NaranjaVivo,
             cargando = e.guardando, habilitado = e.porMarcar.isNotEmpty(),
         )
         AvisoNaranja(
-            "Sin señal se guarda en el celular y se envía después, como las salidas. Un día ya guardado se corrige " +
-                "con un registro nuevo que deja constancia del anterior (desde la web).",
+            "Sin señal se guarda en el celular y se envía después, como las salidas. Un trabajador ya registrado ese día " +
+                "no se vuelve a marcar; corregirlo (registro nuevo con motivo que deja constancia del anterior) aún no tiene pantalla.",
         )
     }
 }
