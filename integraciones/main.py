@@ -98,12 +98,24 @@ async def _consultar_apisperu(url: str) -> dict:
     return datos
 
 
+def _texto(v: str) -> str:
+    """Repara los caracteres de Windows-1252 que el padrón devuelve como controles (SEVEN\u0092S → SEVEN'S)."""
+    def uno(ch: str) -> str:
+        if "\x80" <= ch <= "\x9f":
+            try:
+                ch = bytes([ord(ch)]).decode("cp1252")
+            except UnicodeDecodeError:
+                return ""
+        return {"\u2019": "'", "\u2018": "'", "\u201c": '"', "\u201d": '"'}.get(ch, ch)
+    return "".join(uno(c) for c in v).strip()
+
+
 def _de(d: dict, *claves: str) -> str:
     """El primer valor no vacío entre varios nombres posibles (cada proveedor los llama distinto)."""
     for c in claves:
         v = d.get(c)
         if v not in (None, ""):
-            return str(v).strip()
+            return _texto(str(v))
     return ""
 
 

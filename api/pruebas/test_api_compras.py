@@ -521,3 +521,13 @@ def test_el_dni_tambien_es_unico_y_un_documento_de_otra_longitud_se_rechaza(mund
     assert r.status_code == 409 and r.json()["codigo"] == "uq_proveedor_ruc"
     for malo in ("4567891", "456789123", "4567891A"):                              # 7, 9 dígitos y letras
         assert post(mundo, "/proveedores", eq["residente"], ruc=malo, razon_social="Alguien SAC").status_code == 422
+
+
+# ───────────────────────── HU-31 · la web pide la razón social por el gateway (18/11)
+def test_la_web_consulta_el_ruc_por_el_servidor_y_sin_respuesta_da_404(mundo, eq, sunat):
+    sunat["valor"] = ruc_sunat("20606456892")
+    r = get(mundo, "/proveedores/consulta-ruc/20606456892", eq["residente"])
+    assert r.status_code == 200 and r.json()["razon_social"] == "RAZON SUNAT SAC" and r.json()["apto_para_comprar"]
+    sunat["valor"] = None
+    assert get(mundo, "/proveedores/consulta-ruc/20606456892", eq["residente"]).status_code == 404
+    assert get(mundo, "/proveedores/consulta-ruc/20100130202", eq["residente"]).status_code == 422

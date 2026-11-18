@@ -18,7 +18,7 @@
 import { usaApiReal } from '../api/http'
 import { useEffect, useMemo, useState } from 'react'
 import { ErrorApi, api } from '../api/cliente'
-import { consultarRucEnSunat, rucValido, type RucSunat } from '../api/sunat'
+import { consultarRucEnSunat, errorAltaProveedor, rucValido, type RucSunat } from '../api/sunat'
 import { proveedores as proveedoresOficina } from '../api/oficina'
 import type { EstadoProveedor, Proveedor } from '../api/tipos'
 import { Campo, Chip, Modal, Vacio, type TonoChip } from '../ui/base'
@@ -66,6 +66,8 @@ export function AltaProveedor({ enCerrar, enCreado }: {
   }
 
   const guardar = async () => {
+    const previo = errorAltaProveedor(ruc, razon)
+    if (previo) { setError(previo); return }
     setGuardando(true)
     setError(null)
     try {
@@ -76,7 +78,9 @@ export function AltaProveedor({ enCerrar, enCreado }: {
     } catch (e) {
       if (e instanceof ErrorApi) {
         const campo = e.codigo === 'razon_social' ? 'razon' : 'ruc'
-        setError({ campo, texto: e.message })
+        // Un 422 de validación trae el texto de Pydantic («String should…»): nunca se muestra tal cual.
+        const tecnico = /should|pattern|String|field required/i.test(e.message)
+        setError({ campo, texto: tecnico ? (errorAltaProveedor(ruc, razon)?.texto ?? 'Revisa el RUC y la razón social.') : e.message })
       }
     } finally {
       setGuardando(false)
