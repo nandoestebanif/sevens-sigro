@@ -51,6 +51,10 @@ services:
         sync: false
       - key: FACTILIZA_TOKEN               # integraciones (SUNAT/RENIEC); nunca en el repositorio
         sync: false
+      - key: PADRON_PROVEEDOR              # «factiliza» (por defecto) o «apisperu» (plan de Factiliza vencido el 18/11)
+        value: apisperu
+      - key: APISPERU_TOKEN                # token de dniruc.apisperu.com; nunca en el repositorio
+        sync: false
       # Relevo y notificaciones dentro del mismo nodo. ADR-10, «Memoria» (04/11): todo corre en UN proceso Python
       # (infra/un_nodo/un_proceso.py); la memoria se ve en /salud/servicios → memoria_mb. Si vuelve el OOM, poner "0".
       - key: SIGRO_UN_NODO_EXTRAS
