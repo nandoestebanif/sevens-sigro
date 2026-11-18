@@ -15,8 +15,7 @@ export interface RucSunat {
   apto_para_comprar: boolean
 }
 
-// En desarrollo el micro corre local; en producción esto sale de la configuración.
-const URL_INTEGRACIONES = 'http://localhost:8001'
+import { pedir } from './http'
 
 /** Valida el dígito verificador oficial SUNAT (módulo 11) de un RUC de 11 dígitos. */
 export function rucValido(ruc: string): boolean {
@@ -29,16 +28,25 @@ export function rucValido(ruc: string): boolean {
   return digito === Number(ruc[10])
 }
 
+/**
+ * La razón social se pide al servidor (GET /proveedores/consulta-ruc/{ruc}, por el gateway), que la consulta en
+ * el microservicio de integraciones. Antes se llamaba a localhost:8001 desde el navegador y en el ambiente de
+ * pruebas nunca respondía (hallazgo de la prueba de aceptación del 18/11).
+ */
 export async function consultarRucEnSunat(ruc: string): Promise<RucSunat | null> {
   if (!rucValido(ruc)) return null
   try {
-    const control = new AbortController()
-    const temporizador = setTimeout(() => control.abort(), 6000)
-    const r = await fetch(`${URL_INTEGRACIONES}/ruc/${ruc}`, { signal: control.signal })
-    clearTimeout(temporizador)
-    if (!r.ok) return null
-    return (await r.json()) as RucSunat
+    return await pedir<RucSunat>('GET', `/proveedores/consulta-ruc/${ruc}`)
   } catch {
-    return null // micro apagado o sin red: se sigue sin validación
+    return null // SUNAT o el micro sin respuesta: se escribe a mano y queda «por validar»
   }
+}
+
+/** Mensaje en palabras del usuario antes de ir al servidor (antes salía el texto técnico de la API). */
+export function errorAltaProveedor(ruc: string, razon: string): { campo: 'ruc' | 'razon'; texto: string } | null {
+  const r = ruc.trim()
+  if (!/^\d{11}$/.test(r) && !/^\d{8}$/.test(r)) return { campo: 'ruc', texto: 'Escribe el RUC (11 dígitos) o el DNI (8 dígitos), solo números.' }
+  if (r.length === 11 && !rucValido(r)) return { campo: 'ruc', texto: 'El dígito verificador de este RUC no coincide con la fórmula SUNAT.' }
+  if (razon.trim().length < 3) return { campo: 'razon', texto: 'Escribe la razón social (o el nombre, si es un DNI). Si SUNAT no responde, va a mano.' }
+  return null
 }

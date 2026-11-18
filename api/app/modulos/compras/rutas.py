@@ -72,6 +72,19 @@ def listar_proveedores(
     return pagina.recortar(rows, respuesta)
 
 
+@proveedores.get("/consulta-ruc/{ruc}")
+def consultar_ruc_sunat(ruc: str, a: Actor = Depends(exigir_en_alguna_obra("proveedor.registrar"))):
+    """HU-31: la web pide aquí la razón social del padrón (el token del proveedor vive solo en integraciones).
+    404 si no se pudo consultar (RUC mal escrito, servicio caído o sin token): la pantalla deja escribirla a mano."""
+    if not (len(ruc) == 11 and ruc.isdigit() and ruc_valido(ruc)):
+        raise ErrorSigro(422, "ruc_invalido", "El RUC tiene 11 dígitos y su dígito verificador debe coincidir con la fórmula SUNAT.")
+    r = integraciones.consultar_ruc(ruc)
+    if r is None:
+        raise ErrorSigro(404, "sunat_sin_respuesta", "SUNAT no respondió: escribe la razón social; el proveedor quedará «por validar».")
+    return {"ruc": r.ruc, "razon_social": r.razon_social, "estado_sunat": r.estado_sunat,
+            "condicion": r.condicion, "direccion": None, "apto_para_comprar": r.apto_para_comprar}
+
+
 @proveedores.post("", response_model=e.ProveedorOut, status_code=201)
 def crear_proveedor(datos: e.ProveedorIn, a: Actor = Depends(exigir_en_alguna_obra("proveedor.registrar"))):
     estado, alerta, advertencia, respondio = _consultar(datos.ruc)
