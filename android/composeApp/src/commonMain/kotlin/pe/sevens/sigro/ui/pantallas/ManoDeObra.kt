@@ -54,11 +54,13 @@ import pe.sevens.sigro.dominio.Texto
 import pe.sevens.sigro.dominio.Asistencia
 import pe.sevens.sigro.dominio.AsistenciaDia
 import pe.sevens.sigro.dominio.Categoria
+import pe.sevens.sigro.dominio.CorreccionJornada
 import pe.sevens.sigro.dominio.ErrorSigro
 import pe.sevens.sigro.dominio.EstadoAsistencia
 import pe.sevens.sigro.dominio.MarcaAsistencia
 import pe.sevens.sigro.dominio.NuevoTrabajador
 import pe.sevens.sigro.dominio.ProgramadorSincronizacion
+import pe.sevens.sigro.dominio.RepositorioJornadas
 import pe.sevens.sigro.dominio.RepositorioRegistros
 import pe.sevens.sigro.dominio.RepositorioTrabajadores
 import pe.sevens.sigro.dominio.Trabajador
@@ -332,6 +334,12 @@ data class EstadoAsistenciaDia(
     val guardadas: Int? = null,
     val busqueda: String = "",
     val dias: List<String> = emptyList(),
+    /** HU-63 c3: la jornada que se está corrigiendo (estado y horas nuevos) y su motivo. */
+    val corrigiendo: MarcaAsistencia? = null,
+    val motivo: String = "",
+    val errorCorreccion: String? = null,
+    val enviandoCorreccion: Boolean = false,
+    val corregida: String? = null,
 ) {
     /** Solo los que faltan registrar hoy: el día ya guardado no admite dos asistencias (HU-63). */
     val porMarcar: List<MarcaAsistencia> get() = marcas.filter { it.trabajador.id !in yaMarcados }
@@ -341,6 +349,7 @@ class AsistenciaViewModel(
     private val trabajadores: RepositorioTrabajadores,
     private val registros: RepositorioRegistros,
     private val programador: ProgramadorSincronizacion,
+    private val jornadas: RepositorioJornadas,
 ) : ViewModel() {
     private val _e = MutableStateFlow(EstadoAsistenciaDia(
         fecha = Plataforma.fechaIso(Plataforma.ahoraMs()),
@@ -352,7 +361,7 @@ class AsistenciaViewModel(
 
     /** Otro día de la semana (lo que se olvidó marcar); se vuelve a armar la lista para esa fecha. */
     fun elegirDia(obraId: Int, fecha: String) {
-        _e.update { it.copy(fecha = fecha, guardadas = null) }
+        _e.update { it.copy(fecha = fecha, guardadas = null, corrigiendo = null, corregida = null) }
         cargar(obraId)
     }
 
@@ -372,6 +381,36 @@ class AsistenciaViewModel(
     fun estado(id: Int, e: EstadoAsistencia) = cambiar(id) { it.copy(estado = e) }
     fun normales(id: Int, d: Int) = cambiar(id) { Asistencia.ajustarNormales(it, d) }
     fun extra(id: Int, d: Int) = cambiar(id) { Asistencia.ajustarExtra(it, d) }
+
+    // ── HU-63 c3 · corregir una jornada ya registrada (registro nuevo con motivo; la anterior queda como constancia)
+    fun empezarCorreccion(trabajadorId: Int) = _e.update { s ->
+        val t = s.marcas.firstOrNull { it.trabajador.id == trabajadorId }?.trabajador ?: return@update s
+        s.copy(corrigiendo = MarcaAsistencia(t, EstadoAsistencia.PRESENTE), motivo = "", errorCorreccion = null, corregida = null)
+    }
+    fun cancelarCorreccion() = _e.update { it.copy(corrigiendo = null, errorCorreccion = null) }
+    private fun cambiarCorreccion(f: (MarcaAsistencia) -> MarcaAsistencia) =
+        _e.update { s -> s.copy(corrigiendo = s.corrigiendo?.let(f), errorCorreccion = null) }
+    fun estadoCorreccion(e: EstadoAsistencia) = cambiarCorreccion { it.copy(estado = e) }
+    fun normalesCorreccion(d: Int) = cambiarCorreccion { Asistencia.ajustarNormales(it, d) }
+    fun extraCorreccion(d: Int) = cambiarCorreccion { Asistencia.ajustarExtra(it, d) }
+    fun motivo(t: String) = _e.update { it.copy(motivo = t, errorCorreccion = null) }
+
+    fun confirmarCorreccion(obraId: Int) {
+        val s = _e.value
+        val m = s.corrigiendo ?: return
+        CorreccionJornada.errorMotivo(s.motivo)?.let { err -> _e.update { it.copy(errorCorreccion = err) }; return }
+        _e.update { it.copy(enviandoCorreccion = true, errorCorreccion = null) }
+        viewModelScope.launch {
+            try {
+                jornadas.corregir(obraId, s.fecha, m, s.motivo)
+                _e.update { it.copy(enviandoCorreccion = false, corrigiendo = null, motivo = "", corregida = CorreccionJornada.textoHecha(m.trabajador.nombre, m)) }
+            } catch (e: ErrorSigro) {
+                val texto = if (e.codigo == "sin_conexion" || e.codigo == "servidor_no_responde")
+                    "Para corregir hace falta señal: se corrige la jornada que tiene el servidor. ${e.message}" else e.message
+                _e.update { it.copy(enviandoCorreccion = false, errorCorreccion = texto) }
+            }
+        }
+    }
 
     /** Guarda en el celular (cola sin señal) y pide enviar cuando haya señal. */
     fun guardar(obraId: Int) {
@@ -452,6 +491,15 @@ fun PantallaAsistencia(obraId: Int, alVolver: () -> Unit, alRegistros: () -> Uni
                 )
             }
         }
+        e.corregida?.let { texto ->
+            Row(
+                Modifier.fillMaxWidth().background(Paleta.EnviadoFondo, RoundedCornerShape(16.dp)).padding(14.dp),
+                verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                Icon(Icons.Filled.CheckCircle, contentDescription = null, tint = Paleta.EnviadoTexto)
+                Text(texto, fontSize = 14.sp, lineHeight = 20.sp, color = Paleta.EnviadoTexto)
+            }
+        }
         if (e.marcas.isEmpty()) {
             TarjetaVidrio {
                 Text("No hay trabajadores activos en el celular", fontSize = 17.sp, fontWeight = FontWeight.Bold, color = Paleta.Tinta)
@@ -469,6 +517,36 @@ fun PantallaAsistencia(obraId: Int, alVolver: () -> Unit, alRegistros: () -> Uni
                         Text("${m.trabajador.categoriaLegible} · ${m.trabajador.cuadrilla}", fontSize = 13.sp, color = Paleta.Texto3)
                     }
                     if (ya) Etiqueta(if (esHoy) "Ya registrado hoy" else "Ya registrado", Paleta.EnviadoTexto, Paleta.EnviadoFondo, Icons.Filled.CheckCircle)
+                }
+                val c = e.corrigiendo
+                if (ya && c?.trabajador?.id == m.trabajador.id) {
+                    // HU-63 c3: cómo queda la jornada + motivo; no se borra la anterior
+                    Text("Corregir la jornada del ${Texto.fecha(e.fecha)}", fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = Paleta.Tinta)
+                    Opciones(
+                        EstadoAsistencia.entries, c.estado, { it.legible }, vm::estadoCorreccion,
+                        colorActivo = ColoresEstado.getValue(c.estado),
+                    )
+                    if (c.estado == EstadoAsistencia.PRESENTE) {
+                        FlowRow(horizontalArrangement = Arrangement.spacedBy(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Contador("Normales", c.horasNormales, { vm.normalesCorreccion(-1) }, { vm.normalesCorreccion(+1) })
+                            Contador("Extra", c.horasExtra, { vm.extraCorreccion(-1) }, { vm.extraCorreccion(+1) })
+                        }
+                    }
+                    CampoVidrio(
+                        e.motivo, vm::motivo, "Motivo de la corrección", marcador = "p. ej. Llegó tarde: trabajó 4 h, no 8",
+                        error = e.errorCorreccion,
+                    )
+                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        BotonNegro("Cancelar", vm::cancelarCorreccion, Modifier.weight(1f), contorno = true, habilitado = !e.enviandoCorreccion)
+                        BotonNegro("Guardar corrección", { vm.confirmarCorreccion(obraId) }, Modifier.weight(1f), cargando = e.enviandoCorreccion)
+                    }
+                } else if (ya && c == null) {
+                    Text(
+                        "Corregir",
+                        modifier = Modifier.clickable(onClickLabel = "Corregir la jornada de ${m.trabajador.nombre}") { vm.empezarCorreccion(m.trabajador.id) }
+                            .padding(vertical = 6.dp),
+                        fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = Paleta.Naranja,
+                    )
                 }
                 if (!ya) {
                     Opciones(
@@ -490,7 +568,7 @@ fun PantallaAsistencia(obraId: Int, alVolver: () -> Unit, alRegistros: () -> Uni
         )
         AvisoNaranja(
             "Sin señal se guarda en el celular y se envía después, como las salidas. Un trabajador ya registrado ese día " +
-                "no se vuelve a marcar; corregirlo (registro nuevo con motivo que deja constancia del anterior) aún no tiene pantalla.",
+                "no se vuelve a marcar: se corrige con «Corregir» (necesita señal), con un motivo; la jornada anterior queda como constancia.",
         )
     }
 }

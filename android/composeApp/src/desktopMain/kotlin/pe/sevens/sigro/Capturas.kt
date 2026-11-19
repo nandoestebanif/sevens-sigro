@@ -313,7 +313,10 @@ fun main(args: Array<String>) {
     capturar(dir, "15-trabajador-nuevo", preparar = { tn.documento("1234567"); tn.nombre("Trabajador 08 (ejemplo)") }) {
         PantallaTrabajadorNuevo(1, {}, tn, TrabajadoresViewModel(TrabajadoresFalsos, registros))
     }
-    val asis = AsistenciaViewModel(TrabajadoresFalsos, registros, sinProgramar)
+    val asis = AsistenciaViewModel(TrabajadoresFalsos, registros, sinProgramar, object : pe.sevens.sigro.dominio.RepositorioJornadas {
+        override suspend fun corregir(obraId: Int, fecha: String, marca: pe.sevens.sigro.dominio.MarcaAsistencia, motivo: String) =
+            pe.sevens.sigro.dominio.JornadaCorregida(2, 1)
+    })
     capturar(dir, "16-asistencia", preparar = { asis.cargar(1); Thread.sleep(300); asis.extra(1, 2); asis.estado(4, pe.sevens.sigro.dominio.EstadoAsistencia.AUSENTE) }) {
         PantallaAsistencia(1, {}, {}, asis)
     }

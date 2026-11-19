@@ -22,6 +22,18 @@ interface RepositorioTrabajadores {
 }
 
 /**
+ * HU-63 c3 · corregir una jornada que ya llegó al servidor. La jornada es un libro (R1): no se edita; corregir
+ * inserta otra que apunta a la vigente, con su motivo, y la anterior queda como constancia. Necesita señal porque
+ * se corrige la versión vigente del servidor (si otro ya la corrigió, responde 409 y se vuelve a intentar).
+ */
+interface RepositorioJornadas {
+    suspend fun corregir(obraId: Int, fecha: String, marca: MarcaAsistencia, motivo: String): JornadaCorregida
+}
+
+/** Lo que respondió el servidor: la jornada nueva y a cuál corrige. */
+data class JornadaCorregida(val jornadaId: Int, val corrigeA: Int)
+
+/**
  * Cola general sin señal (HU-37 / HU-38 para lo que no es una salida). Cada registro nace con su
  * `uuid_cliente`, se guarda en el celular antes de enviarse, y un rechazo queda con su motivo.
  */
