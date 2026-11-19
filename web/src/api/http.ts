@@ -333,12 +333,14 @@ const aParametro = (p: ParametroApi): ParametroReposicion => {
 
 export const reposicionHttp = {
   async saldo(): Promise<AvanceInsumo[]> {
-    const [xs, criticos] = await Promise.all([
+    const [xs, marcados] = await Promise.all([
       pedir<SaldoApi[]>('GET', `/obras/${await obraId()}/saldo-por-comprar`),
-      // D14 (decisión del PO): un insumo es crítico cuando tiene punto de reposición vigente (HU-25).
-      // Si el rol no puede ver los parámetros, el filtro queda sin críticos en vez de romper la pantalla.
-      reposicionHttp.parametros().then((ps) => new Set(ps.map((p) => p.insumoCodigo))).catch(() => new Set<string>()),
+      reposicionHttp.criticos(),
     ])
+    // D14: crítico es lo que el residente marcó (HU-28, GET /criticos). Mientras el servidor no tenga HU-28, regla del PO:
+    // crítico = insumo con punto de reposición vigente (HU-25). Sin permiso para verlos, nadie es crítico y la pantalla carga.
+    const criticos = marcados ?? await reposicionHttp.parametros()
+      .then((ps) => new Set(ps.map((p) => p.insumoCodigo))).catch(() => new Set<string>())
     return xs.map((s) => {
       const req = num(s.requerido), comp = num(s.comprado)
       return {
@@ -353,6 +355,20 @@ export const reposicionHttp = {
         faltaFactor: faltaFactor(s.unidadS10, s.unidadCompra, num(s.saldo), num(s.saldoEnUnidadCompra)),
       }
     })
+  },
+  /** HU-28: códigos marcados como críticos en la obra; null si el servidor todavía no tiene HU-28 (404 de ruta). */
+  async criticos(): Promise<Set<string> | null> {
+    try {
+      const xs = await pedir<{ insumoCodigo: string; critico: boolean }[]>('GET', `/obras/${await obraId()}/criticos`)
+      return new Set(xs.filter((x) => x.critico).map((x) => x.insumoCodigo))
+    } catch (e) {
+      if (e instanceof ErrorApi && e.estado === 404) return null
+      return new Set<string>()
+    }
+  },
+  /** HU-28: el residente marca o quita la marca (cada cambio queda con autor y fecha en el servidor). */
+  async marcarCritico(insumoCodigo: string, critico: boolean): Promise<void> {
+    await pedir('POST', `/obras/${await obraId()}/criticos`, { insumoCodigo, critico })
   },
   async parametros(): Promise<ParametroReposicion[]> {
     return (await pedir<ParametroApi[]>('GET', `/obras/${await obraId()}/parametros-reposicion`)).map(aParametro)
