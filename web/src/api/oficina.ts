@@ -39,7 +39,11 @@ export interface LineaRequerimiento {
   manual: boolean            // T-340: agregado a mano (no vino del S10)
   motivoAlta: string | null
 }
-export interface Ajuste { cantidadAnterior: number; cantidadNueva: number; motivo: string; ajustadoPor: number; ajustadoEn: string }
+export interface Ajuste {
+  cantidadAnterior: number; cantidadNueva: number; motivo: string; ajustadoPor: number; ajustadoEn: string
+  /** D11: quién hizo el ajuste, con su nombre (lo resuelve la web con las asignaciones de la obra; si no, «Usuario #id») */
+  ajustadoPorNombre: string
+}
 interface RequerimientoApi {
   id: number; insumoCodigo: string; descripcion: string; unidadS10: string; cantidadPlanificada: string; precioPlanificado: string
   origen?: 's10' | 'manual'; motivoAlta?: string | null
@@ -64,8 +68,13 @@ export const requerimiento = {
     await pedir('POST', `/obras/${await obraId()}/requerimiento/${id}/ajustar`, { cantidad, motivo: motivo.trim() })
   },
   async ajustes(id: number): Promise<Ajuste[]> {
-    const xs = await pedir<AjusteApi[]>('GET', `/obras/${await obraId()}/requerimiento/${id}/ajustes`)
-    return xs.map((a) => ({ ...a, cantidadAnterior: num(a.cantidadAnterior), cantidadNueva: num(a.cantidadNueva) }))
+    const [xs, personas] = await Promise.all([
+      pedir<AjusteApi[]>('GET', `/obras/${await obraId()}/requerimiento/${id}/ajustes`), nombresDeLaObra(),
+    ])
+    return xs.map((a) => ({
+      ...a, cantidadAnterior: num(a.cantidadAnterior), cantidadNueva: num(a.cantidadNueva),
+      ajustadoPorNombre: personas.get(a.ajustadoPor) ?? `Usuario #${a.ajustadoPor}`,
+    }))
   },
 }
 
