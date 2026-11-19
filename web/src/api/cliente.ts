@@ -75,6 +75,8 @@ export interface ClienteSigro {
     lineas: LineaCompra[]
   }): Promise<Compra>
   listarCompras(): Promise<Compra[]>
+  /** HU-32 · R10: anular una compra con su motivo (no se borra; deja de contar en «Comprado») */
+  anularCompra(compraId: string, motivo: string): Promise<Compra>
   /** HU-34: adjuntar, listar, descargar y anular comprobantes digitales */
   listarComprobantes(compraId: string): Promise<ComprobanteCompra[]>
   subirComprobante(compraId: string, archivo: File): Promise<ComprobanteCompra>
@@ -643,6 +645,16 @@ export class ClienteSimulado implements ClienteSigro {
     return this.blobsComprobantes.get(adjuntoId) ?? null
   }
 
+  async anularCompra(compraId: string, motivo: string): Promise<Compra> {
+    await espera(120)
+    if (motivo.trim().length < 5) throw new ErrorApi('motivo', 'Escribe por qué se anula la compra (mínimo 5 caracteres).')
+    const c = this.compras.find((x) => x.id === compraId)
+    if (!c) throw new ErrorApi('no_existe', 'Esa compra no existe en esta obra.')
+    c.estado = 'anulada'
+    c.motivoAnulacion = motivo.trim()
+    return { ...c }
+  }
+
   async anularComprobante(compraId: string, adjuntoId: string, motivo: string): Promise<ComprobanteCompra> {
     await espera(120)
     if (motivo.trim().length < 5) throw new ErrorApi('motivo', 'El motivo de anulación requiere al menos 5 caracteres.')
@@ -663,6 +675,7 @@ export class ClienteSimulado implements ClienteSigro {
 
   /** HU-35: el estado de la compra nunca se setea a mano: se deriva de lo recibido */
   private estadoDeCompra(c: Compra): Compra['estado'] {
+    if (c.estado === 'anulada') return 'anulada' // una anulada no vuelve a «registrada»
     const rec = this.recibido[c.id] ?? {}
     const tot = c.lineas.reduce((s, l) => s + l.cantidad, 0)
     const ya = c.lineas.reduce((s, l) => s + (rec[l.insumoId] ?? 0), 0)
@@ -978,6 +991,7 @@ class ClienteHttp extends ClienteSimulado {
     return comprasHttp.registrar(datos)
   }
   override listarCompras() { return comprasHttp.listar() }
+  override anularCompra(compraId: string, motivo: string) { return comprasHttp.anularCompra(compraId, motivo) }
   override listarComprobantes(compraId: string) { return comprasHttp.listarComprobantes(compraId) }
   override subirComprobante(compraId: string, archivo: File) { return comprasHttp.subirComprobante(compraId, archivo) }
   override descargarComprobante(compraId: string, adjuntoId: string) { return comprasHttp.descargarComprobante(compraId, adjuntoId) }
