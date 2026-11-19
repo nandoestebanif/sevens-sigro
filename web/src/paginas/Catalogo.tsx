@@ -21,6 +21,7 @@
    cómodo, la tabla los muestra en caja amable y el detalle enseña el nombre
    normalizado exacto.
    ───────────────────────────────────────────────────────────────────────── */
+import { fechaHoraLima } from '../api/horaLima'
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { ErrorApi, api } from '../api/cliente'
 import type { HistorialFactor, InsumoMaestro } from '../api/tipos'
@@ -196,7 +197,7 @@ function ModalFactor({ insumo, enCerrar, enGuardado }: {
 
         <div style={{ borderTop: '1px solid var(--separador)', paddingTop: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
           <span style={{ fontSize: 12.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--tinta-2)' }}>
-            Histórico de cambios
+            Histórico de cambios{historial && historial.length > 0 ? ` · ${historial.length} (el más reciente primero)` : ''}
           </span>
           {historial === null ? (
             <span style={{ fontSize: 12.5, color: 'var(--tinta-3)' }}>Consultando histórico…</span>
@@ -208,7 +209,7 @@ function ModalFactor({ insumo, enCerrar, enGuardado }: {
                 <div key={h.id} style={{ background: 'var(--vidrio-celda)', borderRadius: 12, padding: '8px 12px', fontSize: 12.5 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, fontWeight: 700 }}>
                     <span className="n">{h.factorAnterior} → {h.factorNuevo} {uS10}/{uCompra}</span>
-                    <span className="n" style={{ color: 'var(--tinta-2)', fontWeight: 500 }}>{h.cambiadoEn.slice(0, 16).replace('T', ' ')}</span>
+                    <span className="n" style={{ color: 'var(--tinta-2)', fontWeight: 500 }}>{fechaHoraLima(h.cambiadoEn)}</span>
                   </div>
                   <div style={{ color: 'var(--tinta-2)', marginTop: 2 }}>{h.motivo} · {h.cambiadoPor}</div>
                 </div>

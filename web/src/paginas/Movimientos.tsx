@@ -15,6 +15,7 @@
    - El saldo se recalcula considerando ambos movimientos (lo hace la capa API).
    - La consulta permite ver el movimiento anulado y el que lo anuló.
    ───────────────────────────────────────────────────────────────────────── */
+import { diaHoraLima } from '../api/horaLima'
 import { usaApiReal } from '../api/http'
 import { useEffect, useState } from 'react'
 import { ErrorApi, api } from '../api/cliente'
@@ -23,7 +24,7 @@ import { Chip, Modal, Vacio } from '../ui/base'
 import { Aviso, Chips, Encabezado, Fondo, Pildora, TituloSeccion, Vidrio } from '../ui/vidrio'
 
 const n = (v: number) => v.toLocaleString('es-PE')
-const hora = (iso: string) => `${iso.slice(8, 10)}/${iso.slice(5, 7)} ${iso.slice(11, 16)}`
+const hora = (iso: string) => diaHoraLima(iso) // en hora de Lima, no en la UTC del servidor
 
 const TIPO: Record<Movimiento['tipo'], { texto: string; signo: string }> = {
   ingreso: { texto: 'Ingreso', signo: '+' },
