@@ -426,6 +426,10 @@ const nuevoUuid = () =>
 export const comprasHttp = {
   async registrar(d: { proveedorId: string; tipoComprobante: TipoComprobante; numeroComprobante: string; fecha: string; lineas: LineaCompra[] }): Promise<Compra> {
     if (!d.proveedorId) throw new ErrorApi('proveedor', 'Elige el proveedor de la compra.')
+    // HU-32: se avisa al registrar, no después (el servidor también lo rechaza)
+    if (d.fecha > new Date().toLocaleDateString('en-CA', { timeZone: 'America/Lima' })) {
+      throw new ErrorApi('fecha', 'La fecha del comprobante no puede ser posterior a hoy.')
+    }
     const oId = await obraId()
     const c = await pedir<CompraApi>('POST', `/obras/${oId}/compras`, {
       proveedorId: Number(d.proveedorId),
