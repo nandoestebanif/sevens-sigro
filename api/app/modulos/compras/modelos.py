@@ -206,6 +206,22 @@ class RequerimientoAjuste(Base):
     ajustado_en: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
+class InsumoCritico(Base):
+    """Marca o desmarca de un insumo como crítico, con vigencias: cambiar = fila nueva (HU-28, migración 0018)."""
+    __tablename__ = "insumo_critico"
+    __table_args__ = (
+        Index("ix_insumo_critico_vigencia", "proyecto_id", "insumo_id", text("id DESC")),
+        {"schema": "compras"},
+    )
+
+    id: Mapped[int] = mapped_column(BigInteger, Identity(always=True), primary_key=True)
+    proyecto_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("obra.proyecto.id", name="fk_insumo_critico_proyecto_id_proyecto"))
+    insumo_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("catalogo.insumo.id", name="fk_insumo_critico_insumo_id_insumo"))
+    critico: Mapped[bool] = mapped_column(Boolean)
+    registrado_por: Mapped[int] = mapped_column(BigInteger, ForeignKey("obra.usuario.id", name="fk_insumo_critico_registrado_por_usuario"))
+    registrado_en: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
 class ParametroReposicion(Base):
     """Stock de seguridad y punto de reposición con vigencias: cambiar = fila nueva (HU-25, migración 0008)."""
     __tablename__ = "parametro_reposicion"
