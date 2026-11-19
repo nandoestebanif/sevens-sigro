@@ -332,3 +332,51 @@ def test_porcentaje_y_conversion_sin_base():
     assert porcentaje(D("1"), D("3")) == D("33.33") and porcentaje(D("2"), D("3")) == D("66.67")
     assert porcentaje(D("5"), D("0")) == D("0.00") and porcentaje(None, D("10")) is None
     assert a_unidad_compra(D("36357"), D("7.12")) == D("5106.3202")
+
+
+# ═══════════════════════════════════ HU-28 insumos críticos
+def _marcar(mundo, eq, codigo, critico=True, quien="residente"):
+    return post(mundo, f"/obras/{eq['proyecto']}/criticos", eq[quien], insumo_codigo=codigo, critico=critico)
+
+
+def test_el_residente_marca_y_desmarca_y_cada_cambio_deja_su_fila(mundo, eq):
+    importar(mundo, eq, [fila("0221000000"), fila("0203020004", "100", "4.54")])
+    ok = _marcar(mundo, eq, "0221000000")
+    assert ok.status_code == 201 and ok.json()["critico"] is True and ok.json()["insumo_codigo"] == "0221000000"
+    assert [c["insumo_codigo"] for c in get(mundo, f"/obras/{eq['proyecto']}/criticos", eq["residente"]).json()] == ["0221000000"]
+    assert _marcar(mundo, eq, "0221000000", critico=False).status_code == 201
+    assert get(mundo, f"/obras/{eq['proyecto']}/criticos", eq["residente"]).json() == []
+    # nada se borró: las dos marcas siguen en el libro
+    assert mundo.f.q1("SELECT count(*) AS id FROM compras.insumo_critico WHERE proyecto_id = %s", (eq["proyecto"],)) == 2
+
+
+def test_el_filtro_solo_criticos_deja_solo_los_marcados_en_requerimiento_y_avance(mundo, eq):
+    importar(mundo, eq, [fila("0221000000"), fila("0203020004", "100", "4.54")])
+    _marcar(mundo, eq, "0203020004")
+    req = get(mundo, f"/obras/{eq['proyecto']}/requerimiento?solo_criticos=true", eq["residente"]).json()
+    assert [r["insumo_codigo"] for r in req] == ["0203020004"] and req[0]["critico"] is True
+    todos = get(mundo, f"/obras/{eq['proyecto']}/requerimiento", eq["residente"]).json()
+    assert {r["insumo_codigo"]: r["critico"] for r in todos} == {"0221000000": False, "0203020004": True}
+    av = get(mundo, f"/obras/{eq['proyecto']}/avance?solo_criticos=true", eq["residente"]).json()
+    assert [f["insumo_codigo"] for f in av["filas"]] == ["0203020004"] and av["filas"][0]["critico"] is True
+
+
+def test_los_candidatos_vienen_ordenados_por_valor_y_no_se_marca_nada(mundo, eq):
+    importar(mundo, eq, [fila("0221000000", "10", "10"), fila("0203020004", "1000", "4.54")])   # 100 contra 4 540
+    c = get(mundo, f"/obras/{eq['proyecto']}/criticos/candidatos", eq["residente"]).json()
+    assert [x["insumo_codigo"] for x in c] == ["0203020004", "0221000000"] and not any(x["critico"] for x in c)
+    assert get(mundo, f"/obras/{eq['proyecto']}/criticos", eq["residente"]).json() == []
+
+
+def test_solo_el_residente_y_el_administrador_marcan_y_solo_en_su_obra(mundo, eq):
+    importar(mundo, eq, [fila("0221000000")])
+    assert _marcar(mundo, eq, "0221000000", quien="almacenero").status_code == 403
+    assert _marcar(mundo, eq, "0221000000", quien="gerente").status_code == 403
+    otra = mundo.f.obra_completa()
+    assert post(mundo, f"/obras/{eq['proyecto']}/criticos", otra["residente"], insumo_codigo="0221000000", critico=True).status_code in (403, 404)
+
+
+def test_no_se_marca_lo_que_no_esta_en_el_requerimiento(mundo, eq):
+    importar(mundo, eq, [fila("0221000000")])
+    r = _marcar(mundo, eq, "0203020004")
+    assert r.status_code == 422 and r.json()["codigo"] == "insumo_fuera_del_requerimiento"

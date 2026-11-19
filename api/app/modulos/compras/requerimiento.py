@@ -61,6 +61,7 @@ class RequerimientoOut(BaseModel):
     costo_planificado: Decimal
     origen: Literal["s10", "manual"] = "s10"      # T-340: lo importado del S10 o lo agregado a mano
     motivo_alta: str | None = None                # solo en lo agregado a mano
+    critico: bool = False                         # HU-28
 
 
 class AgregarIn(Estricto):
@@ -196,10 +197,21 @@ def importar_requerimiento(d: ImportarRequerimientoIn, a: Actor = Depends(exigir
     return ResultadoRequerimientoOut(creados=creados, sin_cambios=sin_cambios, fallidos=fallidos, advertencias=avisos)
 
 
+def _criticos_de(a: Actor) -> set[int]:
+    """HU-28: los insumos que la obra tiene marcados como críticos ahora (la última marca de cada uno)."""
+    return {r["insumo_id"] for r in filas(
+        a.sesion, "SELECT insumo_id FROM compras.insumo_critico_vigente WHERE proyecto_id = :p AND critico", p=a.obra_id)}
+
+
 @router.get("/requerimiento", response_model=list[RequerimientoOut])
-def ver_requerimiento(q: str | None = Query(None, max_length=100), a: Actor = Depends(exigir("requerimiento.consultar"))):
+def ver_requerimiento(q: str | None = Query(None, max_length=100),
+                      solo_criticos: bool = Query(False, description="HU-28: solo los insumos marcados como críticos"),
+                      a: Actor = Depends(exigir("requerimiento.consultar"))):
     rows = _con_insumo(filas(a.sesion, _REQ + "WHERE r.proyecto_id = :p", p=a.obra_id), _CAMPOS_REQ, (q or "").strip() or None)
-    return sorted(rows, key=lambda r: r["insumo_codigo"])
+    criticos = _criticos_de(a)
+    for r in rows:
+        r["critico"] = r["insumo_id"] in criticos
+    return sorted((r for r in rows if r["critico"] or not solo_criticos), key=lambda r: r["insumo_codigo"])
 
 
 @router.post("/requerimiento", response_model=RequerimientoOut, status_code=201)
@@ -289,6 +301,7 @@ class AvanceFilaOut(BaseModel):
     pct_comprado: Decimal
     pct_recibido: Decimal | None
     pct_consumido: Decimal | None
+    critico: bool = False             # HU-28: lo marca el residente
 
 
 class AvanceOut(BaseModel):
@@ -327,7 +340,9 @@ def recibido_y_consumido(obra_id: int) -> dict[int, tuple[Decimal, Decimal]] | N
 
 
 @router.get("/avance", response_model=AvanceOut)
-def avance(q: str | None = Query(None, max_length=100), a: Actor = Depends(exigir("avance.consultar"))):
+def avance(q: str | None = Query(None, max_length=100),
+           solo_criticos: bool = Query(False, description="HU-28: solo los insumos marcados como críticos"),
+           a: Actor = Depends(exigir("avance.consultar"))):
     """HU-23: requerido, comprado, recibido, consumido y saldo por comprar de cada insumo del requerimiento, en unidad de
     compra, con su porcentaje sobre el requerimiento total. Lo que depende de almacén se declara en `pendiente`."""
     rows = filas(
@@ -336,6 +351,9 @@ def avance(q: str | None = Query(None, max_length=100), a: Actor = Depends(exigi
         p=a.obra_id)
     rows = _con_insumo(rows, ("codigo", "descripcion", "unidad_compra", "factor_conversion"), (q or "").strip() or None)
     almacen = recibido_y_consumido(a.obra_id)
+    criticos = _criticos_de(a)
+    if solo_criticos:
+        rows = [r for r in rows if r["insumo_id"] in criticos]
     salida = []
     for r in rows:
         factor = r.pop("factor_conversion")
@@ -346,7 +364,7 @@ def avance(q: str | None = Query(None, max_length=100), a: Actor = Depends(exigi
             rs, cs = almacen.get(r["insumo_id"], (Decimal(0), Decimal(0)))
             rec, con = a_unidad_compra(rs, factor), a_unidad_compra(cs, factor)
         salida.append({**r, "requerido": req, "comprado": com, "recibido": rec, "consumido": con,
-                       "saldo_por_comprar": saldo,
+                       "saldo_por_comprar": saldo, "critico": r["insumo_id"] in criticos,
                        "pct_comprado": porcentaje(com, req), "pct_recibido": porcentaje(rec, req),
                        "pct_consumido": porcentaje(con, req)})
     pendiente = [] if almacen is not None else [
@@ -388,6 +406,70 @@ def historial_parametros(insumo_id: int, a: Actor = Depends(exigir("reposicion.c
     return _con_insumo(filas(a.sesion, _PAR + "FROM compras.parametro_reposicion v "
                                          "WHERE v.proyecto_id = :p AND v.insumo_id = :i ORDER BY v.id DESC", p=a.obra_id, i=insumo_id),
                        _CAMPOS_PAR)
+
+
+# ------------------------------------------------------------------ insumos críticos (HU-28)
+class CriticoIn(Estricto):
+    insumo_codigo: str = Field(min_length=1, max_length=30)
+    critico: bool = Field(description="true = marcar como crítico; false = quitar la marca")
+
+
+class CriticoOut(BaseModel):
+    insumo_id: int
+    insumo_codigo: str
+    descripcion: str
+    critico: bool
+    registrado_por: int
+    registrado_en: str
+
+
+class CandidatoOut(BaseModel):
+    insumo_id: int
+    insumo_codigo: str
+    descripcion: str
+    unidad_s10: str
+    costo_planificado: Decimal
+    pct_del_total: Decimal
+    critico: bool
+
+
+@router.post("/criticos", response_model=CriticoOut, status_code=201)
+def marcar_critico(d: CriticoIn, a: Actor = Depends(exigir("critico.marcar"))):
+    """HU-28: el residente marca o desmarca un insumo del requerimiento como crítico. Cada cambio es una fila nueva con su
+    autor y su fecha; la anterior queda (nada se borra)."""
+    ins_id = _id_por_codigo(d.insumo_codigo)
+    if ins_id is None:
+        raise ErrorSigro(404, "insumo_no_existe", "Ese insumo no está en el catálogo.")
+    if fila(a.sesion, "SELECT id FROM compras.requerimiento WHERE proyecto_id = :p AND insumo_id = :i", p=a.obra_id, i=ins_id) is None:
+        raise ErrorSigro(422, "insumo_fuera_del_requerimiento", "Ese insumo no está en el requerimiento de la obra: agrégalo primero.")
+    nuevo = fila(
+        a.sesion,
+        "INSERT INTO compras.insumo_critico (proyecto_id, insumo_id, critico, registrado_por) VALUES (:p, :i, :c, :u) "
+        "RETURNING insumo_id, critico, registrado_por, registrado_en::text AS registrado_en",
+        p=a.obra_id, i=ins_id, c=d.critico, u=a.usuario_id)
+    return _con_insumo([nuevo], ("codigo", "descripcion"))[0]
+
+
+@router.get("/criticos", response_model=list[CriticoOut])
+def ver_criticos(a: Actor = Depends(exigir("requerimiento.consultar"))):
+    """Los insumos críticos vigentes de la obra."""
+    rows = _con_insumo(filas(
+        a.sesion, "SELECT insumo_id, critico, registrado_por, registrado_en::text AS registrado_en "
+                  "FROM compras.insumo_critico_vigente WHERE proyecto_id = :p AND critico", p=a.obra_id), ("codigo", "descripcion"))
+    return sorted(rows, key=lambda r: r["insumo_codigo"])
+
+
+@router.get("/criticos/candidatos", response_model=list[CandidatoOut])
+def candidatos_criticos(limite: int = Query(20, ge=1, le=100), a: Actor = Depends(exigir("requerimiento.consultar"))):
+    """HU-28: los insumos que concentran el valor presupuestado, de mayor a menor, para que el residente decida cuáles
+    marcar. El sistema propone; no marca nada por sí solo."""
+    rows = _con_insumo(filas(a.sesion, _REQ + "WHERE r.proyecto_id = :p", p=a.obra_id), ("codigo", "descripcion", "unidad_s10"))
+    total = sum((Decimal(str(r["costo_planificado"])) for r in rows), Decimal(0))
+    criticos = _criticos_de(a)
+    for r in rows:
+        r["critico"] = r["insumo_id"] in criticos
+        r["pct_del_total"] = porcentaje(Decimal(str(r["costo_planificado"])), total) if total > 0 else Decimal("0.00")
+    return sorted(rows, key=lambda r: Decimal(str(r["costo_planificado"])), reverse=True)[:limite]
 
 
 routers = [router]
