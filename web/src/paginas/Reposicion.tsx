@@ -136,7 +136,8 @@ export function Reposicion() {
               etiqueta="Filtro por criticidad" valor={soloCriticos} enCambio={setSoloCriticos}
               opciones={[{ valor: false, texto: 'Todos' }, { valor: true, texto: 'Solo críticos' }]}
             />
-            <select
+            {/* D14: las fases llegan con el requerimiento por fase (HU-20, Product Backlog); con una sola no hay nada que elegir */}
+            {fases.length > 1 && <select
               aria-label="Filtrar por fase"
               value={fase}
               onChange={(e) => setFase(e.target.value)}
@@ -145,15 +146,22 @@ export function Reposicion() {
             >
               <option value="todas">Todas las fases</option>
               {fases.map((f) => <option key={f} value={f}>{f}</option>)}
-            </select>
+            </select>}
           </div>
+          {soloCriticos && (
+            <span style={{ fontSize: 12.5, color: 'var(--tinta-2)' }}>
+              Crítico = insumo con punto de reposición definido. Se marcan en <Link to="/parametros">Parámetros de reposición</Link>.
+            </span>
+          )}
 
           {filas === null ? (
             <Vacio titulo="Cargando…" detalle="Calculando el saldo por comprar de cada insumo." />
           ) : fallo ? (
             <Vacio titulo="No se pudo cargar el saldo por comprar" detalle={fallo} />
           ) : visibles.length === 0 ? (
-            <Vacio titulo="Nada pendiente con este filtro" detalle="Todos los insumos filtrados ya tienen su compra completa." />
+            soloCriticos && !(filas ?? []).some((f) => f.critico)
+              ? <Vacio titulo="Todavía no hay insumos críticos" detalle="Define el stock de seguridad y el punto de reposición del acero, el cemento u otro insumo en «Parámetros de reposición» y aparecerá aquí." />
+              : <Vacio titulo="Nada pendiente con este filtro" detalle="Todos los insumos filtrados ya tienen su compra completa." />
           ) : (
             <div style={{ overflowX: 'auto' }}>
               <table className="tabla-vidrio">
