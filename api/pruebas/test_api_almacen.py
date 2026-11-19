@@ -467,6 +467,9 @@ def test_stock_por_almacen_y_consolidado_con_hora_y_punto_de_reposicion(mundo, o
     c = s["consolidado"][0]
     assert (c["cantidad"], D(c["costo_promedio"]), c["valor"], c["bajo_punto_reposicion"]) == ("40.0000", D("21.5"), "860.00", True)
     assert s["corte"] and c["ultimo_movimiento_en"] and "NIC 2" in s["criterio"]
+    # D06: el stock de seguridad también viene en unidad de compra, con el saldo ya convertido por el servidor
+    assert (D(c["stock_seguridad"]), c["bajo_stock_seguridad"], c["unidad_compra"]) == (D("20"), False, "bls")
+    assert D(c["cantidad_en_unidad_compra"]) == D("40")
     solo = get(mundo, f"/obras/{ob['proyecto']}/almacen/stock", ob["almacenero"], almacen_id=frente).json()
     assert [r["almacen"] for r in solo["por_almacen"]] == ["Frente A"]
 
