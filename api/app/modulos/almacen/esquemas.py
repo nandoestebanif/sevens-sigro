@@ -190,6 +190,10 @@ class StockFilaOut(BaseModel):
     ultimo_movimiento_en: datetime
     punto_reposicion: Decimal | None = None     # en unidad de compra (HU-25)
     bajo_punto_reposicion: bool | None = None   # None: compras no respondió o el insumo no tiene parámetro
+    stock_seguridad: Decimal | None = None      # en unidad de compra (D06)
+    bajo_stock_seguridad: bool | None = None
+    unidad_compra: str | None = None
+    cantidad_en_unidad_compra: Decimal | None = None   # el saldo ya convertido por el servidor, para compararlo con lo anterior
 
 
 class StockOut(BaseModel):
