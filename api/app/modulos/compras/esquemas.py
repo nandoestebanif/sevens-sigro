@@ -4,8 +4,9 @@ from __future__ import annotations
 from datetime import date, datetime
 from decimal import Decimal
 from typing import Literal
+from zoneinfo import ZoneInfo
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 
 class Estricto(BaseModel):
@@ -52,6 +53,15 @@ class CompraIn(Estricto):
     precios_incluyen_igv: bool = Field(True, description="Los precios de línea ya traen IGV (18 %), como en la factura.")
     solicitud_id: int | None = Field(None, ge=1)
     lineas: list[LineaCompraIn] = Field(min_length=1, max_length=200)
+
+    @field_validator("fecha")
+    @classmethod
+    def _no_futura(cls, v: date) -> date:
+        # HU-32 (prueba de aceptación 19/11): la fecha del comprobante no puede ser posterior a hoy en Lima
+        hoy = datetime.now(ZoneInfo("America/Lima")).date()
+        if v > hoy:
+            raise ValueError(f"la fecha del comprobante ({v:%d/%m/%Y}) no puede ser posterior a hoy ({hoy:%d/%m/%Y})")
+        return v
 
     @model_validator(mode="after")
     def _sin_insumos_repetidos(self):
