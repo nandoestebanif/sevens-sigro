@@ -14,6 +14,7 @@ import pe.sevens.sigro.datos.repositorio.RepositorioInsumosImpl
 import pe.sevens.sigro.datos.repositorio.RepositorioObraImpl
 import pe.sevens.sigro.datos.repositorio.RepositorioPreferenciasImpl
 import pe.sevens.sigro.dominio.RepositorioPreferencias
+import pe.sevens.sigro.datos.repositorio.RepositorioJornadasImpl
 import pe.sevens.sigro.datos.repositorio.RepositorioRegistrosImpl
 import pe.sevens.sigro.datos.repositorio.RepositorioTrabajadoresImpl
 import pe.sevens.sigro.datos.repositorio.RepositorioSalidasImpl
@@ -23,6 +24,7 @@ import pe.sevens.sigro.dominio.RepositorioCatalogo
 import pe.sevens.sigro.dominio.RepositorioDispositivo
 import pe.sevens.sigro.dominio.RepositorioInsumos
 import pe.sevens.sigro.dominio.RepositorioObra
+import pe.sevens.sigro.dominio.RepositorioJornadas
 import pe.sevens.sigro.dominio.RepositorioRegistros
 import pe.sevens.sigro.dominio.RepositorioTrabajadores
 import pe.sevens.sigro.dominio.RepositorioSalidas
@@ -79,6 +81,7 @@ val moduloDatos = module {
     single { get<BaseDatosSigro>().registros() }
     single { get<BaseDatosSigro>().trabajadores() }
     single<RepositorioRegistros> { RepositorioRegistrosImpl(get(), get(), get()) }
+    single<RepositorioJornadas> { RepositorioJornadasImpl(get(), get()) }
     single<RepositorioInsumos> { RepositorioInsumosImpl(get(), get(), get()) }
     single<RepositorioTrabajadores> { RepositorioTrabajadoresImpl(get(), get(), get()) }
     single<RepositorioObra> { RepositorioObraImpl(get(), get()) }
@@ -100,7 +103,7 @@ val moduloPresentacion = module {
     viewModel { InsumoNuevoViewModel(get()) }
     viewModel { TrabajadoresViewModel(get(), get()) }
     viewModel { TrabajadorNuevoViewModel(get()) }
-    viewModel { AsistenciaViewModel(get(), get(), get()) }
+    viewModel { AsistenciaViewModel(get(), get(), get(), get()) }
     viewModel { StockViewModel(get()) }
     viewModel { EntradaViewModel(get(), get(), get()) }
     viewModel { IngresoSinCompraViewModel(get(), get(), get(), get()) }
