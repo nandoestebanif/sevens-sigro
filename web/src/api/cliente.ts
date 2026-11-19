@@ -60,7 +60,7 @@ export interface ClienteSigro {
   /** el catálogo maestro completo de la empresa (los 2 243 reales + los creados) */
   listarMaestro(): Promise<InsumoMaestro[]>
   /** HU-08: alta en el catálogo maestro; el código lo genera el servidor */
-  crearInsumoCatalogo(datos: { nombre: string; um: string; medida?: string; marca?: string }): Promise<InsumoMaestro>
+  crearInsumoCatalogo(datos: { nombre: string; um: string; medida?: string; norma?: string; marca?: string }): Promise<InsumoMaestro>
   /** corrige nombre o marca de cualquier insumo; con verificar=true un
       «por verificar» pasa a «activo». El código no se toca jamás. */
   editarInsumo(codigo: string, datos: { nombre?: string; marca?: string; verificar?: boolean }): Promise<InsumoMaestro>
@@ -467,7 +467,7 @@ export class ClienteSimulado implements ClienteSigro {
     return maestro.map((i) => ({ ...i }))
   }
 
-  async crearInsumoCatalogo(datos: { nombre: string; um: string; medida?: string; marca?: string }): Promise<InsumoMaestro> {
+  async crearInsumoCatalogo(datos: { nombre: string; um: string; medida?: string; norma?: string; marca?: string }): Promise<InsumoMaestro> {
     const maestro = await this.cargarMaestro()
     await espera(220)
     const nombre = datos.nombre.trim().toUpperCase()
@@ -488,7 +488,7 @@ export class ClienteSimulado implements ClienteSigro {
     const mayor = Math.max(...maestro.map((i) => Number(i.codigo) || 0))
     const nuevo: InsumoMaestro = {
       codigo: String(mayor + 1),
-      nombre, medida, marca,
+      nombre, medida, marca, norma: (datos.norma ?? '').trim().toUpperCase(),
       um: datos.um,
       precioPromedio: 0, // lo irán fijando las compras
       // creado a mano queda «por verificar» hasta que el residente lo revisa
@@ -963,7 +963,7 @@ class ClienteHttp extends ClienteSimulado {
   override validarProveedor(id: string) { return proveedoresHttp.validar(id) }
   override listarMaestro() { return catalogoHttp.maestro() }
   override listarInsumos() { return catalogoHttp.insumos() }
-  override crearInsumoCatalogo(datos: { nombre: string; um: string; medida?: string; marca?: string }) {
+  override crearInsumoCatalogo(datos: { nombre: string; um: string; medida?: string; norma?: string; marca?: string }) {
     return catalogoHttp.crear(datos)
   }
   override editarInsumo(codigo: string, datos: { nombre?: string; marca?: string; verificar?: boolean }) {
@@ -1054,7 +1054,10 @@ class ClienteHttp extends ClienteSimulado {
         compradoCantidad: av?.compradoCantidad ?? 0,
         compradoPct: av?.compradoPct ?? 0,
         recibidoPct: av?.recibidoPct ?? 0,
-        consumidoPct: d.consumidoPctPlanificado,
+        // HU-23 c2: comprado, recibido y consumido salen del mismo cálculo (÷ requerido, en unidad de compra) para que
+        // cuadren a mano; el % de la desviación (HU-57) solo se usa si el avance no respondió
+        consumidoPct: av && !av.sinDatoAlmacen ? av.consumidoPct : d.consumidoPctPlanificado,
+        requeridoCompra: av?.planificadoCantidad,
         gastado: d.consumidoImporte,
         saldoPorComprar: av?.saldoPorComprar ?? 0,
         desviacionPuntos: d.ritmoPt,
