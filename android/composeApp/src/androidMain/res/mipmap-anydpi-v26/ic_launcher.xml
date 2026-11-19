@@ -1,5 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Ícono de la app: el edificio del logo de SEVEN'S en blanco sobre el negro de la marca (#111827).
+     Android 13+ usa la silueta monocroma con los íconos temáticos del celular. -->
 <adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
-    <background android:drawable="@color/naranja" />
-    <foreground android:drawable="@drawable/ic_launcher_frente" />
+    <background android:drawable="@color/fondo_icono" />
+    <foreground android:drawable="@mipmap/ic_launcher_frente" />
+    <monochrome android:drawable="@mipmap/ic_launcher_mono" />
 </adaptive-icon>
