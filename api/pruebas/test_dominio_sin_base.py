@@ -133,3 +133,19 @@ def test_solo_se_marca_lo_que_pasa_el_limite_y_sin_referencia_nada():
     assert fuera_de_lo_habitual(D("10.01"), D("10")) is True
     assert fuera_de_lo_habitual(D("-12.00"), D("10")) is True       # también si se paga mucho menos
     assert fuera_de_lo_habitual(None, D("10")) is False
+
+
+# ── HU-35: un movimiento no lleva fecha futura (corre sin base)
+def test_resolver_periodo_rechaza_la_fecha_futura_aunque_este_dentro_del_plazo():
+    from datetime import timedelta
+
+    import pytest
+
+    from app.modulos.almacen.dominio import ReglaAlmacen, hoy_lima, resolver_periodo
+
+    hoy = hoy_lima()
+    periodos = [{"numero": 1, "fecha_inicio": hoy - timedelta(days=30), "fecha_fin": hoy + timedelta(days=30), "estado": "abierto"}]
+    assert resolver_periodo(periodos, hoy, es_reverso=False)["numero"] == 1
+    with pytest.raises(ReglaAlmacen) as e:
+        resolver_periodo(periodos, hoy + timedelta(days=1), es_reverso=False)
+    assert e.value.codigo == "fecha_futura"
