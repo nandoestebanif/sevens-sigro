@@ -23,7 +23,7 @@ from app.sql import fila, filas
 insumos = APIRouter(prefix="/catalogo/insumos", tags=["catálogo"])
 importaciones = APIRouter(prefix="/catalogo/importaciones-s10", tags=["catálogo"])
 
-_COLS = "id, codigo, descripcion, unidad_s10, unidad_compra, factor_conversion, tipo, activo, verificado"
+_COLS = "id, codigo, descripcion, unidad_s10, unidad_compra, factor_conversion, tipo, activo, verificado, medida, norma, marca"
 _PREFIJO = "SIGRO-"
 _MAX_PDF = 15 * 1024 * 1024     # la Relación de insumos real pesa unos cientos de KB
 
@@ -72,19 +72,24 @@ def registrar(d: e.InsumoIn, a: Actor = Depends(exigir_en_alguna_obra("insumo.re
     nace «por verificar» hasta que el residente lo revise."""
     # el código sale de un contador: dos altas simultáneas se serializan con un candado de transacción
     a.sesion.execute(text("SELECT pg_advisory_xact_lock(70801)"))
-    clave = normalizar(d.descripcion)
-    for x in filas(a.sesion, "SELECT codigo, descripcion, unidad_compra FROM catalogo.insumo"):
-        if normalizar(x["descripcion"]) == clave and normalizar(x["unidad_compra"]) == normalizar(d.unidad):
+    # D09: mismo material, medida y marca (sin importar mayúsculas ni espacios) y misma unidad = mismo insumo
+    clave = (normalizar(d.descripcion), normalizar(d.medida or ""), normalizar(d.marca or ""), normalizar(d.unidad))
+    for x in filas(a.sesion, "SELECT codigo, descripcion, unidad_compra, medida, marca FROM catalogo.insumo"):
+        if (normalizar(x["descripcion"]), normalizar(x["medida"] or ""), normalizar(x["marca"] or ""),
+                normalizar(x["unidad_compra"])) == clave:
+            nombre = " ".join(v for v in (x["descripcion"], x["medida"], x["marca"]) if v)
             raise ErrorSigro(409, "insumo_duplicado",
-                             f"Ya existe ese insumo en el catálogo: {x['codigo']} · {x['descripcion']}. Úsalo en lugar de crear otro.")
+                             f"Ya existe ese insumo en el catálogo: {x['codigo']} · {nombre}. Úsalo en lugar de crear otro.")
     n = a.sesion.execute(
         text("SELECT coalesce(max(substring(codigo from 7)::int), 0) + 1 FROM catalogo.insumo WHERE codigo ~ '^SIGRO-[0-9]+$'")
     ).scalar()
     r = fila(
         a.sesion,
-        "INSERT INTO catalogo.insumo (codigo, descripcion, unidad_s10, unidad_compra, tipo, verificado, creado_por) "
-        f"VALUES (:c, :d, :u, :u, :t, false, :por) RETURNING {_COLS}",
+        "INSERT INTO catalogo.insumo (codigo, descripcion, unidad_s10, unidad_compra, tipo, verificado, creado_por, "
+        "medida, norma, marca) "
+        f"VALUES (:c, :d, :u, :u, :t, false, :por, :me, :no, :ma) RETURNING {_COLS}",
         c=f"{_PREFIJO}{n:05d}", d=d.descripcion, u=d.unidad, t=d.tipo, por=a.usuario_id,
+        me=d.medida, no=d.norma, ma=d.marca,
     )
     return r
 

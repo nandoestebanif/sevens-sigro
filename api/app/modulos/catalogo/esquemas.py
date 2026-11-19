@@ -5,7 +5,7 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 Tipo = Literal["material", "mano_obra", "equipo", "subcontrato"]
 
@@ -24,6 +24,9 @@ class InsumoOut(BaseModel):
     tipo: Tipo
     activo: bool
     verificado: bool
+    medida: str | None = None   # D08 (migración 0016): cada dato en su campo, ya no dentro del nombre
+    norma: str | None = None
+    marca: str | None = None
 
 
 class InsumoIn(Estricto):
@@ -31,6 +34,15 @@ class InsumoIn(Estricto):
     descripcion: str = Field(min_length=3, max_length=200)
     unidad: str = Field(min_length=1, max_length=20, description="Unidad en que se compra (kg, bls, m3…)")
     tipo: Tipo = "material"
+    medida: str | None = Field(None, max_length=80, description='D08: p. ej. 1/2" x 9 m')
+    norma: str | None = Field(None, max_length=80, description="D08: p. ej. NTP 399.003, ASTM A615")
+    marca: str | None = Field(None, max_length=80, description="D08: p. ej. PAVCO")
+
+    @field_validator("medida", "norma", "marca")
+    @classmethod
+    def _vacio_es_nulo(cls, v: str | None) -> str | None:
+        # la base rechaza el texto en blanco (ck_insumo_*): un campo vacío es «no tiene», no un espacio
+        return v.strip() or None if v is not None else None
 
 
 class FactorIn(Estricto):

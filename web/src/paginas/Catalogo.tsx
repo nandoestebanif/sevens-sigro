@@ -27,6 +27,7 @@ import type { HistorialFactor, InsumoMaestro } from '../api/tipos'
 import { Campo, Chip, Modal, Vacio } from '../ui/base'
 import { Aviso, Chips, Encabezado, Fondo, Pildora, TituloSeccion, Vidrio } from '../ui/vidrio'
 import { FilasVirtuales, type MedirFila } from '../ui/FilasVirtuales'
+import { UNIDADES_COMPRA } from '../api/unidades'
 
 const CORTAS = new Set(['DE', 'LA', 'EL', 'Y', 'A', 'EN', 'SIN', 'CON', 'POR', 'DEL', 'LOS', 'LAS'])
 
@@ -72,6 +73,7 @@ function VerInsumo({ insumo, enCerrar, enEditar, enFactor }: {
         <FilaDetalle rot="Unidad de compra">{uCompra}</FilaDetalle>
         <FilaDetalle rot="Unidad S10">{uS10}</FilaDetalle>
         <FilaDetalle rot="Factor de conversión">1 {uCompra} = {factor.toLocaleString('es-PE', { maximumFractionDigits: 6 })} {uS10}</FilaDetalle>
+        <FilaDetalle rot="Norma técnica">{insumo.norma || '—'}</FilaDetalle>
         <FilaDetalle rot="Marcas registradas">{insumo.marca || '—'}</FilaDetalle>
         <FilaDetalle rot="Precio promedio">{precio(insumo.precioPromedio)}</FilaDetalle>
         <FilaDetalle rot="Estado">
@@ -219,16 +221,18 @@ function ModalFactor({ insumo, enCerrar, enGuardado }: {
   )
 }
 
-function AltaInsumo({ unidades, editando, enCerrar, enListo }: {
-  unidades: string[]
+function AltaInsumo({ editando, enCerrar, enListo }: {
   editando: InsumoMaestro | null
   enCerrar: () => void
-  enListo: () => void
+  enListo: (creado?: InsumoMaestro) => void
 }) {
   const [nombre, setNombre] = useState(editando?.nombre ?? '')
   const [medida, setMedida] = useState(editando?.medida ?? '')
   const [marca, setMarca] = useState(editando?.marca ?? '')
-  const [um, setUm] = useState(editando?.um ?? 'UNIDADES')
+  const [norma, setNorma] = useState(editando?.norma ?? '')
+  const [um, setUm] = useState(editando?.um ?? 'und')
+  // D08: unidades normalizadas; si el insumo que se edita trae otra (del S10), se muestra igual
+  const opcionesUm = UNIDADES_COMPRA.some((u) => u.valor === um) ? UNIDADES_COMPRA : [{ valor: um, texto: um }, ...UNIDADES_COMPRA]
   const [error, setError] = useState<{ campo: string; texto: string } | null>(null)
   const [guardando, setGuardando] = useState(false)
   const porVerificar = editando?.estado === 'por_verificar'
@@ -239,14 +243,13 @@ function AltaInsumo({ unidades, editando, enCerrar, enListo }: {
     try {
       if (editando) {
         await api.editarInsumo(editando.codigo, { nombre, marca, verificar })
+        enListo()
       } else {
-        await api.crearInsumoCatalogo({ nombre, um, medida, marca })
+        enListo(await api.crearInsumoCatalogo({ nombre, um, medida, norma, marca }))
       }
-      enListo()
     } catch (e) {
-      if (e instanceof ErrorApi) {
-        setError({ campo: e.codigo === 'um' ? 'um' : 'nombre', texto: e.message })
-      }
+      setError({ campo: e instanceof ErrorApi && e.codigo === 'um' ? 'um' : 'nombre',
+        texto: e instanceof ErrorApi ? e.message : 'No se pudo guardar el insumo. Inténtalo de nuevo.' })
     } finally {
       setGuardando(false)
     }
@@ -269,6 +272,9 @@ function AltaInsumo({ unidades, editando, enCerrar, enListo }: {
             <Campo id="ins-medida" etiqueta="Medida (si el tipo la lleva)" valor={medida} enCambio={setMedida} marcador="p. ej. 1/2¨ x 9 m" deshabilitado={!!editando} />
           </div>
           <div style={{ flex: '1 1 160px', minWidth: 0 }}>
+            <Campo id="ins-norma" etiqueta="Norma (opcional)" valor={norma} enCambio={setNorma} marcador="p. ej. NTP 399.003 · ASTM A615" deshabilitado={!!editando} />
+          </div>
+          <div style={{ flex: '1 1 160px', minWidth: 0 }}>
             <Campo id="ins-marca" etiqueta="Marca (opcional)" valor={marca} enCambio={setMarca} marcador="p. ej. SIKA" />
           </div>
         </div>
@@ -284,7 +290,7 @@ function AltaInsumo({ unidades, editando, enCerrar, enListo }: {
             className="campo"
             style={{ height: 44, opacity: editando ? 0.6 : 1 }}
           >
-            {unidades.map((u) => <option key={u} value={u}>{u}</option>)}
+            {opcionesUm.map((u) => <option key={u.valor} value={u.valor}>{u.texto}</option>)}
           </select>
           {error?.campo === 'um' && (
             <div style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--grave)', marginTop: 5 }}>{error.texto}</div>
@@ -319,6 +325,7 @@ export function Catalogo() {
   const [viendo, setViendo] = useState<InsumoMaestro | null>(null)
   const [factorDe, setFactorDe] = useState<InsumoMaestro | null>(null)
   const [altaAbierta, setAltaAbierta] = useState(false)
+  const [aviso, setAviso] = useState('')
 
   const cargar = () => api.listarMaestro().then(setMaestro)
   useEffect(() => {
@@ -369,6 +376,7 @@ export function Catalogo() {
           </>
         }
       />
+      {aviso && <Aviso tono="bien" rol="status">{aviso}</Aviso>}
 
       <Chips>
         <Chip tono="marca">Catálogo real del cliente: nombres, unidades, marcas y precios</Chip>
@@ -485,10 +493,12 @@ export function Catalogo() {
       )}
       {altaAbierta && (
         <AltaInsumo
-          unidades={unidades.length ? unidades.map(([u]) => u) : ['UNIDADES']}
           editando={editando}
           enCerrar={() => setAltaAbierta(false)}
-          enListo={() => { setAltaAbierta(false); cargar() }}
+          enListo={(creado) => {
+            setAltaAbierta(false); cargar()
+            if (creado) setAviso(`Insumo creado: ${creado.codigo} · ${[creado.nombre, creado.medida, creado.norma, creado.marca].filter(Boolean).join(' ')}. Queda «por verificar» hasta que el residente lo revise.`)
+          }}
         />
       )}
     </div>
