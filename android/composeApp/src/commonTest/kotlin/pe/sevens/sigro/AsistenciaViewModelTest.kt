@@ -8,7 +8,10 @@ import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
+import pe.sevens.sigro.dominio.ErrorSigro
 import pe.sevens.sigro.dominio.EstadoAsistencia
+import pe.sevens.sigro.dominio.JornadaCorregida
+import pe.sevens.sigro.dominio.RepositorioJornadas
 import pe.sevens.sigro.dominio.EstadoEnvio
 import pe.sevens.sigro.dominio.MarcaAsistencia
 import pe.sevens.sigro.dominio.NuevoTrabajador
@@ -54,6 +57,17 @@ private class ColaEspia(private val ya: Set<Int> = emptySet()) : RepositorioRegi
     override suspend fun sincronizar() = ResultadoSincronizacion(0, 0, 0)
 }
 
+private class JornadasEspia(private val falla: ErrorSigro? = null) : RepositorioJornadas {
+    val pedidas = mutableListOf<Triple<String, MarcaAsistencia, String>>()
+    override suspend fun corregir(obraId: Int, fecha: String, marca: MarcaAsistencia, motivo: String): JornadaCorregida {
+        falla?.let { throw it }
+        pedidas += Triple(fecha, marca, motivo)
+        return JornadaCorregida(99, 10)
+    }
+}
+
+private val sinProgramar = object : ProgramadorSincronizacion { override fun programar() {} }
+
 @OptIn(ExperimentalCoroutinesApi::class)
 class AsistenciaViewModelTest {
     @BeforeTest fun antes() = Dispatchers.setMain(UnconfinedTestDispatcher())
@@ -66,6 +80,7 @@ class AsistenciaViewModelTest {
         val vm = AsistenciaViewModel(
             TrabajadoresEnMemoria(listOf(t(1), t(2), t(3, salida = "2026-10-15"))), cola,
             object : ProgramadorSincronizacion { override fun programar() { programado++ } },
+            JornadasEspia(),
         )
         vm.cargar(1)
         val e = vm.estado.value
@@ -79,6 +94,43 @@ class AsistenciaViewModelTest {
         assertEquals(1, programado, "se pide enviar cuando haya señal")
         assertEquals(1, vm.estado.value.guardadas)
         assertTrue(vm.estado.value.porMarcar.isEmpty())
+    }
+
+    @Test
+    fun hu63c3_corregirUnaJornadaYaRegistradaExigeMotivoYLaPideAlServidor() = runTest {
+        val jornadas = JornadasEspia()
+        val vm = AsistenciaViewModel(TrabajadoresEnMemoria(listOf(t(1), t(2))), ColaEspia(ya = setOf(2)), sinProgramar, jornadas)
+        vm.cargar(1)
+        vm.empezarCorreccion(2)
+        vm.estadoCorreccion(EstadoAsistencia.PRESENTE); vm.normalesCorreccion(-4); vm.extraCorreccion(+1)
+        vm.confirmarCorreccion(1)
+        assertTrue(vm.estado.value.errorCorreccion != null, "sin motivo no se corrige")
+        assertTrue(jornadas.pedidas.isEmpty())
+
+        vm.motivo("Llegó tarde: trabajó 4 h")
+        vm.confirmarCorreccion(1)
+        val (fecha, marca, motivo) = jornadas.pedidas.single()
+        assertEquals(vm.estado.value.fecha, fecha)
+        assertEquals(2, marca.trabajador.id)
+        assertEquals("4", marca.normalesEnvio); assertEquals("1", marca.extraEnvio)
+        assertEquals("Llegó tarde: trabajó 4 h", motivo)
+        assertEquals(null, vm.estado.value.corrigiendo, "al terminar se cierra el formulario")
+        assertTrue(vm.estado.value.corregida!!.contains("constancia"), "dice que la anterior queda como constancia")
+    }
+
+    @Test
+    fun hu63c3_sinSenalLaCorreccionLoDiceYNoSePierdeLoEscrito() = runTest {
+        val vm = AsistenciaViewModel(
+            TrabajadoresEnMemoria(listOf(t(1))), ColaEspia(ya = setOf(1)), sinProgramar,
+            JornadasEspia(ErrorSigro("sin_conexion", "No se pudo conectar con el servidor.")),
+        )
+        vm.cargar(1)
+        vm.empezarCorreccion(1); vm.estadoCorreccion(EstadoAsistencia.AUSENTE); vm.motivo("No vino, se marcó por error")
+        vm.confirmarCorreccion(1)
+        val e = vm.estado.value
+        assertTrue(e.errorCorreccion!!.startsWith("Para corregir hace falta señal"))
+        assertEquals(EstadoAsistencia.AUSENTE, e.corrigiendo?.estado, "lo elegido sigue en pantalla para reintentar")
+        assertEquals("0", e.corrigiendo?.normalesEnvio, "ausente viaja sin horas")
     }
 
     @Test
