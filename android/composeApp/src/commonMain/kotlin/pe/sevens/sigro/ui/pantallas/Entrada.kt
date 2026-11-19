@@ -217,7 +217,8 @@ class EntradaViewModel(
                 _e.update { it.copy(errores = it.errores + (ERROR_MOTIVO to msg)) }
                 return
             }
-            return guardarEnCelular(obraId, c, lineas, s.llegoTodo, m, sinVerificar = s.excesoSinSenal)
+            // con el aviso calculado sin señal la entrada SÍ se revisó (con la última consulta) y va con su motivo
+            return guardarEnCelular(obraId, c, lineas, s.llegoTodo, m, sinVerificar = false)
         }
         _e.update { it.copy(verificando = true, errores = emptyMap()) }
         viewModelScope.launch {
@@ -333,7 +334,8 @@ fun PantallaEntrada(obraId: Int, alVolver: () -> Unit, vm: EntradaViewModel = ko
             GuardadoEnCelular(
                 "Entrada guardada",
                 "Lo recibido de ${e.compra?.proveedor ?: "la compra"} quedó en el celular con su código único." +
-                    (if (e.sinVerificar) " Sin señal no se pudo revisar lo requerido en el S10: si se pasa, «Mis registros» te pedirá registrarla de nuevo con el motivo." else ""),
+                    (if (e.excesoSinSenal) " Sin señal se revisó lo requerido en el S10 con la última consulta al servidor y va con tu motivo; al enviarse, el servidor lo vuelve a revisar."
+                    else if (e.sinVerificar) " Sin señal no se pudo revisar lo requerido en el S10: si se pasa, «Mis registros» te pedirá registrarla de nuevo con el motivo." else ""),
                 "Registrar otra entrada", vm::otra, alVolver, conServicio = true,
             )
             return@PantallaVidrio
