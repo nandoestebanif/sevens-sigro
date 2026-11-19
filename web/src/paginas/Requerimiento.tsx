@@ -9,6 +9,7 @@
      existir en el catálogo; si ya está planificado, se ajusta (no se duplica).
      La línea queda marcada «Agregado a mano» para siempre.
    ───────────────────────────────────────────────────────────────────────── */
+import { fechaHoraLima } from '../api/horaLima'
 import { useEffect, useMemo, useState } from 'react'
 import { ErrorApi, api as cliente } from '../api/cliente'
 import { usaApiReal } from '../api/http'
@@ -58,13 +59,13 @@ function AjustarLinea({ l, enCerrar, enListo }: { l: LineaRequerimiento; enCerra
           <Pildora enClic={guardar} deshabilitado={guardando}>{guardando ? 'Guardando…' : 'Guardar ajuste'}</Pildora>
         </div>
         <div>
-          <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--tinta-2)' }}>Ajustes anteriores</span>
+          <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--tinta-2)' }}>Ajustes anteriores{ajustes && ajustes.length > 0 ? ` · ${ajustes.length} (el más reciente primero)` : ''}</span>
           {ajustes === null ? <p style={{ fontSize: 13 }}>Cargando…</p>
             : ajustes.length === 0 ? <p style={{ fontSize: 13, color: 'var(--tinta-2)' }}>Es la cantidad original del S10.</p>
               : (
-                <ul style={{ margin: '6px 0 0', paddingLeft: 18, fontSize: 13, color: 'var(--tinta-2)', lineHeight: 1.6 }}>
-                  {ajustes.map((a, k) => (
-                    <li key={k}>{n(a.cantidadAnterior)} → <strong>{n(a.cantidadNueva)}</strong> · {a.motivo} · {a.ajustadoPorNombre} · {a.ajustadoEn.slice(0, 16).replace('T', ' ')}</li>
+                <ul style={{ margin: '6px 0 0', paddingLeft: 18, fontSize: 13, color: 'var(--tinta-2)', lineHeight: 1.6, maxHeight: 168, overflowY: 'auto', paddingRight: 6 }}>
+                  {ajustes.slice().reverse().map((a, k) => (
+                    <li key={k}>{n(a.cantidadAnterior)} → <strong>{n(a.cantidadNueva)}</strong> · {a.motivo} · {a.ajustadoPorNombre} · {fechaHoraLima(a.ajustadoEn)}</li>
                   ))}
                 </ul>
               )}
