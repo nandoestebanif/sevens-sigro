@@ -197,6 +197,49 @@ function Etiqueta({ htmlFor, children }: { htmlFor: string; children: string }) 
 }
 
 /* ── HU-34 · adjuntar, descargar y anular comprobantes digitales (sin borrar el archivo original) ── */
+/** HU-32 · R10: anular una compra registrada por error. No se borra ni se edita: queda listada como «Anulada»
+    con su motivo, y deja de contar en «Comprado» del tablero (HU-58). El servidor avisa al residente y al administrador. */
+function AnularCompra({ compra, enCerrar, enListo }: { compra: Compra; enCerrar: () => void; enListo: (c: Compra) => void }) {
+  const [motivo, setMotivo] = useState('')
+  const [error, setError] = useState('')
+  const [guardando, setGuardando] = useState(false)
+  const conRecepcion = compra.estado === 'recibida' || compra.estado === 'recibida_parcial'
+  const confirmar = async () => {
+    if (motivo.trim().length < 5) { setError('Escribe por qué se anula la compra (mínimo 5 caracteres).'); return }
+    setGuardando(true); setError('')
+    try {
+      enListo(await api.anularCompra(compra.id, motivo))
+    } catch (e) {
+      setError(e instanceof ErrorApi ? e.message : 'No se pudo anular la compra. Inténtalo de nuevo.')
+    } finally {
+      setGuardando(false)
+    }
+  }
+  return (
+    <Modal titulo={`Anular la compra ${compra.numeroComprobante}`} enCerrar={enCerrar}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <span style={{ fontSize: 13.5, color: 'var(--tinta-2)', lineHeight: 1.5 }}>
+          {compra.proveedorRazonSocial} · S/ {compra.totales.total.toFixed(2)}. La compra no se borra: queda en la lista como
+          «Anulada», con tu nombre, la fecha y el motivo, y deja de sumar en «Comprado».
+        </span>
+        {conRecepcion && (
+          <Aviso tono="aviso" rol="status">
+            Esta compra ya tiene una recepción. Anularla no saca el material del almacén: si no llegó, corrige cada ingreso
+            con «Corregir» en Ingresos y salidas.
+          </Aviso>
+        )}
+        <Campo id="motivo-anular-compra" etiqueta="Motivo (mínimo 5 caracteres)" valor={motivo} enCambio={setMotivo}
+          marcador="p. ej. Compra de prueba registrada por error" />
+        {error && <div role="alert" style={{ fontSize: 13, color: 'var(--grave)' }}>{error}</div>}
+        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+          <Pildora tipo="secundario" enClic={enCerrar} deshabilitado={guardando}>Cancelar</Pildora>
+          <Pildora enClic={() => void confirmar()} deshabilitado={guardando}>{guardando ? 'Anulando…' : 'Anular la compra'}</Pildora>
+        </div>
+      </div>
+    </Modal>
+  )
+}
+
 function ComprobantesCompra({ compra, enCerrar, enCambio }: {
   compra: Compra
   enCerrar: () => void
@@ -388,6 +431,7 @@ export function Compras() {
   const [guardando, setGuardando] = useState(false)
   const [recibiendo, setRecibiendo] = useState<Compra | null>(null)
   const [comprobantesDe, setComprobantesDe] = useState<Compra | null>(null)
+  const [anulando, setAnulando] = useState<Compra | null>(null)
   const [archivoComprobante, setArchivoComprobante] = useState<File | null>(null)
   const [inputArchivoClave, setInputArchivoClave] = useState(0)
   const [avisoRecepcion, setAvisoRecepcion] = useState('')
@@ -654,6 +698,9 @@ export function Compras() {
                     <Chip tono={vigentes > 0 ? 'bien' : 'neutro'}>
                       {vigentes > 0 ? (vigentes === 1 ? '1 comprobante' : `${vigentes} comprobantes`) : 'Sin comprobante'}
                     </Chip>
+                    {c.estado === 'anulada' && c.motivoAnulacion && (
+                      <span style={{ fontSize: 12, color: 'var(--grave)', flexBasis: '100%' }}>Motivo de anulación: {c.motivoAnulacion}</span>
+                    )}
                     {c.proveedorEstado === 'con_alerta_sunat' && (
                       <Chip tono="aviso">{c.proveedorAlertaSunat ? `SUNAT: ${c.proveedorAlertaSunat}` : 'Alerta SUNAT'}</Chip>
                     )}
@@ -661,6 +708,9 @@ export function Compras() {
                       <Pildora tipo="secundario" chica etiqueta={`Comprobantes de ${c.numeroComprobante}`} enClic={() => setComprobantesDe(c)}>Comprobantes</Pildora>
                       {c.estado !== 'recibida' && c.estado !== 'anulada' && (
                         <Pildora tipo="secundario" chica etiqueta={`Recibir la compra ${c.numeroComprobante}`} enClic={() => setRecibiendo(c)}>Recibir</Pildora>
+                      )}
+                      {c.estado !== 'anulada' && (
+                        <Pildora tipo="secundario" chica etiqueta={`Anular la compra ${c.numeroComprobante}`} enClic={() => { setAvisoRecepcion(''); setAnulando(c) }}>Anular</Pildora>
                       )}
                     </span>
                   </div>
@@ -682,6 +732,17 @@ export function Compras() {
           enListo={() => {
             setAvisoRecepcion(`Recepción de ${recibiendo.numeroComprobante} registrada: los ingresos ya están en el kárdex (Ingresos y salidas) y el stock se movió recién ahora.`)
             setRecibiendo(null)
+            cargar()
+          }}
+        />
+      )}
+      {anulando && (
+        <AnularCompra
+          compra={anulando}
+          enCerrar={() => setAnulando(null)}
+          enListo={(c) => {
+            setAvisoRecepcion(`Compra ${c.numeroComprobante} anulada: sigue en la lista con su motivo y ya no cuenta en «Comprado».`)
+            setAnulando(null)
             cargar()
           }}
         />

@@ -73,6 +73,7 @@ export interface Compra {
   adjunto: boolean // la foto de la factura, una por compra
   comprobantesVigentes?: number
   advertencias?: string[]
+  motivoAnulacion?: string | null // R10: la compra anulada conserva su motivo y sigue listada
 }
 
 /** HU-34: comprobante digital (PDF o imagen) adjunto a una compra; anular exige motivo. */

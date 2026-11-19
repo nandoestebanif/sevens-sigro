@@ -2,6 +2,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { ErrorApi } from './error'
 import { catalogoHttp } from './http'
+import { olvidarNombres } from './oficina'
 
 type Pedido = { url: string; metodo: string; cuerpo: unknown }
 let pedidos: Pedido[] = []
@@ -59,6 +60,7 @@ describe('catalogoHttp · factor de conversión (T-077 · HU-17)', () => {
   })
 
   it('cambiarFactor envía POST con factor y motivo recortado, y consulta historial', async () => {
+    olvidarNombres()
     servidor((url, metodo) => {
       if (url.endsWith('/catalogo/insumos')) return { estado: 200, cuerpo: [ACERO] }
       if (url.endsWith('/catalogo/insumos/12/factor-conversion') && metodo === 'POST') {
@@ -96,6 +98,27 @@ describe('catalogoHttp · factor de conversión (T-077 · HU-17)', () => {
       cambiadoPor: 'Usuario #3',
       cambiadoEn: '2026-11-12T15:00:00Z',
     }])
+  })
+
+  it('HU-17 c4: el histórico muestra el nombre de quien cambió el factor', async () => {
+    olvidarNombres()
+    servidor((url) => {
+      if (url.endsWith('/catalogo/insumos')) return { estado: 200, cuerpo: [ACERO] }
+      if (url.endsWith('/api/v1/obras')) return { estado: 200, cuerpo: [{ id: 1, nombre: 'Obra', semana: 1, semanasTotales: 10 }] }
+      if (url.endsWith('/obras/1/asignaciones')) return { estado: 200, cuerpo: [{ usuario_id: 3, usuario_nombre: 'Henry Ticona' }] }
+      if (url.endsWith('/factor-conversion/historial')) {
+        return {
+          estado: 200,
+          cuerpo: [{
+            id: 2, factor_anterior: '1.000000', factor_nuevo: '7.120000', motivo: 'Varilla 1/2 x 9m',
+            cambiado_por: 3, cambiado_en: '2026-11-19T15:00:00Z',
+          }],
+        }
+      }
+      return { estado: 404 }
+    })
+    const hist = await catalogoHttp.historialFactor('0203020004')
+    expect(hist[0].cambiadoPor).toBe('Henry Ticona')
   })
 
   it('rechaza factor <= 0 o motivo corto antes de llamar a la API', async () => {

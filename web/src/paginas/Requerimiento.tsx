@@ -64,7 +64,7 @@ function AjustarLinea({ l, enCerrar, enListo }: { l: LineaRequerimiento; enCerra
               : (
                 <ul style={{ margin: '6px 0 0', paddingLeft: 18, fontSize: 13, color: 'var(--tinta-2)', lineHeight: 1.6 }}>
                   {ajustes.map((a, k) => (
-                    <li key={k}>{n(a.cantidadAnterior)} → <strong>{n(a.cantidadNueva)}</strong> · {a.motivo} · {a.ajustadoEn.slice(0, 16).replace('T', ' ')}</li>
+                    <li key={k}>{n(a.cantidadAnterior)} → <strong>{n(a.cantidadNueva)}</strong> · {a.motivo} · {a.ajustadoPorNombre} · {a.ajustadoEn.slice(0, 16).replace('T', ' ')}</li>
                   ))}
                 </ul>
               )}

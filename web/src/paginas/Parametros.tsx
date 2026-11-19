@@ -12,6 +12,7 @@
    ───────────────────────────────────────────────────────────────────────── */
 import { useEffect, useMemo, useState } from 'react'
 import { ErrorApi, api } from '../api/cliente'
+import { mensajeDeCarga } from '../api/error'
 import type { AvanceInsumo, ParametroReposicion } from '../api/tipos'
 import { unidadParaMostrar } from '../api/unidades'
 import { BuscarOpcion } from '../ui/BuscarOpcion'
@@ -114,10 +115,13 @@ function Formulario({ insumos, todos, inicial, enCerrar, enListo }: {
 
 function Historial({ p, enCerrar }: { p: ParametroReposicion; enCerrar: () => void }) {
   const [filas, setFilas] = useState<ParametroReposicion[] | null>(null)
-  useEffect(() => { api.historialParametro(p.insumoCodigo).then(setFilas) }, [p.insumoCodigo])
+  const [fallo, setFallo] = useState('')
+  useEffect(() => {
+    api.historialParametro(p.insumoCodigo).then(setFilas).catch((x) => { setFilas([]); setFallo(mensajeDeCarga(x)) })
+  }, [p.insumoCodigo])
   return (
     <Modal titulo={`Historial · ${p.descripcion}`} enCerrar={enCerrar}>
-      {filas === null ? <Vacio titulo="Cargando…" detalle="" /> : (
+      {filas === null ? <Vacio titulo="Cargando…" detalle="" /> : fallo ? <Vacio titulo="No se pudo abrir el historial" detalle={fallo} /> : (
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
           <thead><tr style={{ color: 'var(--tinta-3)', fontSize: 11.5 }}>
             <th style={{ textAlign: 'left', padding: 6 }}>Vigente desde</th>
@@ -143,8 +147,10 @@ export function Parametros() {
   const [editando, setEditando] = useState<ParametroReposicion | null | 'nuevo'>(null)
   const [viendo, setViendo] = useState<ParametroReposicion | null>(null)
 
-  const cargar = () => api.parametrosReposicion().then(setVigentes)
-  useEffect(() => { cargar(); api.saldoPorComprar().then(setInsumos) }, [])
+  const [fallo, setFallo] = useState('')
+  const cargar = () => api.parametrosReposicion().then((v) => { setVigentes(v); setFallo('') })
+    .catch((x) => { setVigentes([]); setFallo(mensajeDeCarga(x)) })
+  useEffect(() => { cargar(); api.saldoPorComprar().then(setInsumos).catch(() => setInsumos([])) }, [])
   const sinParametro = useMemo(
     () => insumos.filter((i) => !(vigentes ?? []).some((v) => v.insumoCodigo === i.codigo)), [insumos, vigentes])
 
@@ -154,10 +160,11 @@ export function Parametros() {
         <Titulo sub="Cuándo reponer cada insumo y con cuánto colchón. Cambiarlos no borra lo anterior: queda en su historial.">
           Parámetros de reposición
         </Titulo>
-        <Boton enClic={() => setEditando('nuevo')} deshabilitado={!sinParametro.length}>Definir parámetros</Boton>
+        <Boton enClic={() => setEditando('nuevo')} deshabilitado={!!fallo || !sinParametro.length}>Definir parámetros</Boton>
       </div>
       <Tarjeta relleno={false}>
         {vigentes === null ? <Vacio titulo="Cargando…" detalle="" />
+          : fallo ? <Vacio titulo="No se pudieron cargar los parámetros" detalle={fallo} />
           : vigentes.length === 0 ? (
             <Vacio titulo="Todavía no hay parámetros en esta obra"
               detalle={insumos.length ? 'Define el stock de seguridad y el punto de reposición de los insumos críticos primero.'
