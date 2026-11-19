@@ -14,6 +14,7 @@ import { usaApiReal } from '../api/http'
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { api } from '../api/cliente'
+import { mensajeDeCarga } from '../api/error'
 import type { AlertaReposicion, AvanceInsumo } from '../api/tipos'
 import { Chip, Vacio } from '../ui/base'
 import { Chips, Encabezado, Fondo, Pildora, Segmentado, TituloSeccion, Vidrio, estiloPildora } from '../ui/vidrio'
@@ -68,9 +69,10 @@ export function Reposicion() {
   const [soloCriticos, setSoloCriticos] = useState(false)
   const [fase, setFase] = useState('todas')
 
+  const [fallo, setFallo] = useState('')
   useEffect(() => {
-    api.saldoPorComprar().then(setFilas)
-    api.alertasReposicion().then(setAlertas)
+    api.saldoPorComprar().then(setFilas).catch((x) => { setFilas([]); setFallo(mensajeDeCarga(x)) })
+    api.alertasReposicion().then(setAlertas).catch(() => setAlertas([]))
   }, [])
 
   const fases = useMemo(
@@ -148,6 +150,8 @@ export function Reposicion() {
 
           {filas === null ? (
             <Vacio titulo="Cargando…" detalle="Calculando el saldo por comprar de cada insumo." />
+          ) : fallo ? (
+            <Vacio titulo="No se pudo cargar el saldo por comprar" detalle={fallo} />
           ) : visibles.length === 0 ? (
             <Vacio titulo="Nada pendiente con este filtro" detalle="Todos los insumos filtrados ya tienen su compra completa." />
           ) : (

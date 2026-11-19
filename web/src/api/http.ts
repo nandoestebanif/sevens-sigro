@@ -286,6 +286,8 @@ export const catalogoHttp = {
   },
   async historialFactor(codigo: string): Promise<HistorialFactor[]> {
     const id = await idDe(codigo)
+    const { nombresDeLaObra } = await import('./oficina') // obras sabe quién es quién; catálogo solo guarda el id
+    const personas = await nombresDeLaObra()
     const xs = await pedir<{
       id: number; factorAnterior: string; factorNuevo: string; motivo: string; cambiadoPor: number; cambiadoEn: string
     }[]>('GET', `/catalogo/insumos/${id}/factor-conversion/historial`)
@@ -294,7 +296,8 @@ export const catalogoHttp = {
       factorAnterior: Number(h.factorAnterior),
       factorNuevo: Number(h.factorNuevo),
       motivo: h.motivo,
-      cambiadoPor: `Usuario #${h.cambiadoPor}`,
+      // HU-17 c4: el histórico dice QUIÉN cambió el factor (nombre), no un id interno
+      cambiadoPor: personas.get(h.cambiadoPor) ?? `Usuario #${h.cambiadoPor}`,
       cambiadoEn: h.cambiadoEn,
     }))
   },
@@ -363,7 +366,7 @@ interface CompraApi {
   proveedorEstado?: Proveedor['estado']; proveedorAlertaSunat?: string | null
   comprobantesVigentes?: number; advertencias?: string[]
   tipoComprobante: TipoComprobante; numeroComprobante: string; fecha: string
-  estado: 'registrada' | 'anulada'; totales: { base: string; igv: string; total: string }
+  estado: 'registrada' | 'anulada'; motivoAnulacion?: string | null; totales: { base: string; igv: string; total: string }
   lineas: { insumoCodigo: string; descripcion: string; cantidad: string; unidadCompra: string; precioUnitario: string }[]
 }
 interface ComprobanteApi {
@@ -400,6 +403,7 @@ const aCompra = (c: CompraApi, oId: string, estado?: EstadoCompra): Compra => ({
   adjunto: (c.comprobantesVigentes ?? 0) > 0,
   comprobantesVigentes: c.comprobantesVigentes ?? 0,
   advertencias: c.advertencias,
+  motivoAnulacion: c.motivoAnulacion ?? null,
 })
 const nuevoUuid = () =>
   typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
@@ -485,6 +489,12 @@ export const comprasHttp = {
     }
     if (!r.ok) throw construirErrorHttp(r, await r.text())
     return r.blob()
+  },
+  /** HU-32 · R10: una compra no se edita ni se borra; se anula con motivo y deja de contar en «Comprado» (HU-58) */
+  async anularCompra(compraId: string, motivo: string): Promise<Compra> {
+    if (motivo.trim().length < 5) throw new ErrorApi('motivo', 'Escribe por qué se anula la compra (mínimo 5 caracteres).')
+    const oId = await obraId()
+    return aCompra(await pedir<CompraApi>('POST', `/obras/${oId}/compras/${compraId}/anular`, { motivo: motivo.trim() }), oId, 'anulada')
   },
   async anularComprobante(compraId: string, adjuntoId: string, motivo: string): Promise<ComprobanteCompra> {
     if (motivo.trim().length < 5) throw new ErrorApi('motivo', 'El motivo de anulación requiere al menos 5 caracteres.')
@@ -581,7 +591,7 @@ interface VerificacionApi {
 interface MovimientoApi {
   id: number; uuidCliente: string; tipo: string; sentido: number; proyectoId: number; almacenId: number; insumoId: number
   insumoCodigo: string | null; unidad: string | null; cantidad: string; costoUnitario: string; motivo: string | null
-  quienRetira: string | null; origen: string | null; recepcionId: number | null; revierteAId: number | null
+  quienRetira: string | null; origen: string | null; origenDetalle?: string | null; recepcionId: number | null; revierteAId: number | null
   registradoPor: number; fechaServidor: string; revertidoPorId?: number | null; recepcionMotivoExceso?: string | null
   periodoId?: number | null; semanaNumero?: number | null
 }
@@ -612,13 +622,27 @@ interface AlmacenApi { id: number; nombre: string }
 export const idMovimiento = (id: number) => `M-${String(id).padStart(4, '0')}`
 const idServidor = (id: string) => Number(id.replace(/^M-0*/, '')) || Number(id)
 
+/** HU-41: el origen de un ingreso sin compra, en palabras del almacenero (nunca el código interno) */
+const ORIGEN_TEXTO: Record<string, string> = {
+  saldo_otra_obra: 'Saldo de otra obra',
+  devolucion_cuadrilla: 'Devolución de la cuadrilla',
+  prestamo: 'Préstamo',
+  sobrante: 'Sobrante',
+  otro: 'Otro origen',
+}
+export function textoOrigen(origen: string, detalle?: string | null): string {
+  const base = ORIGEN_TEXTO[origen] ?? origen.replace(/_/g, ' ')
+  const d = (detalle ?? '').trim()
+  return d ? `Ingreso sin compra · ${base}: ${d}` : `Ingreso sin compra · ${base}`
+}
+
 /** el texto del motivo según el tipo: una salida dice quién retiró; una recepción, de qué compra viene */
 function motivoDe(m: MovimientoApi): string {
   if (m.motivo) return m.quienRetira ? `${m.motivo} · retira ${m.quienRetira}` : m.motivo
   if (m.tipo === 'ingreso_compra') {
     return m.recepcionMotivoExceso ? `Recepción de compra · motivo del exceso de esa recepción: ${m.recepcionMotivoExceso}` : 'Recepción de compra'
   }
-  if (m.origen) return `Ingreso sin compra (${m.origen})`
+  if (m.origen) return textoOrigen(m.origen, m.origenDetalle)
   return m.tipo.replace(/_/g, ' ')
 }
 
