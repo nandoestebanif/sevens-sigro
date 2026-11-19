@@ -117,6 +117,8 @@ data class EstadoEntrada(
     val motivoDetalle: String = "",
     /** Se guardó sin poder revisar lo requerido (sin señal). */
     val sinVerificar: Boolean = false,
+    /** HU-35/36: el aviso de exceso se calculó en el celular (sin señal) con la última consulta al servidor. */
+    val excesoSinSenal: Boolean = false,
 ) {
     /** Recibir una parte exige saber el insumo y el pendiente de cada línea (con señal). */
     val puedeParcial: Boolean get() = compra?.conPendientes == true
@@ -137,7 +139,7 @@ class EntradaViewModel(
         viewModelScope.launch {
             try {
                 val c = obra.compras(obraId)
-                _e.update { it.copy(cargando = false, compras = c, aviso = if (c.isEmpty()) "No hay compras registradas por recibir en esta obra." else null) }
+                _e.update { it.copy(cargando = false, compras = c, aviso = if (c.isEmpty()) "No hay compras con algo pendiente por recibir en esta obra." else null) }
             } catch (x: ErrorSigro) {
                 val msg = if (x.esTransitorio) "Las compras se cargan con señal. Vuelve a intentarlo cuando haya señal." else x.message
                 _e.update { it.copy(cargando = false, aviso = msg) }
@@ -215,7 +217,7 @@ class EntradaViewModel(
                 _e.update { it.copy(errores = it.errores + (ERROR_MOTIVO to msg)) }
                 return
             }
-            return guardarEnCelular(obraId, c, lineas, s.llegoTodo, m, sinVerificar = false)
+            return guardarEnCelular(obraId, c, lineas, s.llegoTodo, m, sinVerificar = s.excesoSinSenal)
         }
         _e.update { it.copy(verificando = true, errores = emptyMap()) }
         viewModelScope.launch {
@@ -233,8 +235,15 @@ class EntradaViewModel(
                     guardarEnCelular(obraId, c, lineas, s.llegoTodo, null, sinVerificar = false)
                 }
                 Resultado.SinSenal -> {
-                    _e.update { it.copy(verificando = false) }
-                    guardarEnCelular(obraId, c, lineas, s.llegoTodo, null, sinVerificar = true)
+                    // Sin señal: se avisa con lo que el servidor dejó en el celular (HU-35/36). Solo si no hay referencia
+                    // se guarda sin revisar y el servidor decide al enviar.
+                    val local = ExcesoRequerido.sinSenal(c, s.recibido, s.llegoTodo)
+                    if (local?.hayExceso == true) {
+                        _e.update { it.copy(verificando = false, exceso = local, excesoSinSenal = true, motivo = null, motivoDetalle = "") }
+                    } else {
+                        _e.update { it.copy(verificando = false) }
+                        guardarEnCelular(obraId, c, lineas, s.llegoTodo, null, sinVerificar = local == null)
+                    }
                 }
                 // 409 ya recibida, 422 se pasa de lo comprado…: el servidor manda; no se guarda.
                 is Resultado.Rechazo -> _e.update { it.copy(verificando = false, errores = mapOf(-1 to v.mensaje)) }
@@ -258,7 +267,7 @@ class EntradaViewModel(
     private fun proponer(c: CompraParaRecibir, todo: Boolean): Map<Int, String> =
         c.lineas.indices.associateWith { i -> if (todo) c.lineas[i].recibible else "" }
 
-    private fun EstadoEntrada.sinExceso() = copy(exceso = null, motivo = null, motivoDetalle = "", errores = errores - ERROR_MOTIVO)
+    private fun EstadoEntrada.sinExceso() = copy(exceso = null, excesoSinSenal = false, motivo = null, motivoDetalle = "", errores = errores - ERROR_MOTIVO)
 
     private sealed interface Resultado {
         data class Listo(val verificacion: VerificacionRecepcion?) : Resultado
@@ -288,6 +297,10 @@ private fun AvisoExceso(e: EstadoEntrada, compra: CompraParaRecibir, vm: Entrada
                 "${ExcesoRequerido.fmt(excedidas[0].exceso)} ${excedidas[0].unidad}"
             else "${excedidas.size} insumos pasan lo requerido en el S10",
             fontSize = 15.sp, fontWeight = FontWeight.Bold, color = Paleta.PendienteTexto,
+        )
+        if (e.excesoSinSenal) Text(
+            "Sin señal: calculado en el celular con la última consulta al servidor. Al enviarse, el servidor lo vuelve a revisar.",
+            fontSize = 13.sp, lineHeight = 18.sp, color = Paleta.Texto2,
         )
         excedidas.forEach { l ->
             Text(ExcesoRequerido.detalle(l, nombres[l.insumoId] ?: l.insumoCodigo), fontSize = 13.sp, lineHeight = 18.sp, color = Paleta.AvisoTexto)

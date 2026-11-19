@@ -237,6 +237,16 @@ def test_el_ruc_de_un_proveedor_no_se_edita_por_ningun_camino(mundo, eq, sunat):
 
 
 # ══════════════════════════════════════════════ compras (HU-32)
+def test_hu32_la_fecha_del_comprobante_no_puede_ser_futura_en_hora_de_lima(mundo, eq, sunat):
+    from datetime import datetime, timedelta
+    from zoneinfo import ZoneInfo
+    hoy = datetime.now(ZoneInfo("America/Lima")).date()
+    p = proveedor(mundo, eq)
+    r = comprar(mundo, eq, p, numero="F001-9001", fecha=str(hoy + timedelta(days=1)))
+    assert r.status_code == 422 and "posterior a hoy" in r.text
+    assert comprar(mundo, eq, p, numero="F001-9002", fecha=str(hoy)).status_code == 201
+
+
 def test_registrar_compra_calcula_los_totales_en_el_servidor_igual_que_la_factura(mundo, eq, sunat):
     """400 bls × S/ 29.23 con IGV incluido = S/ 11 692.00 → base 9 908.47 + IGV 1 783.53 (la factura F001-4512 de la demo)."""
     p = proveedor(mundo, eq)

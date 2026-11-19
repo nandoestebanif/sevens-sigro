@@ -95,3 +95,76 @@ describe('HU-58 · anular una compra registrada por error (R10)', () => {
     expect(c.motivoAnulacion).toBe('Compra de prueba irreal')
   })
 })
+
+describe('D14 · «Solo críticos»: crítico = insumo con punto de reposición vigente (decisión del PO)', () => {
+  it('marca crítico solo al insumo con parámetros', async () => {
+    const { reposicionHttp } = await import('./http')
+    servidor((url) => {
+      if (url.endsWith('/api/v1/obras')) return { estado: 200, cuerpo: OBRAS }
+      if (url.endsWith('/obras/7/saldo-por-comprar')) return { estado: 200, cuerpo: [
+        { insumo_id: 1, insumo_codigo: '0221000000', descripcion: 'CEMENTO', unidad_s10: 'bls', unidad_compra: 'bls', requerido: '100', comprado: '10', saldo: '90', saldo_en_unidad_compra: '90', exceso: '0', estado: 'pendiente' },
+        { insumo_id: 2, insumo_codigo: '0205010033', descripcion: 'ARENA', unidad_s10: 'm3', unidad_compra: 'm3', requerido: '50', comprado: '0', saldo: '50', saldo_en_unidad_compra: '50', exceso: '0', estado: 'pendiente' },
+      ] }
+      if (url.endsWith('/obras/7/parametros-reposicion')) return { estado: 200, cuerpo: [
+        { insumo_codigo: '0221000000', descripcion: 'CEMENTO', unidad_compra: 'bls', stock_seguridad: '10', punto_reposicion: '20', vigente_desde: '2026-11-18', insumo_id: 1 },
+      ] }
+      return { estado: 404 }
+    })
+    const xs = await reposicionHttp.saldo()
+    expect(xs.map((x) => [x.codigo, x.critico])).toEqual([['0221000000', true], ['0205010033', false]])
+  })
+  it('si el rol no puede ver los parámetros, nadie es crítico pero el saldo carga igual', async () => {
+    const { reposicionHttp } = await import('./http')
+    servidor((url) => {
+      if (url.endsWith('/api/v1/obras')) return { estado: 200, cuerpo: OBRAS }
+      if (url.endsWith('/obras/7/saldo-por-comprar')) return { estado: 200, cuerpo: [
+        { insumo_id: 1, insumo_codigo: '0221000000', descripcion: 'CEMENTO', unidad_s10: 'bls', unidad_compra: 'bls', requerido: '100', comprado: '10', saldo: '90', saldo_en_unidad_compra: '90', exceso: '0', estado: 'pendiente' },
+      ] }
+      if (url.endsWith('/obras/7/parametros-reposicion')) return { estado: 403, cuerpo: { codigo: 'sin_permiso', mensaje: 'No' } }
+      return { estado: 404 }
+    })
+    const xs = await reposicionHttp.saldo()
+    expect(xs).toHaveLength(1)
+    expect(xs[0].critico).toBe(false)
+  })
+})
+
+describe('D14 + HU-28 · si el servidor tiene marcas de crítico, mandan ellas', () => {
+  it('usa GET /criticos y no la regla del punto de reposición', async () => {
+    const { reposicionHttp } = await import('./http')
+    servidor((url) => {
+      if (url.endsWith('/api/v1/obras')) return { estado: 200, cuerpo: OBRAS }
+      if (url.endsWith('/obras/7/saldo-por-comprar')) return { estado: 200, cuerpo: [
+        { insumo_id: 1, insumo_codigo: '0221000000', descripcion: 'CEMENTO', unidad_s10: 'bls', unidad_compra: 'bls', requerido: '100', comprado: '10', saldo: '90', saldo_en_unidad_compra: '90', exceso: '0', estado: 'pendiente' },
+        { insumo_id: 2, insumo_codigo: '0203020004', descripcion: 'ACERO', unidad_s10: 'kg', unidad_compra: 'kg', requerido: '500', comprado: '0', saldo: '500', saldo_en_unidad_compra: '500', exceso: '0', estado: 'pendiente' },
+      ] }
+      if (url.endsWith('/obras/7/criticos')) return { estado: 200, cuerpo: [
+        { insumo_id: 2, insumo_codigo: '0203020004', descripcion: 'ACERO', critico: true, registrado_por: 2, registrado_en: '2026-11-19' },
+      ] }
+      if (url.endsWith('/obras/7/parametros-reposicion')) return { estado: 200, cuerpo: [
+        { insumo_codigo: '0221000000', descripcion: 'CEMENTO', unidad_compra: 'bls', stock_seguridad: '10', punto_reposicion: '20', vigente_desde: '2026-11-18', insumo_id: 1 },
+      ] }
+      return { estado: 404 }
+    })
+    const xs = await reposicionHttp.saldo()
+    expect(xs.map((x) => [x.codigo, x.critico])).toEqual([['0221000000', false], ['0203020004', true]])
+  })
+})
+
+describe('D08 · el alta manda medida, norma y marca en su campo', () => {
+  it('no las pega al nombre y manda null si están vacías', async () => {
+    const { catalogoHttp } = await import('./http')
+    servidor((url, metodo) => {
+      if (url.endsWith('/catalogo/insumos') && metodo === 'POST') return { estado: 201, cuerpo: {
+        id: 9, codigo: 'SIGRO-00009', descripcion: 'TUBO PVC', unidad_s10: 'und', unidad_compra: 'und', factor_conversion: '1',
+        tipo: 'material', activo: true, verificado: false, medida: '4"', norma: 'NTP 399.003', marca: null,
+      } }
+      return { estado: 404 }
+    })
+    const i = await catalogoHttp.crear({ nombre: ' tubo pvc ', um: 'und', medida: '4"', norma: 'ntp 399.003', marca: '  ' })
+    expect(pedidos.find((p) => p.metodo === 'POST')?.cuerpo).toEqual({
+      descripcion: 'TUBO PVC', unidad: 'und', tipo: 'material', medida: '4"', norma: 'NTP 399.003', marca: null,
+    })
+    expect([i.nombre, i.medida, i.norma, i.marca]).toEqual(['TUBO PVC', '4"', 'NTP 399.003', ''])
+  })
+})

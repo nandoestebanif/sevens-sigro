@@ -224,12 +224,14 @@ export function Tablero() {
             <Vacio titulo="Sin requerimiento todavía" detalle="Importa la Relación de insumos del S10 para comparar lo gastado contra lo planificado." />
           ) : (
             <div style={{ overflowX: 'auto' }}>
-              <table className="tabla-vidrio" style={{ minWidth: 900 }}>
+              <table className="tabla-vidrio" style={{ minWidth: 1080 }}>
                 <thead>
                   <tr>
                     <th>Insumo</th>
                     <th className="n">Planificado S/</th>
-                    {conDesviacionReal ? <th className="n">Esperado S/</th> : <th className="n">Comprado</th>}
+                    {conDesviacionReal && <th className="n">Esperado S/</th>}
+                    <th className="n">Requerido</th>
+                    <th className="n">Comprado</th>
                     <th className="n">Recibido</th>
                     <th className="n">Consumido</th>
                     <th className="n">Falta comprar</th>
@@ -247,11 +249,14 @@ export function Tablero() {
                         </div>
                       </td>
                       <td className="n">{soles(f.planificadoImporte)}</td>
-                      {conDesviacionReal ? (
-                        <td className="n">{soles(f.esperadoImporte ?? 0)}</td>
-                      ) : (
-                        <td className="n">{f.compradoPct} %</td>
-                      )}
+                      {conDesviacionReal && <td className="n">{soles(f.esperadoImporte ?? 0)}</td>}
+                      <td className="n" style={{ whiteSpace: 'nowrap' }}>
+                        {f.requeridoCompra !== undefined ? `${f.requeridoCompra.toLocaleString('es-PE', { maximumFractionDigits: 2 })} ${f.unidadCompra}` : '—'}
+                      </td>
+                      <td className="n" style={{ whiteSpace: 'nowrap' }}>
+                        {f.compradoCantidad.toLocaleString('es-PE', { maximumFractionDigits: 2 })} {f.unidadCompra}
+                        <div style={{ fontSize: 12, color: 'var(--tinta-2)' }}>{f.compradoPct} %</div>
+                      </td>
                       <td className="n">{f.sinDatoAlmacen ? '—' : `${f.recibidoPct} %`}</td>
                       <td>
                         {f.sinDatoAlmacen ? (
@@ -283,7 +288,8 @@ export function Tablero() {
             </div>
           )}
           <p style={{ fontSize: 13, color: 'var(--tinta-2)', lineHeight: 1.5 }}>
-            La marca del medidor es el avance del plazo ({pct1(r.avancePlazoPct)} %): un consumo por encima se está adelantando a la obra.
+            Comprado, recibido y consumido se expresan en porcentaje de lo requerido en el S10, en la unidad de compra (HU-23):
+            se pueden cuadrar a mano con la columna «Requerido». La marca del medidor es el avance del plazo ({pct1(r.avancePlazoPct)} %): un consumo por encima se está adelantando a la obra.
             Lo planificado incluye desperdicio: pasarse avisa, no bloquea.
           </p>
         </Vidrio>

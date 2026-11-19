@@ -10,11 +10,11 @@
      filtrado, listo para convertirse en la solicitud de materiales (HU-66).
    Lienzo W5 «Reposición» (estilo vidrio).
    ───────────────────────────────────────────────────────────────────────── */
-import { usaApiReal } from '../api/http'
+import { reposicionHttp, usaApiReal } from '../api/http'
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { api } from '../api/cliente'
-import { mensajeDeCarga } from '../api/error'
+import { ErrorApi, mensajeDeCarga } from '../api/error'
 import type { AlertaReposicion, AvanceInsumo } from '../api/tipos'
 import { Chip, Vacio } from '../ui/base'
 import { Chips, Encabezado, Fondo, Pildora, Segmentado, TituloSeccion, Vidrio, estiloPildora } from '../ui/vidrio'
@@ -70,6 +70,20 @@ export function Reposicion() {
   const [fase, setFase] = useState('todas')
 
   const [fallo, setFallo] = useState('')
+  const [avisoCritico, setAvisoCritico] = useState('')
+  // HU-28: marcar o quitar «crítico» (residente y administrador; el servidor decide el permiso)
+  const alternarCritico = async (f: AvanceInsumo) => {
+    setAvisoCritico('')
+    try {
+      await reposicionHttp.marcarCritico(f.codigo, !f.critico)
+      setFilas((xs) => (xs ?? []).map((x) => (x.codigo === f.codigo ? { ...x, critico: !f.critico } : x)))
+      setAvisoCritico(`${f.descripcion}: ${f.critico ? 'ya no es crítico' : 'marcado como crítico'}.`)
+    } catch (e) {
+      setAvisoCritico(e instanceof ErrorApi && e.estado === 403 ? 'Solo el residente o el administrador marcan los insumos críticos.'
+        : e instanceof ErrorApi && e.estado === 404 ? 'Marcar críticos estará disponible cuando el servidor tenga HU-28.'
+          : e instanceof ErrorApi ? e.message : 'No se pudo cambiar la marca. Inténtalo de nuevo.')
+    }
+  }
   useEffect(() => {
     api.saldoPorComprar().then(setFilas).catch((x) => { setFilas([]); setFallo(mensajeDeCarga(x)) })
     api.alertasReposicion().then(setAlertas).catch(() => setAlertas([]))
@@ -136,7 +150,8 @@ export function Reposicion() {
               etiqueta="Filtro por criticidad" valor={soloCriticos} enCambio={setSoloCriticos}
               opciones={[{ valor: false, texto: 'Todos' }, { valor: true, texto: 'Solo críticos' }]}
             />
-            <select
+            {/* D14: las fases llegan con el requerimiento por fase (HU-20, Product Backlog); con una sola no hay nada que elegir */}
+            {fases.length > 1 && <select
               aria-label="Filtrar por fase"
               value={fase}
               onChange={(e) => setFase(e.target.value)}
@@ -145,15 +160,24 @@ export function Reposicion() {
             >
               <option value="todas">Todas las fases</option>
               {fases.map((f) => <option key={f} value={f}>{f}</option>)}
-            </select>
+            </select>}
           </div>
+          {avisoCritico && <span role="status" style={{ fontSize: 12.5, color: 'var(--tinta-2)' }}>{avisoCritico}</span>}
+          {soloCriticos && (
+            <span style={{ fontSize: 12.5, color: 'var(--tinta-2)' }}>
+              Los críticos los marca el residente con «Marcar crítico» (HU-28); si aún no hay marcas, cuentan los insumos con
+              punto de reposición en <Link to="/parametros">Parámetros de reposición</Link>.
+            </span>
+          )}
 
           {filas === null ? (
             <Vacio titulo="Cargando…" detalle="Calculando el saldo por comprar de cada insumo." />
           ) : fallo ? (
             <Vacio titulo="No se pudo cargar el saldo por comprar" detalle={fallo} />
           ) : visibles.length === 0 ? (
-            <Vacio titulo="Nada pendiente con este filtro" detalle="Todos los insumos filtrados ya tienen su compra completa." />
+            soloCriticos && !(filas ?? []).some((f) => f.critico)
+              ? <Vacio titulo="Todavía no hay insumos críticos" detalle="Vuelve a «Todos» y usa «Marcar crítico» en el acero, el cemento u otro insumo." />
+              : <Vacio titulo="Nada pendiente con este filtro" detalle="Todos los insumos filtrados ya tienen su compra completa." />
           ) : (
             <div style={{ overflowX: 'auto' }}>
               <table className="tabla-vidrio">
@@ -169,6 +193,13 @@ export function Reposicion() {
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                           <span style={{ fontWeight: 600 }}>{f.descripcion}</span>
                           {f.critico && <Chip tono="aviso">crítico</Chip>}
+                          {usaApiReal && (
+                            <button type="button" className="enlace" onClick={() => void alternarCritico(f)}
+                              style={{ fontSize: 12, background: 'none', border: 0, padding: 0, color: 'var(--marca)', cursor: 'pointer' }}
+                              aria-label={f.critico ? `Quitar crítico a ${f.descripcion}` : `Marcar ${f.descripcion} como crítico`}>
+                              {f.critico ? 'Quitar crítico' : 'Marcar crítico'}
+                            </button>
+                          )}
                         </div>
                         <div className="n" style={{ fontSize: 12, color: 'var(--tinta-2)', marginTop: 2, textAlign: 'left' }}>SKU {f.codigo}</div>
                       </td>
