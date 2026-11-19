@@ -82,6 +82,23 @@ import pe.sevens.sigro.dominio.ErrorSigro
     @SerialName("uuid_cliente") val uuidCliente: String,
 )
 
+/** HU-63 c3 · cuerpo de POST /obras/{id}/jornadas/{jid}/correccion. */
+@Serializable data class CorreccionJornadaIn(
+    val estado: String,
+    @SerialName("horas_normales") val horasNormales: String,
+    @SerialName("horas_extra") val horasExtra: String,
+    val motivo: String,
+)
+
+/** La jornada vigente que devuelve el servidor (solo lo que la corrección necesita; el resto se ignora). */
+@Serializable data class JornadaDto(
+    val id: Int,
+    @SerialName("trabajador_id") val trabajadorId: Int,
+    val fecha: String,
+    val estado: String,
+    @SerialName("corrige_a_id") val corrigeAId: Int? = null,
+)
+
 @Serializable data class ObraDto(val id: Int, val nombre: String, val estado: String? = null, val rol: String? = null)
 @Serializable data class AlmacenDto(val id: Int, val nombre: String, val tipo: String, val estado: String)
 @Serializable data class LineaCompraDto(
@@ -239,6 +256,19 @@ class ApiSigro(
 
     suspend fun registrarTrabajador(servidor: String, obraId: Int, nuevo: TrabajadorIn): TrabajadorDto =
         llamar { http.post(url(servidor, "/obras/$obraId/trabajadores")) { cuerpo(nuevo) } }
+
+    /** HU-63: la jornada VIGENTE de ese trabajador y día (el servidor ya resuelve la cadena de correcciones). */
+    suspend fun jornadasVigentes(servidor: String, obraId: Int, fecha: String, trabajadorId: Int): List<JornadaDto> =
+        llamar {
+            http.get(url(servidor, "/obras/$obraId/jornadas")) {
+                parameter("fecha", fecha)
+                parameter("trabajador_id", trabajadorId)
+            }
+        }
+
+    /** HU-63 c3: inserta la corrección que apunta a la jornada vigente; la original no se toca (R1). */
+    suspend fun corregirJornada(servidor: String, obraId: Int, jornadaId: Int, cuerpo: CorreccionJornadaIn): JornadaDto =
+        llamar { http.post(url(servidor, "/obras/$obraId/jornadas/$jornadaId/correccion")) { cuerpo(cuerpo) } }
 
     suspend fun obras(servidor: String): List<ObraDto> =
         llamar { http.get(url(servidor, "/obras")) }

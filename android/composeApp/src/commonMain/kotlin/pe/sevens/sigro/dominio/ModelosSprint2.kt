@@ -244,6 +244,11 @@ data class CompraParaRecibir(
     val comprobante: String,
     val fecha: String,
     val lineas: List<LineaCompra>,
+    /**
+     * HU-35/36 · la verificación de «llegó todo» que respondió el servidor al cargar la lista (con señal): por insumo,
+     * lo requerido en el S10 y lo ya recibido. Sirve para avisar del exceso y pedir el motivo SIN señal.
+     */
+    val referencia: VerificacionRecepcion? = null,
 ) {
     /** Con el estado de recepción del servidor cada línea sabe su insumo y su pendiente: se puede recibir una parte. */
     val conPendientes: Boolean get() = lineas.isNotEmpty() && lineas.all { it.insumoId != null && it.pendiente != null }
@@ -364,6 +369,31 @@ object ExcesoRequerido {
         }
     }
 
+    /**
+     * HU-35/36 sin señal · la misma cuenta que hace el servidor, con lo que dejó en el celular la última consulta con
+     * señal ([CompraParaRecibir.referencia]): con esta entrada = ya recibido + lo recibido × factor (S10 por unidad de
+     * compra, sacado de esa misma respuesta). Si no hay referencia, devuelve null y se guarda como antes (el servidor
+     * revisa al enviar). Si al enviar el servidor ve otra cosa, manda él.
+     */
+    fun sinSenal(c: CompraParaRecibir, recibido: Map<Int, String>, todo: Boolean): VerificacionRecepcion? {
+        val ref = c.referencia ?: return null
+        val porInsumo = ref.lineas.associateBy { it.insumoId }
+        val lineas = c.lineas.mapIndexedNotNull { i, l ->
+            val x = porInsumo[l.insumoId ?: return@mapIndexedNotNull null] ?: return@mapIndexedNotNull null
+            val pendiente = num(l.pendiente) ?: return@mapIndexedNotNull null
+            val enviado = if (todo) pendiente else num(recibido[i]) ?: 0.0
+            val ya = num(x.yaRecibido) ?: 0.0
+            val sumaTodo = (num(x.conEsta) ?: return@mapIndexedNotNull null) - ya
+            if (enviado <= 0.0 || pendiente <= 0.0 || sumaTodo <= 0.0) return@mapIndexedNotNull null
+            val conEsta = ya + enviado * (sumaTodo / pendiente)
+            val requerido = num(x.requerido)
+            val exceso = requerido?.let { conEsta - it }
+            val excede = exceso != null && exceso > 1e-9
+            ExcesoLinea(x.insumoId, x.insumoCodigo, x.unidad, x.requerido, x.yaRecibido, fmt(conEsta), if (excede) fmt(exceso!!) else null, excede)
+        }
+        return VerificacionRecepcion(lineas.any { it.excede }, lineas)
+    }
+
     fun fmt(t: String?): String = num(t)?.let { fmt(it) } ?: "—"
 
     fun fmt(d: Double): String {
@@ -407,6 +437,27 @@ object ValidarAlmacen {
 }
 
 /* ── Asistencia · revisión del 17/11 (prueba de Fernando en celular) ── */
+/** HU-35 · ¿a la compra le queda algo por recibir? El servidor manda lo pendiente de cada línea como texto decimal. */
+object RecepcionPendiente {
+    fun queda(pendientes: List<String>): Boolean = pendientes.any { (it.trim().toDoubleOrNull() ?: 0.0) > 1e-9 }
+}
+
+/** HU-63 c3 · reglas de la corrección que se revisan en el celular antes de pedirla al servidor. */
+object CorreccionJornada {
+    const val MOTIVO_MIN = 3
+
+    fun errorMotivo(motivo: String): String? =
+        if (motivo.trim().length < MOTIVO_MIN) "Escribe por qué se corrige (mínimo $MOTIVO_MIN letras): queda como constancia." else null
+
+    /** El texto del aviso al terminar: qué quedó y qué pasó con la anterior. */
+    fun textoHecha(nombre: String, m: MarcaAsistencia): String {
+        val queda = if (m.estado == EstadoAsistencia.PRESENTE)
+            "Presente · ${m.horasNormales} h" + (if (m.horasExtra > 0) " + ${m.horasExtra} extra" else "")
+        else m.estado.legible
+        return "Jornada de $nombre corregida: $queda. La anterior queda guardada como constancia, con tu nombre y el motivo."
+    }
+}
+
 object AsistenciaDia {
     private const val DIA_MS = 86_400_000L
 
