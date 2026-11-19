@@ -129,6 +129,28 @@ describe('D14 · «Solo críticos»: crítico = insumo con punto de reposición 
   })
 })
 
+describe('D14 + HU-28 · si el servidor tiene marcas de crítico, mandan ellas', () => {
+  it('usa GET /criticos y no la regla del punto de reposición', async () => {
+    const { reposicionHttp } = await import('./http')
+    servidor((url) => {
+      if (url.endsWith('/api/v1/obras')) return { estado: 200, cuerpo: OBRAS }
+      if (url.endsWith('/obras/7/saldo-por-comprar')) return { estado: 200, cuerpo: [
+        { insumo_id: 1, insumo_codigo: '0221000000', descripcion: 'CEMENTO', unidad_s10: 'bls', unidad_compra: 'bls', requerido: '100', comprado: '10', saldo: '90', saldo_en_unidad_compra: '90', exceso: '0', estado: 'pendiente' },
+        { insumo_id: 2, insumo_codigo: '0203020004', descripcion: 'ACERO', unidad_s10: 'kg', unidad_compra: 'kg', requerido: '500', comprado: '0', saldo: '500', saldo_en_unidad_compra: '500', exceso: '0', estado: 'pendiente' },
+      ] }
+      if (url.endsWith('/obras/7/criticos')) return { estado: 200, cuerpo: [
+        { insumo_id: 2, insumo_codigo: '0203020004', descripcion: 'ACERO', critico: true, registrado_por: 2, registrado_en: '2026-11-19' },
+      ] }
+      if (url.endsWith('/obras/7/parametros-reposicion')) return { estado: 200, cuerpo: [
+        { insumo_codigo: '0221000000', descripcion: 'CEMENTO', unidad_compra: 'bls', stock_seguridad: '10', punto_reposicion: '20', vigente_desde: '2026-11-18', insumo_id: 1 },
+      ] }
+      return { estado: 404 }
+    })
+    const xs = await reposicionHttp.saldo()
+    expect(xs.map((x) => [x.codigo, x.critico])).toEqual([['0221000000', false], ['0203020004', true]])
+  })
+})
+
 describe('D08 · el alta manda medida, norma y marca en su campo', () => {
   it('no las pega al nombre y manda null si están vacías', async () => {
     const { catalogoHttp } = await import('./http')
