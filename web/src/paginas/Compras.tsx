@@ -399,7 +399,9 @@ export function Compras() {
     () => proveedores.map((p) => ({ valor: String(p.id), texto: acorta(p.razonSocial), detalle: `RUC ${p.ruc}` })), [proveedores])
   const [tipo, setTipo] = useState<TipoComprobante>('factura')
   const [numero, setNumero] = useState('')
-  const [fecha, setFecha] = useState(() => new Date().toISOString().slice(0, 10))
+  // HU-32: hoy en Lima. toISOString() da la fecha UTC: desde las 19:00 de Lima ya proponía el día siguiente
+  const hoyLima = () => new Date().toLocaleDateString('en-CA', { timeZone: 'America/Lima' })
+  const [fecha, setFecha] = useState(hoyLima)
 
   // línea en edición
   const [insumoId, setInsumoId] = useState('')
@@ -546,7 +548,7 @@ export function Compras() {
             </div>
             <div style={celdaForm(1, 150)}>
               <Etiqueta htmlFor="c-fecha">Fecha</Etiqueta>
-              <input id="c-fecha" type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} style={estiloCampo} />
+              <input id="c-fecha" type="date" value={fecha} max={hoyLima()} onChange={(e) => setFecha(e.target.value)} style={estiloCampo} />
             </div>
           </div>
 
