@@ -158,6 +158,7 @@ export interface InsumoMaestro {
   factorConversion?: number
   medida: string // vacía cuando el tipo no la lleva
   marca: string // opcional; se exige solo en los tipos que la requieren
+  norma?: string // D08: norma técnica (NTP, ASTM…), en su propio campo
   precioPromedio: number
   estado: 'activo' | 'por_verificar'
   creadoEl: string // ISO
@@ -192,6 +193,8 @@ export interface AvanceInsumo {
   compradoPct: number
   recibidoPct: number
   consumidoPct: number
+  /** HU-23 c1: requerido del S10 en unidad de compra (base de los tres %) */
+  requeridoCompra?: number
   gastado: number
   /** HU-24: falta por comprar = requerido − comprado, nunca negativa */
   saldoPorComprar: number
