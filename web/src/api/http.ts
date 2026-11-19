@@ -217,6 +217,7 @@ export const proveedoresHttp = {
 interface InsumoApi {
   id: number; codigo: string; descripcion: string; unidadS10: string; unidadCompra: string
   factorConversion: string; tipo: string; activo: boolean; verificado: boolean
+  medida?: string | null; norma?: string | null; marca?: string | null
 }
 let idPorCodigo = new Map<string, number>()
 let codigoPorId = new Map<number, string>()
@@ -226,7 +227,8 @@ const aMaestro = (i: InsumoApi): InsumoMaestro => ({
   codigo: i.codigo, nombre: i.descripcion, um: i.unidadCompra,
   unidadS10: i.unidadS10,
   factorConversion: Number(i.factorConversion || 1),
-  medida: '', marca: '', // la API guarda la descripción completa; marca y precio no son del catálogo
+  // D08: medida, norma y marca en su campo (0016); los insumos anteriores las traen dentro del nombre y aquí van vacías
+  medida: i.medida ?? '', norma: i.norma ?? '', marca: i.marca ?? '',
   precioPromedio: 0,     // el precio sale de las compras de cada obra, no del maestro
   estado: i.verificado ? 'activo' : 'por_verificar', creadoEl: '',
 })
@@ -251,10 +253,13 @@ export const catalogoHttp = {
       id: i.codigo, codigo: i.codigo, descripcion: i.descripcion, unidadCompra: i.unidadCompra,
     }))
   },
-  async crear(d: { nombre: string; um: string; medida?: string; marca?: string }): Promise<InsumoMaestro> {
-    // la descripción estandarizada junta material, medida y marca; el duplicado lo rechaza el servidor
-    const descripcion = [d.nombre, d.medida, d.marca].map((x) => (x ?? '').trim()).filter(Boolean).join(' ').toUpperCase()
-    const i = await pedir<InsumoApi>('POST', '/catalogo/insumos', { descripcion, unidad: d.um.trim(), tipo: 'material' })
+  async crear(d: { nombre: string; um: string; medida?: string; norma?: string; marca?: string }): Promise<InsumoMaestro> {
+    // D08: el material va en la descripción y medida, norma y marca en su propio campo; el duplicado (D09) lo rechaza el servidor
+    const campo = (x?: string) => (x ?? '').trim().toUpperCase() || null
+    const i = await pedir<InsumoApi>('POST', '/catalogo/insumos', {
+      descripcion: d.nombre.trim().toUpperCase(), unidad: d.um.trim(), tipo: 'material',
+      medida: campo(d.medida), norma: campo(d.norma), marca: campo(d.marca),
+    })
     idPorCodigo.set(i.codigo, i.id)
     return aMaestro(i)
   },
@@ -325,14 +330,19 @@ const aParametro = (p: ParametroApi): ParametroReposicion => {
 
 export const reposicionHttp = {
   async saldo(): Promise<AvanceInsumo[]> {
-    const xs = await pedir<SaldoApi[]>('GET', `/obras/${await obraId()}/saldo-por-comprar`)
+    const [xs, criticos] = await Promise.all([
+      pedir<SaldoApi[]>('GET', `/obras/${await obraId()}/saldo-por-comprar`),
+      // D14 (decisión del PO): un insumo es crítico cuando tiene punto de reposición vigente (HU-25).
+      // Si el rol no puede ver los parámetros, el filtro queda sin críticos en vez de romper la pantalla.
+      reposicionHttp.parametros().then((ps) => new Set(ps.map((p) => p.insumoCodigo))).catch(() => new Set<string>()),
+    ])
     return xs.map((s) => {
       const req = num(s.requerido), comp = num(s.comprado)
       return {
         insumoId: String(s.insumoId), codigo: s.insumoCodigo, descripcion: s.descripcion,
         unidadS10: s.unidadS10, unidadCompra: s.unidadCompra,
         fase: 'Toda la obra', // las fases llegan con el requerimiento por fase (HU-20, Sprint 2)
-        critico: false,       // marcar críticos es HU-28 (Sprint 2)
+        critico: criticos.has(s.insumoCodigo),
         planificadoCantidad: req, planificadoImporte: 0,
         compradoCantidad: comp, compradoPct: req ? Math.round((comp / req) * 1000) / 10 : 0,
         recibidoPct: 0, consumidoPct: 0, gastado: 0, // llegan con almacén y costo

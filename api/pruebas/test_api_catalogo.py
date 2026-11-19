@@ -53,6 +53,34 @@ def test_misma_descripcion_con_otra_unidad_es_otro_insumo(mundo, eq):
     assert alta(mundo, eq["residente"], "Arena gruesa", "kg").status_code == 201
 
 
+# ═════════════════════════════════════════ D08 y D09 (HT-11): medida, norma y marca en su campo
+def test_d08_medida_norma_y_marca_se_guardan_en_su_campo_y_se_devuelven(mundo, eq):
+    r = alta(mundo, eq["almacenero"], "Tubo PVC desagüe", "und", medida='4"', norma="NTP 399.003", marca="PAVCO")
+    assert r.status_code == 201, r.text
+    d = r.json()
+    assert (d["descripcion"], d["medida"], d["norma"], d["marca"]) == ("Tubo PVC desagüe", '4"', "NTP 399.003", "PAVCO")
+    listado = get(mundo, "?q=desag", eq["residente"]).json()
+    assert any(x["codigo"] == d["codigo"] and x["norma"] == "NTP 399.003" for x in listado)
+
+
+def test_d08_un_campo_en_blanco_queda_vacio_y_no_rompe_la_regla_de_la_base(mundo, eq):
+    r = alta(mundo, eq["residente"], "Yeso en bolsa", "bls", medida="   ", norma="", marca=None)
+    assert r.status_code == 201, r.text
+    assert (r.json()["medida"], r.json()["norma"], r.json()["marca"]) == (None, None, None)
+
+
+def test_d09_mismo_material_medida_y_marca_es_duplicado_aunque_cambien_mayusculas(mundo, eq):
+    c = alta(mundo, eq["residente"], "Tubo PVC", "und", medida='2"', marca="Pavco").json()["codigo"]
+    r = alta(mundo, eq["almacenero"], "  TUBO  pvc ", "UND", medida=' 2" ', marca="PAVCO")
+    assert r.status_code == 409 and r.json()["codigo"] == "insumo_duplicado" and c in r.json()["mensaje"]
+
+
+def test_d09_otra_medida_u_otra_marca_es_otro_insumo(mundo, eq):
+    alta(mundo, eq["residente"], "Tubo PVC", "und", medida='2"', marca="PAVCO")
+    assert alta(mundo, eq["residente"], "Tubo PVC", "und", medida='4"', marca="PAVCO").status_code == 201
+    assert alta(mundo, eq["residente"], "Tubo PVC", "und", medida='2"', marca="NICOLL").status_code == 201
+
+
 def test_gerente_y_ssoma_no_crean_insumos(mundo, eq):
     assert alta(mundo, eq["gerente"]).status_code == 403
     assert alta(mundo, eq["ssoma"]).status_code == 403
