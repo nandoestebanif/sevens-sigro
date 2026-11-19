@@ -166,6 +166,52 @@
     }
    }
   },
+  "/api/v1/proveedores/consulta-ruc/{ruc}": {
+   "get": {
+    "tags": [
+     "compras · proveedores"
+    ],
+    "summary": "Consultar Ruc Sunat",
+    "description": "HU-31: la web pide aquí la razón social del padrón (el token del proveedor vive solo en integraciones).\n404 si no se pudo consultar (RUC mal escrito, servicio caído o sin token): la pantalla deja escribirla a mano.",
+    "operationId": "consultar_ruc_sunat_api_v1_proveedores_consulta_ruc__ruc__get",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "ruc",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "string",
+       "title": "Ruc"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {}
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
   "/api/v1/proveedores/{proveedor_id}/validar": {
    "post": {
     "tags": [
@@ -1257,6 +1303,18 @@
        ],
        "title": "Q"
       }
+     },
+     {
+      "name": "solo_criticos",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "boolean",
+       "description": "HU-28: solo los insumos marcados como críticos",
+       "default": false,
+       "title": "Solo Criticos"
+      },
+      "description": "HU-28: solo los insumos marcados como críticos"
      }
     ],
     "responses": {
@@ -1595,6 +1653,18 @@
        ],
        "title": "Q"
       }
+     },
+     {
+      "name": "solo_criticos",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "boolean",
+       "description": "HU-28: solo los insumos marcados como críticos",
+       "default": false,
+       "title": "Solo Criticos"
+      },
+      "description": "HU-28: solo los insumos marcados como críticos"
      }
     ],
     "responses": {
@@ -1775,6 +1845,181 @@
           "$ref": "#/components/schemas/ParametroOut"
          },
          "title": "Response Historial Parametros Api V1 Obras  Obra Id  Parametros Reposicion  Insumo Id  Historial Get"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/obras/{obra_id}/criticos": {
+   "post": {
+    "tags": [
+     "compras · requerimiento y reposición"
+    ],
+    "summary": "Marcar Critico",
+    "description": "HU-28: el residente marca o desmarca un insumo del requerimiento como crítico. Cada cambio es una fila nueva con su\nautor y su fecha; la anterior queda (nada se borra).",
+    "operationId": "marcar_critico_api_v1_obras__obra_id__criticos_post",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "obra_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "minimum": 1,
+       "title": "Obra Id"
+      }
+     }
+    ],
+    "requestBody": {
+     "required": true,
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/CriticoIn"
+       }
+      }
+     }
+    },
+    "responses": {
+     "201": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/CriticoOut"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   },
+   "get": {
+    "tags": [
+     "compras · requerimiento y reposición"
+    ],
+    "summary": "Ver Criticos",
+    "description": "Los insumos críticos vigentes de la obra.",
+    "operationId": "ver_criticos_api_v1_obras__obra_id__criticos_get",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "obra_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "minimum": 1,
+       "title": "Obra Id"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "type": "array",
+         "items": {
+          "$ref": "#/components/schemas/CriticoOut"
+         },
+         "title": "Response Ver Criticos Api V1 Obras  Obra Id  Criticos Get"
+        }
+       }
+      }
+     },
+     "422": {
+      "description": "Validation Error",
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/HTTPValidationError"
+        }
+       }
+      }
+     }
+    }
+   }
+  },
+  "/api/v1/obras/{obra_id}/criticos/candidatos": {
+   "get": {
+    "tags": [
+     "compras · requerimiento y reposición"
+    ],
+    "summary": "Candidatos Criticos",
+    "description": "HU-28: los insumos que concentran el valor presupuestado, de mayor a menor, para que el residente decida cuáles\nmarcar. El sistema propone; no marca nada por sí solo.",
+    "operationId": "candidatos_criticos_api_v1_obras__obra_id__criticos_candidatos_get",
+    "security": [
+     {
+      "HTTPBearer": []
+     }
+    ],
+    "parameters": [
+     {
+      "name": "obra_id",
+      "in": "path",
+      "required": true,
+      "schema": {
+       "type": "integer",
+       "minimum": 1,
+       "title": "Obra Id"
+      }
+     },
+     {
+      "name": "limite",
+      "in": "query",
+      "required": false,
+      "schema": {
+       "type": "integer",
+       "maximum": 100,
+       "minimum": 1,
+       "default": 20,
+       "title": "Limite"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "Successful Response",
+      "content": {
+       "application/json": {
+        "schema": {
+         "type": "array",
+         "items": {
+          "$ref": "#/components/schemas/CandidatoOut"
+         },
+         "title": "Response Candidatos Criticos Api V1 Obras  Obra Id  Criticos Candidatos Get"
         }
        }
       }
@@ -2516,6 +2761,11 @@
        }
       ],
       "title": "Pct Consumido"
+     },
+     "critico": {
+      "type": "boolean",
+      "title": "Critico",
+      "default": false
      }
     },
     "type": "object",
@@ -2585,6 +2835,51 @@
      "archivo"
     ],
     "title": "Body_subir_comprobante_api_v1_obras__obra_id__compras__compra_id__comprobantes_post"
+   },
+   "CandidatoOut": {
+    "properties": {
+     "insumo_id": {
+      "type": "integer",
+      "title": "Insumo Id"
+     },
+     "insumo_codigo": {
+      "type": "string",
+      "title": "Insumo Codigo"
+     },
+     "descripcion": {
+      "type": "string",
+      "title": "Descripcion"
+     },
+     "unidad_s10": {
+      "type": "string",
+      "title": "Unidad S10"
+     },
+     "costo_planificado": {
+      "type": "string",
+      "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+      "title": "Costo Planificado"
+     },
+     "pct_del_total": {
+      "type": "string",
+      "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+      "title": "Pct Del Total"
+     },
+     "critico": {
+      "type": "boolean",
+      "title": "Critico"
+     }
+    },
+    "type": "object",
+    "required": [
+     "insumo_id",
+     "insumo_codigo",
+     "descripcion",
+     "unidad_s10",
+     "costo_planificado",
+     "pct_del_total",
+     "critico"
+    ],
+    "title": "CandidatoOut"
    },
    "CompraIn": {
     "properties": {
@@ -2895,6 +3190,66 @@
     ],
     "title": "ComprobanteOut",
     "description": "HU-34. `estado`: vigente | anulado (E12). La huella sha256 prueba que el archivo no cambió desde que se adjuntó."
+   },
+   "CriticoIn": {
+    "properties": {
+     "insumo_codigo": {
+      "type": "string",
+      "maxLength": 30,
+      "minLength": 1,
+      "title": "Insumo Codigo"
+     },
+     "critico": {
+      "type": "boolean",
+      "title": "Critico",
+      "description": "true = marcar como crítico; false = quitar la marca"
+     }
+    },
+    "additionalProperties": false,
+    "type": "object",
+    "required": [
+     "insumo_codigo",
+     "critico"
+    ],
+    "title": "CriticoIn"
+   },
+   "CriticoOut": {
+    "properties": {
+     "insumo_id": {
+      "type": "integer",
+      "title": "Insumo Id"
+     },
+     "insumo_codigo": {
+      "type": "string",
+      "title": "Insumo Codigo"
+     },
+     "descripcion": {
+      "type": "string",
+      "title": "Descripcion"
+     },
+     "critico": {
+      "type": "boolean",
+      "title": "Critico"
+     },
+     "registrado_por": {
+      "type": "integer",
+      "title": "Registrado Por"
+     },
+     "registrado_en": {
+      "type": "string",
+      "title": "Registrado En"
+     }
+    },
+    "type": "object",
+    "required": [
+     "insumo_id",
+     "insumo_codigo",
+     "descripcion",
+     "critico",
+     "registrado_por",
+     "registrado_en"
+    ],
+    "title": "CriticoOut"
    },
    "FallidoApuOut": {
     "properties": {
@@ -3725,6 +4080,11 @@
        }
       ],
       "title": "Motivo Alta"
+     },
+     "critico": {
+      "type": "boolean",
+      "title": "Critico",
+      "default": false
      }
     },
     "type": "object",

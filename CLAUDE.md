@@ -71,6 +71,7 @@ lo declara.
 - **Permisos por servicio.** Toda tabla o columna nueva se concede a `sigro_app` **y** al rol del servicio (`sigro_svc_*`): la 0009
   copió los privilegios una sola vez. Una prueba lo vigila.
 - **Compra y comprobante (CR-05).** El almacenero también registra la compra y sube o anula su comprobante (`compra.registrar` = almacenero, residente y administrador), por decisión del PO. Contradice lo que Pool dijo el 22/10; pendiente confirmarlo con él.
+- **Insumos críticos (HU-28, migración 0018).** Solo residente y administrador marcan o desmarcan (`critico.marcar`). Cada cambio es una fila nueva en `compras.insumo_critico` (libro solo-agregar: autor y fecha; nada se borra); la vigente es la última. Solo se marca lo que está en el requerimiento de la obra. El sistema propone candidatos por valor presupuestado (`GET /obras/{id}/criticos/candidatos`) y no marca nada solo. `requerimiento` y `avance` traen `critico` y aceptan `solo_criticos=true`.
 - **Insumo agregado a mano (T-340).** Solo residente y administrador, con motivo obligatorio. La línea del requerimiento lleva `origen` (`s10` o `manual`) y `motivo_alta`; no se edita nunca. Si el insumo ya está planificado es un ajuste (409), no un alta.
 
 ## Stack y arquitectura
