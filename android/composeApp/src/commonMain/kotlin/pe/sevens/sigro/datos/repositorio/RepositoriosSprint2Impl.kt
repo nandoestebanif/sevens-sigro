@@ -1,5 +1,9 @@
 package pe.sevens.sigro.datos.repositorio
 
+import pe.sevens.sigro.dominio.RecepcionPendiente
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import pe.sevens.sigro.datos.local.InsumoDao
@@ -134,11 +138,27 @@ class RepositorioObraImpl(private val api: ApiSigro, private val cred: Credencia
     }
 
     override suspend fun compras(obraId: Int): List<CompraParaRecibir> {
-        return api.compras(cred.exigir(), obraId).filter { it.estado == "registrada" }.map { c ->
-            CompraParaRecibir(
-                c.id, c.proveedor, "${c.tipoComprobante} ${c.numeroComprobante}", c.fecha,
-                c.lineas.map { LineaCompra(it.insumoCodigo, it.descripcion, it.cantidad, it.unidadCompra) },
-            )
+        val servidor = cred.exigir()
+        val vigentes = api.compras(servidor, obraId).filter { it.estado == "registrada" }
+        // HU-35 (prueba del 18/11): «registrada» solo dice que no está anulada; lo pendiente lo calcula el servidor
+        // por compra. Se ofrecen solo las que aún tienen algo por recibir. Si no se puede saber, la compra se muestra.
+        // Ya con señal, cada compra baja también su pendiente por línea y la verificación de «llegó todo» (HU-36):
+        // así sin señal se puede recibir una parte y avisar del exceso con su motivo.
+        return coroutineScope {
+            vigentes.map { c ->
+                async {
+                    val base = CompraParaRecibir(
+                        c.id, c.proveedor, "${c.tipoComprobante} ${c.numeroComprobante}", c.fecha,
+                        c.lineas.map { LineaCompra(it.insumoCodigo, it.descripcion, it.cantidad, it.unidadCompra) },
+                    )
+                    val estado = runCatching {
+                        api.estadoRecepcion(servidor, obraId, c.id).map { EstadoLineaRecepcion(it.insumoId, it.unidadCompra, it.pedido, it.recibido, it.pendiente) }
+                    }.getOrNull() ?: return@async base // sin saber lo pendiente, se muestra como antes
+                    if (!RecepcionPendiente.queda(estado.map { it.pendiente })) return@async null // ya recibida por completo
+                    val referencia = runCatching { verificarRecepcion(obraId, c.id, null) }.getOrNull()
+                    base.copy(lineas = ElegirAlmacen.unirPendientes(base.lineas, estado), referencia = referencia)
+                }
+            }.awaitAll().filterNotNull()
         }
     }
 

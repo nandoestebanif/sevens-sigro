@@ -7,4 +7,5 @@
     </style>
     <color name="fondo">#F8FAFC</color>
     <color name="naranja">#C2410C</color>
+    <color name="fondo_icono">#111827</color>
 </resources>
