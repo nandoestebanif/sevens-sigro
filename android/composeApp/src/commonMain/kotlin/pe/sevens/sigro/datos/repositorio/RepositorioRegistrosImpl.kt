@@ -163,18 +163,15 @@ class RepositorioRegistrosImpl(
 
         private fun cant(c: String) = ValidarSalida.normalizarCantidad(c)
 
-        /** Solo para el texto de «Mis registros»: «20.0000» → «20». El cuerpo que viaja usa [cant] y no cambia. */
-        private fun cantTexto(c: String) = cant(c).let { if ('.' in it) it.trimEnd('0').trimEnd('.') else it }
-
         fun resumen(r: RegistroAlmacen): Pair<String, String> = when (r) {
             is RegistroAlmacen.Entrada -> "Entrada · ${r.compra.proveedor}" to
                 (if (r.todo) "Llegó todo lo pendiente · " else "") +
-                r.recibido.joinToString(" · ") { (l, c) -> "${cantTexto(c)} ${l.unidad} ${l.descripcion}" } +
+                r.recibido.joinToString(" · ") { (l, c) -> "${cant(c)} ${l.unidad} ${l.descripcion}" } +
                 (r.motivoExceso?.let { " · pasa lo requerido: $it" } ?: "")
             is RegistroAlmacen.IngresoSinCompra -> r.linea.insumo.descripcion to
-                "${cantTexto(r.linea.cantidad)} ${r.linea.insumo.unidad} · ${r.origen.legible} · S/ ${cant(r.costoUnitario)} c/u"
+                "${cant(r.linea.cantidad)} ${r.linea.insumo.unidad} · ${r.origen.legible} · S/ ${cant(r.costoUnitario)} c/u"
             is RegistroAlmacen.Traslado -> "Traslado a ${r.obraDestino}" to
-                r.lineas.joinToString(" · ") { "${cantTexto(it.cantidad)} ${it.insumo.unidad} ${it.insumo.descripcion}" }
+                r.lineas.joinToString(" · ") { "${cant(it.cantidad)} ${it.insumo.unidad} ${it.insumo.descripcion}" }
             is RegistroAlmacen.Conteo -> "Conteo físico del ${r.fecha}" to
                 "${r.lineas.size} ${if (r.lineas.size == 1) "insumo contado" else "insumos contados"}"
             is RegistroAlmacen.Cierre -> "Cierre de obra" to "Pedido de cierre del ${r.fecha}"

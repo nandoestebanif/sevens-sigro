@@ -70,21 +70,18 @@ export function Reposicion() {
   const [fase, setFase] = useState('todas')
 
   const [fallo, setFallo] = useState('')
-  const [avisoCritico, setAvisoCritico] = useState<{ codigo: string; texto: string } | null>(null)
-  // HU-28: solo se ofrece marcar si el servidor ya tiene /criticos (null = aún no desplegado); sin eso el botón no podría guardar
-  const [conHu28, setConHu28] = useState(false)
-  useEffect(() => { if (usaApiReal) reposicionHttp.criticos().then((x) => setConHu28(x !== null)).catch(() => setConHu28(false)) }, [])
+  const [avisoCritico, setAvisoCritico] = useState('')
   // HU-28: marcar o quitar «crítico» (residente y administrador; el servidor decide el permiso)
   const alternarCritico = async (f: AvanceInsumo) => {
-    setAvisoCritico({ codigo: f.codigo, texto: 'Guardando…' })
+    setAvisoCritico('')
     try {
       await reposicionHttp.marcarCritico(f.codigo, !f.critico)
       setFilas((xs) => (xs ?? []).map((x) => (x.codigo === f.codigo ? { ...x, critico: !f.critico } : x)))
-      setAvisoCritico({ codigo: f.codigo, texto: f.critico ? 'Ya no es crítico.' : 'Marcado como crítico: aparece en «Solo críticos».' })
+      setAvisoCritico(`${f.descripcion}: ${f.critico ? 'ya no es crítico' : 'marcado como crítico'}.`)
     } catch (e) {
-      setAvisoCritico({ codigo: f.codigo, texto: e instanceof ErrorApi && e.estado === 403 ? 'Solo el residente o el administrador marcan los insumos críticos.'
+      setAvisoCritico(e instanceof ErrorApi && e.estado === 403 ? 'Solo el residente o el administrador marcan los insumos críticos.'
         : e instanceof ErrorApi && e.estado === 404 ? 'Marcar críticos estará disponible cuando el servidor tenga HU-28.'
-          : e instanceof ErrorApi ? e.message : 'No se pudo cambiar la marca. Inténtalo de nuevo.' })
+          : e instanceof ErrorApi ? e.message : 'No se pudo cambiar la marca. Inténtalo de nuevo.')
     }
   }
   useEffect(() => {
@@ -165,11 +162,11 @@ export function Reposicion() {
               {fases.map((f) => <option key={f} value={f}>{f}</option>)}
             </select>}
           </div>
+          {avisoCritico && <span role="status" style={{ fontSize: 12.5, color: 'var(--tinta-2)' }}>{avisoCritico}</span>}
           {soloCriticos && (
             <span style={{ fontSize: 12.5, color: 'var(--tinta-2)' }}>
-              {conHu28
-                ? <>Los críticos los marca el residente con «Marcar crítico» (HU-28).</>
-                : <>Crítico = insumo con punto de reposición definido en <Link to="/parametros">Parámetros de reposición</Link>.</>}
+              Los críticos los marca el residente con «Marcar crítico» (HU-28); si aún no hay marcas, cuentan los insumos con
+              punto de reposición en <Link to="/parametros">Parámetros de reposición</Link>.
             </span>
           )}
 
@@ -179,7 +176,7 @@ export function Reposicion() {
             <Vacio titulo="No se pudo cargar el saldo por comprar" detalle={fallo} />
           ) : visibles.length === 0 ? (
             soloCriticos && !(filas ?? []).some((f) => f.critico)
-              ? <Vacio titulo="Todavía no hay insumos críticos" detalle={conHu28 ? 'Vuelve a «Todos» y usa «Marcar crítico» en el acero, el cemento u otro insumo.' : 'Define el stock de seguridad y el punto de reposición del insumo en «Parámetros de reposición» y aparecerá aquí.'} />
+              ? <Vacio titulo="Todavía no hay insumos críticos" detalle="Vuelve a «Todos» y usa «Marcar crítico» en el acero, el cemento u otro insumo." />
               : <Vacio titulo="Nada pendiente con este filtro" detalle="Todos los insumos filtrados ya tienen su compra completa." />
           ) : (
             <div style={{ overflowX: 'auto' }}>
@@ -196,17 +193,15 @@ export function Reposicion() {
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                           <span style={{ fontWeight: 600 }}>{f.descripcion}</span>
                           {f.critico && <Chip tono="aviso">crítico</Chip>}
-                          {conHu28 && (
-                            <Pildora tipo="secundario" chica enClic={() => void alternarCritico(f)}
-                              etiqueta={f.critico ? `Quitar crítico a ${f.descripcion}` : `Marcar ${f.descripcion} como crítico`}>
-                              {f.critico ? 'Quitar crítico' : '★ Marcar crítico'}
-                            </Pildora>
+                          {usaApiReal && (
+                            <button type="button" className="enlace" onClick={() => void alternarCritico(f)}
+                              style={{ fontSize: 12, background: 'none', border: 0, padding: 0, color: 'var(--marca)', cursor: 'pointer' }}
+                              aria-label={f.critico ? `Quitar crítico a ${f.descripcion}` : `Marcar ${f.descripcion} como crítico`}>
+                              {f.critico ? 'Quitar crítico' : 'Marcar crítico'}
+                            </button>
                           )}
                         </div>
                         <div className="n" style={{ fontSize: 12, color: 'var(--tinta-2)', marginTop: 2, textAlign: 'left' }}>SKU {f.codigo}</div>
-                        {avisoCritico?.codigo === f.codigo && (
-                          <div role="status" style={{ fontSize: 12.5, color: 'var(--tinta-2)', marginTop: 4 }}>{avisoCritico.texto}</div>
-                        )}
                       </td>
                       <td style={{ color: 'var(--tinta-2)' }}>{f.fase}</td>
                       <td className="n" style={{ whiteSpace: 'nowrap' }}>{n2(f.planificadoCantidad)} {f.unidadS10}</td>
