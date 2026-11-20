@@ -20,7 +20,7 @@ import { Bar, Doughnut, Line } from 'react-chartjs-2'
 // Chart.js es modular: se registra solo lo que se usa (así el paquete pesa menos).
 ChartJS.register(ArcElement, BarElement, CategoryScale, LinearScale, LineElement, PointElement, Filler, Legend, Tooltip)
 
-const soles = (v: number) => `S/ ${v.toLocaleString('es-PE', { maximumFractionDigits: 0 })}`
+const soles = (v: number) => `${v < 0 ? "−" : ""}S/ ${Math.abs(v).toLocaleString("es-PE", { maximumFractionDigits: 0 })}`
 
 /** Colores del tema de Bootstrap leídos en vivo: así el gráfico sigue al modo claro u oscuro. */
 function useColoresTema() {
@@ -157,6 +157,45 @@ export function GraficoFlujo({ familias }: { familias: FlujoFamilia[] }) {
             { label: 'Consumido', data: familias.map((f) => f.consumido), backgroundColor: c.primario },
             { label: 'En stock', data: familias.map((f) => f.enStock), backgroundColor: resolver('var(--bs-success)') },
           ],
+        }}
+      />
+    </div>
+  )
+}
+
+export interface DesvioInsumo { etiqueta: string; importe: number }
+
+/**
+ * Insumos con mayor desviación en soles (HU-57), barras horizontales: rojo = se gastó más de lo esperado
+ * a la fecha, verde = menos. Son las cifras del servidor; aquí solo se eligen las más grandes.
+ */
+export function GraficoDesvios({ insumos, cuantos = 8 }: { insumos: DesvioInsumo[]; cuantos?: number }) {
+  const c = useColoresTema()
+  const top = [...insumos].filter((i) => i.importe !== 0).sort((a, b) => Math.abs(b.importe) - Math.abs(a.importe)).slice(0, cuantos)
+  const corto = (t: string) => (t.length > 34 ? `${t.slice(0, 33)}…` : t)
+  return (
+    <div style={{ height: Math.max(180, top.length * 36 + 60) }} role="img"
+      aria-label={top.map((i) => `${i.etiqueta}: ${i.importe > 0 ? 'más' : 'menos'} de lo esperado por ${soles(Math.abs(i.importe))}`).join('; ')}>
+      <Bar
+        options={{
+          ...(base(c) as ChartOptions<'bar'>),
+          indexAxis: 'y',
+          plugins: {
+            legend: { display: false },
+            tooltip: { callbacks: { label: (x) => `${Number(x.parsed.x) > 0 ? 'Sobre' : 'Bajo'} lo esperado: ${soles(Math.abs(Number(x.parsed.x)))}` } },
+          },
+          scales: {
+            x: { ticks: { color: c.secundario, callback: (v) => soles(Number(v)) }, grid: { color: c.rejilla } },
+            y: { ticks: { color: c.texto }, grid: { display: false } },
+          },
+        }}
+        data={{
+          labels: top.map((i) => corto(i.etiqueta)),
+          datasets: [{
+            label: 'Desviación (S/)',
+            data: top.map((i) => i.importe),
+            backgroundColor: top.map((i) => resolver(i.importe > 0 ? 'var(--bs-danger)' : 'var(--bs-success)')),
+          }],
         }}
       />
     </div>
