@@ -18,6 +18,7 @@ import { ErrorApi, mensajeDeCarga } from '../api/error'
 import type { AlertaReposicion, AvanceInsumo } from '../api/tipos'
 import { Chip, Vacio } from '../ui/base'
 import { Chips, Encabezado, Pildora, Segmentado, TituloSeccion, Vidrio } from '../ui/piezas'
+import { EsqueletoTabla } from '../ui/Esqueleto'
 
 const n2 = (v: number) => v.toLocaleString('es-PE', { maximumFractionDigits: 0 })
 
@@ -49,7 +50,7 @@ function Alerta({ a }: { a: AlertaReposicion }) {
         </label>
         <input
           id={`sug-${a.insumoId}`}
-          className="n campo px-3 fw-bold text-end"
+          className="n form-control fw-bold text-end"
           value={cantidad}
           onChange={(e) => setCantidad(e.target.value)}
           style={{ width: 110, height: 44 }}
@@ -157,8 +158,8 @@ export function Reposicion() {
               aria-label="Filtrar por fase"
               value={fase}
               onChange={(e) => setFase(e.target.value)}
-              className="form-select fw-semibold"
-              style={{ width: 'auto', minWidth: 200, height: 46, borderRadius: 23 }}
+              className="form-select fw-semibold rounded-pill"
+               style={{ width: 'auto', minWidth: 200, height: 46 }}
             >
               <option value="todas">Todas las fases</option>
               {fases.map((f) => <option key={f} value={f}>{f}</option>)}
@@ -173,7 +174,7 @@ export function Reposicion() {
           )}
 
           {filas === null ? (
-            <Vacio titulo="Cargando…" detalle="Calculando el saldo por comprar de cada insumo." />
+            <EsqueletoTabla />
           ) : fallo ? (
             <Vacio titulo="No se pudo cargar el saldo por comprar" detalle={fallo} />
           ) : visibles.length === 0 ? (

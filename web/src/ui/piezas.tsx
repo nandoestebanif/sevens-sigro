@@ -6,6 +6,7 @@
    ───────────────────────────────────────────────────────────────────────── */
 import type { CSSProperties, ReactNode } from 'react'
 import { Alert, Button, ButtonGroup, Card, Form, InputGroup, Nav, Stack } from 'react-bootstrap'
+import { Ayuda, type Clave } from './Glosario'
 
 /** Separa un estilo en lo que va a la Card (tamaño en la fila) y lo que va a su contenido (cómo se acomodan los hijos). */
 export function partirEstilo(estilo?: CSSProperties): [CSSProperties, CSSProperties] {
@@ -61,17 +62,21 @@ export function Pildora({ children, tipo = 'primario', deshabilitado, enClic, an
 }
 
 /** Cifra clave de la página: una Card con rótulo, valor grande y pie que la explica. */
-export function Kpi({ rotulo, valor, pie, prefijo, color }: {
+export function Kpi({ rotulo, valor, pie, prefijo, color, ayuda }: {
   rotulo: string
+  /** término del glosario: agrega el «ⓘ» con su definición (Popover) */
+  ayuda?: Clave
   valor: ReactNode
   pie?: ReactNode
   prefijo?: string
   color?: string
 }) {
   return (
-    <Card className="shadow-sm h-100" style={{ flex: '1 1 200px', minWidth: 0 }}>
+    <Card className="shadow-sm h-100 min-w-0"  style={{ flex: '1 1 200px' }}>
       <Card.Body>
-        <Card.Subtitle className="small text-body-secondary fw-semibold mb-2">{rotulo}</Card.Subtitle>
+        <Card.Subtitle className="small text-body-secondary fw-semibold mb-2">
+          {rotulo}{ayuda && <Ayuda clave={ayuda} titulo={rotulo} />}
+        </Card.Subtitle>
         <div className="d-flex align-items-baseline gap-1">
           {prefijo && <span className="fw-semibold text-body-secondary">{prefijo}</span>}
           <span className="n fs-3 fw-bold" style={color ? { color } : undefined}>{valor}</span>
@@ -133,7 +138,7 @@ export function CampoVidrio({ etiqueta, id, children, ayuda, error }: {
   error?: string
 }) {
   return (
-    <Form.Group controlId={id} style={{ minWidth: 0 }}>
+    <Form.Group controlId={id} className="min-w-0">
       <Form.Label className="small fw-semibold mb-1">{etiqueta}</Form.Label>
       {children}
       {ayuda && !error && <Form.Text muted>{ayuda}</Form.Text>}
@@ -152,7 +157,7 @@ export function Aviso({ tono, children, rol }: { tono: 'bien' | 'aviso' | 'grave
 export function Encabezado({ titulo, sub, acciones }: { titulo: ReactNode; sub?: ReactNode; acciones?: ReactNode }) {
   return (
     <header className="d-flex flex-wrap align-items-end justify-content-between gap-3 mb-1">
-      <div style={{ minWidth: 0 }}>
+      <div className="min-w-0">
         <h1 className="h3 mb-1">{titulo}</h1>
         {sub && <p className="text-body-secondary mb-0">{sub}</p>}
       </div>

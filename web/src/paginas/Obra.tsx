@@ -17,9 +17,15 @@
 import { useEffect, useState } from 'react'
 import { ErrorApi, api } from '../api/cliente'
 import type { Obra, Semana } from '../api/tipos'
-import { Boton, Campo, Chip, Tarjeta, Titulo, Vacio } from '../ui/base'
+import { Boton, Campo, Chip, Tarjeta, Titulo } from '../ui/base'
 import { usaApiReal } from '../api/http'
 import { plazo, type CambioPlazo } from '../api/oficina'
+import { EsqueletoTabla } from '../ui/Esqueleto'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { Button, Col, Form, Row } from 'react-bootstrap'
+import { esquemaObra, type DatosObra } from '../formularios/esquemas'
+import { useAvisos } from '../ui/Avisos'
 
 const f = (iso: string) => `${iso.slice(8, 10)}/${iso.slice(5, 7)}/${iso.slice(0, 4)}`
 
@@ -71,7 +77,7 @@ function AmpliarPlazo({ obra, enListo }: { obra: Obra; enListo: () => void }) {
   }
 
   return (
-    <div className="mt-3 pt-3 d-flex flex-column gap-2" style={{ borderTop: '1px solid var(--separador)' }}>
+    <div className="mt-3 pt-3 d-flex flex-column gap-2 border-top" >
       {!abierto ? (
         <div className="d-flex align-items-center justify-content-between gap-2 flex-wrap">
           <span className="small text-body-secondary">
@@ -84,9 +90,9 @@ function AmpliarPlazo({ obra, enListo }: { obra: Obra; enListo: () => void }) {
           <div className="d-flex flex-column gap-2" style={{ flex: '0 1 170px' }}>
             <label htmlFor={`amp-${obra.id}`} className="small fw-semibold text-body-secondary">Nuevo fin</label>
             <input id={`amp-${obra.id}`} type="date" min={obra.fin} value={fecha} onChange={(e) => setFecha(e.target.value)}
-              className="px-3" style={{ height: 42, border: '1px solid var(--borde)', borderRadius: 'var(--radio-chico)', background: 'var(--tarjeta)' }} />
+              className="form-control" />
           </div>
-          <div className="d-flex flex-column gap-2" style={{ flex: '2 1 240px', minWidth: 0 }}>
+          <div className="d-flex flex-column gap-2 min-w-0"  style={{ flex: '2 1 240px' }}>
             <Campo id={`amp-m-${obra.id}`} etiqueta="Motivo de la ampliación" valor={motivo} enCambio={setMotivo} marcador="p. ej. adenda aprobada por el cliente" />
           </div>
           <div className="d-flex gap-2">
@@ -97,7 +103,7 @@ function AmpliarPlazo({ obra, enListo }: { obra: Obra; enListo: () => void }) {
       )}
       {error && <p role="alert" className="small text-danger fw-semibold">{error}</p>}
       {historial && historial.length > 0 && (
-        <ul className="m-0 small text-body-secondary" style={{ paddingLeft: 18 }}>
+        <ul className="m-0 small text-body-secondary ps-3" >
           {historial.map((h, i) => (
             <li key={i}>
               {f(h.fechaFinAnterior)} → <strong>{f(h.fechaFinNueva)}</strong> · {h.motivo} · {h.autor}, {f(h.fecha.slice(0, 10))}
@@ -118,7 +124,7 @@ function FichaObra({ obra, enCambio }: { obra: Obra; enCambio: () => void }) {
       <div className="d-flex justify-content-between align-items-baseline gap-3 flex-wrap">
         <div>
           <span className="fw-bold">{obra.nombre}</span>
-          <span className="n small text-body-secondary" style={{ marginLeft: 10 }}>
+          <span className="n small text-body-secondary ms-2" >
             {obra.presupuesto ? `presupuesto ${obra.presupuesto} · ` : ''}{f(obra.inicio)} – {f(obra.fin)}
           </span>
         </div>
@@ -132,7 +138,7 @@ function FichaObra({ obra, enCambio }: { obra: Obra; enCambio: () => void }) {
       </div>
       <div className="d-flex gap-3 mt-3 small text-body-secondary flex-wrap">
         <span>■ cerradas: {cerradas} (no admiten movimientos nuevos)</span>
-        <span className="fw-semibold" style={{ color: 'var(--marca)' }}>■ en curso</span>
+        <span className="fw-semibold text-primary" >■ en curso</span>
         <span>□ por venir</span>
         {ultima.dias < 7 && <span>la última dura {ultima.dias} día{ultima.dias === 1 ? '' : 's'}: el plazo no calza en semanas exactas y el sistema no lo redondea</span>}
       </div>
@@ -143,49 +149,31 @@ function FichaObra({ obra, enCambio }: { obra: Obra; enCambio: () => void }) {
 
 export function Obras() {
   const [obras, setObras] = useState<Obra[] | null>(null)
-  const [nombre, setNombre] = useState('')
-  const [presupuesto, setPresupuesto] = useState('')
-  const [inicio, setInicio] = useState('')
-  const [fin, setFin] = useState('')
-  const [error, setError] = useState<{ campo: string; texto: string } | null>(null)
-  const [guardando, setGuardando] = useState(false)
+  const avisar = useAvisos()
+  // React Hook Form + Zod (esquemaObra): nombre, formato del presupuesto y «fin después del inicio»
+  const { register, handleSubmit, reset, setError, formState: { errors, isSubmitting } } = useForm<DatosObra>({
+    resolver: zodResolver(esquemaObra),
+    defaultValues: { nombre: '', presupuesto: '', inicio: '', fin: '' },
+  })
 
   const cargar = () => api.listarObras().then(setObras)
   useEffect(() => {
     cargar()
   }, [])
 
-  const crear = async () => {
-    setGuardando(true)
-    setError(null)
+  const crear = async (d: DatosObra) => {
     try {
-      await api.crearObra({ nombre, presupuesto, inicio, fin })
-      setNombre(''); setPresupuesto(''); setInicio(''); setFin('')
+      await api.crearObra(d)
+      reset()
+      avisar(`Obra «${d.nombre}» creada en ejecución, con sus semanas de control generadas.`)
       cargar()
       // avisa a la barra lateral: la obra nueva aparece en el selector de obra activa
       window.dispatchEvent(new Event('sigro-obras'))
     } catch (e) {
-      if (e instanceof ErrorApi) {
-        setError({ campo: ['nombre'].includes(e.codigo) ? 'nombre' : 'fechas', texto: e.message })
-      }
-    } finally {
-      setGuardando(false)
+      // lo que el servidor rechaza (nombre repetido, fechas fuera de regla) se marca en su campo
+      if (e instanceof ErrorApi) setError(e.codigo === 'nombre' ? 'nombre' : 'fin', { message: e.message })
     }
   }
-
-  const campoFecha = (id: string, rotulo: string, valor: string, cambiar: (v: string) => void) => (
-    <div className="d-flex flex-column gap-2" style={{ flex: '0 1 160px', minWidth: 0 }}>
-      <label htmlFor={id} className="small fw-semibold text-body-secondary">{rotulo}</label>
-      <input
-        id={id} type="date" value={valor} onChange={(e) => cambiar(e.target.value)}
-        style={{
-          height: 42, width: '100%', border: `1px solid ${error?.campo === 'fechas' ? 'var(--grave)' : 'var(--borde)'}`,
-          borderRadius: 'var(--radio-chico)', padding: '0 12px', fontSize: 14,
-          fontFamily: 'inherit', background: 'var(--tarjeta)', color: 'var(--tinta)',
-        }}
-      />
-    </div>
-  )
 
   return (
     <div className="d-flex flex-column gap-3 pb-4">
@@ -194,24 +182,34 @@ export function Obras() {
       </Titulo>
 
       <Tarjeta>
-        <div className="d-flex flex-wrap gap-3 align-items-end">
-          <div className="d-flex flex-column gap-2" style={{ flex: '2 1 220px', minWidth: 0 }}>
-            <Campo id="o-nombre" etiqueta="Nombre de la obra" valor={nombre} enCambio={setNombre} marcador="p. ej. Multifamiliar Los Cedros" error={error?.campo === 'nombre' ? error.texto : undefined} />
-          </div>
-          <div className="d-flex flex-column gap-2" style={{ flex: '1 1 160px', minWidth: 0 }}>
-            <Campo id="o-pres" etiqueta="Presupuesto S10 (opcional)" valor={presupuesto} enCambio={setPresupuesto} marcador="2701006-002" />
-          </div>
-          {campoFecha('o-inicio', 'Inicio', inicio, setInicio)}
-          {campoFecha('o-fin', 'Fin', fin, setFin)}
-          <div className="flex-shrink-0">
-            <Boton enClic={crear} deshabilitado={guardando}>
-              {guardando ? 'Creando…' : 'Crear la obra'}
-            </Boton>
-          </div>
-        </div>
-        {error?.campo === 'fechas' && (
-          <p role="alert" className="mt-3 small text-danger fw-semibold">{error.texto}</p>
-        )}
+        {/* Row/Col: la grilla de Bootstrap acomoda los campos en una fila (escritorio) o apilados (celular) */}
+        <Form noValidate onSubmit={handleSubmit(crear)}>
+          <Row className="g-3 align-items-start">
+            <Form.Group as={Col} md={12} lg={4} controlId="o-nombre">
+              <Form.Label className="small fw-semibold">Nombre de la obra</Form.Label>
+              <Form.Control {...register('nombre')} placeholder="p. ej. Multifamiliar Los Cedros" isInvalid={!!errors.nombre} />
+              <Form.Control.Feedback type="invalid">{errors.nombre?.message}</Form.Control.Feedback>
+            </Form.Group>
+            <Form.Group as={Col} sm={6} lg={3} controlId="o-pres">
+              <Form.Label className="small fw-semibold">Presupuesto S10 (opcional)</Form.Label>
+              <Form.Control {...register('presupuesto')} placeholder="2701006-002" isInvalid={!!errors.presupuesto} />
+              <Form.Control.Feedback type="invalid">{errors.presupuesto?.message}</Form.Control.Feedback>
+            </Form.Group>
+            <Form.Group as={Col} xs={6} sm={3} lg={2} controlId="o-inicio">
+              <Form.Label className="small fw-semibold">Inicio</Form.Label>
+              <Form.Control type="date" {...register('inicio')} isInvalid={!!errors.inicio} />
+              <Form.Control.Feedback type="invalid">{errors.inicio?.message}</Form.Control.Feedback>
+            </Form.Group>
+            <Form.Group as={Col} xs={6} sm={3} lg={2} controlId="o-fin">
+              <Form.Label className="small fw-semibold">Fin</Form.Label>
+              <Form.Control type="date" {...register('fin')} isInvalid={!!errors.fin} />
+              <Form.Control.Feedback type="invalid">{errors.fin?.message}</Form.Control.Feedback>
+            </Form.Group>
+            <Col xs={12} lg={1} className="d-grid pt-lg-4">
+              <Button type="submit" disabled={isSubmitting} className="mt-lg-2 text-nowrap">{isSubmitting ? 'Creando…' : 'Crear'}</Button>
+            </Col>
+          </Row>
+        </Form>
         <p className="mt-3 small text-body-secondary">
           Al crearla, la obra nace <strong>en ejecución</strong> y sus periodos semanales
           quedan generados del inicio al fin (la última semana puede ser más corta).
@@ -220,7 +218,7 @@ export function Obras() {
       </Tarjeta>
 
       {obras === null ? (
-        <Tarjeta><Vacio titulo="Cargando…" detalle="Consultando las obras de la empresa." /></Tarjeta>
+        <Tarjeta><EsqueletoTabla /></Tarjeta>
       ) : (
         obras.map((o) => <FichaObra key={o.id} obra={o} enCambio={cargar} />)
       )}

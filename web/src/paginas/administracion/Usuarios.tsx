@@ -115,7 +115,7 @@ function AltaUsuario({ enCerrar, enCreado }: { enCerrar: () => void; enCreado: (
         <Campo id="alta-usuario" etiqueta="Usuario para entrar" valor={usuario} marcador="Ej.: jperez" enCambio={(v) => { setUsuario(v); setErrores((e) => ({ ...e, usuario: '' })) }} error={errores.usuario || undefined} />
         <div className="d-flex flex-column gap-2">
           <label htmlFor="alta-clave" className="small fw-semibold text-body-secondary">Clave temporal</label>
-          <input
+          <input className="form-control"
             id="alta-clave"
             type="password"
             autoComplete="new-password"
@@ -123,10 +123,7 @@ function AltaUsuario({ enCerrar, enCreado }: { enCerrar: () => void; enCreado: (
             onChange={(e) => { setClave(e.target.value); setErrores((x) => ({ ...x, clave: '' })) }}
             aria-invalid={errores.clave ? true : undefined}
             aria-describedby="alta-clave-ayuda"
-            style={{
-              height: 42, border: `1px solid ${errores.clave ? 'var(--grave)' : 'var(--borde)'}`, borderRadius: 'var(--radio-chico)',
-              padding: '0 13px', fontSize: 14, fontFamily: 'inherit', color: 'var(--tinta)', background: 'var(--tarjeta)',
-            }}
+
           />
           {errores.clave
             ? <span role="alert" className="small text-danger">{errores.clave}</span>

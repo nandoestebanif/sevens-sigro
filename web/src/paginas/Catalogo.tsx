@@ -29,6 +29,12 @@ import { Campo, Chip, Modal, Vacio } from '../ui/base'
 import { Aviso, Chips, Encabezado, Pildora, TituloSeccion, Vidrio, Buscador } from '../ui/piezas'
 import { FilasVirtuales, type MedirFila } from '../ui/FilasVirtuales'
 import { UNIDADES_COMPRA } from '../api/unidades'
+import { useAvisos } from '../ui/Avisos'
+import { Ayuda } from '../ui/Glosario'
+import { alternarOrden, ordenar, type Orden } from '../ui/tablas'
+import { ThOrden } from '../ui/Tabla'
+import { EsqueletoTabla } from '../ui/Esqueleto'
+import { BotonExportar } from '../ui/BotonExportar'
 
 const CORTAS = new Set(['DE', 'LA', 'EL', 'Y', 'A', 'EN', 'SIN', 'CON', 'POR', 'DEL', 'LOS', 'LAS'])
 
@@ -51,7 +57,7 @@ function precio(v: number): string {
 
 function FilaDetalle({ rot, children }: { rot: string; children: ReactNode }) {
   return (
-    <div className="d-flex justify-content-between gap-3" style={{ padding: '10px 0', borderBottom: '1px solid var(--separador)' }}>
+    <div className="d-flex justify-content-between gap-3 py-2 px-0 border-bottom" >
       <span className="small text-body-secondary fw-semibold">{rot}</span>
       <span className="fw-semibold text-end">{children}</span>
     </div>
@@ -108,7 +114,7 @@ function ModalFactor({ insumo, enCerrar, enGuardado }: {
   const [motivo, setMotivo] = useState('')
   const [historial, setHistorial] = useState<HistorialFactor[] | null>(null)
   const [error, setError] = useState('')
-  const [exito, setExito] = useState('')
+  const avisar = useAvisos()
   const [guardando, setGuardando] = useState(false)
 
   const cargarHistorial = () => {
@@ -124,11 +130,10 @@ function ModalFactor({ insumo, enCerrar, enGuardado }: {
   const guardar = async () => {
     setGuardando(true)
     setError('')
-    setExito('')
     try {
       const actualizado = await api.cambiarFactorConversion(insumo.codigo, factorNum, motivo)
       setMotivo('')
-      setExito(`Factor actualizado: 1 ${uCompra} = ${factorNum.toLocaleString('es-PE', { maximumFractionDigits: 6 })} ${uS10}.`)
+      avisar(`Factor actualizado: 1 ${uCompra} = ${factorNum.toLocaleString('es-PE', { maximumFractionDigits: 6 })} ${uS10}.`)
       cargarHistorial()
       enGuardado(actualizado)
     } catch (e) {
@@ -141,7 +146,7 @@ function ModalFactor({ insumo, enCerrar, enGuardado }: {
   return (
     <Modal titulo={`Factor de conversión · ${insumo.codigo}`} enCerrar={enCerrar}>
       <div className="d-flex flex-column gap-3">
-        <div className="d-flex flex-column gap-1" style={{ padding: '12px 14px', background: 'var(--vidrio-celda)', borderRadius: 16 }}>
+        <div className="d-flex flex-column gap-1 py-2 px-3 bg-body-tertiary rounded-4" >
           <strong>{amable(insumo.medida ? `${insumo.nombre} ${insumo.medida}` : insumo.nombre)}</strong>
           <span className="n small text-body-secondary">
             Vigente: <strong>1 {uCompra} = {factorActual.toLocaleString('es-PE', { maximumFractionDigits: 6 })} {uS10}</strong>
@@ -158,7 +163,7 @@ function ModalFactor({ insumo, enCerrar, enGuardado }: {
         />
 
         {valido && (
-          <div className="small text-body-secondary" style={{ background: 'var(--vidrio-celda)', borderRadius: 12, padding: '8px 12px' }}>
+          <div className="small text-body-secondary bg-body-tertiary rounded-4 py-2 px-2" >
             Equivalencia: <strong className="n">1 {uCompra} = {factorNum.toLocaleString('es-PE', { maximumFractionDigits: 6 })} {uS10}</strong>
             {' · '}
             <span className="n">100 {uS10} ≈ {(100 / factorNum).toLocaleString('es-PE', { maximumFractionDigits: 2 })} {uCompra}</span>
@@ -175,8 +180,8 @@ function ModalFactor({ insumo, enCerrar, enGuardado }: {
             onChange={(e) => setMotivo(e.target.value)}
             placeholder="p. ej. Acero corrugado 1/2&quot; × 9 m: 7.12 kg por varilla según ficha técnica"
             rows={2}
-            className="form-control"
-            style={{ height: 'auto', padding: '10px 14px', resize: 'vertical' }}
+            className="form-control py-2"
+             style={{ height: 'auto', resize: 'vertical' }}
           />
         </div>
 
@@ -186,7 +191,6 @@ function ModalFactor({ insumo, enCerrar, enGuardado }: {
         </p>
 
         {error && <Aviso tono="grave" rol="alert">{error}</Aviso>}
-        {exito && <Aviso tono="bien" rol="status">{exito}</Aviso>}
 
         <div className="d-flex flex-wrap gap-2 justify-content-end">
           <Pildora tipo="secundario" enClic={enCerrar}>Cerrar</Pildora>
@@ -195,7 +199,7 @@ function ModalFactor({ insumo, enCerrar, enGuardado }: {
           </Pildora>
         </div>
 
-        <div className="pt-3 d-flex flex-column gap-2" style={{ borderTop: '1px solid var(--separador)' }}>
+        <div className="pt-3 d-flex flex-column gap-2 border-top" >
           <span className="small fw-bold text-uppercase text-body-secondary">
             Histórico de cambios{historial && historial.length > 0 ? ` · ${historial.length} (el más reciente primero)` : ''}
           </span>
@@ -206,7 +210,7 @@ function ModalFactor({ insumo, enCerrar, enGuardado }: {
           ) : (
             <div className="d-flex flex-column gap-2" style={{ maxHeight: 160, overflowY: 'auto' }}>
               {[...historial].reverse().map((h) => (
-                <div key={h.id} className="small" style={{ background: 'var(--vidrio-celda)', borderRadius: 12, padding: '8px 12px' }}>
+                <div key={h.id} className="small bg-body-tertiary rounded-4 py-2 px-2" >
                   <div className="d-flex justify-content-between gap-2 fw-bold">
                     <span className="n">{h.factorAnterior} → {h.factorNuevo} {uS10}/{uCompra}</span>
                     <span className="n text-body-secondary fw-medium">{fechaHoraLima(h.cambiadoEn)}</span>
@@ -269,13 +273,13 @@ function AltaInsumo({ editando, enCerrar, enListo }: {
           error={error?.campo === 'nombre' ? error.texto : undefined}
         />
         <div className="d-flex flex-wrap gap-3">
-          <div style={{ flex: '1 1 160px', minWidth: 0 }}>
+          <div className="min-w-0" style={{ flex: '1 1 160px' }}>
             <Campo id="ins-medida" etiqueta="Medida (si el tipo la lleva)" valor={medida} enCambio={setMedida} marcador="p. ej. 1/2¨ x 9 m" deshabilitado={!!editando} />
           </div>
-          <div style={{ flex: '1 1 160px', minWidth: 0 }}>
+          <div className="min-w-0" style={{ flex: '1 1 160px' }}>
             <Campo id="ins-norma" etiqueta="Norma (opcional)" valor={norma} enCambio={setNorma} marcador="p. ej. NTP 399.003 · ASTM A615" deshabilitado={!!editando} />
           </div>
-          <div style={{ flex: '1 1 160px', minWidth: 0 }}>
+          <div className="min-w-0" style={{ flex: '1 1 160px' }}>
             <Campo id="ins-marca" etiqueta="Marca (opcional)" valor={marca} enCambio={setMarca} marcador="p. ej. SIKA" />
           </div>
         </div>
@@ -326,7 +330,7 @@ export function Catalogo() {
   const [viendo, setViendo] = useState<InsumoMaestro | null>(null)
   const [factorDe, setFactorDe] = useState<InsumoMaestro | null>(null)
   const [altaAbierta, setAltaAbierta] = useState(false)
-  const [aviso, setAviso] = useState('')
+  const avisar = useAvisos()
 
   const cargar = () => api.listarMaestro().then(setMaestro)
   useEffect(() => {
@@ -339,12 +343,20 @@ export function Catalogo() {
     return Array.from(cuenta.entries()).sort((a, b) => b[1] - a[1])
   }, [maestro])
 
+  // orden por columna (encabezados con ▲▼): se filtra y luego se ordena; la tabla sigue virtualizada
+  type Col = 'codigo' | 'nombre' | 'um' | 'marca' | 'precio'
+  const [orden, setOrden] = useState<Orden<Col> | null>(null)
+  const valorCol = (i: InsumoMaestro, k: Col): string | number =>
+    k === 'codigo' ? i.codigo : k === 'nombre' ? i.nombre : k === 'um' ? i.um : k === 'marca' ? i.marca : i.precioPromedio
+  const enOrdenar = (k: Col) => setOrden((o) => alternarOrden(o, k))
+
   const visibles = useMemo(() => {
     const q = busqueda.trim().toLowerCase()
-    return (maestro ?? []).filter((i) =>
+    const filtrados = (maestro ?? []).filter((i) =>
       (um === 'todas' || i.um === um) &&
       (!q || i.nombre.toLowerCase().includes(q) || i.medida.toLowerCase().includes(q) || i.codigo.includes(q)))
-  }, [maestro, busqueda, um])
+    return ordenar(filtrados, orden, valorCol)
+  }, [maestro, busqueda, um, orden])
 
   // seguridad: un texto que empieza con = + - @ se neutraliza con apóstrofo,
   // para que Excel no lo ejecute como fórmula al abrir el CSV
@@ -371,12 +383,24 @@ export function Catalogo() {
         sub={`${(maestro?.length ?? 0).toLocaleString('es-PE')} insumos normalizados · el mismo nombre y código en todas las obras`}
         acciones={
           <>
-            <Pildora tipo="secundario" enClic={exportar} deshabilitado={!visibles.length}>Exportar</Pildora>
+            <BotonExportar
+              titulo="Catálogo de insumos"
+              subtitulo={`${visibles.length.toLocaleString('es-PE')} insumos según el filtro y el orden de la pantalla`}
+              filas={visibles}
+              columnas={[
+                { titulo: 'Código', valor: (i) => i.codigo, ancho: 10 },
+                { titulo: 'Insumo', valor: (i) => (i.medida ? `${i.nombre} ${i.medida}` : i.nombre), ancho: 50 },
+                { titulo: 'Unidad', valor: (i) => i.um, ancho: 9 },
+                { titulo: 'Marca', valor: (i) => i.marca },
+                { titulo: 'Precio promedio (S/)', valor: (i) => i.precioPromedio, formato: 'soles' },
+                { titulo: 'Estado', valor: (i) => (i.estado === 'activo' ? 'Activo' : 'Por verificar') },
+              ]}
+              extra={[{ texto: 'CSV', accion: exportar }]}
+            />
             <Pildora enClic={() => { setEditando(null); setAltaAbierta(true) }}>Agregar insumo</Pildora>
           </>
         }
       />
-      {aviso && <Aviso tono="bien" rol="status">{aviso}</Aviso>}
 
       <Chips>
         <Chip tono="marca">Catálogo real del cliente: nombres, unidades, marcas y precios</Chip>
@@ -393,8 +417,8 @@ export function Catalogo() {
             corrige, y la baja es un estado con fecha.
           </p>
         </Vidrio>
-        <aside className="card card-body shadow d-flex flex-column gap-3" style={{ flex: '1 1 300px', minWidth: 0, borderRadius: 'var(--radio-vidrio)', padding: '20px 22px', boxShadow: 'var(--vidrio-sombra-alta)' }}>
-          <span className="small fw-bold text-uppercase text-body-secondary">Factor de conversión</span>
+        <aside className="card card-body shadow d-flex flex-column gap-3 min-w-0 rounded-3 py-3 px-4"  style={{ flex: '1 1 300px', boxShadow: 'var(--vidrio-sombra-alta)' }}>
+          <span className="small fw-bold text-uppercase text-body-secondary">Factor de conversión <Ayuda clave="factor de conversión" /></span>
           <TituloSeccion>La excepción del acero</TituloSeccion>
           <p className="text-body-secondary">
             El catálogo lo registra como{' '}
@@ -402,7 +426,7 @@ export function Catalogo() {
             mientras el S10 lo planifica como un solo insumo en kilos (36 357 kg). El factor de conversión
             del catálogo los empareja; nunca se convierte a mano.
           </p>
-          <div className="d-flex flex-column gap-1" style={{ background: 'var(--vidrio-celda)', borderRadius: 16, padding: '12px 14px' }}>
+          <div className="d-flex flex-column gap-1 bg-body-tertiary rounded-4 py-2 px-3" >
             <span className="small text-body-secondary">Ejemplo</span>
             <span className="n fs-6 fw-bold">1 varilla = [factor] kg</span>
             <span className="small text-body-secondary">Compara lo requerido, comprado y consumido en la misma unidad.</span>
@@ -418,8 +442,8 @@ export function Catalogo() {
               aria-label="Filtrar por unidad de medida"
               value={um}
               onChange={(e) => { setUm(e.target.value) }}
-              className="form-select fw-semibold"
-              style={{ flex: '0 1 240px', height: 52, borderRadius: 26 }}
+              className="form-select fw-semibold rounded-pill"
+               style={{ flex: '0 1 240px', height: 52 }}
             >
               <option value="todas">Todas las unidades</option>
               {unidades.map(([u, n]) => <option key={u} value={u}>{u} · {n}</option>)}
@@ -427,7 +451,7 @@ export function Catalogo() {
           </div>
 
           {maestro === null ? (
-            <Vacio titulo="Cargando…" detalle="Trayendo el catálogo de la empresa." />
+            <EsqueletoTabla />
           ) : visibles.length === 0 ? (
             <Vacio titulo="Ningún insumo coincide" detalle="Prueba con otro nombre u otro código, o agrégalo al catálogo." />
           ) : (
@@ -439,8 +463,11 @@ export function Catalogo() {
                 </colgroup>
                 <thead>
                   <tr>
-                    <th>Código</th><th>Insumo</th><th>Unidad</th><th>Marca</th>
-                    <th className="n">Precio promedio</th><th className="text-end">Acciones</th>
+                    <ThOrden clave="codigo" orden={orden} enOrdenar={enOrdenar}>Código</ThOrden>
+                    <ThOrden clave="nombre" orden={orden} enOrdenar={enOrdenar}>Insumo</ThOrden>
+                    <ThOrden clave="um" orden={orden} enOrdenar={enOrdenar}>Unidad</ThOrden>
+                    <ThOrden clave="marca" orden={orden} enOrdenar={enOrdenar}>Marca</ThOrden>
+                    <ThOrden clave="precio" orden={orden} enOrdenar={enOrdenar} className="n">Precio promedio</ThOrden><th className="text-end">Acciones</th>
                   </tr>
                 </thead>
                 {/* las 2 243 filas, pero en el DOM solo las que se ven (antes: de 60 en 60 con «Mostrar 60 más») */}
@@ -485,7 +512,7 @@ export function Catalogo() {
           enCerrar={() => setAltaAbierta(false)}
           enListo={(creado) => {
             setAltaAbierta(false); cargar()
-            if (creado) setAviso(`Insumo creado: ${creado.codigo} · ${[creado.nombre, creado.medida, creado.norma, creado.marca].filter(Boolean).join(' ')}. Queda «por verificar» hasta que el residente lo revise.`)
+            if (creado) avisar(`Insumo creado: ${creado.codigo} · ${[creado.nombre, creado.medida, creado.norma, creado.marca].filter(Boolean).join(' ')}. Queda «por verificar» hasta que el residente lo revise.`)
           }}
         />
       )}

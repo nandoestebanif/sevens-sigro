@@ -18,6 +18,8 @@ import { plazo } from '../api/oficina'
 import type { ReporteSemana } from '../api/tipos'
 import { Chip, Vacio } from '../ui/base'
 import { Aviso, Chips, Encabezado, Pildora, TituloSeccion, Vidrio } from '../ui/piezas'
+import { useAvisos } from '../ui/Avisos'
+import { EsqueletoTabla } from '../ui/Esqueleto'
 
 const n = (x: number) => x.toLocaleString('es-PE', { maximumFractionDigits: 4 })
 const dia = (iso: string) => (iso ? `${iso.slice(8, 10)}/${iso.slice(5, 7)}` : '')
@@ -28,7 +30,7 @@ export function Semana() {
   const [numero, setNumero] = useState<number | null>(null)
   const [r, setR] = useState<ReporteSemana | null>(null)
   const [error, setError] = useState('')
-  const [aviso, setAviso] = useState('')
+  const avisar = useAvisos()
   const [bajando, setBajando] = useState(false)
   const [cerrando, setCerrando] = useState(false)
   const [confirmarCierre, setConfirmarCierre] = useState(false)
@@ -47,17 +49,17 @@ export function Semana() {
 
   useEffect(() => {
     if (numero === null) return
-    setR(null); setError(''); setAviso(''); setConfirmarCierre(false)
+    setR(null); setError(''); setConfirmarCierre(false)
     api.reporteSemana(numero).then(setR).catch((e) => setError(e instanceof ErrorApi ? e.message : 'No se pudo cargar la semana.'))
   }, [numero])
 
   const cerrar = async () => {
     if (!obraId || numero === null) return
-    setCerrando(true); setError(''); setAviso('')
+    setCerrando(true); setError('')
     try {
       await plazo.cerrarSemana(obraId, numero)
       setConfirmarCierre(false)
-      setAviso(`Semana ${numero} cerrada. Desde ahora solo admite correcciones con reverso.`)
+      avisar(`Semana ${numero} cerrada. Desde ahora solo admite correcciones con reverso.`)
       const actualizado = await api.reporteSemana(numero)
       setR(actualizado)
     } catch (e) {
@@ -106,7 +108,6 @@ export function Semana() {
           <Chip tono="neutro">Solo insumos con movimiento en la semana</Chip>
           {r?.cerrada && <Chip tono="aviso">Semana cerrada: solo admite reversos</Chip>}
         </Chips>
-        {aviso && <Aviso tono="bien" rol="status">{aviso}</Aviso>}
 
         <Vidrio estilo={{ display: 'flex', flexDirection: 'column', gap: 12 }} etiqueta="Reporte de la semana">
           <div className="d-flex flex-wrap align-items-center justify-content-between gap-2">
@@ -117,10 +118,10 @@ export function Semana() {
               Semana
               <select
                 aria-label="Semana a revisar"
-                className="form-select px-3"
+                className="form-select"
                 value={numero ?? ''}
                 onChange={(e) => setNumero(Number(e.target.value))}
-                style={{ height: 40, borderRadius: 12 }}
+                 style={{ height: 40 }}
               >
                 {Array.from({ length: total }, (_, i) => i + 1).map((k) => <option key={k} value={k}>{k}</option>)}
               </select>
@@ -128,7 +129,7 @@ export function Semana() {
           </div>
 
           {error && <Aviso tono="grave" rol="alert">{error}</Aviso>}
-          {!r && !error && <Vacio titulo="Cargando…" detalle="Sumando los movimientos de la semana." />}
+          {!r && !error && <EsqueletoTabla />}
           {r && r.filas.length === 0 && <Vacio titulo="Sin movimientos esta semana" detalle={r.criterio} />}
           {r && r.filas.length > 0 && (
             <div className="overflow-x-auto">

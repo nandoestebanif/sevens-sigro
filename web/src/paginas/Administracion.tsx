@@ -15,6 +15,7 @@ import { Asignaciones } from './administracion/Asignaciones'
 import { Celulares } from './administracion/Celulares'
 import { Usuarios } from './administracion/Usuarios'
 import { esAdministrador } from './administracion/reglas'
+import { EsqueletoTabla } from '../ui/Esqueleto'
 
 const PESTANAS = [
   { clave: 'celulares', texto: 'Celulares' },
@@ -37,7 +38,7 @@ export function Administracion({ obra }: { obra: { id: string; nombre: string } 
       </Tarjeta></div>
     )
   }
-  if (!obra) return <div className="d-flex flex-column gap-3 pb-4" role="status"><Vacio titulo="Cargando…" detalle="Consultando la obra activa." /></div>
+  if (!obra) return <div className="d-flex flex-column gap-3 pb-4" role="status"><EsqueletoTabla /></div>
   if (!esAdministrador(sesion, obra.id)) {
     return (
       <div className="d-flex flex-column gap-3 pb-4"><Tarjeta>
@@ -53,7 +54,7 @@ export function Administracion({ obra }: { obra: { id: string; nombre: string } 
         {PESTANAS.map((p) => {
           const sel = p.clave === activa
           return (
-            <button
+            <button className={`btn btn-sm rounded-pill ${sel ? 'btn-primary' : 'btn-outline-secondary'}`}
               key={p.clave}
               type="button"
               role="tab"
@@ -61,11 +62,7 @@ export function Administracion({ obra }: { obra: { id: string; nombre: string } 
               aria-selected={sel}
               aria-controls="panel-administracion"
               onClick={() => ir(`/administracion/${p.clave}`)}
-              style={{
-                height: 38, padding: '0 16px', borderRadius: 'var(--radio-pildora)', fontSize: 13.5, fontWeight: 600, cursor: 'pointer',
-                fontFamily: 'inherit', border: `1px solid ${sel ? 'var(--accion)' : 'var(--borde)'}`,
-                background: sel ? 'var(--marca-tinte)' : 'var(--tarjeta)', color: sel ? 'var(--marca-tinte-tinta)' : 'var(--tinta-2)',
-              }}
+
             >
               {p.texto}
             </button>

@@ -11,12 +11,20 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@hookform/resolvers": "^7.0.8",
     "@tanstack/react-virtual": "^3.14.25",
     "bootstrap": "^5.3.9",
+    "chart.js": "^4.6.1",
+    "jspdf": "^4.2.1",
+    "jspdf-autotable": "^5.0.9",
     "react": "^18.3.1",
     "react-bootstrap": "^2.10.10",
+    "react-chartjs-2": "^5.3.1",
     "react-dom": "^18.3.1",
-    "react-router-dom": "^6.26.2"
+    "react-hook-form": "^7.92.0",
+    "react-router-dom": "^6.26.2",
+    "write-excel-file": "^4.1.1",
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "@types/react": "^18.3.3",
@@ -27,6 +35,7 @@
     "sass": "^1.108.2",
     "typescript": "^5.5.4",
     "vite": "^5.4.8",
+    "vite-plugin-pwa": "^2.0.0",
     "vitest": "^2.1.9"
   }
 }
