@@ -20,6 +20,7 @@ import type { Compra, ComprobanteCompra, EstadoCompra, InsumoCatalogo, LineaComp
 import { Campo, Chip, Modal, Vacio, type TonoChip } from '../ui/base'
 import { Aviso, Chips, Encabezado, Pildora, TituloSeccion } from '../ui/piezas'
 import { BuscarOpcion } from '../ui/BuscarOpcion'
+import { ListGroup } from 'react-bootstrap'
 import { usaApiReal } from '../api/http'
 import { desvioPct, precios, type PrecioReferencia } from '../api/oficina'
 import { AltaProveedor } from './Proveedores'
@@ -96,7 +97,7 @@ function RecepcionCompra({ compra, enCerrar, enListo }: {
             admite más recepciones hasta completarse.
           </p>
           <div className="overflow-x-auto">
-          <table className="w-100" style={{ borderCollapse: 'collapse', minWidth: 380 }}>
+          <table className="table table-sm align-middle mb-0" style={{ minWidth: 380 }}>
             <thead>
               <tr style={{ borderBottom: '1px solid var(--campo-borde)' }}>
                 {['Insumo', 'Pedido', 'Recibido', 'Pendiente', 'Recibir ahora'].map((h, i) => (
@@ -683,11 +684,11 @@ export function Compras() {
           {compras.length === 0 ? (
             <Vacio titulo="Todavía no hay compras" detalle="Las que registres aparecerán aquí con su estado de recepción." />
           ) : (
-            <ul className="list-unstyled m-0 p-0 d-flex flex-column">
+            <ListGroup variant="flush">
               {compras.map((c) => {
                 const vigentes = c.comprobantesVigentes ?? (c.adjunto ? 1 : 0)
                 return (
-                <li key={c.id} className="d-flex flex-column gap-1" style={{ padding: '10px 2px', borderTop: '1px solid var(--separador)' }}>
+                <ListGroup.Item key={c.id} className="d-flex flex-column gap-1 px-1">
                   <div className="d-flex justify-content-between align-items-baseline gap-2">
                     <span className="n fw-bold">{c.tipoComprobante === 'factura' ? 'Factura' : 'Boleta'} {c.numeroComprobante}</span>
                     <span className="n fw-bold text-nowrap">S/ {soles(c.totales.total)}</span>
@@ -715,10 +716,10 @@ export function Compras() {
                       )}
                     </span>
                   </div>
-                </li>
+                </ListGroup.Item>
                 )
               })}
-            </ul>
+            </ListGroup>
           )}
           <span className="small text-body-secondary">
             Una compra no se edita. El IGV se guarda aparte porque no es costo del insumo (NIC 2).
