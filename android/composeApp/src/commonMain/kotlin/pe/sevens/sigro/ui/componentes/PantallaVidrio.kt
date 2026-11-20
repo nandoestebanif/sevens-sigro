@@ -1,10 +1,6 @@
 package pe.sevens.sigro.ui.componentes
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
@@ -12,56 +8,60 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
-import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CloudOff
 import androidx.compose.material.icons.filled.ErrorOutline
 import androidx.compose.material.icons.filled.Remove
-import androidx.compose.material.icons.filled.Add
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilledTonalIconButton
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
-import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.em
-import androidx.compose.ui.unit.sp
 import pe.sevens.sigro.ui.tema.Paleta
 
 /*
- * Piezas de pantalla del estilo vidrio para las pantallas del Sprint 2. Usan [FondoPlano] y
- * [vidrio] de Vidrio.kt tal cual (no los cambian): aquí solo se arma el encabezado, la columna
- * con desplazamiento y los controles que se repiten (opciones, contador, avisos).
+ * Piezas de pantalla sobre Material 3: Scaffold + TopAppBar para el marco, Card para las secciones,
+ * FilterChip para las opciones y FilledTonalIconButton para el contador. Las pantallas usan estos
+ * nombres; aquí se decide qué componente de Material va debajo.
  */
 
-/** Pantalla con su plano de fondo, encabezado con «volver» y contenido que se desplaza. */
+/**
+ * Pantalla estándar: `Scaffold` con `TopAppBar` (flecha «volver», título, subtítulo y acciones)
+ * y el contenido en una columna que se desplaza. `encima` queda sobre todo (diálogos, hojas).
+ */
 @Composable
 fun PantallaVidrio(
     titulo: String,
@@ -73,71 +73,97 @@ fun PantallaVidrio(
     contenido: @Composable ColumnScope.() -> Unit,
 ) {
     FondoPlano(plano = plano) {
-        Column(
-            Modifier.fillMaxSize().verticalScroll(rememberScrollState()).statusBarsPadding().imePadding()
-                .navigationBarsPadding().padding(bottom = 24.dp),
-        ) {
-            EncabezadoVidrio(titulo, subtitulo, alVolver, acciones)
+        Scaffold(
+            topBar = { EncabezadoVidrio(titulo, subtitulo, alVolver, acciones, conInsets = true) },
+            containerColor = MaterialTheme.colorScheme.background,
+        ) { margen ->
+            // `margen` es el espacio que ocupan la barra superior y las del sistema: el contenido empieza debajo.
             Column(
-                Modifier.padding(horizontal = 16.dp).widthIn(max = 560.dp).fillMaxWidth().align(Alignment.CenterHorizontally),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-                content = contenido,
-            )
+                Modifier.fillMaxSize().padding(margen).imePadding().verticalScroll(rememberScrollState())
+                    .padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                Column(
+                    Modifier.widthIn(max = 560.dp).fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    content = contenido,
+                )
+            }
         }
         encima()
     }
 }
 
+/**
+ * Barra superior de Material 3 (`TopAppBar`). Fuera de un Scaffold (pantallas que ya manejan los
+ * bordes del sistema) va sin insets, para no sumar dos veces el alto de la barra de estado.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun EncabezadoVidrio(titulo: String, subtitulo: String?, alVolver: () -> Unit, acciones: @Composable RowScope.() -> Unit = {}) {
-    Row(Modifier.fillMaxWidth().padding(start = 8.dp, end = 12.dp, top = 8.dp, bottom = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-        IconButton(onClick = alVolver, modifier = Modifier.size(48.dp).vidrio(CircleShape, sombra = 4.dp)) {
-            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Volver", tint = Paleta.Tinta)
-        }
-        Spacer(Modifier.width(12.dp))
-        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(
-                titulo, fontSize = 26.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = (-0.03).em, color = Paleta.Tinta,
-                modifier = Modifier.semantics { heading() },
-            )
-            if (subtitulo != null) Text(subtitulo, fontSize = 14.sp, color = Paleta.Texto3)
-        }
-        acciones()
-    }
+fun EncabezadoVidrio(
+    titulo: String,
+    subtitulo: String?,
+    alVolver: () -> Unit,
+    acciones: @Composable RowScope.() -> Unit = {},
+    conInsets: Boolean = false,
+) {
+    TopAppBar(
+        title = {
+            Column {
+                Text(titulo, style = MaterialTheme.typography.titleLarge, modifier = Modifier.semantics { heading() })
+                if (subtitulo != null) {
+                    Text(subtitulo, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+        },
+        navigationIcon = {
+            IconButton(onClick = alVolver) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Volver") }
+        },
+        actions = acciones,
+        windowInsets = if (conInsets) TopAppBarDefaults.windowInsets else WindowInsets(0, 0, 0, 0),
+        colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background),
+    )
 }
 
-/** Tarjeta de vidrio de 26 dp con su relleno. */
+/** Sección de contenido: `Card` de Material 3 con su relleno. «fuerte» = un poco más de elevación. */
 @Composable
 fun TarjetaVidrio(modifier: Modifier = Modifier, fuerte: Boolean = false, contenido: @Composable ColumnScope.() -> Unit) {
-    Column(
-        modifier.fillMaxWidth().vidrio(RoundedCornerShape(26.dp), fuerte = fuerte).padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-        content = contenido,
-    )
+    Card(
+        modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = if (fuerte) 3.dp else 1.dp),
+    ) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp), content = contenido)
+    }
 }
 
 @Composable
 fun TituloSeccion(texto: String, modifier: Modifier = Modifier) {
-    Text(
-        texto, fontSize = 18.sp, fontWeight = FontWeight.ExtraBold, color = Paleta.Tinta,
-        modifier = modifier.semantics { heading() },
-    )
+    Text(texto, style = MaterialTheme.typography.titleMedium, modifier = modifier.semantics { heading() })
 }
 
-/** Etiqueta en píldora: siempre texto (y color), nunca solo color. */
+/** Etiqueta de estado: siempre texto (y color), nunca solo color. Card chica con el color de fondo dado. */
 @Composable
 fun Etiqueta(texto: String, color: Color, fondo: Color, icono: ImageVector? = null) {
-    Row(
-        Modifier.background(fondo, RoundedCornerShape(50)).padding(horizontal = 10.dp, vertical = 5.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(5.dp),
+    Card(
+        shape = MaterialTheme.shapes.small,
+        colors = CardDefaults.cardColors(containerColor = fondo, contentColor = color),
     ) {
-        if (icono != null) Icon(icono, contentDescription = null, tint = color, modifier = Modifier.size(14.dp))
-        Text(texto, color = color, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+        Row(
+            Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            if (icono != null) Icon(icono, contentDescription = null, modifier = Modifier.size(14.dp))
+            Text(texto, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold)
+        }
     }
 }
 
-/** Opciones excluyentes en píldoras (categoría, estado de asistencia, origen, motivo…). */
+/**
+ * Opciones excluyentes (categoría, estado de asistencia, origen, motivo…) con `FilterChip`
+ * de Material 3: la elegida se rellena y lleva un check, así no depende solo del color.
+ */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun <T> Opciones(
@@ -146,81 +172,83 @@ fun <T> Opciones(
     texto: (T) -> String,
     alElegir: (T) -> Unit,
     modifier: Modifier = Modifier,
-    colorActivo: Color = Paleta.Principal,
+    @Suppress("UNUSED_PARAMETER") colorActivo: Color = Color.Unspecified,
 ) {
-    FlowRow(modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    FlowRow(modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         opciones.forEach { o ->
             val activa = o == elegida
-            Box(
-                Modifier.heightIn(min = 44.dp)
-                    .background(if (activa) colorActivo else Paleta.Superficie.copy(alpha = 0.8f), RoundedCornerShape(22.dp))
-                    .border(1.dp, if (activa) colorActivo else Paleta.BordeCampo, RoundedCornerShape(22.dp))
-                    .clickable(role = Role.RadioButton) { alElegir(o) }
-                    .semantics { selected = activa }
-                    .padding(horizontal = 16.dp, vertical = 10.dp),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(texto(o), fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = if (activa) Paleta.SobrePrincipal else Paleta.Tinta)
-            }
+            FilterChip(
+                selected = activa,
+                onClick = { alElegir(o) },
+                label = { Text(texto(o)) },
+                leadingIcon = if (activa) {
+                    { Icon(Icons.Filled.Check, contentDescription = null, modifier = Modifier.size(FilterChipDefaults.IconSize)) }
+                } else null,
+            )
         }
     }
 }
 
-/** − valor + para horas (HU-63). */
+/** − valor + para horas (HU-63), con `FilledTonalIconButton` de Material 3 (48 dp, se pulsa con guantes). */
 @Composable
 fun Contador(etiqueta: String, valor: Int, alMenos: () -> Unit, alMas: () -> Unit, modifier: Modifier = Modifier) {
     Row(modifier, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-        Text(etiqueta, fontSize = 13.sp, color = Paleta.Texto3)
-        IconButton(onClick = alMenos, modifier = Modifier.size(44.dp).background(Paleta.Superficie.copy(alpha = 0.85f), CircleShape)) {
-            Icon(Icons.Filled.Remove, contentDescription = "Menos $etiqueta", tint = Paleta.Tinta, modifier = Modifier.size(18.dp))
-        }
-        Text("$valor", fontSize = 18.sp, fontWeight = FontWeight.ExtraBold, color = Paleta.Tinta, modifier = Modifier.widthIn(min = 22.dp))
-        IconButton(onClick = alMas, modifier = Modifier.size(44.dp).background(Paleta.Superficie.copy(alpha = 0.85f), CircleShape)) {
-            Icon(Icons.Filled.Add, contentDescription = "Más $etiqueta", tint = Paleta.Tinta, modifier = Modifier.size(18.dp))
-        }
+        Text(etiqueta, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        FilledTonalIconButton(onClick = alMenos) { Icon(Icons.Filled.Remove, contentDescription = "Menos $etiqueta") }
+        Text("$valor", style = MaterialTheme.typography.titleMedium, modifier = Modifier.widthIn(min = 22.dp))
+        FilledTonalIconButton(onClick = alMas) { Icon(Icons.Filled.Add, contentDescription = "Más $etiqueta") }
     }
 }
 
 /** Dato que la app no tiene todavía (no se inventa): se dice de dónde vendrá. */
 @Composable
 fun Marcador(texto: String, modifier: Modifier = Modifier) {
-    Text(
-        "[$texto]", fontSize = 14.sp, lineHeight = 20.sp, color = Paleta.Texto3,
-        modifier = modifier.fillMaxWidth().background(Paleta.Tinta.copy(alpha = 0.05f), RoundedCornerShape(12.dp))
-            .border(1.dp, Paleta.Tinta.copy(alpha = 0.12f), RoundedCornerShape(12.dp)).padding(12.dp),
-    )
+    Card(
+        modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+    ) {
+        Text("[$texto]", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(12.dp))
+    }
 }
 
 /** Aviso de las pantallas de almacén: se guarda en el celular y se envía cuando exista el servicio. */
 @Composable
 fun AvisoSinServicioAlmacen(modifier: Modifier = Modifier) {
-    Row(
-        modifier.fillMaxWidth().background(Paleta.PendienteFondo, RoundedCornerShape(16.dp)).padding(14.dp)
-            .semantics(mergeDescendants = true) {},
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
+    Card(
+        modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = Paleta.PendienteFondo, contentColor = Paleta.PendienteTexto),
     ) {
-        Icon(Icons.Filled.CloudOff, contentDescription = null, tint = Paleta.PendienteTexto, modifier = Modifier.size(22.dp))
-        Text(
-            "Se envía cuando exista el servicio almacén. Mientras tanto queda guardado en el celular, «por enviar».",
-            fontSize = 14.sp, lineHeight = 20.sp, fontWeight = FontWeight.SemiBold, color = Paleta.PendienteTexto,
-        )
+        Row(
+            Modifier.padding(14.dp).semantics(mergeDescendants = true) {},
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Icon(Icons.Filled.CloudOff, contentDescription = null)
+            Text(
+                "Se envía cuando exista el servicio almacén. Mientras tanto queda guardado en el celular, «por enviar».",
+                style = MaterialTheme.typography.bodyMedium,
+            )
+        }
     }
 }
 
-/** Error de la operación sobre rojo claro, con ícono. */
+/** Error de la operación: Card con «errorContainer» del tema e ícono. */
 @Composable
 fun AvisoRojo(mensaje: String, modifier: Modifier = Modifier) {
-    Row(
-        modifier.fillMaxWidth().background(Paleta.RechazadoFondo, RoundedCornerShape(14.dp)).padding(14.dp)
-            .semantics(mergeDescendants = true) { contentDescription = mensaje },
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
+    Card(
+        modifier.fillMaxWidth().semantics(mergeDescendants = true) { contentDescription = mensaje },
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.errorContainer,
+            contentColor = MaterialTheme.colorScheme.onErrorContainer,
+        ),
     ) {
-        Icon(Icons.Filled.ErrorOutline, contentDescription = null, tint = Paleta.RechazadoTexto, modifier = Modifier.size(20.dp))
-        Text(mensaje, fontSize = 14.sp, lineHeight = 20.sp, color = Paleta.RechazadoTexto)
+        Row(Modifier.padding(14.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            Icon(Icons.Filled.ErrorOutline, contentDescription = null, modifier = Modifier.size(20.dp))
+            Text(mensaje, style = MaterialTheme.typography.bodyMedium)
+        }
     }
 }
 
-/** Separador fino entre filas de una tarjeta. */
+/** Separador fino entre filas de una tarjeta (`HorizontalDivider` de Material 3). */
 @Composable
-fun Separador() = Box(Modifier.fillMaxWidth().height(1.dp).background(Paleta.Separador))
+fun Separador() = HorizontalDivider()

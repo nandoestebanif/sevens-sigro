@@ -39,8 +39,8 @@ export function Celulares({ obraId }: { obraId: string }) {
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-      <p style={{ fontSize: 13, color: 'var(--tinta-3)', lineHeight: 1.5 }}>
+    <div className="d-flex flex-column gap-3">
+      <p className="small text-body-secondary">
         Solo el almacenero y el ingeniero SSOMA asignados registran desde su celular, uno por persona y hasta dos por
         obra. El servidor rechaza los registros de un celular no autorizado.
       </p>
@@ -53,7 +53,7 @@ export function Celulares({ obraId }: { obraId: string }) {
           ' Solo puede tener uno: para autorizar este, primero revoca el anterior.'
         }>
           {conflicto.anterior && (
-            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+            <div className="d-flex gap-2 flex-wrap">
               <Boton enClic={() => { setRevocando({ d: conflicto.anterior!, luegoAutorizar: conflicto.nuevo }); setConflicto(null) }}>
                 Revocar el anterior y autorizar este
               </Boton>
@@ -147,13 +147,13 @@ function Revocar({ obraId, d, luegoAutorizar, enCerrar, enHecho }: {
 
   return (
     <Modal titulo={luegoAutorizar ? 'Revocar el celular anterior' : 'Revocar celular'} enCerrar={enCerrar}>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-        <p style={{ fontSize: 13.5, lineHeight: 1.55, color: 'var(--tinta-2)' }}>
+      <div className="d-flex flex-column gap-3">
+        <p className="small text-body-secondary">
           {d.usuarioNombre} ya no podrá registrar desde el celular <span className="n">{d.identificador}</span>.
           {luegoAutorizar && ' Después se autoriza el celular nuevo.'} La revocación queda registrada con tu nombre, la fecha y el motivo.
         </p>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          <label htmlFor="motivo-revocacion" style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--tinta-2)' }}>
+        <div className="d-flex flex-column gap-2">
+          <label htmlFor="motivo-revocacion" className="small fw-semibold text-body-secondary">
             Motivo (obligatorio)
           </label>
           <textarea
@@ -172,7 +172,7 @@ function Revocar({ obraId, d, luegoAutorizar, enCerrar, enHecho }: {
           />
         </div>
         {error && <AvisoError texto={error} />}
-        <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+        <div className="d-flex gap-2 justify-content-end">
           <Boton tipo="secundario" enClic={enCerrar}>Cancelar</Boton>
           <Boton enClic={guardar} deshabilitado={ocupado}>
             {ocupado ? 'Guardando…' : luegoAutorizar ? 'Revocar y autorizar' : 'Revocar'}

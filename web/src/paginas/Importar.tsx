@@ -21,7 +21,7 @@ import { usaApiReal } from '../api/http'
 import { ErrorApi } from '../api/error'
 import type { ResultadoRequerimiento } from '../api/tipos'
 import { Chip } from '../ui/base'
-import { Encabezado, Fondo, Pildora, TituloSeccion, Vidrio } from '../ui/vidrio'
+import { Encabezado, Pildora, TituloSeccion, Vidrio } from '../ui/piezas'
 
 const n = (v: number, d = 0) => v.toLocaleString('es-PE', { minimumFractionDigits: d, maximumFractionDigits: d === 0 ? 4 : d })
 const TIPO: Record<string, string> = {
@@ -102,18 +102,17 @@ export function Importar() {
   const filasDelTipo = r ? r.insumos.filter((i) => i.tipo === tipoVisto) : []
   const parcialDelTipo = (t: string) => (r ? r.insumos.filter((i) => i.tipo === t).reduce((s, i) => s + i.parcial, 0) : 0)
   const paso = !r ? 1 : requerimiento ? 4 : aplicado ? 3 : 2
-  const avisoError = error && <p role="alert" style={{ fontSize: 14, color: 'var(--grave)', fontWeight: 600 }}>{error}</p>
+  const avisoError = error && <p role="alert" className="text-danger fw-semibold">{error}</p>
 
   return (
     <>
-      <Fondo dibujo="importar" />
-      <div className="pagina" style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+      <div className="d-flex flex-column gap-3 pb-4">
         <Encabezado
           titulo="Importar del S10"
           sub="Relación de insumos del presupuesto: la base de la obra, sin escribir nada a mano"
         />
 
-        <ol aria-label="Pasos de la importación" style={{ margin: 0, padding: '0 4px', listStyle: 'none', display: 'flex', flexWrap: 'wrap', gap: '10px 22px' }}>
+        <ol aria-label="Pasos de la importación" className="m-0 px-1 list-unstyled d-flex flex-wrap" style={{ gap: '10px 22px' }}>
           {PASOS.map((t, i) => {
             const estado = i + 1 < paso ? 'hecho' : i + 1 === paso ? 'actual' : 'pendiente'
             return (
@@ -138,21 +137,21 @@ export function Importar() {
           })}
         </ol>
 
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 18, alignItems: 'stretch' }}>
+        <div className="d-flex flex-wrap gap-3 align-items-stretch">
           <Vidrio estilo={{ flex: '1 1 340px', display: 'flex', flexDirection: 'column', gap: 14 }}>
             <input
               ref={entrada}
               type="file"
               accept="application/pdf"
               aria-label="PDF de la Relación de insumos del S10"
-              style={{ display: 'none' }}
+              className="d-none"
               onChange={(e) => { setArchivo(e.target.files?.[0] ?? null); setResultado(null); setError('') }}
             />
             <div style={{ border: '2px dashed var(--accion)', borderRadius: 22, background: 'var(--marca-tinte)', padding: 'clamp(14px, calc(3vw / var(--escala, 1)), 22px)', display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 14 }}>
-              <span aria-hidden style={{ width: 52, height: 60, borderRadius: 10, background: 'var(--tarjeta)', border: '1px solid var(--campo-borde)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 800, color: 'var(--grave)', flex: 'none' }}>PDF</span>
-              <span style={{ flex: '1 1 160px', minWidth: 0, display: 'flex', flexDirection: 'column', gap: 3 }}>
-                <span style={{ fontSize: 15, fontWeight: 800, overflowWrap: 'anywhere' }}>{archivo ? archivo.name : 'Elige la Relación de insumos'}</span>
-                <span style={{ fontSize: 13, color: 'var(--tinta-2)' }}>
+              <span aria-hidden className="d-flex align-items-center justify-content-center small fw-bold text-danger flex-shrink-0" style={{ width: 52, height: 60, borderRadius: 10, background: 'var(--tarjeta)', border: '1px solid var(--campo-borde)' }}>PDF</span>
+              <span className="d-flex flex-column gap-1" style={{ flex: '1 1 160px', minWidth: 0 }}>
+                <span className="fw-bold" style={{ overflowWrap: 'anywhere' }}>{archivo ? archivo.name : 'Elige la Relación de insumos'}</span>
+                <span className="small text-body-secondary">
                   {r
                     ? `${r.obra ?? 'Obra sin identificar'}${r.subpresupuesto ? ` · subpresupuesto ${r.subpresupuesto}` : ''}${r.fecha ? ` · ${r.fecha}` : ''}`
                     : 'El PDF exportado del S10: precios y cantidades de recursos requeridos por tipo'}
@@ -161,13 +160,13 @@ export function Importar() {
               <Pildora tipo="secundario" enClic={() => entrada.current?.click()}>{archivo ? 'Cambiar' : 'Elegir el PDF'}</Pildora>
             </div>
             {!usaApiReal && (
-              <label style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 14, color: 'var(--tinta-2)', cursor: 'pointer', minHeight: 44 }}>
+              <label className="d-flex align-items-center gap-2 text-body-secondary" style={{ minHeight: 44 }}>
                 <input type="checkbox" checked={conCatalogo} onChange={(e) => setConCatalogo(e.target.checked)} style={{ width: 20, height: 20, accentColor: 'var(--accion)' }} />
                 la obra ya tiene catálogo (los repetidos se actualizan)
               </label>
             )}
             {r ? (
-              <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 8, fontSize: 14 }}>
+              <ul className="m-0 p-0 list-unstyled d-flex flex-column gap-2">
                 <Comprobacion bien={r.resumen.fallidos === 0}>{r.resumen.leidos} filas leídas, {r.resumen.fallidos} fallidas</Comprobacion>
                 <Comprobacion bien>{r.resumen.a_crear} a crear · {r.resumen.a_actualizar} a actualizar: el código es la clave, nada se duplica</Comprobacion>
                 <Comprobacion bien>Leer no toca ningún saldo: el catálogo no es el almacén</Comprobacion>
@@ -175,7 +174,7 @@ export function Importar() {
             ) : (
               <>
                 {avisoError}
-                <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                <div className="d-flex justify-content-end">
                   <Pildora enClic={importar} deshabilitado={!archivo || subiendo}>{subiendo ? 'Leyendo el archivo…' : 'Leer el archivo'}</Pildora>
                 </div>
               </>
@@ -185,17 +184,17 @@ export function Importar() {
           <Vidrio estilo={{ flex: '1 1 340px', display: 'flex', flexDirection: 'column', gap: 12 }}>
             {r ? (
               <>
-                <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--tinta-2)' }}>Total del reporte</span>
-                <span style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
-                  <span style={{ fontSize: 16, fontWeight: 700, color: 'var(--tinta-2)' }}>S/</span>
+                <span className="small fw-semibold text-body-secondary">Total del reporte</span>
+                <span className="d-flex align-items-baseline gap-2">
+                  <span className="fs-6 fw-bold text-body-secondary">S/</span>
                   <span className="n" style={{ fontSize: 'clamp(28px, calc(4vw / var(--escala, 1)), 38px)', fontWeight: 800 }}>{n(r.resumen.parcial_total, 2)}</span>
                 </span>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 10 }}>
                   {tipos.map((t) => (
-                    <div key={t} style={{ background: 'var(--vidrio-celda)', borderRadius: 16, padding: '10px 12px', display: 'flex', flexDirection: 'column' }}>
-                      <span style={{ fontSize: 13, color: 'var(--tinta-2)' }}>{TIPO[t] ?? t}</span>
-                      <span className="n" style={{ fontSize: 18, fontWeight: 800 }}>{r.resumen.por_tipo[t]}</span>
-                      <span className="n" style={{ fontSize: 12.5, color: 'var(--tinta-2)' }}>S/ {n(parcialDelTipo(t), 2)}</span>
+                    <div key={t} className="d-flex flex-column" style={{ background: 'var(--vidrio-celda)', borderRadius: 16, padding: '10px 12px' }}>
+                      <span className="small text-body-secondary">{TIPO[t] ?? t}</span>
+                      <span className="n fs-5 fw-bold">{r.resumen.por_tipo[t]}</span>
+                      <span className="n small text-body-secondary">S/ {n(parcialDelTipo(t), 2)}</span>
                     </div>
                   ))}
                 </div>
@@ -203,7 +202,7 @@ export function Importar() {
             ) : (
               <>
                 <TituloSeccion>Así funciona</TituloSeccion>
-                <p style={{ fontSize: 14, color: 'var(--tinta-2)', lineHeight: 1.55 }}>
+                <p className="text-body-secondary">
                   Es el paso que sigue a crear la obra (HU-01): su Relación de insumos se sube una vez y la relación de la obra
                   queda cargada. El archivo lo procesa el servicio de integraciones: cada insumo llega con su código, unidad,
                   cantidad y precio planificados. Un código que ya existe se actualiza (jamás se duplica), una fila ilegible se
@@ -217,9 +216,9 @@ export function Importar() {
         {r && r.fallidos.length > 0 && (
           <Vidrio estilo={{ borderLeft: '4px solid var(--grave)' }}>
             <TituloSeccion>Filas que no se entendieron</TituloSeccion>
-            <p style={{ fontSize: 13, color: 'var(--tinta-2)', margin: '4px 0 8px' }}>Se informan, no se descartan en silencio.</p>
+            <p className="small text-body-secondary" style={{ margin: '4px 0 8px' }}>Se informan, no se descartan en silencio.</p>
             {r.fallidos.map((f, i) => (
-              <div key={i} style={{ fontSize: 13, color: 'var(--tinta-2)', padding: '4px 0' }}>
+              <div key={i} className="small text-body-secondary" style={{ padding: '4px 0' }}>
                 <span className="n">{f.texto}</span> — {f.error}
               </div>
             ))}
@@ -228,14 +227,14 @@ export function Importar() {
 
         {r && (
           <Vidrio estilo={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: 10 }}>
+            <div className="d-flex flex-wrap justify-content-between align-items-center gap-2">
               <TituloSeccion>Lo que se va a importar</TituloSeccion>
-              <div role="tablist" aria-label="Tipo de insumo" style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+              <div role="tablist" aria-label="Tipo de insumo" className="d-flex flex-wrap gap-2">
                 {tipos.map((t) => {
                   const activo = t === tipoVisto
                   return (
                     <button
-                      key={t} type="button" role="tab" aria-selected={activo} className="foco-vidrio"
+                      key={t} type="button" role="tab" aria-selected={activo}
                       onClick={() => setPestana(t)}
                       style={{
                         minHeight: 40, padding: '0 14px', borderRadius: 20, fontFamily: 'inherit', fontSize: 13, fontWeight: 700, cursor: 'pointer',
@@ -249,8 +248,8 @@ export function Importar() {
                 })}
               </div>
             </div>
-            <div role="tabpanel" style={{ overflowX: 'auto' }}>
-              <table className="tabla-vidrio">
+            <div role="tabpanel" className="overflow-x-auto">
+              <table className="table table-hover align-middle mb-0">
                 <thead>
                   <tr>
                     <th>Código S10</th><th>Descripción</th><th>Und.</th>
@@ -260,19 +259,19 @@ export function Importar() {
                 <tbody>
                   {filasDelTipo.slice(0, 40).map((ins) => (
                     <tr key={ins.codigo}>
-                      <td className="n" style={{ color: 'var(--tinta-2)', textAlign: 'left' }}>{ins.codigo}</td>
-                      <td style={{ fontWeight: 600 }}>{ins.descripcion}</td>
+                      <td className="n text-body-secondary text-start">{ins.codigo}</td>
+                      <td className="fw-semibold">{ins.descripcion}</td>
                       <td>{ins.unidad}</td>
                       <td className="n">{n(ins.cantidad)}</td>
                       <td className="n">{n(ins.precio, 2)}</td>
-                      <td className="n" style={{ fontWeight: 700 }}>{n(ins.parcial, 2)}</td>
+                      <td className="n fw-bold">{n(ins.parcial, 2)}</td>
                       <td><Chip tono={ins.accion === 'crear' ? 'bien' : 'aviso'}>{ins.accion === 'crear' ? 'Crear' : 'Actualizar'}</Chip></td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
-            <span style={{ fontSize: 13, color: 'var(--tinta-2)' }}>
+            <span className="small text-body-secondary">
               Vista previa: {Math.min(40, filasDelTipo.length)} de {filasDelTipo.length} · {(TIPO[tipoVisto] ?? tipoVisto).toLowerCase()}.
             </span>
           </Vidrio>
@@ -281,18 +280,18 @@ export function Importar() {
         {r && (
           <Vidrio estilo={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             {aplicado ? (
-              <div role="status" style={{ fontSize: 14 }}>
+              <div role="status">
                 <strong>Catálogo actualizado.</strong> {aplicado.creados} creados · {aplicado.actualizados} actualizados · {aplicado.sinCambios} sin cambios.
                 {aplicado.advertencias.length > 0 && (
-                  <div style={{ marginTop: 6, fontSize: 13, color: 'var(--tinta-2)' }}>
+                  <div className="mt-2 small text-body-secondary">
                     {aplicado.advertencias.slice(0, 5).map((w, i) => <div key={i}>• {w}</div>)}
                     {aplicado.advertencias.length > 5 && <div>… y {aplicado.advertencias.length - 5} avisos más</div>}
                   </div>
                 )}
               </div>
             ) : (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-                <span style={{ fontSize: 14, color: 'var(--tinta-2)', flex: '1 1 300px', lineHeight: 1.5 }}>
+              <div className="d-flex align-items-center gap-3 flex-wrap justify-content-end">
+                <span className="text-body-secondary" style={{ flex: '1 1 300px' }}>
                   Al confirmar, los insumos entran al catálogo: los códigos nuevos se crean y los que ya existen se actualizan. No se toca ningún saldo.
                 </span>
                 <Pildora enClic={aplicar} deshabilitado={aplicando}>
@@ -302,19 +301,19 @@ export function Importar() {
             )}
 
             {aplicado && (requerimiento ? (
-              <div role="status" style={{ fontSize: 14, borderTop: '1px solid var(--separador)', paddingTop: 14 }}>
+              <div role="status" className="pt-3" style={{ borderTop: '1px solid var(--separador)' }}>
                 <strong>Requerimiento de la obra cargado.</strong> {requerimiento.creados} insumos nuevos · {requerimiento.sinCambios} ya estaban
                 {requerimiento.fallidos.length > 0 && ` · ${requerimiento.fallidos.length} no se cargaron`}.
                 {(requerimiento.advertencias.length > 0 || requerimiento.fallidos.length > 0) && (
-                  <div style={{ marginTop: 6, fontSize: 13, color: 'var(--tinta-2)' }}>
+                  <div className="mt-2 small text-body-secondary">
                     {requerimiento.fallidos.slice(0, 3).map((f, i) => <div key={`f${i}`}>• {f.insumoCodigo}: {f.motivo}</div>)}
                     {requerimiento.advertencias.slice(0, 3).map((w, i) => <div key={`w${i}`}>• {w}</div>)}
                   </div>
                 )}
               </div>
             ) : (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap', justifyContent: 'flex-end', borderTop: '1px solid var(--separador)', paddingTop: 14 }}>
-                <span style={{ fontSize: 14, color: 'var(--tinta-2)', flex: '1 1 300px', lineHeight: 1.5 }}>
+              <div className="d-flex align-items-center gap-3 flex-wrap justify-content-end pt-3" style={{ borderTop: '1px solid var(--separador)' }}>
+                <span className="text-body-secondary" style={{ flex: '1 1 300px' }}>
                   Siguiente: cargar lo planificado (cantidad y precio del S10) como requerimiento de la obra activa. Es el cien por ciento contra el que se controla todo; lo ya cargado no se pisa.
                 </span>
                 <Pildora enClic={cargarReq} deshabilitado={cargandoReq}>{cargandoReq ? 'Cargando…' : 'Cargar requerimiento de la obra'}</Pildora>
@@ -324,7 +323,7 @@ export function Importar() {
           </Vidrio>
         )}
 
-        <p style={{ fontSize: 13, color: 'var(--tinta-plano)', padding: '0 4px', lineHeight: 1.5 }}>
+        <p className="small text-body-secondary px-1">
           El emparejamiento usa el <strong>código del insumo como clave</strong>: por eso
           repetir la importación actualiza en vez de duplicar. Y nunca toca los saldos,
           porque el catálogo no es el almacén — el stock vive en los movimientos.
@@ -336,8 +335,8 @@ export function Importar() {
 
 function Comprobacion({ bien, children }: { bien: boolean; children: ReactNode }) {
   return (
-    <li style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
-      <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={bien ? 'var(--bien)' : 'var(--aviso)'} strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" style={{ flex: 'none', marginTop: 1 }}>
+    <li className="d-flex gap-2 align-items-start">
+      <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={bien ? 'var(--bien)' : 'var(--aviso)'} strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0 mt-1">
         {bien ? <path d="M5 12.5l4.5 4.5L19 7.5" /> : <path d="M12 8v5M12 16.5v.5" />}
       </svg>
       <span>{children}</span>

@@ -1,18 +1,17 @@
-/* SIGRO · armazón de la web de oficina: menú lateral de vidrio (lienzo «SIGRO Oficina · Web»), obra activa y rutas. */
+/* SIGRO · armazón de la web de oficina con React-Bootstrap: Navbar arriba, menú lateral (Offcanvas + Accordion), obra activa y rutas. */
 import { Component, Suspense, lazy, useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { HashRouter, NavLink, Navigate, Route, Routes, useLocation } from 'react-router-dom'
-import { alternarGrupo, grupoDeRuta } from './menu'
+import { grupoDeRuta } from './menu'
 import { api } from './api/cliente'
 import { cerrarSesion, sesionActual, usaApiReal } from './api/http'
 import { ElegirObra } from './paginas/ElegirObra'
 import { Entrar } from './paginas/Entrar'
 import { Arranque, CapaPlano, useInerte } from './ui/Arranque'
-import { pideMenosMovimiento } from './ui/PlanoQueSeDibuja'
-import { Fondo } from './ui/vidrio'
+import {  } from './ui/piezas'
 import { esAdministrador } from './paginas/administracion/reglas'
 import type { Obra, ObraActiva } from './api/tipos'
-import logo from './assets/sevens-logo.webp'   // 165×116: el doble de los 58 px de alto que ocupa (pantallas 2x)
 import logoBlanco from './assets/sevens-logo-blanco.webp'
+import { Accordion, Alert, Badge, Button, Container, Form, Nav, Navbar, NavDropdown, Offcanvas, Spinner } from 'react-bootstrap'
 
 const ROLES: Record<string, string> = {
   residente: 'Residente de obra', administrador: 'Administrador', gerente: 'Gerente',
@@ -33,27 +32,15 @@ class GuardianErrores extends Component<{ children: ReactNode }, { error: Error 
   render() {
     if (!this.state.error) return this.props.children
     return (
-      <div style={{ background: 'var(--tarjeta)', border: '1px solid var(--borde)', borderRadius: 'var(--radio)', padding: 26, boxShadow: 'var(--sombra)' }}>
-        <div style={{ fontSize: 15, fontWeight: 700 }}>Esta pantalla tuvo un problema</div>
-        <p style={{ fontSize: 13, color: 'var(--tinta-2)', marginTop: 8, lineHeight: 1.5 }}>
+      <Alert variant="danger">
+        <Alert.Heading as="h2" className="h6">Esta pantalla tuvo un problema</Alert.Heading>
+        <p className="small mb-2">
           No se perdió nada: los registros viven en el servidor. Vuelve a intentar;
           si se repite, avisa al equipo con el texto de abajo.
         </p>
-        <p className="n" style={{ fontSize: 11.5, color: 'var(--tinta-3)', marginTop: 8 }}>{String(this.state.error)}</p>
-        <div style={{ marginTop: 14 }}>
-          <button
-            type="button"
-            onClick={() => this.setState({ error: null })}
-            style={{
-              background: 'var(--accion)', color: 'var(--accion-tinta)', border: 0,
-              borderRadius: 'var(--radio-pildora)', padding: '9px 18px', fontSize: 13.5,
-              fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
-            }}
-          >
-            Reintentar
-          </button>
-        </div>
-      </div>
+        <p className="n small text-body-secondary">{String(this.state.error)}</p>
+        <Button variant="danger" onClick={() => this.setState({ error: null })}>Reintentar</Button>
+      </Alert>
     )
   }
 }
@@ -75,7 +62,9 @@ const Inventario = lazy(() => import('./paginas/Inventario').then((m) => ({ defa
 const Tablero = lazy(() => import('./paginas/Tablero').then((m) => ({ default: m.Tablero })))
 
 const CargandoPantalla = () => (
-  <p role="status" style={{ fontSize: 13, color: 'var(--tinta-3)', padding: '24px 4px' }}>Cargando la pantalla…</p>
+  <div role="status" className="d-flex align-items-center gap-2 text-body-secondary py-4">
+    <Spinner animation="border" size="sm" /> Cargando la pantalla…
+  </div>
 )
 
 /* Íconos del menú: trazo simple, heredan el color del texto. */
@@ -149,19 +138,12 @@ const GRUPOS: { rotulo: string; items: { ruta: string; nombre: string; icono: ke
   },
 ]
 
-/* Panel de accesibilidad (abajo a la derecha): tema claro/oscuro y escala del
-   texto. Todo el estilo vive en CSS variables y la escala es un zoom del body,
-   así que ambos ajustes son un atributo en <html> y nada más. Persisten en el
-   dispositivo (si no hay almacenamiento, simplemente no persisten). */
-const ESCALAS = [
-  { valor: '90', rotulo: '90 %' },
-  { valor: '100', rotulo: '100 %' },
-  { valor: '110', rotulo: '110 %' },
-  { valor: '125', rotulo: '125 %' },
-]
+/* Ajustes de pantalla (menú «Pantalla» de la barra superior): tema claro u oscuro y tamaño del texto.
+   Bootstrap trae el modo oscuro con data-bs-theme en <html>; y como Bootstrap mide todo en rem,
+   el tamaño del texto es el font-size de <html>. Se guardan en este dispositivo. */
+const ESCALAS = ['90', '100', '110', '125']
 
-function PanelAccesibilidad() {
-  const [abierto, setAbierto] = useState(false)
+function AjustesPantalla() {
   const [tema, setTema] = useState(() => {
     try { return localStorage.getItem('sigro-tema') ?? 'claro' } catch { return 'claro' }
   })
@@ -169,93 +151,32 @@ function PanelAccesibilidad() {
     try { return localStorage.getItem('sigro-escala') ?? '100' } catch { return '100' }
   })
   useEffect(() => {
-    document.documentElement.dataset.tema = tema
-    document.documentElement.dataset.escala = escala
+    document.documentElement.dataset.bsTheme = tema === 'oscuro' ? 'dark' : 'light'
+    document.documentElement.style.fontSize = `${escala}%`
     try {
       localStorage.setItem('sigro-tema', tema)
       localStorage.setItem('sigro-escala', escala)
     } catch { /* sin almacenamiento, los ajustes no persisten */ }
   }, [tema, escala])
 
-  const opcion = (activo: boolean, rotulo: string, alClic: () => void, titulo?: string) => (
-    <button
-      key={rotulo}
-      type="button"
-      title={titulo}
-      onClick={alClic}
-      style={{
-        flex: 1, padding: '7px 0', fontSize: 12.5, fontWeight: 600, cursor: 'pointer',
-        fontFamily: 'inherit', borderRadius: 'var(--radio-chico)',
-        border: `1px solid ${activo ? 'var(--accion)' : 'var(--borde)'}`,
-        background: activo ? 'var(--marca-tinte)' : 'var(--tarjeta)',
-        color: activo ? 'var(--marca-tinte-tinta)' : 'var(--tinta-2)',
-      }}
-    >
-      {rotulo}
-    </button>
-  )
-
   return (
-    <div style={{ position: 'fixed', right: 18, bottom: 18, zIndex: 60, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 10 }}>
-      {abierto && (
-        <div
-          role="dialog"
-          aria-label="Ajustes de pantalla"
-          style={{
-            width: 240, background: 'var(--tarjeta)', border: '1px solid var(--borde)',
-            borderRadius: 'var(--radio)', boxShadow: 'var(--sombra), 0 18px 44px rgba(20,20,20,0.18)',
-            padding: 16, display: 'flex', flexDirection: 'column', gap: 14,
-          }}
-        >
-          <div style={{ fontSize: 13.5, fontWeight: 700 }}>Pantalla</div>
-          <div>
-            <div style={{ fontSize: 11.5, fontWeight: 600, color: 'var(--tinta-3)', marginBottom: 6 }}>Tema</div>
-            <div style={{ display: 'flex', gap: 7 }}>
-              {opcion(tema === 'claro', 'Claro', () => setTema('claro'))}
-              {opcion(tema === 'oscuro', 'Oscuro', () => setTema('oscuro'))}
-            </div>
-          </div>
-          <div>
-            <div style={{ fontSize: 11.5, fontWeight: 600, color: 'var(--tinta-3)', marginBottom: 6 }}>Tamaño del texto</div>
-            <div style={{ display: 'flex', gap: 7 }}>
-              {ESCALAS.map((e) => opcion(escala === e.valor, e.rotulo, () => setEscala(e.valor), `Texto al ${e.rotulo}`))}
-            </div>
-          </div>
-          <div style={{ fontSize: 11, color: 'var(--tinta-3)', lineHeight: 1.45 }}>
-            Los ajustes se guardan en este dispositivo.
-          </div>
-        </div>
-      )}
-      <button
-        type="button"
-        aria-label={abierto ? 'Cerrar ajustes de pantalla' : 'Abrir ajustes de pantalla: tema y tamaño del texto'}
-        aria-expanded={abierto}
-        title="Accesibilidad: tema y tamaño del texto"
-        onClick={() => setAbierto(!abierto)}
-        style={{
-          width: 44, height: 44, borderRadius: 99, border: '1px solid var(--borde)',
-          background: 'var(--tarjeta)', boxShadow: 'var(--sombra)', cursor: 'pointer',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-        }}
-      >
-        {abierto ? (
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--tinta-2)" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true">
-            <path d="M6 6l12 12" /><path d="M18 6L6 18" />
-          </svg>
-        ) : (
-          <span aria-hidden="true" style={{ fontSize: 15, fontWeight: 700, color: 'var(--tinta-2)', letterSpacing: '-0.5px' }}>
-            Aa
-          </span>
-        )}
-      </button>
-    </div>
+    <NavDropdown title="Pantalla" align="end" id="ajustes-pantalla">
+      <NavDropdown.Header>Tema</NavDropdown.Header>
+      <NavDropdown.Item active={tema === 'claro'} onClick={() => setTema('claro')}>Claro</NavDropdown.Item>
+      <NavDropdown.Item active={tema === 'oscuro'} onClick={() => setTema('oscuro')}>Oscuro</NavDropdown.Item>
+      <NavDropdown.Divider />
+      <NavDropdown.Header>Tamaño del texto</NavDropdown.Header>
+      {ESCALAS.map((e) => (
+        <NavDropdown.Item key={e} active={escala === e} onClick={() => setEscala(e)}>{e} %</NavDropdown.Item>
+      ))}
+    </NavDropdown>
   )
 }
 
-/* Secciones del menú en acordeón: cada área es un botón que se abre al tocarlo, una a la vez, y al
-   entrar está abierta la de la pantalla actual. Así el menú cabe sin scroll (también a 125 %).
-   En angosto (menú arriba, en una fila) se ven todas las opciones y los botones de área no aparecen. */
-function MenuSecciones({ grupos }: { grupos: typeof GRUPOS }) {
+/* Menú lateral en acordeón (Accordion de Bootstrap): un área abierta a la vez y, al entrar,
+   abierta la de la pantalla actual. Cada opción es un Nav.Link que usa el NavLink del router,
+   así Bootstrap pinta como «active» la pantalla abierta. */
+function MenuSecciones({ grupos, alNavegar }: { grupos: typeof GRUPOS; alNavegar?: () => void }) {
   const { pathname } = useLocation()
   const actual = grupoDeRuta(grupos, pathname)
   const [abierto, setAbierto] = useState<string | null>(actual)
@@ -263,37 +184,23 @@ function MenuSecciones({ grupos }: { grupos: typeof GRUPOS }) {
   useEffect(() => { if (actual) setAbierto(actual) }, [actual])
 
   return (
-    <nav aria-label="Secciones" className="menu-grupos">
-      {grupos.map((g, i) => {
-        const abre = abierto === g.rotulo
-        const idLista = `menu-area-${i}`
-        return (
-          <div key={g.rotulo} className="menu-grupo" data-abierto={abre || undefined}>
-            <button
-              type="button"
-              className="menu-area"
-              aria-expanded={abre}
-              aria-controls={idLista}
-              onClick={() => setAbierto((x) => alternarGrupo(x, g.rotulo))}
-            >
-              <span className="menu-area-texto">{g.rotulo}</span>
-              {actual === g.rotulo && !abre && <span className="menu-area-punto" aria-label="(pantalla actual)" />}
-              <svg className="menu-area-flecha" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                <path d="m6 9 6 6 6-6" />
-              </svg>
-            </button>
-            <div id={idLista} className="menu-area-lista" hidden={!abre}>
+    <Accordion as="nav" aria-label="Secciones" activeKey={abierto} onSelect={(k) => setAbierto(typeof k === 'string' ? k : null)} flush>
+      {grupos.map((g) => (
+        <Accordion.Item key={g.rotulo} eventKey={g.rotulo}>
+          <Accordion.Header>{g.rotulo}</Accordion.Header>
+          <Accordion.Body className="p-1">
+            <Nav className="flex-column">
               {g.items.map((s) => (
-                <NavLink key={s.ruta} to={s.ruta} className="menu-enlace" title={s.nombre}>
-                  <Icono d={ICONOS[s.icono]} tam={19} />
-                  <span className="menu-enlace-texto">{s.nombre}</span>
-                </NavLink>
+                <Nav.Link key={s.ruta} as={NavLink} to={s.ruta} onClick={alNavegar} className="d-flex align-items-center gap-2 rounded">
+                  <Icono d={ICONOS[s.icono]} tam={17} />
+                  {s.nombre}
+                </Nav.Link>
               ))}
-            </div>
-          </div>
-        )
-      })}
-    </nav>
+            </Nav>
+          </Accordion.Body>
+        </Accordion.Item>
+      ))}
+    </Accordion>
   )
 }
 
@@ -329,8 +236,7 @@ function Entrada() {
         setSaliendo(false)
         setSesion(nueva)
       }
-      if (pideMenosMovimiento()) seguir()
-      else { setSaliendo(true); espera = setTimeout(seguir, 320) }
+      setSaliendo(true); espera = setTimeout(seguir, 150)
     }
     window.addEventListener('sigro-sesion', cambio)
     return () => { window.removeEventListener('sigro-sesion', cambio); clearTimeout(espera) }
@@ -390,7 +296,6 @@ function Sistema({ preparando = false, nombreObra = '', alTerminar }: {
   }, [todoListo, alTerminar])
   const marco = useRef<HTMLDivElement>(null)
   useInerte(marco, preparando && !mostrando)
-  const claseArmazon = !preparando ? 'armazon' : mostrando ? 'armazon armazon-entra' : 'armazon armazon-espera'
 
   // regla 9: al cambiar de obra, lo de empresa queda y lo de obra cambia.
   // La clave en el contenedor remonta las pantallas para que vuelvan a consultar.
@@ -403,109 +308,96 @@ function Sistema({ preparando = false, nombreObra = '', alTerminar }: {
   const rol = sesion?.obras.find((o) => String(o.id) === obra?.id)?.rol ?? sesion?.obras[0]?.rol
   const grupos = usaApiReal && esAdministrador(sesion, obra?.id) ? [...GRUPOS, GRUPO_ADMINISTRACION] : GRUPOS
 
+  const [menuAbierto, setMenuAbierto] = useState(false)
+
   return (
     <HashRouter>
       {preparando && (
-        <>
-          {/* el mismo plano de Entrar sigue detrás del vidrio: la entrada es continua, no un salto a blanco */}
-          {!mostrando && <Fondo dibujo="entrar" />}
-          <CapaPlano
-            etiqueta="Preparando tu obra"
-            titulo={`Preparando tu obra · ${obra?.nombre ?? nombreObra}`}
-            progreso={(dibujado ? 0.34 : 0) + (obra || obraFallo ? 0.33 : 0) + (panelListo ? 0.33 : 0)}
-            saliendo={mostrando}
-            alDibujarse={() => setDibujado(true)}
-          />
-        </>
+        <CapaPlano
+          etiqueta="Preparando tu obra"
+          titulo={`Preparando tu obra · ${obra?.nombre ?? nombreObra}`}
+          progreso={(dibujado ? 0.34 : 0) + (obra || obraFallo ? 0.33 : 0) + (panelListo ? 0.33 : 0)}
+          saliendo={mostrando}
+          alDibujarse={() => setDibujado(true)}
+        />
       )}
-      <div ref={marco} className={claseArmazon}>
-        <aside aria-label="Menú principal" className="vidrio-fuerte menu-lateral">
-          {/* cabecera fija: el logo y la obra activa siempre a la vista; solo la lista de opciones se desplaza */}
-          <div className="menu-cabecera">
-          <NavLink to="/tablero" aria-label="SIGRO · inicio" style={{ display: 'flex', justifyContent: 'center', padding: '2px 0 4px' }}>
-            <img src={logo} alt="SEVEN'S Ingenieros SAC" className="solo-claro" width={83} height={58} decoding="async" style={{ height: 58, width: 'auto' }} />
-            <img src={logoBlanco} alt="SEVEN'S Ingenieros SAC" className="solo-oscuro" width={83} height={58} decoding="async" style={{ height: 58, width: 'auto' }} />
-          </NavLink>
+      <div ref={marco} className="min-vh-100">
+        {/* Barra superior (Navbar oscura): logo, obra activa, ajustes y usuario */}
+        <Navbar bg="dark" data-bs-theme="dark" sticky="top" className="px-3">
+          <Button variant="outline-light" size="sm" className="d-lg-none me-2" onClick={() => setMenuAbierto(true)} aria-label="Abrir menú">
+            ☰
+          </Button>
+          <Navbar.Brand as={NavLink} to="/tablero" aria-label="SIGRO · inicio">
+            <img src={logoBlanco} alt="SEVEN'S Ingenieros SAC" height={34} />
+          </Navbar.Brand>
 
-          <div className="vidrio" style={{ borderRadius: 18, padding: '10px 12px', display: 'flex', alignItems: 'center', gap: 10, boxShadow: 'none' }}>
-            <span aria-hidden style={{ width: 36, height: 36, borderRadius: 12, background: 'var(--marca-tinte)', color: 'var(--accion)', display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 'none' }}>
-              <Icono d={ICONOS.obra} tam={18} />
-            </span>
-            <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
-              <label htmlFor="obra-activa" style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--tinta-2)' }}>
-                Obra activa
-              </label>
-              {obras.length > 1 ? (
-                <select
-                  id="obra-activa"
-                  value={obra?.id ?? ''}
-                  onChange={(e) => cambiarObra(e.target.value)}
-                  className="foco-vidrio"
-                  style={{
-                    width: '100%', minHeight: 32, border: 0, padding: 0, fontSize: 14, fontWeight: 800,
-                    fontFamily: 'inherit', background: 'transparent', color: 'var(--tinta)', cursor: 'pointer',
-                  }}
-                >
-                  {obras.map((o) => <option key={o.id} value={o.id}>{o.nombre}</option>)}
-                </select>
-              ) : (
-                <span style={{ fontSize: 14, fontWeight: 800 }}>{obra?.nombre ?? '…'}</span>
-              )}
-              <span className="n" style={{ fontSize: 12, color: 'var(--tinta-2)' }}>
-                {obra ? `${obra.semana === 0 ? 'aún no inicia' : `semana ${obra.semana} de ${obra.semanasTotales}`} · solo ves lo de esta obra` : ''}
-              </span>
-            </div>
-          </div>
+          {/* obra activa: si hay más de una, se elige aquí (regla 9: solo ves lo de esta obra) */}
+          <div className="d-none d-md-flex align-items-center gap-2 text-white-50 small ms-2">
+            <span>Obra:</span>
+            {obras.length > 1 ? (
+              <Form.Select size="sm" id="obra-activa" aria-label="Obra activa" value={obra?.id ?? ''}
+                onChange={(e) => cambiarObra(e.target.value)} style={{ width: 220 }}>
+                {obras.map((o) => <option key={o.id} value={o.id}>{o.nombre}</option>)}
+              </Form.Select>
+            ) : (
+              <span className="text-white fw-semibold">{obra?.nombre ?? '…'}</span>
+            )}
+            {obra && <Badge bg="secondary">{obra.semana === 0 ? 'aún no inicia' : `semana ${obra.semana} de ${obra.semanasTotales}`}</Badge>}
           </div>
 
-          <MenuSecciones grupos={grupos} />
+          <Nav className="ms-auto align-items-center">
+            <AjustesPantalla />
+            {usaApiReal && sesion && (
+              <NavDropdown align="end" id="usuario" title={sesion.usuario.nombre.trim().split(/\s+/)[0]}>
+                <NavDropdown.ItemText className="small">
+                  <div className="fw-semibold">{sesion.usuario.nombre}</div>
+                  {rol && <div className="text-body-secondary">{ROLES[rol] ?? rol}</div>}
+                </NavDropdown.ItemText>
+                <NavDropdown.Divider />
+                <NavDropdown.Item onClick={cerrarSesion}>Cerrar sesión</NavDropdown.Item>
+              </NavDropdown>
+            )}
+          </Nav>
+        </Navbar>
 
-          {usaApiReal && sesion && (
-            <div className="menu-pie">
-              <span aria-hidden style={{ width: 40, height: 40, borderRadius: 20, background: 'var(--aviso-tinte)', color: 'var(--aviso)', display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 'none', fontWeight: 800 }}>
-                {sesion.usuario.nombre.trim().charAt(0).toUpperCase()}
-              </span>
-              <span style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
-                <span className="texto-corto" title={sesion.usuario.nombre} style={{ fontSize: 14, fontWeight: 700 }}>{sesion.usuario.nombre}</span>
-                {rol && <span className="texto-corto" style={{ fontSize: 12, color: 'var(--tinta-2)' }}>{ROLES[rol] ?? rol}</span>}
-              </span>
-              <button
-                type="button" onClick={cerrarSesion} aria-label="Cerrar sesión" title="Cerrar sesión" className="foco-vidrio menu-salir"
-              >
-                <Icono d="M15 4h4v16h-4|M10 17l5-5-5-5|M15 12H3" tam={17} />
-                Salir
-              </button>
-            </div>
-          )}
-        </aside>
+        <div className="d-flex">
+          {/* Offcanvas «responsive»: a partir de lg se ve fijo a la izquierda; en pantallas chicas se abre con ☰ */}
+          <Offcanvas show={menuAbierto} onHide={() => setMenuAbierto(false)} responsive="lg" className="sigro-menu border-end bg-body">
+            <Offcanvas.Header closeButton>
+              <Offcanvas.Title>Menú</Offcanvas.Title>
+            </Offcanvas.Header>
+            <Offcanvas.Body className="d-block p-0">
+              <MenuSecciones grupos={grupos} alNavegar={() => setMenuAbierto(false)} />
+            </Offcanvas.Body>
+          </Offcanvas>
 
-        <main className="contenido">
-          {/* la clave remonta las pantallas al cambiar de obra: vuelven a consultar */}
-          <div key={obra?.id ?? 'sin-obra'}>
-          <GuardianErrores>
-          <Suspense fallback={<CargandoPantalla />}>
-          <Routes>
-            <Route path="/" element={<Navigate to="/proveedores" replace />} />
-            <Route path="/proveedores" element={<Proveedores />} />
-            <Route path="/compras" element={<Compras />} />
-            <Route path="/tablero" element={<Tablero />} />
-            <Route path="/inventario" element={<Inventario />} />
-            <Route path="/reposicion" element={<Reposicion />} />
-            <Route path="/catalogo" element={<Catalogo />} />
-            <Route path="/movimientos" element={<Movimientos />} />
-            <Route path="/semana" element={<Semana />} />
-            <Route path="/requerimiento" element={<Requerimiento />} />
-            <Route path="/importar" element={<Importar />} />
-            <Route path="/obra" element={<Obras />} />
-            <Route path="/parametros" element={<Parametros />} />
-            <Route path="/administracion" element={<Administracion obra={obra} />} />
-            <Route path="/administracion/:seccion" element={<Administracion obra={obra} />} />
-          </Routes>
-          </Suspense>
-          </GuardianErrores>
-          </div>
-        </main>
-        <PanelAccesibilidad />
+          <main className="flex-grow-1 p-3 p-lg-4" style={{ minWidth: 0 }}>
+            {/* la clave remonta las pantallas al cambiar de obra: vuelven a consultar */}
+            <Container fluid key={obra?.id ?? 'sin-obra'} className="px-0">
+              <GuardianErrores>
+                <Suspense fallback={<CargandoPantalla />}>
+                  <Routes>
+                    <Route path="/" element={<Navigate to="/proveedores" replace />} />
+                    <Route path="/proveedores" element={<Proveedores />} />
+                    <Route path="/compras" element={<Compras />} />
+                    <Route path="/tablero" element={<Tablero />} />
+                    <Route path="/inventario" element={<Inventario />} />
+                    <Route path="/reposicion" element={<Reposicion />} />
+                    <Route path="/catalogo" element={<Catalogo />} />
+                    <Route path="/movimientos" element={<Movimientos />} />
+                    <Route path="/semana" element={<Semana />} />
+                    <Route path="/requerimiento" element={<Requerimiento />} />
+                    <Route path="/importar" element={<Importar />} />
+                    <Route path="/obra" element={<Obras />} />
+                    <Route path="/parametros" element={<Parametros />} />
+                    <Route path="/administracion" element={<Administracion obra={obra} />} />
+                    <Route path="/administracion/:seccion" element={<Administracion obra={obra} />} />
+                  </Routes>
+                </Suspense>
+              </GuardianErrores>
+            </Container>
+          </main>
+        </div>
       </div>
     </HashRouter>
   )

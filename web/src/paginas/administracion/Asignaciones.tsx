@@ -41,10 +41,10 @@ export function Asignaciones({ obraId, obraNombre }: { obraId: string; obraNombr
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+    <div className="d-flex flex-column gap-3">
       <Tarjeta>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <div style={{ fontSize: 14.5, fontWeight: 700 }}>Asignar a {obraNombre}</div>
+        <div className="d-flex flex-column gap-3">
+          <div className="fw-bold">Asignar a {obraNombre}</div>
           {usuarios.error && <AvisoError texto={usuarios.error} />}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12, alignItems: 'start' }}>
             <Selector
@@ -60,7 +60,7 @@ export function Asignaciones({ obraId, obraNombre }: { obraId: string; obraNombr
             />
           </div>
           {usuarios.datos && candidatos.length === 0 && (
-            <span style={{ fontSize: 12.5, color: 'var(--tinta-3)' }}>
+            <span className="small text-body-secondary">
               Todos los usuarios activos ya están asignados a esta obra. Registra uno nuevo en «Usuarios».
             </span>
           )}
@@ -71,7 +71,7 @@ export function Asignaciones({ obraId, obraNombre }: { obraId: string; obraNombr
       {hecho && <AvisoBien texto={hecho} />}
       {aviso && <AvisoError texto={aviso} />}
 
-      <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--tinta-2)' }}>
+      <label className="d-flex align-items-center gap-2 small text-body-secondary">
         <input type="checkbox" checked={verRetiradas} onChange={(e) => setVerRetiradas(e.target.checked)} />
         Mostrar también las asignaciones retiradas
       </label>

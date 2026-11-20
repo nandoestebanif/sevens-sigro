@@ -17,10 +17,9 @@ object Apariencia {
 enum class ModoTema(val texto: String) { SISTEMA("Como el celular"), CLARO("Claro"), OSCURO("Oscuro") }
 
 /*
- * Fichas técnicas del diseño aprobado (android/diseno/LEEME.md, «estilo B claro moderno + vidrio»).
- * Un solo lugar para los valores: si el lienzo cambia, se cambia aquí. Cada ficha tiene su valor claro y su
- * valor oscuro. Oscuro = negro puro (bien en pantallas OLED) con vidrio claro translúcido encima; el texto es gris
- * muy claro y no blanco puro, para que no encandile.
+ * Colores de la app con su valor claro y oscuro. Los fondos y superficies coinciden con el
+ * colorScheme de Material 3 (Tema.kt); los nombres «Vidrio*» quedan de la versión anterior y hoy
+ * son superficies opacas. En pantallas nuevas conviene usar MaterialTheme.colorScheme directamente.
  */
 object Paleta {
     private inline fun c(claro: Long, oscuro: Long) = Color(if (Apariencia.oscuro) oscuro else claro)
@@ -34,8 +33,8 @@ object Paleta {
     /** Lo que va encima de un relleno [Tinta]. */
     val SobreTinta get() = c(0xFFFFFFFF, 0xFF000000)
     /** Relleno del botón principal y de la opción elegida: negro en claro, naranja en oscuro (un blanco encandila). */
-    val Principal get() = c(0xFF111827, 0xFFFB923C)
-    val SobrePrincipal get() = c(0xFFFFFFFF, 0xFF1C0A02)
+    val Principal get() = c(0xFFC2410C, 0xFFFB923C)
+    val SobrePrincipal get() = c(0xFFFFFFFF, 0xFF431407)
 
     // Acento
     val Naranja get() = c(0xFFC2410C, 0xFFFB923C)
@@ -57,15 +56,15 @@ object Paleta {
     val AvisoFondo get() = c(0xFFFEF3C7, 0xFF241703)
 
     // Fondo, superficies y vidrio
-    val FondoBase get() = c(0xFFEDF1F6, 0xFF000000)
+    val FondoBase get() = c(0xFFF8FAFC, 0xFF0F172A)
     /** Superficie opaca (listas, opciones, píldoras): blanca en claro, pizarra en oscuro. */
-    val Superficie get() = c(0xFFFFFFFF, 0xFF161618)
-    val SuperficieSuave get() = c(0xFFF3F4F6, 0xFF1F1F23)
+    val Superficie get() = c(0xFFFFFFFF, 0xFF1E293B)
+    val SuperficieSuave get() = c(0xFFF1F5F9, 0xFF334155)
     val Noche get() = c(0xFF1E293B, 0xFF000000)          // franja de la ilustración en Entrar y Elegir obra
-    val Vidrio get() = if (Apariencia.oscuro) Color.White.copy(alpha = 0.07f) else Color.White.copy(alpha = 0.58f)
-    val VidrioFuerte get() = if (Apariencia.oscuro) Color.White.copy(alpha = 0.11f) else Color.White.copy(alpha = 0.78f)
-    val BordeVidrio get() = if (Apariencia.oscuro) Color.White.copy(alpha = 0.12f) else Color.White.copy(alpha = 0.75f)
-    val BordeVidrioFuerte get() = if (Apariencia.oscuro) Color.White.copy(alpha = 0.18f) else Color.White.copy(alpha = 0.85f)
+    val Vidrio get() = Superficie
+    val VidrioFuerte get() = Superficie
+    val BordeVidrio get() = c(0xFFE2E8F0, 0xFF334155)
+    val BordeVidrioFuerte get() = BordeVidrio
     val BordeCampo get() = Tinta.copy(alpha = if (Apariencia.oscuro) 0.22f else 0.14f)
     val Separador get() = Tinta.copy(alpha = if (Apariencia.oscuro) 0.12f else 0.07f)
     /** Lo que estaba en gris pizarra fijo (íconos neutros, textos de apoyo). */
