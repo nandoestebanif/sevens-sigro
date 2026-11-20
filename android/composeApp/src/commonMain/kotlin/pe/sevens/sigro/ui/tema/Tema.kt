@@ -1,7 +1,6 @@
 package pe.sevens.sigro.ui.tema
 
 import androidx.compose.foundation.isSystemInDarkTheme
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Shapes
 import androidx.compose.material3.Typography
@@ -12,24 +11,14 @@ import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import org.jetbrains.compose.resources.Font
-import pe.sevens.sigro.recursos.Res
-import pe.sevens.sigro.recursos.inter_400
-import pe.sevens.sigro.recursos.inter_500
-import pe.sevens.sigro.recursos.inter_600
-import pe.sevens.sigro.recursos.inter_700
-import pe.sevens.sigro.recursos.inter_800
-import pe.sevens.sigro.recursos.sora_600
 
 /*
  * Tema «obra»: el mismo naranja de seguridad que la web (C2410C) sobre grises pizarra.
  * Pensado para usarse al sol, con guantes y con prisa:
  *  - contraste AA o mejor en texto y botones (naranja 700 sobre blanco = 5,2 : 1);
- *  - texto base de 17 sp y botones de al menos 56 dp de alto;
+ *  - tipografía estándar de Material 3 y botones de al menos 52 dp de alto;
  *  - el estado nunca se comunica solo con color: siempre va con ícono y palabra.
  */
 
@@ -55,6 +44,9 @@ private val Claro = lightColorScheme(
     outline = Color(0xFF94A3B8), outlineVariant = Pizarra200,
     error = Color(0xFFB91C1C), onError = Color.White,
     errorContainer = Color(0xFFFEE2E2), onErrorContainer = Color(0xFF7F1D1D),
+    // Superficies de Material 3 (barra inferior, menús, hojas): grises pizarra, no el lila por defecto.
+    surfaceContainerLowest = Color.White, surfaceContainerLow = Pizarra50, surfaceContainer = Pizarra100,
+    surfaceContainerHigh = Pizarra100, surfaceContainerHighest = Pizarra200, surfaceTint = Color.Transparent,
 )
 
 private val Oscuro = darkColorScheme(
@@ -70,6 +62,8 @@ private val Oscuro = darkColorScheme(
     outline = Color(0xFF64748B), outlineVariant = Pizarra700,
     error = Color(0xFFF87171), onError = Color(0xFF450A0A),
     errorContainer = Color(0xFF7F1D1D), onErrorContainer = Color(0xFFFEE2E2),
+    surfaceContainerLowest = Pizarra900, surfaceContainerLow = Pizarra900, surfaceContainer = Pizarra800,
+    surfaceContainerHigh = Pizarra800, surfaceContainerHighest = Pizarra700, surfaceTint = Color.Transparent,
 )
 
 /** Colores de estado de envío: van siempre acompañados de ícono y texto. */
@@ -93,62 +87,23 @@ private val EstadoOscuro = ColoresEstado(
 
 val LocalColoresEstado = staticCompositionLocalOf { EstadoClaro }
 
-/** Inter en toda la app (diseno/LEEME.md). Las fuentes son recursos: se cargan dentro de la composición. */
-@Composable
-fun Inter(): FontFamily = FontFamily(
-    Font(Res.font.inter_400, FontWeight.Normal),
-    Font(Res.font.inter_500, FontWeight.Medium),
-    Font(Res.font.inter_600, FontWeight.SemiBold),
-    Font(Res.font.inter_700, FontWeight.Bold),
-    Font(Res.font.inter_800, FontWeight.ExtraBold),
-)
-
-/** Sora solo para «ALMACÉN DE OBRA» bajo el logo, en la entrada. */
-@Composable
-fun Sora(): FontFamily = FontFamily(Font(Res.font.sora_600, FontWeight.SemiBold))
-
-/** Interletrado normal, como el lienzo: el de Material (0,5 sp) abre demasiado a Inter. */
-private fun tipos(f: FontFamily): Typography {
-    val b = Typography()
-    return Typography(
-        displayLarge = b.displayLarge.copy(fontFamily = f, letterSpacing = 0.sp),
-        displayMedium = b.displayMedium.copy(fontFamily = f, letterSpacing = 0.sp),
-        displaySmall = b.displaySmall.copy(fontFamily = f, letterSpacing = 0.sp),
-        headlineLarge = b.headlineLarge.copy(fontFamily = f, letterSpacing = 0.sp),
-        headlineMedium = b.headlineMedium.copy(fontFamily = f, letterSpacing = 0.sp, fontWeight = FontWeight.Bold, fontSize = 26.sp),
-        headlineSmall = b.headlineSmall.copy(fontFamily = f, letterSpacing = 0.sp),
-        titleLarge = b.titleLarge.copy(fontFamily = f, letterSpacing = 0.sp, fontWeight = FontWeight.SemiBold, fontSize = 21.sp),
-        titleMedium = b.titleMedium.copy(fontFamily = f, letterSpacing = 0.sp, fontWeight = FontWeight.SemiBold, fontSize = 18.sp),
-        titleSmall = b.titleSmall.copy(fontFamily = f, letterSpacing = 0.sp),
-        bodyLarge = b.bodyLarge.copy(fontFamily = f, letterSpacing = 0.sp, fontSize = 17.sp, lineHeight = 24.sp),
-        bodyMedium = b.bodyMedium.copy(fontFamily = f, letterSpacing = 0.sp, fontSize = 15.sp, lineHeight = 21.sp),
-        bodySmall = b.bodySmall.copy(fontFamily = f, letterSpacing = 0.sp),
-        labelLarge = b.labelLarge.copy(fontFamily = f, letterSpacing = 0.sp, fontWeight = FontWeight.SemiBold, fontSize = 17.sp),
-        labelMedium = b.labelMedium.copy(fontFamily = f, letterSpacing = 0.sp),
-        labelSmall = b.labelSmall.copy(fontFamily = f, letterSpacing = 0.sp),
-    )
-}
-
-private val Formas = Shapes(
-    small = RoundedCornerShape(10.dp),
-    medium = RoundedCornerShape(14.dp),
-    large = RoundedCornerShape(20.dp),
-)
+/*
+ * Tipografía y formas: las de Material 3 tal cual (Typography() y Shapes() por defecto).
+ * La fuente es la del sistema (Roboto en Android, San Francisco en iOS): no se empaquetan fuentes propias.
+ */
 
 /** Texto de cifras: ancho fijo para que las cantidades se alineen en listas. */
 val EstiloCifra = TextStyle(fontWeight = FontWeight.SemiBold, fontSize = 18.sp, letterSpacing = 0.2.sp)
 
 @Composable
 fun TemaSigro(oscuro: Boolean = isSystemInDarkTheme(), contenido: @Composable () -> Unit) {
-    val inter = Inter()
-    val tipos = androidx.compose.runtime.remember(inter) { tipos(inter) }
     androidx.compose.runtime.CompositionLocalProvider(
         LocalColoresEstado provides if (oscuro) EstadoOscuro else EstadoClaro,
     ) {
         MaterialTheme(
             colorScheme = if (oscuro) Oscuro else Claro,
-            typography = tipos,
-            shapes = Formas,
+            typography = Typography(),
+            shapes = Shapes(),
             content = contenido,
         )
     }

@@ -57,7 +57,11 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material.icons.filled.ViewInAr
+import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Button
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
@@ -294,14 +298,14 @@ fun PantallaInicio(
             }
         }
 
-        SnackbarHost(avisos, Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(bottom = 104.dp))
+        SnackbarHost(avisos, Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(bottom = 88.dp))
 
         BarraInferior(
             pendientes,
             alRegistros = { irA(Destino.Pendientes) },
             alStock = { irA(Destino.Stock) },
             alPerfil = { irA(Destino.Perfil) },
-            modifier = Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(start = 12.dp, end = 12.dp, bottom = 16.dp),
+            modifier = Modifier.align(Alignment.BottomCenter),
         )
 
         AnimatedVisibility(conMas, enter = fadeIn(), exit = fadeOut()) {
@@ -409,55 +413,35 @@ private fun FilaRegistro(s: SalidaRegistrada, alPulsar: () -> Unit) {
 
 private data class Cuatro(val icono: ImageVector, val color: Color, val fondo: Color, val palabra: String)
 
+/**
+ * Barra de navegación inferior estándar de Material 3: `NavigationBar` con un `NavigationBarItem` por destino.
+ * `BadgedBox` + `Badge` ponen el número de registros por enviar sobre el ícono (y el lector lo dice en voz).
+ */
 @Composable
 private fun BarraInferior(pendientes: Int, alRegistros: () -> Unit, alStock: () -> Unit, alPerfil: () -> Unit, modifier: Modifier) {
-    Row(
-        modifier.fillMaxWidth().height(76.dp).vidrio(RoundedCornerShape(38.dp), fuerte = true, sombra = 16.dp).padding(horizontal = 6.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        ItemBarra(Icons.Filled.Home, "Inicio", activo = true) {}
-        ItemBarra(Icons.AutoMirrored.Filled.FormatListBulleted, "Registros", insignia = pendientes, alPulsar = alRegistros)
-        ItemBarra(Icons.Filled.ViewInAr, "Stock", alPulsar = alStock)
-        ItemBarra(Icons.Filled.Engineering, "Perfil", alPulsar = alPerfil)
-    }
-}
-
-@Composable
-private fun RowScope.ItemBarra(
-    icono: ImageVector, texto: String, activo: Boolean = false, habilitado: Boolean = true, insignia: Int = 0, alPulsar: () -> Unit,
-) {
-    Column(
-        Modifier.weight(1f).fillMaxSize().alpha(if (habilitado) 1f else 0.45f)
-            .clickable(enabled = habilitado && !activo, role = Role.Tab, onClick = alPulsar)
-            .semantics(mergeDescendants = true) {
-                contentDescription = when {
-                    !habilitado -> "$texto, próximamente"
-                    insignia > 0 -> "$texto, $insignia por enviar"
-                    else -> texto
+    NavigationBar(modifier) {
+        NavigationBarItem(
+            selected = true, onClick = {},
+            icon = { Icon(Icons.Filled.Home, contentDescription = null) }, label = { Text("Inicio") },
+        )
+        NavigationBarItem(
+            selected = false, onClick = alRegistros,
+            icon = {
+                BadgedBox(badge = { if (pendientes > 0) Badge { Text(if (pendientes > 9) "9+" else "$pendientes") } }) {
+                    Icon(Icons.AutoMirrored.Filled.FormatListBulleted, contentDescription = null)
                 }
             },
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterVertically),
-    ) {
-        Box(
-            Modifier.width(62.dp).height(34.dp).then(
-                if (activo) Modifier.shadow(8.dp, RoundedCornerShape(17.dp), spotColor = Paleta.Naranja.copy(alpha = 0.5f)).background(Paleta.Naranja, RoundedCornerShape(17.dp))
-                else Modifier,
-            ),
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(icono, contentDescription = null, tint = if (activo) Paleta.SobreAcento else Paleta.Texto3, modifier = Modifier.size(22.dp))
-            if (insignia > 0) {
-                Box(
-                    Modifier.align(Alignment.TopEnd).offset(x = (-10).dp).size(18.dp)
-                        .background(Paleta.Ambar, CircleShape).border(2.dp, Paleta.Superficie, CircleShape),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Text(if (insignia > 9) "9+" else "$insignia", fontSize = 10.sp, fontWeight = FontWeight.ExtraBold, color = Paleta.SobreAcento)
-                }
-            }
-        }
-        Text(texto, fontSize = 12.sp, fontWeight = if (activo) FontWeight.ExtraBold else FontWeight.SemiBold, color = if (activo) Paleta.NaranjaOscuro else Paleta.Texto3)
+            label = { Text("Registros") },
+            modifier = Modifier.semantics { if (pendientes > 0) contentDescription = "Registros, $pendientes por enviar" },
+        )
+        NavigationBarItem(
+            selected = false, onClick = alStock,
+            icon = { Icon(Icons.Filled.ViewInAr, contentDescription = null) }, label = { Text("Stock") },
+        )
+        NavigationBarItem(
+            selected = false, onClick = alPerfil,
+            icon = { Icon(Icons.Filled.Engineering, contentDescription = null) }, label = { Text("Perfil") },
+        )
     }
 }
 

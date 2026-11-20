@@ -40,7 +40,6 @@ kotlin {
             implementation(compose.materialIconsExtended)
             implementation(compose.ui)
             implementation(compose.components.resources)
-            implementation(libs.haze)
             implementation(libs.lifecycle.viewmodel.compose)
             implementation(libs.coroutines.core)
             implementation(libs.serialization.json)
