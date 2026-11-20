@@ -18,10 +18,7 @@ export function useCarga<T>(cargar: () => Promise<T>, deps: unknown[]) {
 
 export function AvisoError({ texto, children }: { texto: string; children?: ReactNode }) {
   return (
-    <div role="alert" style={{
-      background: 'var(--grave-tinte)', color: 'var(--grave)', borderRadius: 'var(--radio-chico)',
-      padding: '11px 14px', fontSize: 13.5, lineHeight: 1.5, display: 'flex', flexDirection: 'column', gap: 10,
-    }}>
+    <div role="alert" className="text-danger small d-flex flex-column gap-2" style={{ background: 'var(--grave-tinte)', borderRadius: 'var(--radio-chico)', padding: '11px 14px' }}>
       <span>{texto}</span>
       {children}
     </div>
@@ -30,10 +27,7 @@ export function AvisoError({ texto, children }: { texto: string; children?: Reac
 
 export function AvisoBien({ texto }: { texto: string }) {
   return (
-    <div role="status" style={{
-      background: 'var(--bien-tinte)', color: 'var(--bien)', borderRadius: 'var(--radio-chico)',
-      padding: '10px 14px', fontSize: 13.5,
-    }}>
+    <div role="status" className="text-success small" style={{ background: 'var(--bien-tinte)', borderRadius: 'var(--radio-chico)', padding: '10px 14px' }}>
       {texto}
     </div>
   )
@@ -77,10 +71,10 @@ export function Confirmar({ titulo, texto, accion, enConfirmar, enCerrar }: {
   }
   return (
     <Modal titulo={titulo} enCerrar={enCerrar}>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-        <div style={{ fontSize: 13.5, lineHeight: 1.55, color: 'var(--tinta-2)' }}>{texto}</div>
+      <div className="d-flex flex-column gap-3">
+        <div className="small text-body-secondary">{texto}</div>
         {error && <AvisoError texto={error} />}
-        <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+        <div className="d-flex gap-2 justify-content-end">
           <Boton tipo="secundario" enClic={enCerrar}>Cancelar</Boton>
           <Boton enClic={confirmar} deshabilitado={ocupado}>{ocupado ? 'Guardando…' : accion}</Boton>
         </div>
@@ -95,12 +89,12 @@ export const estiloCeldaSuave: CSSProperties = { ...celda, fontSize: 13, color: 
 
 export function Tabla({ titulos, children, etiqueta }: { titulos: string[]; children: ReactNode; etiqueta: string }) {
   return (
-    <div style={{ overflowX: 'auto' }}>
-      <table aria-label={etiqueta} style={{ width: '100%', borderCollapse: 'collapse' }}>
+    <div className="overflow-x-auto">
+      <table aria-label={etiqueta} className="w-100" style={{ borderCollapse: 'collapse' }}>
         <thead>
           <tr style={{ background: 'var(--tarjeta-suave)', borderBottom: '1px solid var(--borde)' }}>
             {titulos.map((h) => (
-              <th key={h} scope="col" style={{ padding: '11px 16px', fontSize: 11, fontWeight: 600, color: 'var(--tinta-3)', letterSpacing: 0.4, textAlign: 'left', whiteSpace: 'nowrap' }}>
+              <th key={h} scope="col" className="small fw-semibold text-body-secondary text-start text-nowrap" style={{ padding: '11px 16px' }}>
                 {h}
               </th>
             ))}
@@ -123,8 +117,8 @@ export function Selector<T extends string | number>({ id, etiqueta, valor, opcio
   error?: string
 }) {
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-      <label htmlFor={id} style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--tinta-2)' }}>{etiqueta}</label>
+    <div className="d-flex flex-column gap-2">
+      <label htmlFor={id} className="small fw-semibold text-body-secondary">{etiqueta}</label>
       <select
         id={id}
         value={String(valor)}
@@ -140,7 +134,7 @@ export function Selector<T extends string | number>({ id, etiqueta, valor, opcio
         <option value="" disabled>Elige…</option>
         {opciones.map((o) => <option key={String(o.valor)} value={String(o.valor)}>{o.texto}</option>)}
       </select>
-      {error && <span style={{ fontSize: 12, color: 'var(--grave)' }}>{error}</span>}
+      {error && <span className="small text-danger">{error}</span>}
     </div>
   )
 }

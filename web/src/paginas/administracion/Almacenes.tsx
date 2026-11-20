@@ -34,10 +34,10 @@ export function Almacenes({ obraId, obraNombre }: { obraId: string; obraNombre: 
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+    <div className="d-flex flex-column gap-3">
       <Tarjeta>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <div style={{ fontSize: 14.5, fontWeight: 700 }}>Nuevo almacén en {obraNombre}</div>
+        <div className="d-flex flex-column gap-3">
+          <div className="fw-bold">Nuevo almacén en {obraNombre}</div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12, alignItems: 'start' }}>
             <Campo id="almacen-nombre" etiqueta="Nombre" valor={nombre} marcador="Ej.: Almacén torre B" enCambio={(v) => { setNombre(v); setErrorNombre(null) }} error={errorNombre ?? undefined} />
             <Selector id="almacen-tipo" etiqueta="Tipo" valor={tipo} opciones={TIPOS_ALMACEN} enCambio={setTipo} />

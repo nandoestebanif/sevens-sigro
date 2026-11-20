@@ -18,8 +18,9 @@ import { useEffect, useMemo, useState } from 'react'
 import { ErrorApi, api } from '../api/cliente'
 import type { Compra, ComprobanteCompra, EstadoCompra, InsumoCatalogo, LineaCompra, LineaRecepcion, Proveedor, TipoComprobante, VerificacionRecepcion } from '../api/tipos'
 import { Campo, Chip, Modal, Vacio, type TonoChip } from '../ui/base'
-import { Aviso, Chips, Encabezado, Fondo, Pildora, TituloSeccion } from '../ui/vidrio'
+import { Aviso, Chips, Encabezado, Pildora, TituloSeccion } from '../ui/piezas'
 import { BuscarOpcion } from '../ui/BuscarOpcion'
+import { ListGroup } from 'react-bootstrap'
 import { usaApiReal } from '../api/http'
 import { desvioPct, precios, type PrecioReferencia } from '../api/oficina'
 import { AltaProveedor } from './Proveedores'
@@ -89,14 +90,14 @@ function RecepcionCompra({ compra, enCerrar, enListo }: {
       {detalle === null ? (
         <Vacio titulo="Cargando…" detalle="Consultando pedido, recibido y pendiente." />
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-          <p style={{ fontSize: 12.5, color: 'var(--tinta-2)', lineHeight: 1.5 }}>
+        <div className="d-flex flex-column gap-3">
+          <p className="small text-body-secondary">
             {compra.proveedorRazonSocial} · {compra.fecha}. Se propone la recepción total;
             si el camión llegó con menos, corrige la cantidad: la compra queda parcial y
             admite más recepciones hasta completarse.
           </p>
-          <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 380 }}>
+          <div className="overflow-x-auto">
+          <table className="table table-sm align-middle mb-0" style={{ minWidth: 380 }}>
             <thead>
               <tr style={{ borderBottom: '1px solid var(--campo-borde)' }}>
                 {['Insumo', 'Pedido', 'Recibido', 'Pendiente', 'Recibir ahora'].map((h, i) => (
@@ -107,17 +108,17 @@ function RecepcionCompra({ compra, enCerrar, enListo }: {
             <tbody>
               {detalle.map((l) => (
                 <tr key={l.insumoId} style={{ borderBottom: '1px solid var(--separador)' }}>
-                  <td style={{ padding: '9px 6px', fontSize: 12.5, fontWeight: 600 }}>{l.descripcion}</td>
-                  <td className="n" style={{ padding: '9px 6px', fontSize: 12.5, color: 'var(--tinta-2)', textAlign: 'right' }}>{l.pedido.toLocaleString('es-PE')} {l.unidadCompra}</td>
-                  <td className="n" style={{ padding: '9px 6px', fontSize: 12.5, color: 'var(--tinta-2)', textAlign: 'right' }}>{l.recibido.toLocaleString('es-PE')}</td>
-                  <td className="n" style={{ padding: '9px 6px', fontSize: 12.5, fontWeight: 700, textAlign: 'right' }}>{l.pendiente.toLocaleString('es-PE')}</td>
-                  <td style={{ padding: '9px 0 9px 10px', textAlign: 'right', width: 90 }}>
+                  <td className="small fw-semibold" style={{ padding: '9px 6px' }}>{l.descripcion}</td>
+                  <td className="n small text-body-secondary text-end" style={{ padding: '9px 6px' }}>{l.pedido.toLocaleString('es-PE')} {l.unidadCompra}</td>
+                  <td className="n small text-body-secondary text-end" style={{ padding: '9px 6px' }}>{l.recibido.toLocaleString('es-PE')}</td>
+                  <td className="n small fw-bold text-end" style={{ padding: '9px 6px' }}>{l.pendiente.toLocaleString('es-PE')}</td>
+                  <td className="text-end" style={{ padding: '9px 0 9px 10px', width: 90 }}>
                     <input
                       aria-label={`Cantidad a recibir de ${l.descripcion}`}
                       value={cantidades[l.insumoId] ?? ''}
                       onChange={(e) => { setExceso(null); setCantidades((c) => ({ ...c, [l.insumoId]: e.target.value })) }}
-                      className="campo"
-                      style={{ width: 86, height: 40, padding: '0 10px', fontSize: 14, textAlign: 'right' }}
+                      className="form-control px-3 text-end"
+                      style={{ width: 86, height: 40 }}
                     />
                   </td>
                 </tr>
@@ -130,31 +131,31 @@ function RecepcionCompra({ compra, enCerrar, enListo }: {
               <strong>Con esta recepción se pasa lo requerido en el S10.</strong>
               <ul style={{ margin: '6px 0 8px', paddingLeft: 18 }}>
                 {exceso.lineas.filter((x) => x.excede).map((x) => (
-                  <li key={x.insumoId} style={{ fontSize: 13 }}>
+                  <li key={x.insumoId} className="small">
                     {x.descripcion}: requerido {x.requerido === null ? 'no está en el requerimiento' : `${x.requerido.toLocaleString('es-PE')} ${x.unidad}`},
                     {' '}con esta recepción {x.conEsta.toLocaleString('es-PE')} {x.unidad}
                     {x.exceso !== null && ` (+${x.exceso.toLocaleString('es-PE')})`}
                   </li>
                 ))}
               </ul>
-              <span style={{ fontSize: 13 }}>Se puede recibir igual (el requerimiento avisa, no bloquea): indica el motivo.</span>
+              <span className="small">Se puede recibir igual (el requerimiento avisa, no bloquea): indica el motivo.</span>
               <textarea
                 aria-label="Motivo del exceso"
                 value={motivo}
                 maxLength={300}
                 onChange={(e) => setMotivo(e.target.value)}
                 placeholder="Ej.: reposición por merma en el vaciado de losa"
-                className="campo"
-                style={{ display: 'block', width: '100%', minHeight: 60, marginTop: 8, padding: 10, fontSize: 14, fontFamily: 'inherit', boxSizing: 'border-box' }}
+                className="form-control d-block w-100 mt-2"
+                style={{ minHeight: 60, padding: 10, boxSizing: 'border-box' }}
               />
             </Aviso>
           )}
-          {error && <p role="alert" style={{ fontSize: 12.5, color: 'var(--grave)', fontWeight: 600 }}>{error}</p>}
-          <p style={{ fontSize: 12, color: 'var(--tinta-2)', lineHeight: 1.5 }}>
+          {error && <p role="alert" className="small text-danger fw-semibold">{error}</p>}
+          <p className="small text-body-secondary">
             Esta recepción es la que mueve el stock: cada línea genera su ingreso en el
             kárdex (Ingresos y salidas) y recalcula el costo promedio del insumo.
           </p>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, justifyContent: 'flex-end' }}>
+          <div className="d-flex flex-wrap gap-2 justify-content-end">
             <Pildora tipo="secundario" enClic={enCerrar}>Cancelar</Pildora>
             <Pildora enClic={recibir} deshabilitado={guardando || !detalle.length}>
               {guardando ? 'Registrando…' : exceso ? 'Recibir con este motivo' : 'Registrar recepción'}
@@ -190,7 +191,7 @@ const acorta = (texto: string, max = 44) =>
 
 function Etiqueta({ htmlFor, children }: { htmlFor: string; children: string }) {
   return (
-    <label htmlFor={htmlFor} style={{ fontSize: 13, fontWeight: 600, color: 'var(--tinta-2)' }}>
+    <label htmlFor={htmlFor} className="small fw-semibold text-body-secondary">
       {children}
     </label>
   )
@@ -217,8 +218,8 @@ function AnularCompra({ compra, enCerrar, enListo }: { compra: Compra; enCerrar:
   }
   return (
     <Modal titulo={`Anular la compra ${compra.numeroComprobante}`} enCerrar={enCerrar}>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-        <span style={{ fontSize: 13.5, color: 'var(--tinta-2)', lineHeight: 1.5 }}>
+      <div className="d-flex flex-column gap-3">
+        <span className="small text-body-secondary">
           {compra.proveedorRazonSocial} · S/ {compra.totales.total.toFixed(2)}. La compra no se borra: queda en la lista como
           «Anulada», con tu nombre, la fecha y el motivo, y deja de sumar en «Comprado».
         </span>
@@ -230,8 +231,8 @@ function AnularCompra({ compra, enCerrar, enListo }: { compra: Compra; enCerrar:
         )}
         <Campo id="motivo-anular-compra" etiqueta="Motivo (mínimo 5 caracteres)" valor={motivo} enCambio={setMotivo}
           marcador="p. ej. Compra de prueba registrada por error" />
-        {error && <div role="alert" style={{ fontSize: 13, color: 'var(--grave)' }}>{error}</div>}
-        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+        {error && <div role="alert" className="small text-danger">{error}</div>}
+        <div className="d-flex gap-2 justify-content-end">
           <Pildora tipo="secundario" enClic={enCerrar} deshabilitado={guardando}>Cancelar</Pildora>
           <Pildora enClic={() => void confirmar()} deshabilitado={guardando}>{guardando ? 'Anulando…' : 'Anular la compra'}</Pildora>
         </div>
@@ -312,13 +313,13 @@ function ComprobantesCompra({ compra, enCerrar, enCambio }: {
 
   return (
     <Modal titulo={`Comprobantes · ${compra.numeroComprobante}`} enCerrar={enCerrar}>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-        <p style={{ fontSize: 13.5, color: 'var(--tinta-2)', margin: 0 }}>
+      <div className="d-flex flex-column gap-3">
+        <p className="small text-body-secondary m-0">
           {compra.proveedorRazonSocial} · {compra.fecha}. Formatos permitidos: PDF, JPG o PNG (máximo 5 MB).
         </p>
 
         {compra.estado !== 'anulada' && (
-          <label style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 13, fontWeight: 600, color: 'var(--tinta-2)' }}>
+          <label className="d-flex flex-column gap-2 small fw-semibold text-body-secondary">
             Adjuntar archivo
             <input
               type="file"
@@ -329,12 +330,12 @@ function ComprobantesCompra({ compra, enCerrar, enCambio }: {
                 e.target.value = ''
                 void subir(file)
               }}
-              style={{ fontSize: 13.5 }}
+              className="small"
             />
           </label>
         )}
 
-        {subiendo && <span style={{ fontSize: 13, color: 'var(--tinta-2)' }}>Subiendo comprobante…</span>}
+        {subiendo && <span className="small text-body-secondary">Subiendo comprobante…</span>}
         {error && <Aviso tono="grave" rol="alert">{error}</Aviso>}
         {aviso && <Aviso tono="bien" rol="status">{aviso}</Aviso>}
 
@@ -343,27 +344,27 @@ function ComprobantesCompra({ compra, enCerrar, enCambio }: {
         ) : lista.length === 0 ? (
           <Vacio titulo="Sin comprobantes adjuntos" detalle="Esta compra aún no tiene factura o boleta digital cargada." />
         ) : (
-          <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <ul className="list-unstyled m-0 p-0 d-flex flex-column gap-2">
             {lista.map((c) => (
-              <li key={c.id} style={{ background: 'var(--vidrio-celda)', borderRadius: 14, padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: 6 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-                  <strong style={{ fontSize: 13.5 }}>{c.nombre}</strong>
+              <li key={c.id} className="d-flex flex-column gap-2" style={{ background: 'var(--vidrio-celda)', borderRadius: 14, padding: '10px 12px' }}>
+                <div className="d-flex justify-content-between gap-2 align-items-center flex-wrap">
+                  <strong className="small">{c.nombre}</strong>
                   <Chip tono={c.estado === 'vigente' ? 'bien' : 'grave'}>{c.estado === 'vigente' ? 'Vigente' : 'Anulado'}</Chip>
                 </div>
-                <div className="n" style={{ fontSize: 12, color: 'var(--tinta-2)' }}>
+                <div className="n small text-body-secondary">
                   {peso(c.tamanoBytes)} · {c.subidoEn.slice(0, 10)} · huella {c.sha256.slice(0, 12)}…
                 </div>
                 {c.estado === 'anulado' && c.motivoAnulacion && (
-                  <div style={{ fontSize: 12.5, color: 'var(--grave)' }}>Motivo de anulación: {c.motivoAnulacion}</div>
+                  <div className="small text-danger">Motivo de anulación: {c.motivoAnulacion}</div>
                 )}
-                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                <div className="d-flex gap-2 flex-wrap justify-content-end">
                   <Pildora tipo="secundario" chica enClic={() => void descargar(c)}>Descargar</Pildora>
                   {c.estado === 'vigente' && anulandoId !== c.id && (
                     <Pildora tipo="secundario" chica enClic={() => { setAnulandoId(c.id); setMotivoAnulacion(''); setError('') }}>Anular</Pildora>
                   )}
                 </div>
                 {anulandoId === c.id && (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8, paddingTop: 6, borderTop: '1px solid var(--separador)' }}>
+                  <div className="d-flex flex-column gap-2 pt-2" style={{ borderTop: '1px solid var(--separador)' }}>
                     <Campo
                       id={`motivo-comp-${c.id}`}
                       etiqueta="Motivo de anulación (mínimo 5 caracteres)"
@@ -371,7 +372,7 @@ function ComprobantesCompra({ compra, enCerrar, enCambio }: {
                       enCambio={setMotivoAnulacion}
                       marcador="p. ej. Se subió archivo equivocado"
                     />
-                    <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                    <div className="d-flex gap-2 justify-content-end">
                       <Pildora tipo="secundario" chica enClic={() => setAnulandoId(null)} deshabilitado={procesandoAnulacion}>Cancelar</Pildora>
                       <Pildora chica enClic={() => void anular(c)} deshabilitado={procesandoAnulacion}>
                         {procesandoAnulacion ? 'Anulando…' : 'Confirmar anulación'}
@@ -503,8 +504,7 @@ export function Compras() {
 
   return (
     <>
-    <Fondo dibujo="compras" />
-    <div className="pagina" style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+    <div className="d-flex flex-column gap-3 pb-4">
       <Encabezado
         titulo="Compras"
         sub="Lo que el residente compra a sus proveedores · la compra no mueve el stock: lo mueve la recepción en almacén"
@@ -515,17 +515,17 @@ export function Compras() {
         <Chip tono="marca">Proveedores: los reales del cliente</Chip>
       </Chips>
 
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 18, alignItems: 'flex-start' }}>
-        <section className="vidrio-fuerte" aria-label="Registrar la compra" style={{ flex: '999 1 560px', minWidth: 0, borderRadius: 'var(--radio-vidrio)', padding: '20px 22px', display: 'flex', flexDirection: 'column', gap: 14, boxShadow: 'var(--vidrio-sombra-alta)' }}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+      <div className="d-flex flex-wrap gap-3 align-items-start">
+        <section className="card card-body shadow d-flex flex-column gap-3" aria-label="Registrar la compra" style={{ flex: '999 1 560px', minWidth: 0, borderRadius: 'var(--radio-vidrio)', padding: '20px 22px', boxShadow: 'var(--vidrio-sombra-alta)' }}>
+          <div className="d-flex flex-column gap-1">
             <TituloSeccion>Registrar la compra</TituloSeccion>
-            <p style={{ fontSize: 13, color: 'var(--tinta-2)', lineHeight: 1.5 }}>
+            <p className="small text-body-secondary">
               Registrar la compra deja constancia de lo adquirido. El stock se mueve recién con la recepción, desde la app del almacén.
             </p>
           </div>
 
           {/* cabecera · flex con envoltura: en angosto los campos bajan de fila en vez de desbordarse */}
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'flex-end' }}>
+          <div className="d-flex flex-wrap gap-3 align-items-end">
             <div style={celdaForm(3, 220)}>
               <BuscarOpcion
                 id="c-prov" etiqueta="Proveedor" valor={proveedorId} enCambio={setProveedorId}
@@ -533,7 +533,7 @@ export function Compras() {
                 sinResultados="Ningún proveedor coincide con"
               />
             </div>
-            <div style={{ flex: 'none' }}>
+            <div className="flex-shrink-0">
               <Pildora tipo="secundario" enClic={() => setAltaAbierta(true)}>+ Nuevo</Pildora>
             </div>
             <div style={celdaForm(1, 110)}>
@@ -553,7 +553,7 @@ export function Compras() {
           </div>
 
           {/* línea en edición · misma envoltura */}
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'flex-end', paddingTop: 14, borderTop: '1px solid var(--separador)' }}>
+          <div className="d-flex flex-wrap gap-3 align-items-end pt-3" style={{ borderTop: '1px solid var(--separador)' }}>
             <div style={celdaForm(3, 220)}>
               <Etiqueta htmlFor="c-insumo">Insumo (busca entre los 237 del S10)</Etiqueta>
               <input
@@ -580,13 +580,13 @@ export function Compras() {
             <div style={celdaForm(1, 150)}>
               <Campo id="c-precio" etiqueta="Precio unit. S/ (con IGV)" valor={precio} enCambio={setPrecio} marcador="0.00" />
             </div>
-            <div style={{ flex: 'none' }}>
+            <div className="flex-shrink-0">
               <Pildora tipo="secundario" enClic={agregarLinea}>Agregar</Pildora>
             </div>
           </div>
 
           {ref && (
-            <p style={{ fontSize: 13, color: 'var(--tinta-2)', margin: 0 }}>
+            <p className="small text-body-secondary m-0">
               {ref.promedio === null
                 ? 'Aún no se recibió este insumo en la obra: no hay precio habitual con qué comparar.'
                 : <>Promedio pagado en la obra: <strong>S/ {soles(ref.promedio)}</strong> sin IGV (≈ S/ {soles(ref.promedio * 1.18)} con IGV) por {ref.unidadCompra}
@@ -603,29 +603,29 @@ export function Compras() {
                 maxLength={300}
                 onChange={(e) => setNota(e.target.value)}
                 placeholder="p. ej. alza del proveedor por escasez"
-                className="campo"
-                style={{ display: 'block', width: '100%', height: 40, marginTop: 8, padding: '0 10px', fontSize: 14, boxSizing: 'border-box' }}
+                className="form-control d-block w-100 mt-2 px-3"
+                style={{ height: 40, boxSizing: 'border-box' }}
               />
             </Aviso>
           )}
 
           {/* líneas agregadas */}
           {lineas.length > 0 && (
-            <div style={{ display: 'flex', flexDirection: 'column' }}>
+            <div className="d-flex flex-column">
               {lineas.map((l, i) => (
-                <div key={`${l.insumoId}-${i}`} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', borderBottom: '1px solid var(--separador)', fontSize: 14 }}>
-                  <span style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
-                    <span style={{ fontWeight: 700 }}>{l.descripcion}</span>
-                    <span className="n" style={{ fontSize: 13, color: 'var(--tinta-2)' }}>{l.cantidad} {l.unidadCompra} × S/ {soles(l.precioUnitario)}
-                      {l.fueraDeLoHabitual && <> · <span style={{ color: 'var(--aviso)', fontWeight: 700 }}>fuera de lo habitual</span>{l.notaPrecio ? ` («${l.notaPrecio}»)` : ''}</>}</span>
+                <div key={`${l.insumoId}-${i}`} className="d-flex align-items-center gap-2" style={{ padding: '8px 0', borderBottom: '1px solid var(--separador)' }}>
+                  <span className="flex-grow-1 d-flex flex-column" style={{ minWidth: 0 }}>
+                    <span className="fw-bold">{l.descripcion}</span>
+                    <span className="n small text-body-secondary">{l.cantidad} {l.unidadCompra} × S/ {soles(l.precioUnitario)}
+                      {l.fueraDeLoHabitual && <> · <span className="text-warning-emphasis fw-bold">fuera de lo habitual</span>{l.notaPrecio ? ` («${l.notaPrecio}»)` : ''}</>}</span>
                   </span>
-                  <span className="n" style={{ fontWeight: 700, whiteSpace: 'nowrap' }}>S/ {soles(l.cantidad * l.precioUnitario)}</span>
+                  <span className="n fw-bold text-nowrap">S/ {soles(l.cantidad * l.precioUnitario)}</span>
                   <button
                     type="button"
                     aria-label={`Quitar ${l.descripcion}`}
                     onClick={() => setLineas((ls) => ls.filter((_, j) => j !== i))}
-                    className="foco-vidrio"
-                    style={{ width: 44, height: 44, borderRadius: 22, border: 0, background: 'transparent', color: 'var(--tinta-2)', cursor: 'pointer', fontSize: 15, flex: 'none' }}
+                   
+                    className="text-body-secondary flex-shrink-0" style={{ width: 44, height: 44, borderRadius: 22, border: 0, background: 'transparent' }}
                   >
                     ✕
                   </button>
@@ -637,14 +637,14 @@ export function Compras() {
           {/* totales: base imponible, impuesto y total (criterio de HU-32) */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 8 }}>
             {[['Base imponible', base], ['IGV 18 %', total - base], ['Total', total]].map(([rot, val]) => (
-              <div key={rot as string} style={{ display: 'flex', flexDirection: 'column', background: 'var(--vidrio-celda)', borderRadius: 14, padding: '8px 10px' }}>
-                <span style={{ fontSize: 12.5, color: 'var(--tinta-2)' }}>{rot as string}</span>
+              <div key={rot as string} className="d-flex flex-column" style={{ background: 'var(--vidrio-celda)', borderRadius: 14, padding: '8px 10px' }}>
+                <span className="small text-body-secondary">{rot as string}</span>
                 <span className="n" style={{ fontSize: rot === 'Total' ? 17 : 15, fontWeight: 800 }}>S/ {soles(val as number)}</span>
               </div>
             ))}
           </div>
 
-          <label style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 13, fontWeight: 600, color: 'var(--tinta-2)' }}>
+          <label className="d-flex flex-column gap-2 small fw-semibold text-body-secondary">
             Comprobante digital (PDF, JPG o PNG, opcional — máx. 5 MB)
             <input
               key={inputArchivoClave}
@@ -652,7 +652,7 @@ export function Compras() {
               type="file"
               accept="application/pdf,image/jpeg,image/png,.pdf,.jpg,.jpeg,.png"
               onChange={(e) => setArchivoComprobante(e.target.files?.[0] ?? null)}
-              style={{ fontSize: 13.5 }}
+              className="small"
             />
           </label>
 
@@ -669,44 +669,44 @@ export function Compras() {
           <Pildora enClic={registrar} deshabilitado={guardando} anchoCompleto>
             {guardando ? 'Registrando…' : 'Registrar compra'}
           </Pildora>
-          <span style={{ fontSize: 12.5, color: 'var(--tinta-2)' }}>
+          <span className="small text-body-secondary">
             Esto no mueve el stock: el material entra al almacén con la recepción.
           </span>
         </section>
 
         {/* lo principal es registrar; las compras ya registradas van al costado, compactas, para recibirlas */}
-        <aside className="vidrio" aria-label="Compras registradas" style={{ flex: '1 1 340px', minWidth: 0, borderRadius: 'var(--radio-vidrio)', padding: '18px 18px', display: 'flex', flexDirection: 'column', gap: 10 }}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+        <aside className="card card-body shadow-sm d-flex flex-column gap-2" aria-label="Compras registradas" style={{ flex: '1 1 340px', minWidth: 0, borderRadius: 'var(--radio-vidrio)', padding: '18px 18px' }}>
+          <div className="d-flex flex-column gap-1">
             <TituloSeccion>Compras registradas{compras.length ? ` · ${compras.length}` : ''}</TituloSeccion>
-            <span style={{ fontSize: 12.5, color: 'var(--tinta-2)' }}>una compra admite varias recepciones hasta completar lo comprado</span>
+            <span className="small text-body-secondary">una compra admite varias recepciones hasta completar lo comprado</span>
           </div>
           {avisoRecepcion && <Aviso tono="bien" rol="status">{avisoRecepcion}</Aviso>}
           {compras.length === 0 ? (
             <Vacio titulo="Todavía no hay compras" detalle="Las que registres aparecerán aquí con su estado de recepción." />
           ) : (
-            <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column' }}>
+            <ListGroup variant="flush">
               {compras.map((c) => {
                 const vigentes = c.comprobantesVigentes ?? (c.adjunto ? 1 : 0)
                 return (
-                <li key={c.id} style={{ padding: '10px 2px', borderTop: '1px solid var(--separador)', display: 'flex', flexDirection: 'column', gap: 4 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8 }}>
-                    <span className="n" style={{ fontWeight: 700 }}>{c.tipoComprobante === 'factura' ? 'Factura' : 'Boleta'} {c.numeroComprobante}</span>
-                    <span className="n" style={{ fontWeight: 800, whiteSpace: 'nowrap' }}>S/ {soles(c.totales.total)}</span>
+                <ListGroup.Item key={c.id} className="d-flex flex-column gap-1 px-1">
+                  <div className="d-flex justify-content-between align-items-baseline gap-2">
+                    <span className="n fw-bold">{c.tipoComprobante === 'factura' ? 'Factura' : 'Boleta'} {c.numeroComprobante}</span>
+                    <span className="n fw-bold text-nowrap">S/ {soles(c.totales.total)}</span>
                   </div>
-                  <span style={{ fontSize: 12.5, color: 'var(--tinta-2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={c.proveedorRazonSocial}>{c.proveedorRazonSocial}</span>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                    <span className="n" style={{ fontSize: 12.5, color: 'var(--tinta-2)' }}>{c.fecha} · {c.lineas.length} {c.lineas.length === 1 ? 'insumo' : 'insumos'}</span>
+                  <span className="small text-body-secondary overflow-hidden text-nowrap" style={{ textOverflow: 'ellipsis' }} title={c.proveedorRazonSocial}>{c.proveedorRazonSocial}</span>
+                  <div className="d-flex align-items-center gap-2 flex-wrap">
+                    <span className="n small text-body-secondary">{c.fecha} · {c.lineas.length} {c.lineas.length === 1 ? 'insumo' : 'insumos'}</span>
                     <Chip tono={ESTADO_COMPRA[c.estado].tono}>{ESTADO_COMPRA[c.estado].texto}</Chip>
                     <Chip tono={vigentes > 0 ? 'bien' : 'neutro'}>
                       {vigentes > 0 ? (vigentes === 1 ? '1 comprobante' : `${vigentes} comprobantes`) : 'Sin comprobante'}
                     </Chip>
                     {c.estado === 'anulada' && c.motivoAnulacion && (
-                      <span style={{ fontSize: 12, color: 'var(--grave)', flexBasis: '100%' }}>Motivo de anulación: {c.motivoAnulacion}</span>
+                      <span className="small text-danger" style={{ flexBasis: '100%' }}>Motivo de anulación: {c.motivoAnulacion}</span>
                     )}
                     {c.proveedorEstado === 'con_alerta_sunat' && (
                       <Chip tono="aviso">{c.proveedorAlertaSunat ? `SUNAT: ${c.proveedorAlertaSunat}` : 'Alerta SUNAT'}</Chip>
                     )}
-                    <span style={{ marginLeft: 'auto', display: 'inline-flex', gap: 6, flexWrap: 'wrap' }}>
+                    <span className="d-inline-flex gap-2 flex-wrap" style={{ marginLeft: 'auto' }}>
                       <Pildora tipo="secundario" chica etiqueta={`Comprobantes de ${c.numeroComprobante}`} enClic={() => setComprobantesDe(c)}>Comprobantes</Pildora>
                       {c.estado !== 'recibida' && c.estado !== 'anulada' && (
                         <Pildora tipo="secundario" chica etiqueta={`Recibir la compra ${c.numeroComprobante}`} enClic={() => setRecibiendo(c)}>Recibir</Pildora>
@@ -716,12 +716,12 @@ export function Compras() {
                       )}
                     </span>
                   </div>
-                </li>
+                </ListGroup.Item>
                 )
               })}
-            </ul>
+            </ListGroup>
           )}
-          <span style={{ fontSize: 12.5, color: 'var(--tinta-2)', lineHeight: 1.5 }}>
+          <span className="small text-body-secondary">
             Una compra no se edita. El IGV se guarda aparte porque no es costo del insumo (NIC 2).
           </span>
         </aside>

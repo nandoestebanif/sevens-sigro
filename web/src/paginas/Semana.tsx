@@ -17,7 +17,7 @@ import { sesionActual, usaApiReal } from '../api/http'
 import { plazo } from '../api/oficina'
 import type { ReporteSemana } from '../api/tipos'
 import { Chip, Vacio } from '../ui/base'
-import { Aviso, Chips, Encabezado, Fondo, Pildora, TituloSeccion, Vidrio } from '../ui/vidrio'
+import { Aviso, Chips, Encabezado, Pildora, TituloSeccion, Vidrio } from '../ui/piezas'
 
 const n = (x: number) => x.toLocaleString('es-PE', { maximumFractionDigits: 4 })
 const dia = (iso: string) => (iso ? `${iso.slice(8, 10)}/${iso.slice(5, 7)}` : '')
@@ -82,13 +82,12 @@ export function Semana() {
 
   return (
     <>
-      <Fondo dibujo="movimientos" />
-      <div className="pagina" style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+      <div className="d-flex flex-column gap-3 pb-4">
         <Encabezado
           titulo="Movimiento semanal"
           sub="Entradas y salidas de una semana de la obra, por insumo, para cuadrar el almacén con el corte que ya se usa."
           acciones={
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+            <div className="d-flex flex-wrap gap-2">
               {puedeCerrar && r && !r.cerrada && !confirmarCierre && (
                 <Pildora tipo="secundario" enClic={() => setConfirmarCierre(true)}>Cerrar semana {numero}</Pildora>
               )}
@@ -110,18 +109,18 @@ export function Semana() {
         {aviso && <Aviso tono="bien" rol="status">{aviso}</Aviso>}
 
         <Vidrio estilo={{ display: 'flex', flexDirection: 'column', gap: 12 }} etiqueta="Reporte de la semana">
-          <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+          <div className="d-flex flex-wrap align-items-center justify-content-between gap-2">
             <TituloSeccion>
               Semana {numero ?? '…'}{r?.inicio ? ` · ${dia(r.inicio)} al ${dia(r.fin)}` : ''}
             </TituloSeccion>
-            <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, fontWeight: 600, color: 'var(--tinta-2)' }}>
+            <label className="d-flex align-items-center gap-2 small fw-semibold text-body-secondary">
               Semana
               <select
                 aria-label="Semana a revisar"
-                className="campo"
+                className="form-select px-3"
                 value={numero ?? ''}
                 onChange={(e) => setNumero(Number(e.target.value))}
-                style={{ height: 40, padding: '0 10px', fontSize: 14, borderRadius: 12 }}
+                style={{ height: 40, borderRadius: 12 }}
               >
                 {Array.from({ length: total }, (_, i) => i + 1).map((k) => <option key={k} value={k}>{k}</option>)}
               </select>
@@ -132,22 +131,22 @@ export function Semana() {
           {!r && !error && <Vacio titulo="Cargando…" detalle="Sumando los movimientos de la semana." />}
           {r && r.filas.length === 0 && <Vacio titulo="Sin movimientos esta semana" detalle={r.criterio} />}
           {r && r.filas.length > 0 && (
-            <div style={{ overflowX: 'auto' }}>
-              <table className="tabla-vidrio">
+            <div className="overflow-x-auto">
+              <table className="table table-hover align-middle mb-0">
                 <thead>
                   <tr>
-                    <th style={{ textAlign: 'left' }}>Insumo</th>
-                    <th style={{ textAlign: 'left' }}>Almacén</th>
+                    <th className="text-start">Insumo</th>
+                    <th className="text-start">Almacén</th>
                     <th className="n">Saldo inicial</th><th className="n">Entradas</th><th className="n">Salidas</th><th className="n">Saldo final</th>
                   </tr>
                 </thead>
                 <tbody>
                   {r.filas.map((f) => (
                     <tr key={`${f.almacen}-${f.insumoId}`}>
-                      <td><strong>{f.descripcion}</strong><div style={{ fontSize: 12, color: 'var(--tinta-2)' }}>SKU {f.insumoId} · {f.unidad}</div></td>
+                      <td><strong>{f.descripcion}</strong><div className="small text-body-secondary">SKU {f.insumoId} · {f.unidad}</div></td>
                       <td>{f.almacen}</td>
                       <td className="n">{n(f.saldoInicial)}</td>
-                      <td className="n" style={{ color: 'var(--bien)' }}>{f.entradas >= 0 ? `+ ${n(f.entradas)}` : <span title="Un reverso anuló entradas de otra semana">− {n(-f.entradas)} por reverso</span>}</td>
+                      <td className="n text-success">{f.entradas >= 0 ? `+ ${n(f.entradas)}` : <span title="Un reverso anuló entradas de otra semana">− {n(-f.entradas)} por reverso</span>}</td>
                       <td className="n">{f.salidas >= 0 ? `− ${n(f.salidas)}` : <span title="Un reverso anuló salidas de otra semana">+ {n(-f.salidas)} por reverso</span>}</td>
                       <td className="n"><strong>{n(f.saldoFinal)}</strong></td>
                     </tr>
@@ -156,7 +155,7 @@ export function Semana() {
               </table>
             </div>
           )}
-          {r && <p style={{ fontSize: 12, color: 'var(--tinta-2)', lineHeight: 1.5 }}>{r.criterio}</p>}
+          {r && <p className="small text-body-secondary">{r.criterio}</p>}
         </Vidrio>
       </div>
     </>
