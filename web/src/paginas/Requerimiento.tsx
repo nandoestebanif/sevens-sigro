@@ -17,6 +17,7 @@ import { requerimiento as api, type Ajuste, type LineaRequerimiento } from '../a
 import type { InsumoCatalogo } from '../api/tipos'
 import { Campo, Chip, Modal, Vacio } from '../ui/base'
 import { Chips, Encabezado, Pildora, TituloSeccion, Vidrio } from '../ui/piezas'
+import { EsqueletoTabla } from '../ui/Esqueleto'
 
 const n = (x: number) => x.toLocaleString('es-PE', { maximumFractionDigits: 4 })
 
@@ -60,10 +61,10 @@ function AjustarLinea({ l, enCerrar, enListo }: { l: LineaRequerimiento; enCerra
         </div>
         <div>
           <span className="small fw-bold text-uppercase text-body-secondary">Ajustes anteriores{ajustes && ajustes.length > 0 ? ` · ${ajustes.length} (el más reciente primero)` : ''}</span>
-          {ajustes === null ? <p className="small">Cargando…</p>
+          {ajustes === null ? <EsqueletoTabla filas={3} />
             : ajustes.length === 0 ? <p className="small text-body-secondary">Es la cantidad original del S10.</p>
               : (
-                <ul className="small text-body-secondary" style={{ margin: '6px 0 0', paddingLeft: 18, maxHeight: 168, overflowY: 'auto', paddingRight: 6 }}>
+                <ul className="small text-body-secondary ps-3 pe-1"  style={{ margin: '6px 0 0', maxHeight: 168, overflowY: 'auto' }}>
                   {ajustes.slice().reverse().map((a, k) => (
                     <li key={k}>{n(a.cantidadAnterior)} → <strong>{n(a.cantidadNueva)}</strong> · {a.motivo} · {a.ajustadoPorNombre} · {fechaHoraLima(a.ajustadoEn)}</li>
                   ))}
@@ -112,8 +113,8 @@ function AgregarInsumo({ yaPlanificados, enCerrar, enListo }: { yaPlanificados: 
         </p>
         <div>
           <label htmlFor="r-ins" className="small fw-semibold text-body-secondary">Insumo del catálogo</label>
-          <input id="r-ins" list="r-catalogo" className="form-control px-3 w-100 mt-2" value={texto} onChange={(e) => setTexto(e.target.value)}
-            placeholder="Escribe código o nombre…" style={{ height: 44, borderRadius: 14 }} />
+          <input id="r-ins" list="r-catalogo" className="form-control w-100 mt-2" value={texto} onChange={(e) => setTexto(e.target.value)}
+            placeholder="Escribe código o nombre…"  style={{ height: 44 }} />
           <datalist id="r-catalogo">
             {disponibles.map((i) => <option key={i.id} value={`${i.codigo} · ${i.descripcion}`} />)}
           </datalist>
@@ -170,7 +171,7 @@ export function Requerimiento() {
             <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Buscar por nombre o código…" aria-label="Buscar en el requerimiento"
               className="form-control" />
             {error && <p role="alert" className="small text-danger fw-semibold">{error}</p>}
-            {xs === null && !error ? <Vacio titulo="Cargando…" detalle="Leyendo lo planificado." />
+            {xs === null && !error ? <EsqueletoTabla />
               : xs && xs.length === 0 ? <Vacio titulo="Sin requerimiento" detalle="Importa la Relación de insumos del S10 en «Importar del S10»." />
                 : (
                   <div className="overflow-x-auto">

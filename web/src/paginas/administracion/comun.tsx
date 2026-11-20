@@ -2,6 +2,7 @@
 import { type CSSProperties, type ReactNode, useCallback, useEffect, useState } from 'react'
 import { Boton, Modal, Vacio } from '../../ui/base'
 import { mensajeParaPersona } from './reglas'
+import { EsqueletoTabla } from '../../ui/Esqueleto'
 
 /** Carga con sus tres estados: cargando (null), error (mensaje para la persona) o datos. */
 export function useCarga<T>(cargar: () => Promise<T>, deps: unknown[]) {
@@ -18,7 +19,7 @@ export function useCarga<T>(cargar: () => Promise<T>, deps: unknown[]) {
 
 export function AvisoError({ texto, children }: { texto: string; children?: ReactNode }) {
   return (
-    <div role="alert" className="text-danger small d-flex flex-column gap-2" style={{ background: 'var(--grave-tinte)', borderRadius: 'var(--radio-chico)', padding: '11px 14px' }}>
+    <div role="alert" className="text-danger small d-flex flex-column gap-2 bg-danger-subtle rounded-3 py-2 px-3" >
       <span>{texto}</span>
       {children}
     </div>
@@ -27,7 +28,7 @@ export function AvisoError({ texto, children }: { texto: string; children?: Reac
 
 export function AvisoBien({ texto }: { texto: string }) {
   return (
-    <div role="status" className="text-success small" style={{ background: 'var(--bien-tinte)', borderRadius: 'var(--radio-chico)', padding: '10px 14px' }}>
+    <div role="status" className="text-success small bg-success-subtle rounded-3 py-2 px-3" >
       {texto}
     </div>
   )
@@ -43,14 +44,14 @@ export function Estado<T>({ datos, error, recargar, vacio, children }: {
 }) {
   if (error) {
     return (
-      <div style={{ padding: 16 }}>
+      <div className="p-3">
         <AvisoError texto={error}>
           <div><Boton tipo="secundario" enClic={recargar}>Volver a intentar</Boton></div>
         </AvisoError>
       </div>
     )
   }
-  if (datos === null) return <div role="status"><Vacio titulo="Cargando…" detalle="Consultando al servidor." /></div>
+  if (datos === null) return <div role="status"><EsqueletoTabla /></div>
   if (datos.length === 0) return <Vacio titulo={vacio.titulo} detalle={vacio.detalle} />
   return <>{children(datos)}</>
 }
@@ -90,11 +91,11 @@ export const estiloCeldaSuave: CSSProperties = { ...celda, fontSize: 13, color: 
 export function Tabla({ titulos, children, etiqueta }: { titulos: string[]; children: ReactNode; etiqueta: string }) {
   return (
     <div className="overflow-x-auto">
-      <table aria-label={etiqueta} className="w-100" style={{ borderCollapse: 'collapse' }}>
+      <table aria-label={etiqueta} className="w-100" >
         <thead>
-          <tr style={{ background: 'var(--tarjeta-suave)', borderBottom: '1px solid var(--borde)' }}>
+          <tr className="bg-body-tertiary border-bottom">
             {titulos.map((h) => (
-              <th key={h} scope="col" className="small fw-semibold text-body-secondary text-start text-nowrap" style={{ padding: '11px 16px' }}>
+              <th key={h} scope="col" className="small fw-semibold text-body-secondary text-start text-nowrap py-2 px-3" >
                 {h}
               </th>
             ))}
@@ -119,17 +120,14 @@ export function Selector<T extends string | number>({ id, etiqueta, valor, opcio
   return (
     <div className="d-flex flex-column gap-2">
       <label htmlFor={id} className="small fw-semibold text-body-secondary">{etiqueta}</label>
-      <select
+      <select className="form-select"
         id={id}
         value={String(valor)}
         onChange={(e) => {
           const o = opciones.find((x) => String(x.valor) === e.target.value)
           if (o) enCambio(o.valor)
         }}
-        style={{
-          height: 42, border: `1px solid ${error ? 'var(--grave)' : 'var(--borde)'}`, borderRadius: 'var(--radio-chico)',
-          padding: '0 10px', fontSize: 14, fontFamily: 'inherit', color: 'var(--tinta)', background: 'var(--tarjeta)',
-        }}
+
       >
         <option value="" disabled>Elige…</option>
         {opciones.map((o) => <option key={String(o.valor)} value={String(o.valor)}>{o.texto}</option>)}

@@ -11,7 +11,9 @@ import {  } from './ui/piezas'
 import { esAdministrador } from './paginas/administracion/reglas'
 import type { Obra, ObraActiva } from './api/tipos'
 import logoBlanco from './assets/sevens-logo-blanco.webp'
-import { Accordion, Alert, Badge, Button, Container, Form, Nav, Navbar, NavDropdown, Offcanvas, Spinner } from 'react-bootstrap'
+import { Accordion, Alert, Badge, Button, Container, Form, Nav, Navbar, NavDropdown, Offcanvas } from 'react-bootstrap'
+import { EsqueletoPagina } from './ui/Esqueleto'
+import { useInstalar } from './ui/instalar'
 
 const ROLES: Record<string, string> = {
   residente: 'Residente de obra', administrador: 'Administrador', gerente: 'Gerente',
@@ -61,11 +63,8 @@ const Reposicion = lazy(() => import('./paginas/Reposicion').then((m) => ({ defa
 const Inventario = lazy(() => import('./paginas/Inventario').then((m) => ({ default: m.Inventario })))
 const Tablero = lazy(() => import('./paginas/Tablero').then((m) => ({ default: m.Tablero })))
 
-const CargandoPantalla = () => (
-  <div role="status" className="d-flex align-items-center gap-2 text-body-secondary py-4">
-    <Spinner animation="border" size="sm" /> Cargando la pantalla…
-  </div>
-)
+// mientras se descarga el código de la pantalla (React.lazy), su esqueleto con Placeholder de Bootstrap
+const CargandoPantalla = () => <EsqueletoPagina />
 
 /* Íconos del menú: trazo simple, heredan el color del texto. */
 const Icono = ({ d, tam = 16 }: { d: string; tam?: number }) => (
@@ -158,9 +157,17 @@ function AjustesPantalla() {
       localStorage.setItem('sigro-escala', escala)
     } catch { /* sin almacenamiento, los ajustes no persisten */ }
   }, [tema, escala])
+  const instalar = useInstalar()
 
   return (
     <NavDropdown title="Pantalla" align="end" id="ajustes-pantalla">
+      {instalar && (
+        <>
+          {/* PWA: aparece solo si el navegador permite instalar SIGRO como aplicación */}
+          <NavDropdown.Item onClick={instalar}>⬇ Instalar SIGRO como app</NavDropdown.Item>
+          <NavDropdown.Divider />
+        </>
+      )}
       <NavDropdown.Header>Tema</NavDropdown.Header>
       <NavDropdown.Item active={tema === 'claro'} onClick={() => setTema('claro')}>Claro</NavDropdown.Item>
       <NavDropdown.Item active={tema === 'oscuro'} onClick={() => setTema('oscuro')}>Oscuro</NavDropdown.Item>
@@ -371,7 +378,7 @@ function Sistema({ preparando = false, nombreObra = '', alTerminar }: {
             </Offcanvas.Body>
           </Offcanvas>
 
-          <main className="flex-grow-1 p-3 p-lg-4" style={{ minWidth: 0 }}>
+          <main className="flex-grow-1 p-3 p-lg-4 min-w-0" >
             {/* la clave remonta las pantallas al cambiar de obra: vuelven a consultar */}
             <Container fluid key={obra?.id ?? 'sin-obra'} className="px-0">
               <GuardianErrores>

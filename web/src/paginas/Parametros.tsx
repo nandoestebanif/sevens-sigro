@@ -18,6 +18,7 @@ import { unidadParaMostrar } from '../api/unidades'
 import { BuscarOpcion } from '../ui/BuscarOpcion'
 import { Boton, Modal, Tarjeta, Titulo, Vacio } from '../ui/base'
 import { type ErroresParametros, leerCantidad, validarParametros } from './parametros-reglas'
+import { EsqueletoTabla } from '../ui/Esqueleto'
 
 const n = (v: number) => v.toLocaleString('es-PE', { maximumFractionDigits: 2 })
 const fecha = (iso: string) => new Date(iso).toLocaleString('es-PE', { dateStyle: 'short', timeStyle: 'short' })
@@ -29,13 +30,14 @@ function CampoCantidad({ id, etiqueta, valor, enCambio, unidad, error, ayuda }: 
   return (
     <div className="d-flex flex-column gap-2">
       <label htmlFor={id} className="small fw-semibold text-body-secondary">{etiqueta}</label>
-      <div style={{ display: 'flex', alignItems: 'stretch', border: `1px solid ${error ? 'var(--grave)' : 'var(--borde)'}`, borderRadius: 'var(--radio-chico)', background: 'var(--tarjeta)', overflow: 'hidden' }}>
+      {/* input-group de Bootstrap: el número y su unidad quedan pegados en una sola caja */}
+      <div className={`input-group${error ? ' has-validation' : ''}`}>
         <input
           id={id} value={valor} inputMode="decimal" autoComplete="off" onChange={(e) => enCambio(e.target.value)}
           aria-invalid={error ? true : undefined} aria-describedby={`${id}-msj`}
-          className="flex-grow-1 px-3" style={{ minWidth: 0, height: 40, border: 0, background: 'transparent', outlineColor: 'var(--accion)' }}
+          className={`form-control${error ? ' is-invalid' : ''}`}
         />
-        <span aria-hidden className="n flex-shrink-0 d-flex align-items-center px-3 small fw-semibold text-body-secondary" style={{ background: 'var(--tarjeta-suave)', borderLeft: '1px solid var(--borde)' }}>
+        <span aria-hidden className="input-group-text n small fw-semibold">
           {unidad || '—'}
         </span>
       </div>
@@ -96,7 +98,7 @@ function Formulario({ insumos, todos, inicial, enCerrar, enListo }: {
             sinResultados="Ningún insumo coincide con"
           />
         )}
-        {aviso && <div role="status" className="small text-warning-emphasis" style={{ background: 'var(--aviso-tinte)', borderRadius: 'var(--radio-chico)', padding: '8px 12px' }}>{aviso}</div>}
+        {aviso && <div role="status" className="small text-warning-emphasis bg-warning-subtle rounded-3 py-2 px-2" >{aviso}</div>}
         <CampoCantidad id="par-seguridad" etiqueta="Stock de seguridad" valor={seguridad} unidad={unidad}
           enCambio={(v) => { setSeguridad(v); setErrores((x) => ({ ...x, seguridad: undefined, punto: undefined })) }}
           error={errores.seguridad} ayuda="Colchón frente a la demora del proveedor." />
@@ -121,18 +123,18 @@ function Historial({ p, enCerrar }: { p: ParametroReposicion; enCerrar: () => vo
   }, [p.insumoCodigo])
   return (
     <Modal titulo={`Historial · ${p.descripcion}`} enCerrar={enCerrar}>
-      {filas === null ? <Vacio titulo="Cargando…" detalle="" /> : fallo ? <Vacio titulo="No se pudo abrir el historial" detalle={fallo} /> : (
-        <table className="w-100 small" style={{ borderCollapse: 'collapse' }}>
+      {filas === null ? <EsqueletoTabla /> : fallo ? <Vacio titulo="No se pudo abrir el historial" detalle={fallo} /> : (
+        <table className="w-100 small" >
           <thead><tr className="text-body-secondary small">
-            <th className="text-start" style={{ padding: 6 }}>Vigente desde</th>
-            <th className="text-end" style={{ padding: 6 }}>Stock de seguridad</th>
-            <th className="text-end" style={{ padding: 6 }}>Punto de reposición</th>
+            <th className="text-start p-1" >Vigente desde</th>
+            <th className="text-end p-1" >Stock de seguridad</th>
+            <th className="text-end p-1" >Punto de reposición</th>
           </tr></thead>
           <tbody>{filas.map((f, i) => (
             <tr key={i} style={{ borderTop: '1px solid var(--linea)', fontWeight: i === 0 ? 700 : 400 }}>
-              <td style={{ padding: 6 }}>{fecha(f.vigenteDesde)}{i === 0 ? ' · vigente' : ''}</td>
-              <td className="n text-end" style={{ padding: 6 }}>{n(f.stockSeguridad)} {f.unidadCompra}</td>
-              <td className="n text-end" style={{ padding: 6 }}>{n(f.puntoReposicion)} {f.unidadCompra}</td>
+              <td className="p-1">{fecha(f.vigenteDesde)}{i === 0 ? ' · vigente' : ''}</td>
+              <td className="n text-end p-1" >{n(f.stockSeguridad)} {f.unidadCompra}</td>
+              <td className="n text-end p-1" >{n(f.puntoReposicion)} {f.unidadCompra}</td>
             </tr>
           ))}</tbody>
         </table>
@@ -163,29 +165,29 @@ export function Parametros() {
         <Boton enClic={() => setEditando('nuevo')} deshabilitado={!!fallo || !sinParametro.length}>Definir parámetros</Boton>
       </div>
       <Tarjeta relleno={false}>
-        {vigentes === null ? <Vacio titulo="Cargando…" detalle="" />
+        {vigentes === null ? <EsqueletoTabla />
           : fallo ? <Vacio titulo="No se pudieron cargar los parámetros" detalle={fallo} />
           : vigentes.length === 0 ? (
             <Vacio titulo="Todavía no hay parámetros en esta obra"
               detalle={insumos.length ? 'Define el stock de seguridad y el punto de reposición de los insumos críticos primero.'
                 : 'Primero carga el requerimiento de la obra en «Importar del S10».'} />
           ) : (
-            <table className="w-100" style={{ borderCollapse: 'collapse' }}>
-              <thead><tr style={{ background: 'var(--tarjeta-suave)', borderBottom: '1px solid var(--borde)' }}>
+            <table className="w-100" >
+              <thead><tr className="bg-body-tertiary border-bottom">
                 {['Insumo', 'Stock de seguridad', 'Punto de reposición', 'Vigente desde', ''].map((h, i) => (
                   <th key={i} style={{ padding: '11px 16px', fontSize: 11, fontWeight: 600, color: 'var(--tinta-3)', textAlign: i === 0 || i === 3 ? 'left' : 'right' }}>{h}</th>
                 ))}
               </tr></thead>
               <tbody>{vigentes.map((p) => (
-                <tr key={p.insumoCodigo} style={{ borderBottom: '1px solid var(--linea)' }}>
-                  <td style={{ padding: '11px 16px' }}>
+                <tr key={p.insumoCodigo} className="border-bottom">
+                  <td className="py-2 px-3">
                     <div className="small fw-semibold">{p.descripcion}</div>
                     <div className="n small text-body-secondary">{p.insumoCodigo}</div>
                   </td>
-                  <td className="n text-end small" style={{ padding: '11px 16px' }}>{n(p.stockSeguridad)} {p.unidadCompra}</td>
-                  <td className="n text-end small fw-bold" style={{ padding: '11px 16px' }}>{n(p.puntoReposicion)} {p.unidadCompra}</td>
-                  <td className="small text-body-secondary" style={{ padding: '11px 16px' }}>{fecha(p.vigenteDesde)}</td>
-                  <td className="text-end text-nowrap" style={{ padding: '11px 16px' }}>
+                  <td className="n text-end small py-2 px-3" >{n(p.stockSeguridad)} {p.unidadCompra}</td>
+                  <td className="n text-end small fw-bold py-2 px-3" >{n(p.puntoReposicion)} {p.unidadCompra}</td>
+                  <td className="small text-body-secondary py-2 px-3" >{fecha(p.vigenteDesde)}</td>
+                  <td className="text-end text-nowrap py-2 px-3" >
                     <Boton tipo="fantasma" enClic={() => setViendo(p)}>Historial</Boton>
                     <Boton tipo="secundario" enClic={() => setEditando(p)}>Cambiar</Boton>
                   </td>
