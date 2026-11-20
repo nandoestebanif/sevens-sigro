@@ -17,7 +17,7 @@ import { api } from '../api/cliente'
 import { ErrorApi, mensajeDeCarga } from '../api/error'
 import type { AlertaReposicion, AvanceInsumo } from '../api/tipos'
 import { Chip, Vacio } from '../ui/base'
-import { Chips, Encabezado, Fondo, Pildora, Segmentado, TituloSeccion, Vidrio, estiloPildora } from '../ui/vidrio'
+import { Chips, Encabezado, Pildora, Segmentado, TituloSeccion, Vidrio } from '../ui/piezas'
 
 const n2 = (v: number) => v.toLocaleString('es-PE', { maximumFractionDigits: 0 })
 
@@ -29,33 +29,33 @@ function Alerta({ a }: { a: AlertaReposicion }) {
   const activa = a.estado === 'activa'
   return (
     <Vidrio estilo={{ borderLeft: `4px solid ${activa ? 'var(--grave)' : 'var(--aviso)'}`, padding: '16px 20px' }} etiqueta={`Aviso de reposición: ${a.descripcion}`}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'baseline', flexWrap: 'wrap' }}>
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-          <strong style={{ fontSize: 15 }}>{a.descripcion}</strong>
+      <div className="d-flex justify-content-between gap-3 align-items-baseline flex-wrap">
+        <span className="d-inline-flex align-items-center gap-2 flex-wrap">
+          <strong>{a.descripcion}</strong>
           {activa
             ? <Chip tono="grave">bajo el punto de reposición</Chip>
             : <Chip tono="aviso">atendida · compra {a.atendidaPor}</Chip>}
         </span>
-        <span className="n" style={{ fontSize: 13.5, color: 'var(--tinta-2)' }}>
+        <span className="n small text-body-secondary">
           saldo <strong>{n2(a.saldo)} {a.unidad}</strong> · punto {n2(a.punto)} · falta por comprar {n2(a.faltaPorComprar)}
         </span>
       </div>
-      <div style={{ fontSize: 13, color: 'var(--tinta-2)', marginTop: 4 }}>
+      <div className="small text-body-secondary mt-1">
         punto configurado como {a.criterioPunto}
       </div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 10, flexWrap: 'wrap' }}>
-        <label htmlFor={`sug-${a.insumoId}`} style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--tinta-2)' }}>
+      <div className="d-flex align-items-center gap-2 mt-3 flex-wrap">
+        <label htmlFor={`sug-${a.insumoId}`} className="small fw-semibold text-body-secondary">
           Sugerencia de compra:
         </label>
         <input
           id={`sug-${a.insumoId}`}
-          className="n campo"
+          className="n campo px-3 fw-bold text-end"
           value={cantidad}
           onChange={(e) => setCantidad(e.target.value)}
-          style={{ width: 110, height: 44, padding: '0 12px', fontWeight: 700, textAlign: 'right' }}
+          style={{ width: 110, height: 44 }}
         />
-        <span style={{ fontSize: 13.5, color: 'var(--tinta-2)' }}>{a.unidad}</span>
-        <span style={{ fontSize: 13, color: 'var(--tinta-2)', flex: '1 1 260px' }}>
+        <span className="small text-body-secondary">{a.unidad}</span>
+        <span className="small text-body-secondary" style={{ flex: '1 1 260px' }}>
           referencia editable, nunca pedido automático · criterio: {a.criterioSugerencia}
         </span>
       </div>
@@ -119,14 +119,13 @@ export function Reposicion() {
 
   return (
     <>
-      <Fondo dibujo="reposicion" />
-      <div className="pagina" style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+      <div className="d-flex flex-column gap-3 pb-4">
         <Encabezado
           titulo="Reposición"
           sub="Qué falta comprar de lo planificado y qué está por acabarse en la obra"
           acciones={
             <>
-              <Link to="/parametros" className="foco-vidrio" style={estiloPildora('secundario')}>Parámetros de reposición</Link>
+              <Link to="/parametros" className="btn btn-outline-secondary">Parámetros de reposición</Link>
               <Pildora enClic={exportar} deshabilitado={!visibles.length}>Exportar para el pedido</Pildora>
             </>
           }
@@ -142,13 +141,13 @@ export function Reposicion() {
         {alertas.map((a) => <Alerta key={a.insumoId} a={a} />)}
 
         <Vidrio estilo={{ display: 'flex', flexDirection: 'column', gap: 14 }} etiqueta="Saldo por comprar">
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+          <div className="d-flex flex-column gap-1">
             <TituloSeccion>Saldo por comprar</TituloSeccion>
-            <p style={{ fontSize: 13.5, color: 'var(--tinta-2)', lineHeight: 1.5 }}>
+            <p className="small text-body-secondary">
               Falta por comprar = requerido − comprado. La base cierta para formular la siguiente solicitud de materiales.
             </p>
           </div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center' }}>
+          <div className="d-flex flex-wrap gap-2 align-items-center">
             <Segmentado
               etiqueta="Filtro por criticidad" valor={soloCriticos} enCambio={setSoloCriticos}
               opciones={[{ valor: false, texto: 'Todos' }, { valor: true, texto: 'Solo críticos' }]}
@@ -158,15 +157,15 @@ export function Reposicion() {
               aria-label="Filtrar por fase"
               value={fase}
               onChange={(e) => setFase(e.target.value)}
-              className="campo"
-              style={{ width: 'auto', minWidth: 200, height: 46, borderRadius: 23, fontWeight: 600, fontSize: 14 }}
+              className="form-select fw-semibold"
+              style={{ width: 'auto', minWidth: 200, height: 46, borderRadius: 23 }}
             >
               <option value="todas">Todas las fases</option>
               {fases.map((f) => <option key={f} value={f}>{f}</option>)}
             </select>}
           </div>
           {soloCriticos && (
-            <span style={{ fontSize: 12.5, color: 'var(--tinta-2)' }}>
+            <span className="small text-body-secondary">
               {conHu28
                 ? <>Los críticos los marca el residente con «Marcar crítico» (HU-28).</>
                 : <>Crítico = insumo con punto de reposición definido en <Link to="/parametros">Parámetros de reposición</Link>.</>}
@@ -182,8 +181,8 @@ export function Reposicion() {
               ? <Vacio titulo="Todavía no hay insumos críticos" detalle={conHu28 ? 'Vuelve a «Todos» y usa «Marcar crítico» en el acero, el cemento u otro insumo.' : 'Define el stock de seguridad y el punto de reposición del insumo en «Parámetros de reposición» y aparecerá aquí.'} />
               : <Vacio titulo="Nada pendiente con este filtro" detalle="Todos los insumos filtrados ya tienen su compra completa." />
           ) : (
-            <div style={{ overflowX: 'auto' }}>
-              <table className="tabla-vidrio">
+            <div className="overflow-x-auto">
+              <table className="table table-hover align-middle mb-0">
                 <thead>
                   <tr>
                     <th>Insumo</th><th>Fase</th><th className="n">Requerido (S10)</th><th className="n">Comprado</th><th className="n">Falta por comprar</th>
@@ -193,8 +192,8 @@ export function Reposicion() {
                   {visibles.map((f) => (
                     <tr key={f.insumoId}>
                       <td style={{ minWidth: 240 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                          <span style={{ fontWeight: 600 }}>{f.descripcion}</span>
+                        <div className="d-flex align-items-center gap-2 flex-wrap">
+                          <span className="fw-semibold">{f.descripcion}</span>
                           {f.critico && <Chip tono="aviso">crítico</Chip>}
                           {conHu28 && (
                             <Pildora tipo="secundario" chica enClic={() => void alternarCritico(f)}
@@ -203,15 +202,15 @@ export function Reposicion() {
                             </Pildora>
                           )}
                         </div>
-                        <div className="n" style={{ fontSize: 12, color: 'var(--tinta-2)', marginTop: 2, textAlign: 'left' }}>SKU {f.codigo}</div>
+                        <div className="n small text-body-secondary mt-1 text-start">SKU {f.codigo}</div>
                         {avisoCritico?.codigo === f.codigo && (
-                          <div role="status" style={{ fontSize: 12.5, color: 'var(--tinta-2)', marginTop: 4 }}>{avisoCritico.texto}</div>
+                          <div role="status" className="small text-body-secondary mt-1">{avisoCritico.texto}</div>
                         )}
                       </td>
-                      <td style={{ color: 'var(--tinta-2)' }}>{f.fase}</td>
-                      <td className="n" style={{ whiteSpace: 'nowrap' }}>{n2(f.planificadoCantidad)} {f.unidadS10}</td>
-                      <td className="n" style={{ whiteSpace: 'nowrap' }}>{n2(f.compradoCantidad)} {f.unidadS10} · {f.compradoPct} %</td>
-                      <td className="n" style={{ fontWeight: 800, whiteSpace: 'nowrap' }}>{n2(f.saldoPorComprar)} {f.unidadCompra}</td>
+                      <td className="text-body-secondary">{f.fase}</td>
+                      <td className="n text-nowrap">{n2(f.planificadoCantidad)} {f.unidadS10}</td>
+                      <td className="n text-nowrap">{n2(f.compradoCantidad)} {f.unidadS10} · {f.compradoPct} %</td>
+                      <td className="n fw-bold text-nowrap">{n2(f.saldoPorComprar)} {f.unidadCompra}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -220,7 +219,7 @@ export function Reposicion() {
           )}
         </Vidrio>
 
-        <p style={{ fontSize: 13, color: 'var(--tinta-plano)', padding: '0 4px', lineHeight: 1.5 }}>
+        <p className="small text-body-secondary px-1">
           El faltante se muestra en la <strong>unidad de compra</strong>: el acero se pide en
           varillas aunque el S10 lo planifique en kilos (factor de conversión del catálogo).
           La sugerencia de compra (HU-27) aparece en la alerta de arriba: el menor entre lo que falta y lo que exige la fase en curso.

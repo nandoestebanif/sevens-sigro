@@ -1,33 +1,28 @@
 /* ─────────────────────────────────────────────────────────────────────────────
-   SIGRO · componentes base de la dirección G «Pulido»
-   Todo estilo sale de los tokens. Las pantallas componen con estas piezas y no
-   escriben colores ni radios a mano.
+   SIGRO · componentes base sobre React-Bootstrap
+   Cada pieza envuelve un componente de React-Bootstrap con los nombres que ya
+   usan las pantallas (Tarjeta, Boton, Chip…). Así las pantallas no repiten
+   props de Bootstrap y, si mañana cambia el diseño, se cambia aquí y nada más.
    ───────────────────────────────────────────────────────────────────────── */
-import { createPortal } from 'react-dom'
-import { type CSSProperties, type KeyboardEvent, type ReactNode, useEffect, useId, useRef } from 'react'
+import type { CSSProperties, ReactNode } from 'react'
+import { Badge, Button, Card, Form, Modal as ModalBs, ProgressBar } from 'react-bootstrap'
+import { partirEstilo } from './piezas'
 
+/** Tarjeta de Bootstrap (Card). Sin relleno, para tablas que van de borde a borde. */
 export function Tarjeta({ children, relleno = true, estilo }: {
   children: ReactNode
   relleno?: boolean
   estilo?: CSSProperties
 }) {
+  const [fuera, dentro] = partirEstilo(estilo)
   return (
-    <section
-      style={{
-        background: 'var(--tarjeta)',
-        border: '1px solid var(--borde)',
-        borderRadius: 'var(--radio)',
-        boxShadow: 'var(--sombra)',
-        padding: relleno ? '16px 18px' : 0,
-        overflow: relleno ? undefined : 'hidden',
-        ...estilo,
-      }}
-    >
-      {children}
-    </section>
+    <Card className="shadow-sm" style={fuera}>
+      {relleno ? <Card.Body style={dentro}>{children}</Card.Body> : children}
+    </Card>
   )
 }
 
+/** Botón de Bootstrap: primario (naranja de la marca), secundario (con borde) o fantasma (link). */
 export function Boton({ children, tipo = 'primario', deshabilitado, enClic, anchoCompleto }: {
   children: ReactNode
   tipo?: 'primario' | 'secundario' | 'fantasma'
@@ -35,64 +30,30 @@ export function Boton({ children, tipo = 'primario', deshabilitado, enClic, anch
   enClic?: () => void
   anchoCompleto?: boolean
 }) {
-  const estilos: Record<string, CSSProperties> = {
-    primario: {
-      background: 'var(--accion)', color: 'var(--accion-tinta)',
-      border: '1px solid var(--accion)', boxShadow: 'var(--sombra-accion)',
-    },
-    secundario: {
-      background: 'var(--tarjeta)', color: 'var(--tinta)',
-      border: '1px solid var(--borde)',
-    },
-    fantasma: {
-      background: 'transparent', color: 'var(--tinta-2)', border: '1px solid transparent',
-    },
-  }
+  const variante = { primario: 'primary', secundario: 'outline-secondary', fantasma: 'link' }[tipo]
   return (
-    <button
-      type="button"
-      onClick={enClic}
-      disabled={deshabilitado}
-      style={{
-        height: 40, padding: '0 16px', borderRadius: 'var(--radio-chico)',
-        fontSize: 13.5, fontWeight: 600, cursor: deshabilitado ? 'not-allowed' : 'pointer',
-        opacity: deshabilitado ? 0.55 : 1, width: anchoCompleto ? '100%' : undefined,
-        ...estilos[tipo],
-      }}
-    >
+    <Button variant={variante} onClick={enClic} disabled={deshabilitado} className={anchoCompleto ? 'w-100' : undefined}>
       {children}
-    </button>
+    </Button>
   )
 }
 
 export type TonoChip = 'bien' | 'aviso' | 'grave' | 'neutro' | 'info' | 'marca'
 
-/** Estado con etiqueta: el color nunca va solo (criterio de accesibilidad). */
+/** Estado con etiqueta (Badge): el color nunca va solo, siempre con su texto. */
 export function Chip({ tono, children }: { tono: TonoChip; children: ReactNode }) {
-  const mapa: Record<TonoChip, [string, string]> = {
-    bien: ['var(--bien)', 'var(--bien-tinte)'],
-    aviso: ['var(--aviso)', 'var(--aviso-tinte)'],
-    grave: ['var(--grave)', 'var(--grave-tinte)'],
-    // neutro con --tinta-2: sobre vidrio --tinta-3 no llega a AA
-    neutro: ['var(--tinta-2)', 'var(--linea)'],
-    info: ['var(--info)', 'var(--info-tinte)'],
-    marca: ['var(--marca-tinte-tinta)', 'var(--marca-tinte)'],
+  const color: Record<TonoChip, string> = {
+    bien: 'success', aviso: 'warning', grave: 'danger', neutro: 'secondary', info: 'info', marca: 'primary',
   }
-  const [color, fondo] = mapa[tono]
+  // «-subtle» y «-emphasis»: fondo claro con texto oscuro del mismo color (pasa contraste)
   return (
-    <span
-      className="n"
-      style={{
-        display: 'inline-flex', alignItems: 'center', gap: 6,
-        fontSize: 12, fontWeight: 700, color, background: fondo,
-        borderRadius: 'var(--radio-pildora)', padding: '4px 11px', whiteSpace: 'nowrap',
-      }}
-    >
+    <Badge pill bg="" className={`n bg-${color[tono]}-subtle text-${color[tono]}-emphasis border border-${color[tono]}-subtle`}>
       {children}
-    </span>
+    </Badge>
   )
 }
 
+/** Campo de texto con su etiqueta y su mensaje de error (Form.Group + Form.Control). */
 export function Campo({ etiqueta, valor, enCambio, marcador, error, autoFoco, id, deshabilitado }: {
   etiqueta: string
   valor: string
@@ -103,29 +64,23 @@ export function Campo({ etiqueta, valor, enCambio, marcador, error, autoFoco, id
   id: string
   deshabilitado?: boolean
 }) {
-  // mismo aspecto que .campo del estilo vidrio (tokens.css)
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 6, minWidth: 0 }}>
-      <label htmlFor={id} style={{ fontSize: 13, fontWeight: 600, color: 'var(--tinta-2)' }}>
-        {etiqueta}
-      </label>
-      <input
-        id={id}
+    <Form.Group controlId={id}>
+      <Form.Label className="small fw-semibold">{etiqueta}</Form.Label>
+      <Form.Control
         value={valor}
         placeholder={marcador}
         autoFocus={autoFoco}
         disabled={deshabilitado}
+        isInvalid={!!error}
         onChange={(e) => enCambio(e.target.value)}
-        className="campo"
-        aria-invalid={error ? true : undefined}
-        style={{ width: '100%', minWidth: 0, height: 44, borderColor: error ? 'var(--grave)' : undefined, opacity: deshabilitado ? 0.6 : 1 }}
       />
-      {error && <span style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--grave)' }}>{error}</span>}
-    </div>
+      <Form.Control.Feedback type="invalid">{error}</Form.Control.Feedback>
+    </Form.Group>
   )
 }
 
-/** Medidor con marca de referencia: responde «¿voy bien?», no solo «¿cuánto?» */
+/** Barra de avance (ProgressBar). La marca opcional es la referencia: «¿voy bien?». */
 export function Medidor({ pct, marcaPct, color, ancho = 124 }: {
   pct: number
   marcaPct?: number
@@ -136,51 +91,43 @@ export function Medidor({ pct, marcaPct, color, ancho = 124 }: {
     <div
       role="img"
       aria-label={`${pct} por ciento${marcaPct != null ? `, referencia ${marcaPct} por ciento` : ''}`}
-      style={{ position: 'relative', height: 6, background: 'var(--pista)', borderRadius: 3, width: ancho }}
+      className="position-relative"
+      style={{ width: ancho }}
     >
-      <div className="medidor-barra" style={{ width: `${Math.min(pct, 100)}%`, height: '100%', background: color, borderRadius: 3 }} />
+      {/* el color de la barra es una variable de Bootstrap: --bs-progress-bar-bg */}
+      <ProgressBar now={Math.min(pct, 100)} style={{ height: 6, '--bs-progress-bar-bg': color } as CSSProperties} />
       {marcaPct != null && (
-        <div style={{
-          position: 'absolute', left: `${marcaPct}%`, top: -3, width: 2, height: 12,
-          background: 'var(--tinta)', borderRadius: 1,
-        }} />
+        <div className="position-absolute bg-body-emphasis" style={{ left: `${marcaPct}%`, top: -3, width: 2, height: 12 }} />
       )}
     </div>
   )
 }
 
 export function Rotulo({ children }: { children: ReactNode }) {
-  return <div style={{ fontSize: 12, color: 'var(--tinta-3)', fontWeight: 500 }}>{children}</div>
+  return <div className="small text-body-secondary">{children}</div>
 }
 
 export function Titulo({ children, sub }: { children: ReactNode; sub?: ReactNode }) {
   return (
     <div>
-      <h1 style={{ fontSize: 25, fontWeight: 700, letterSpacing: '-0.6px' }}>{children}</h1>
-      {sub && <p style={{ marginTop: 4, fontSize: 13, color: 'var(--tinta-3)' }}>{sub}</p>}
+      <h1 className="h3 mb-1">{children}</h1>
+      {sub && <p className="text-body-secondary small mb-0">{sub}</p>}
     </div>
   )
 }
 
 export function Vacio({ titulo, detalle }: { titulo: string; detalle: string }) {
   return (
-    <div style={{ textAlign: 'center', padding: '42px 20px', color: 'var(--tinta-3)' }}>
-      <div style={{ fontSize: 14.5, fontWeight: 600, color: 'var(--tinta-2)' }}>{titulo}</div>
-      <div style={{ fontSize: 13, marginTop: 6 }}>{detalle}</div>
+    <div className="text-center text-body-secondary py-5 px-3">
+      <div className="fw-semibold">{titulo}</div>
+      <div className="small mt-1">{detalle}</div>
     </div>
   )
 }
 
-/** Lo que puede recibir foco dentro de un modal, en el orden del documento. */
-const ENFOCABLES = 'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
-
 /**
- * Modal accesible y del tamaño de la pantalla:
- * - centrado, como máximo 90 % del alto (÷ escala: con zoom, vh crece) y con scroll SOLO en el contenido;
- *   el título y la X quedan siempre a la vista;
- * - se cierra con Esc, con la X o tocando fuera;
- * - el foco entra al primer campo, queda atrapado dentro (Tab y Mayús+Tab dan la vuelta) y al cerrar
- *   vuelve a donde estaba (el botón que lo abrió).
+ * Modal de Bootstrap. React-Bootstrap ya resuelve lo que antes se hacía a mano:
+ * se cierra con Esc, con la X o tocando fuera, atrapa el foco y lo devuelve al cerrar.
  */
 export function Modal({ titulo, children, enCerrar, ancho = 440 }: {
   titulo: string
@@ -188,72 +135,13 @@ export function Modal({ titulo, children, enCerrar, ancho = 440 }: {
   enCerrar: () => void
   ancho?: number
 }) {
-  const caja = useRef<HTMLDivElement>(null)
-  const idTitulo = useId()
-  const cerrar = useRef(enCerrar)
-  cerrar.current = enCerrar
-
-  useEffect(() => {
-    const antes = document.activeElement as HTMLElement | null
-    const cuerpo = caja.current?.querySelector<HTMLElement>('[data-modal-cuerpo]')
-    const primero = cuerpo?.querySelector<HTMLElement>(ENFOCABLES) ?? caja.current?.querySelector<HTMLElement>(ENFOCABLES)
-    ;(primero ?? caja.current)?.focus()
-    return () => { if (antes && document.contains(antes)) antes.focus() }
-  }, [])
-
-  const teclas = (e: KeyboardEvent<HTMLDivElement>) => {
-    if (e.key === 'Escape') { e.stopPropagation(); cerrar.current(); return }
-    if (e.key !== 'Tab' || !caja.current) return
-    const lista = [...caja.current.querySelectorAll<HTMLElement>(ENFOCABLES)].filter((x) => x.offsetParent !== null)
-    if (!lista.length) { e.preventDefault(); return }
-    const [a, z] = [lista[0], lista[lista.length - 1]]
-    if (e.shiftKey && (document.activeElement === a || !caja.current.contains(document.activeElement))) { e.preventDefault(); z.focus() }
-    else if (!e.shiftKey && document.activeElement === z) { e.preventDefault(); a.focus() }
-  }
-
-  // se dibuja en <body> (portal): dentro del contenido, un ancestro con vidrio (backdrop-filter/transform) vuelve
-  // «position: fixed» relativo a ese bloque y el velo no cubría la pantalla entera ni quedaba centrado.
-  return createPortal(
-    <div
-      className="velo"
-      style={{
-        position: 'fixed', inset: 0, padding: 16,
-        display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000,
-      }}
-      onClick={enCerrar}
-    >
-      <div
-        ref={caja}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby={idTitulo}
-        tabIndex={-1}
-        onKeyDown={teclas}
-        onClick={(e) => e.stopPropagation()}
-        className="modal-caja vidrio-fuerte"
-        style={{
-          width: ancho, maxWidth: 'calc(100vw / var(--escala, 1) - 32px)',
-          maxHeight: 'calc(90vh / var(--escala, 1))',
-          display: 'flex', flexDirection: 'column', overflow: 'hidden', outline: 'none',
-          borderRadius: 'var(--radio-vidrio)', boxShadow: 'var(--vidrio-sombra-alta)',
-        }}
-      >
-        <div style={{ flex: 'none', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, padding: '20px 24px 14px', borderBottom: '1px solid var(--linea)' }}>
-          <h2 id={idTitulo} style={{ fontSize: 18, fontWeight: 800, letterSpacing: '-0.01em', minWidth: 0 }}>{titulo}</h2>
-          <button
-            type="button"
-            onClick={enCerrar}
-            aria-label="Cerrar"
-            title="Cerrar (Esc)"
-            className="modal-cerrar"
-          >
-            ✕
-          </button>
-        </div>
-        <div data-modal-cuerpo style={{ flex: '1 1 auto', minHeight: 0, overflowY: 'auto', overscrollBehavior: 'contain', padding: '16px 22px 20px' }}>
-          {children}
-        </div>
-      </div>
-    </div>
-  , document.body)
+  const tam = ancho >= 900 ? 'xl' : ancho >= 620 ? 'lg' : undefined
+  return (
+    <ModalBs show onHide={enCerrar} centered scrollable size={tam}>
+      <ModalBs.Header closeButton>
+        <ModalBs.Title as="h2" className="h5">{titulo}</ModalBs.Title>
+      </ModalBs.Header>
+      <ModalBs.Body>{children}</ModalBs.Body>
+    </ModalBs>
+  )
 }

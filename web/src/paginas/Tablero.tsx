@@ -26,7 +26,7 @@ import { usaApiReal } from '../api/http'
 import { GastoRecursos } from './GastoRecursos'
 import type { AvanceInsumo, ResumenTablero } from '../api/tipos'
 import { Chip, Medidor, Vacio, type TonoChip } from '../ui/base'
-import { Aviso, Chips, Encabezado, Fondo, Kpi, Segmentado, TituloSeccion, Vidrio, estiloPildora } from '../ui/vidrio'
+import { Aviso, Chips, Encabezado, Kpi, Segmentado, TituloSeccion, Vidrio } from '../ui/piezas'
 
 const soles = (v: number) => v.toLocaleString('es-PE', { maximumFractionDigits: 0 })
 const FAM_COLOR: Record<string, string> = {
@@ -51,7 +51,6 @@ export function Tablero() {
   if (!r) {
     return (
       <>
-        <Fondo dibujo="panel" />
         <Vidrio><Vacio titulo="Cargando…" detalle="Consultando el gasto en recursos de la obra." /></Vidrio>
       </>
     )
@@ -69,14 +68,13 @@ export function Tablero() {
 
   return (
     <>
-      <Fondo dibujo="panel" />
-      <div className="pagina" style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+      <div className="d-flex flex-column gap-3 pb-4">
         <Encabezado
           titulo="Gasto en recursos"
           sub={usaApiReal
             ? 'Cuánto se compró, se recibió, se consumió y queda en stock en la obra, al mismo corte y con su definición.'
             : `Presupuesto 2701006 del S10 · semana ${r.semana} de ${r.semanasTotales} · lo consumido contra lo planificado en el reporte de recursos`}
-          acciones={<Link to="/compras" className="foco-vidrio" style={estiloPildora()}>+ Registrar compra</Link>}
+          acciones={<Link to="/compras" className="btn btn-primary">+ Registrar compra</Link>}
         />
 
         {usaApiReal ? (
@@ -112,15 +110,15 @@ export function Tablero() {
           </Chips>
   
           <Vidrio estilo={{ borderLeft: '4px solid var(--accion)', padding: '14px 20px' }} etiqueta="Alcance del reporte">
-            <p style={{ fontSize: 14, color: 'var(--tinta-2)', lineHeight: 1.55 }}>
-              <strong style={{ color: 'var(--tinta)' }}>Esto es el gasto en recursos, no el costo total de la obra.</strong>{' '}
+            <p className="text-body-secondary">
+              <strong>Esto es el gasto en recursos, no el costo total de la obra.</strong>{' '}
               Incluye material, herramientas y horas hombre. No incluye gastos generales,
               subcontratos, servicios ni planilla. Y lo planificado ya incluye el desperdicio:
               excederlo avisa, nunca bloquea.
             </p>
           </Vidrio>
   
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 14 }}>
+          <div className="d-flex flex-wrap gap-3">
             <Kpi rotulo="Planificado en recursos" prefijo="S/" valor={soles(planificado)} pie="Materiales, herramientas y horas hombre del S10" />
             <Kpi rotulo="Gastado a la fecha" prefijo="S/" valor={soles(r.gastoTotal)} pie={`${pct1(gastoPct)} % de lo planificado`} />
             <Kpi
@@ -132,61 +130,61 @@ export function Tablero() {
           </>
         )}
 
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 18, alignItems: 'flex-start' }}>
-          {!usaApiReal && <div style={{ flex: '999 1 520px', minWidth: 0, display: 'flex', flexDirection: 'column', gap: 18 }}>
+        <div className="d-flex flex-wrap gap-3 align-items-start">
+          {!usaApiReal && <div className="d-flex flex-column gap-3" style={{ flex: '999 1 520px', minWidth: 0 }}>
             <Vidrio estilo={{ display: 'flex', flexDirection: 'column', gap: 18 }} etiqueta="Por familia de recurso">
-              <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', gap: 8, alignItems: 'baseline' }}>
+              <div className="d-flex flex-wrap justify-content-between gap-2 align-items-baseline">
                 <TituloSeccion>Por familia de recurso</TituloSeccion>
-                <span style={{ fontSize: 13, color: 'var(--tinta-2)' }}>La línea negra marca el avance del plazo</span>
+                <span className="small text-body-secondary">La línea negra marca el avance del plazo</span>
               </div>
               {r.familias.map((fam) => (
-                <div key={fam.familia} style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', gap: 8, fontSize: 14 }}>
-                    <span style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 700 }}>
+                <div key={fam.familia} className="d-flex flex-column gap-2">
+                  <div className="d-flex flex-wrap justify-content-between gap-2">
+                    <span className="d-flex align-items-center gap-2 fw-bold">
                       <span aria-hidden style={{ width: 10, height: 10, borderRadius: 5, background: FAM_COLOR[fam.familia] }} />
                       {fam.etiqueta}
                     </span>
-                    <span className="n" style={{ color: 'var(--tinta-2)' }}>
-                      <b style={{ color: 'var(--tinta)' }}>S/ {soles(fam.gastado)}</b> de S/ {soles(fam.planificado)} · {pct1(fam.pct)} %
+                    <span className="n text-body-secondary">
+                      <b>S/ {soles(fam.gastado)}</b> de S/ {soles(fam.planificado)} · {pct1(fam.pct)} %
                     </span>
                   </div>
                   <BarraPlazo pct={fam.pct} plazo={r.avancePlazoPct} color={FAM_COLOR[fam.familia]} />
                 </div>
               ))}
-              <p style={{ fontSize: 13, color: 'var(--tinta-2)' }}>
+              <p className="small text-body-secondary">
                 Subcontratos, gastos generales, servicios y planilla quedan fuera: SIGRO informa el gasto en recursos, no el costo total de la obra.
               </p>
             </Vidrio>
 
           </div>}
 
-          <aside style={{ flex: '1 1 280px', minWidth: 0, display: 'flex', flexDirection: 'column', gap: 18 }}>
+          <aside className="d-flex flex-column gap-3" style={{ flex: '1 1 280px', minWidth: 0 }}>
             {!usaApiReal && <Vidrio estilo={{ display: 'flex', flexDirection: 'column', gap: 10 }} etiqueta="Plazo de la obra">
               <TituloSeccion>Plazo de la obra</TituloSeccion>
               <div
                 role="img" aria-label={`Avance del plazo: ${r.avancePlazoPct} por ciento`}
-                style={{ height: 12, borderRadius: 6, background: 'var(--separador)', overflow: 'hidden' }}
+                className="overflow-hidden" style={{ height: 12, borderRadius: 6, background: 'var(--separador)' }}
               >
                 <span className="medidor-barra" style={{ display: 'block', width: `${Math.min(r.avancePlazoPct, 100)}%`, height: 12, background: 'var(--pildora)', borderRadius: 6 }} />
               </div>
-              <span className="n" style={{ fontSize: 14, color: 'var(--tinta-2)' }}>
+              <span className="n text-body-secondary">
                 Semana {r.semana} de {r.semanasTotales} · {pct1(r.avancePlazoPct)} % del plazo
               </span>
             </Vidrio>}
 
             <Vidrio estilo={{ display: 'flex', flexDirection: 'column', gap: 10 }} etiqueta="No planificados">
               <TituloSeccion>No planificados · aparte</TituloSeccion>
-              {r.noPlanificados.length === 0 && <span style={{ fontSize: 13, color: 'var(--tinta-2)' }}>Ninguno por ahora.</span>}
+              {r.noPlanificados.length === 0 && <span className="small text-body-secondary">Ninguno por ahora.</span>}
               {r.noPlanificados.map((np) => (
-                <div key={np.descripcion} style={{ background: 'var(--vidrio-celda)', borderRadius: 16, padding: '12px 14px', display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', gap: '4px 10px' }}>
-                  <span style={{ flex: '1 1 160px', display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
-                    <span style={{ fontSize: 14, fontWeight: 700 }}>{np.descripcion}</span>
-                    <span style={{ fontSize: 13, color: 'var(--tinta-2)' }}>{np.motivo}</span>
+                <div key={np.descripcion} className="d-flex flex-wrap justify-content-between" style={{ background: 'var(--vidrio-celda)', borderRadius: 16, padding: '12px 14px', gap: '4px 10px' }}>
+                  <span className="d-flex flex-column gap-1" style={{ flex: '1 1 160px', minWidth: 0 }}>
+                    <span className="fw-bold">{np.descripcion}</span>
+                    <span className="small text-body-secondary">{np.motivo}</span>
                   </span>
-                  <span className="n" style={{ fontSize: 14, fontWeight: 800, whiteSpace: 'nowrap' }}>S/ {soles(np.gastado)}</span>
+                  <span className="n fw-bold text-nowrap">S/ {soles(np.gastado)}</span>
                 </div>
               ))}
-              <p style={{ fontSize: 13, color: 'var(--tinta-2)' }}>
+              <p className="small text-body-secondary">
                 Se informan aparte para no distorsionar la desviación de los planificados.
               </p>
             </Vidrio>
@@ -194,18 +192,18 @@ export function Tablero() {
         </div>
 
         <Vidrio estilo={{ display: 'flex', flexDirection: 'column', gap: 12 }} etiqueta="Insumos y su desviación">
-          <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', gap: 10, alignItems: 'center' }}>
+          <div className="d-flex flex-wrap justify-content-between gap-2 align-items-center">
             <TituloSeccion>Insumos y su desviación</TituloSeccion>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center' }}>
+            <div className="d-flex flex-wrap gap-2 align-items-center">
               {conDesviacionReal && (
-                <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 600, color: 'var(--tinta-2)' }}>
+                <label className="d-flex align-items-center gap-2 small fw-semibold text-body-secondary">
                   Ordenar
                   <select
                     aria-label="Ordenar desviación por"
-                    className="campo"
+                    className="form-select px-3 small"
                     value={orden}
                     onChange={(e) => setOrden(e.target.value as OrdenDesviacion)}
-                    style={{ height: 36, padding: '0 10px', fontSize: 13, borderRadius: 12 }}
+                    style={{ height: 36, borderRadius: 12 }}
                   >
                     <option value="importe">Mayor desviación S/</option>
                     <option value="porcentaje">Mayor desviación %</option>
@@ -223,8 +221,8 @@ export function Tablero() {
           {r.insumos.length === 0 ? (
             <Vacio titulo="Sin requerimiento todavía" detalle="Importa la Relación de insumos del S10 para comparar lo gastado contra lo planificado." />
           ) : (
-            <div style={{ overflowX: 'auto' }}>
-              <table className="tabla-vidrio" style={{ minWidth: 1080 }}>
+            <div className="overflow-x-auto">
+              <table className="table table-hover align-middle mb-0" style={{ minWidth: 1080 }}>
                 <thead>
                   <tr>
                     <th>Insumo</th>
@@ -243,38 +241,38 @@ export function Tablero() {
                   {filas.map((f) => (
                     <tr key={f.insumoId}>
                       <td style={{ minWidth: 220 }}>
-                        <div style={{ fontWeight: 600 }}>{f.descripcion}</div>
-                        <div className="n" style={{ fontSize: 12, color: 'var(--tinta-2)', marginTop: 2, textAlign: 'left' }}>
+                        <div className="fw-semibold">{f.descripcion}</div>
+                        <div className="n small text-body-secondary mt-1 text-start">
                           SKU {f.codigo}{conDesviacionReal && f.unidad ? ` · ${f.consumidoCantidad?.toLocaleString('es-PE', { maximumFractionDigits: 2 }) ?? 0} ${f.unidad} consumidos` : ''}
                         </div>
                       </td>
                       <td className="n">{soles(f.planificadoImporte)}</td>
                       {conDesviacionReal && <td className="n">{soles(f.esperadoImporte ?? 0)}</td>}
-                      <td className="n" style={{ whiteSpace: 'nowrap' }}>
+                      <td className="n text-nowrap">
                         {f.requeridoCompra !== undefined ? `${f.requeridoCompra.toLocaleString('es-PE', { maximumFractionDigits: 2 })} ${f.unidadCompra}` : '—'}
                       </td>
-                      <td className="n" style={{ whiteSpace: 'nowrap' }}>
+                      <td className="n text-nowrap">
                         {f.compradoCantidad.toLocaleString('es-PE', { maximumFractionDigits: 2 })} {f.unidadCompra}
-                        <div style={{ fontSize: 12, color: 'var(--tinta-2)' }}>{f.compradoPct} %</div>
+                        <div className="small text-body-secondary">{f.compradoPct} %</div>
                       </td>
                       <td className="n">{f.sinDatoAlmacen ? '—' : `${f.recibidoPct} %`}</td>
                       <td>
                         {f.sinDatoAlmacen ? (
-                          <div className="n" style={{ color: 'var(--tinta-2)' }}>—</div>
+                          <div className="n text-body-secondary">—</div>
                         ) : (
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 9, justifyContent: 'flex-end' }}>
+                          <div className="d-flex align-items-center gap-2 justify-content-end">
                             <Medidor pct={f.consumidoPct} marcaPct={r.avancePlazoPct} color={colorDesvio(f.desviacionPuntos)} ancho={88} />
-                            <span className="n" style={{ width: 52, textAlign: 'right' }}>{f.consumidoPct} %</span>
+                            <span className="n text-end" style={{ width: 52 }}>{f.consumidoPct} %</span>
                           </div>
                         )}
                       </td>
-                      <td className="n" style={{ whiteSpace: 'nowrap' }}>{f.saldoPorComprar.toLocaleString('es-PE')} {f.unidadCompra}</td>
-                      <td className="n" style={{ fontWeight: 700 }}>{soles(f.gastado)}</td>
+                      <td className="n text-nowrap">{f.saldoPorComprar.toLocaleString('es-PE')} {f.unidadCompra}</td>
+                      <td className="n fw-bold">{soles(f.gastado)}</td>
                       <td className="n">
-                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2 }}>
+                        <div className="d-flex flex-column align-items-end gap-1">
                           <Chip tono={tonoDesvio(f.desviacionPuntos)}>{pts(f.desviacionPuntos)}</Chip>
                           {f.desviacionImporte !== undefined && (
-                            <span style={{ fontSize: 12, color: 'var(--tinta-2)', whiteSpace: 'nowrap' }}>
+                            <span className="small text-body-secondary text-nowrap">
                               {signoSoles(f.desviacionImporte)}
                               {f.efectoCantidad !== undefined ? ` (cant ${signoSoles(f.efectoCantidad)})` : ''}
                             </span>
@@ -287,7 +285,7 @@ export function Tablero() {
               </table>
             </div>
           )}
-          <p style={{ fontSize: 13, color: 'var(--tinta-2)', lineHeight: 1.5 }}>
+          <p className="small text-body-secondary">
             Comprado, recibido y consumido se expresan en porcentaje de lo requerido en el S10, en la unidad de compra (HU-23):
             se pueden cuadrar a mano con la columna «Requerido». La marca del medidor es el avance del plazo ({pct1(r.avancePlazoPct)} %): un consumo por encima se está adelantando a la obra.
             Lo planificado incluye desperdicio: pasarse avisa, no bloquea.

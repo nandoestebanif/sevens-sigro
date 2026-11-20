@@ -22,7 +22,7 @@ import { consultarRucEnSunat, errorAltaProveedor, rucValido, type RucSunat } fro
 import { proveedores as proveedoresOficina } from '../api/oficina'
 import type { EstadoProveedor, Proveedor } from '../api/tipos'
 import { Campo, Chip, Modal, Vacio, type TonoChip } from '../ui/base'
-import { Aviso, Chips, Encabezado, Fondo, Pildora, Vidrio } from '../ui/vidrio'
+import { Aviso, Chips, Encabezado, Pildora, Vidrio, Buscador } from '../ui/piezas'
 
 const ESTADO: Record<EstadoProveedor, { texto: string; tono: TonoChip }> = {
   validado: { texto: 'Validado en SUNAT', tono: 'bien' },
@@ -89,7 +89,7 @@ export function AltaProveedor({ enCerrar, enCreado }: {
 
   return (
     <Modal titulo="Registrar proveedor" enCerrar={enCerrar}>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+      <div className="d-flex flex-column gap-3">
         <Campo
           id="alta-ruc"
           etiqueta="RUC o DNI"
@@ -100,17 +100,17 @@ export function AltaProveedor({ enCerrar, enCreado }: {
           error={error?.campo === 'ruc' ? error.texto : undefined}
         />
         {consultando && (
-          <span style={{ fontSize: 12.5, color: 'var(--tinta-2)' }}>Consultando en SUNAT…</span>
+          <span className="small text-body-secondary">Consultando en SUNAT…</span>
         )}
         {avisoRuc && (
           <Aviso tono="aviso" rol="status">{avisoRuc}</Aviso>
         )}
         {sunat && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+          <div className="d-flex align-items-center gap-2 flex-wrap">
             <Chip tono={sunat.apto_para_comprar ? 'bien' : 'aviso'}>
               SUNAT: {sunat.estado_sunat} · {sunat.condicion}
             </Chip>
-            <span style={{ fontSize: 12, color: 'var(--tinta-2)' }}>razón social traída del padrón</span>
+            <span className="small text-body-secondary">razón social traída del padrón</span>
           </div>
         )}
         <Campo
@@ -120,13 +120,13 @@ export function AltaProveedor({ enCerrar, enCreado }: {
           enCambio={setRazon}
           error={error?.campo === 'razon' ? error.texto : undefined}
         />
-        <p style={{ fontSize: 12.5, color: 'var(--tinta-2)', lineHeight: 1.5 }}>
+        <p className="small text-body-secondary">
           Con los 11 dígitos del RUC, la razón social se trae sola del padrón de
           SUNAT (vía el servicio de integraciones). Si el servicio no responde,
           se escribe a mano y el proveedor queda «sin validar»: la compra no se
           bloquea.
         </p>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, justifyContent: 'flex-end' }}>
+        <div className="d-flex flex-wrap gap-2 justify-content-end">
           <Pildora tipo="secundario" enClic={enCerrar}>Cancelar</Pildora>
           <Pildora enClic={guardar} deshabilitado={guardando}>
             {guardando ? 'Guardando…' : 'Guardar proveedor'}
@@ -149,13 +149,13 @@ function BajaProveedor({ p, enCerrar, enListo }: { p: Proveedor; enCerrar: () =>
   }
   return (
     <Modal titulo="Dar de baja al proveedor" enCerrar={enCerrar}>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-        <p style={{ fontSize: 14, lineHeight: 1.5 }}>
+      <div className="d-flex flex-column gap-3">
+        <p>
           <strong>{p.razonSocial}</strong> (RUC {p.ruc}) dejará de aparecer al registrar compras nuevas.
           No se borra: sus {p.comprasRegistradas} compras registradas se conservan y sigue en esta lista como «De baja».
         </p>
-        {error && <p role="alert" style={{ fontSize: 13, color: 'var(--grave)', fontWeight: 600 }}>{error}</p>}
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, justifyContent: 'flex-end' }}>
+        {error && <p role="alert" className="small text-danger fw-semibold">{error}</p>}
+        <div className="d-flex flex-wrap gap-2 justify-content-end">
           <Pildora tipo="secundario" enClic={enCerrar}>Cancelar</Pildora>
           <Pildora enClic={confirmar} deshabilitado={guardando}>{guardando ? 'Dando de baja…' : 'Dar de baja'}</Pildora>
         </div>
@@ -216,8 +216,7 @@ export function Proveedores() {
 
   return (
     <>
-    <Fondo dibujo="proveedores" />
-    <div className="pagina" style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+    <div className="d-flex flex-column gap-3 pb-4">
       <Encabezado
         titulo="Proveedores"
         sub="RUC único en todo el sistema · un proveedor de baja no aparece al registrar compras nuevas"
@@ -234,19 +233,7 @@ export function Proveedores() {
       {avisoValidacion && <Aviso tono={avisoValidacion.tono} rol="status">{avisoValidacion.texto}</Aviso>}
 
       <Vidrio estilo={{ display: 'flex', flexDirection: 'column', gap: 12 }} etiqueta="Lista de proveedores">
-        <label className="vidrio-fuerte" style={{ height: 52, borderRadius: 26, padding: '0 18px', display: 'flex', alignItems: 'center', gap: 10 }}>
-          <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accion)" strokeWidth="2.4" strokeLinecap="round" style={{ flex: 'none' }}>
-            <circle cx="11" cy="11" r="7" /><path d="M20 20l-4-4" />
-          </svg>
-          <input
-            value={busqueda}
-            onChange={(e) => { setBusqueda(e.target.value); setTope(60) }}
-            placeholder="Buscar por razón social o RUC…"
-            aria-label="Buscar proveedor por razón social o RUC"
-            className="foco-vidrio"
-            style={{ flex: 1, minWidth: 0, height: 40, border: 0, background: 'transparent', fontSize: 15, fontFamily: 'inherit', color: 'var(--tinta)' }}
-          />
-        </label>
+        <Buscador valor={busqueda} enCambio={(v) => { setBusqueda(v); setTope(60) }} marcador="Buscar por razón social o RUC…" etiqueta="Buscar proveedor por razón social o RUC" />
 
         {visibles === null ? (
           <Vacio titulo="Cargando…" detalle="Consultando los proveedores de la empresa." />
@@ -256,8 +243,8 @@ export function Proveedores() {
             detalle="Prueba con otra razón social u otro RUC, o registra el proveedor."
           />
         ) : (
-          <div style={{ overflowX: 'auto' }}>
-            <table className="tabla-vidrio">
+          <div className="overflow-x-auto">
+            <table className="table table-hover align-middle mb-0">
               <thead>
                 <tr>
                   <th>Proveedor</th><th>RUC</th><th>Estado</th>
@@ -268,19 +255,19 @@ export function Proveedores() {
               <tbody>
                 {recorte!.map((p) => (
                   <tr key={p.id}>
-                    <td style={{ fontWeight: 600, minWidth: 260 }}>{p.razonSocial}</td>
-                    <td className="n" style={{ textAlign: 'left', color: 'var(--tinta-2)' }}>{p.ruc}</td>
+                    <td className="fw-semibold" style={{ minWidth: 260 }}>{p.razonSocial}</td>
+                    <td className="n text-start text-body-secondary">{p.ruc}</td>
                     <td>
                       <Chip tono={ESTADO[p.estado].tono}>{ESTADO[p.estado].texto}</Chip>
                       {p.alertaSunat && (
-                        <div style={{ fontSize: 12, color: 'var(--aviso)', marginTop: 4, lineHeight: 1.3 }}>{p.alertaSunat}</div>
+                        <div className="small text-warning-emphasis mt-1">{p.alertaSunat}</div>
                       )}
                     </td>
-                    <td className="n" style={{ whiteSpace: 'nowrap' }}>{p.diasEntrega == null ? '—' : `${p.diasEntrega} días`}</td>
+                    <td className="n text-nowrap">{p.diasEntrega == null ? '—' : `${p.diasEntrega} días`}</td>
                     <td className="n">{p.comprasRegistradas}</td>
-                    <td className="n" style={{ whiteSpace: 'nowrap' }}>{p.ultimaCompra ?? '—'}</td>
-                    <td style={{ textAlign: 'right' }}>
-                      <div style={{ display: 'inline-flex', gap: 6, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                    <td className="n text-nowrap">{p.ultimaCompra ?? '—'}</td>
+                    <td className="text-end">
+                      <div className="d-inline-flex gap-2 flex-wrap justify-content-end">
                         {p.estado !== 'de_baja' && /^\d{11}$/.test(p.ruc) && (
                           <Pildora
                             tipo="secundario"
@@ -304,7 +291,7 @@ export function Proveedores() {
           </div>
         )}
         {visibles && visibles.length > tope && (
-          <div style={{ paddingTop: 6, display: 'flex', justifyContent: 'center' }}>
+          <div className="pt-2 d-flex justify-content-center">
             <Pildora tipo="secundario" enClic={() => setTope(tope + 60)}>
               Mostrar 60 más · van {tope} de {visibles.length.toLocaleString('es-PE')}
             </Pildora>
@@ -312,7 +299,7 @@ export function Proveedores() {
         )}
       </Vidrio>
 
-      <p style={{ fontSize: 13, color: 'var(--tinta-plano)', padding: '0 4px', lineHeight: 1.5 }}>
+      <p className="small text-body-secondary px-1">
         El plazo de entrega de cada proveedor alimenta el punto de reposición. Los días se
         recalculan con las recepciones reales.
       </p>

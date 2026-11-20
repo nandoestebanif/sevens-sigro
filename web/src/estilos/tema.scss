@@ -1,0 +1,95 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// SIGRO · tema de Bootstrap 5
+// Así se personaliza Bootstrap: se cambian sus variables de Sass ANTES de
+// importarlo. No se escribe CSS a mano para botones, tablas o formularios:
+// todo eso lo da Bootstrap. Aquí solo van los colores de la marca SEVEN'S.
+// ─────────────────────────────────────────────────────────────────────────────
+
+// 1. Colores de la marca (el naranja oscuro pasa contraste AA con texto blanco)
+$primary: #c2410c;
+$secondary: #6c757d;
+$success: #198754;
+$warning: #ffc107;
+$danger: #dc3545;
+$info: #0d6efd;
+
+// 2. Tipografía y forma
+$font-family-sans-serif: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+$font-size-base: 0.9375rem;
+$body-bg: #f5f6f8;
+$enable-shadows: false;
+$link-decoration: none;
+
+// 3. Bootstrap completo (componentes, utilidades y modo oscuro con data-bs-theme)
+@import "bootstrap/scss/bootstrap";
+
+// 4. Lo poco propio de SIGRO
+// cifras alineadas en tablas y tarjetas (montos, cantidades)
+.n {
+  font-variant-numeric: tabular-nums;
+}
+
+// menú lateral fijo en pantallas grandes
+@include media-breakpoint-up(lg) {
+  .sigro-menu {
+    flex: 0 0 250px;
+    width: 250px;
+    min-height: calc(100vh - 56px);
+  }
+}
+
+.sigro-menu .nav-link {
+  color: var(--bs-body-color);
+}
+
+.sigro-menu .nav-link.active {
+  background-color: var(--bs-primary-bg-subtle);
+  color: var(--bs-primary-text-emphasis);
+  font-weight: 600;
+}
+
+// Compatibilidad: algunas pantallas aún escriben estilos en línea con los
+// nombres de color de la versión anterior. Se apuntan a las variables de
+// Bootstrap, así el modo oscuro de Bootstrap también las cubre.
+:root,
+[data-bs-theme] {
+  --fondo: var(--bs-body-bg);
+  --tarjeta: var(--bs-body-bg);
+  --tarjeta-suave: var(--bs-tertiary-bg);
+  --borde: var(--bs-border-color);
+  --linea: var(--bs-border-color-translucent);
+  --separador: var(--bs-border-color);
+  --pista: var(--bs-secondary-bg);
+  --tinta: var(--bs-body-color);
+  --tinta-2: var(--bs-secondary-color);
+  --tinta-3: var(--bs-secondary-color);
+  --tinta-plano: var(--bs-secondary-color);
+  --marca: var(--bs-primary);
+  --accion: var(--bs-primary);
+  --accion-tinta: #fff;
+  --marca-tinte: var(--bs-primary-bg-subtle);
+  --marca-tinte-tinta: var(--bs-primary-text-emphasis);
+  --bien: var(--bs-success-text-emphasis);
+  --bien-tinte: var(--bs-success-bg-subtle);
+  --aviso: var(--bs-warning-text-emphasis);
+  --aviso-tinte: var(--bs-warning-bg-subtle);
+  --grave: var(--bs-danger-text-emphasis);
+  --grave-tinte: var(--bs-danger-bg-subtle);
+  --info: var(--bs-info-text-emphasis);
+  --info-tinte: var(--bs-info-bg-subtle);
+  --fam-materiales: #{$primary};
+  --fam-herramientas: #0369a1;
+  --fam-horas: #4d7c0f;
+  --radio: var(--bs-border-radius-lg);
+  --radio-chico: var(--bs-border-radius);
+  --radio-pildora: var(--bs-border-radius-pill);
+  --radio-vidrio: var(--bs-border-radius-lg);
+  --sombra: var(--bs-box-shadow-sm);
+  --vidrio: var(--bs-body-bg);
+  --vidrio-fuerte: var(--bs-body-bg);
+  --vidrio-celda: var(--bs-tertiary-bg);
+  --vidrio-borde: var(--bs-border-color);
+  --campo-fondo: var(--bs-body-bg);
+  --campo-borde: var(--bs-border-color);
+  --velo: rgba(0, 0, 0, 0.4);
+}

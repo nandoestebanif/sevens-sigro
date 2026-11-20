@@ -27,15 +27,15 @@ function CampoCantidad({ id, etiqueta, valor, enCambio, unidad, error, ayuda }: 
   id: string; etiqueta: string; valor: string; enCambio: (v: string) => void; unidad: string; error?: string; ayuda: string
 }) {
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-      <label htmlFor={id} style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--tinta-2)' }}>{etiqueta}</label>
+    <div className="d-flex flex-column gap-2">
+      <label htmlFor={id} className="small fw-semibold text-body-secondary">{etiqueta}</label>
       <div style={{ display: 'flex', alignItems: 'stretch', border: `1px solid ${error ? 'var(--grave)' : 'var(--borde)'}`, borderRadius: 'var(--radio-chico)', background: 'var(--tarjeta)', overflow: 'hidden' }}>
         <input
           id={id} value={valor} inputMode="decimal" autoComplete="off" onChange={(e) => enCambio(e.target.value)}
           aria-invalid={error ? true : undefined} aria-describedby={`${id}-msj`}
-          style={{ flex: 1, minWidth: 0, height: 40, border: 0, padding: '0 13px', fontSize: 14, fontFamily: 'inherit', color: 'var(--tinta)', background: 'transparent', outlineColor: 'var(--accion)' }}
+          className="flex-grow-1 px-3" style={{ minWidth: 0, height: 40, border: 0, background: 'transparent', outlineColor: 'var(--accion)' }}
         />
-        <span aria-hidden className="n" style={{ flex: 'none', display: 'flex', alignItems: 'center', padding: '0 12px', fontSize: 13, fontWeight: 600, color: 'var(--tinta-2)', background: 'var(--tarjeta-suave)', borderLeft: '1px solid var(--borde)' }}>
+        <span aria-hidden className="n flex-shrink-0 d-flex align-items-center px-3 small fw-semibold text-body-secondary" style={{ background: 'var(--tarjeta-suave)', borderLeft: '1px solid var(--borde)' }}>
           {unidad || '—'}
         </span>
       </div>
@@ -86,7 +86,7 @@ function Formulario({ insumos, todos, inicial, enCerrar, enListo }: {
 
   return (
     <Modal titulo={inicial ? `Cambiar parámetros · ${inicial.descripcion}` : 'Definir parámetros de un insumo'} enCerrar={enCerrar} ancho={480}>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+      <div className="d-flex flex-column gap-3">
         {!inicial && (
           <BuscarOpcion
             id="par-insumo" etiqueta="Insumo del requerimiento" opciones={opciones} valor={codigo}
@@ -96,15 +96,15 @@ function Formulario({ insumos, todos, inicial, enCerrar, enListo }: {
             sinResultados="Ningún insumo coincide con"
           />
         )}
-        {aviso && <div role="status" style={{ fontSize: 12.5, lineHeight: 1.5, color: 'var(--aviso)', background: 'var(--aviso-tinte)', borderRadius: 'var(--radio-chico)', padding: '8px 12px' }}>{aviso}</div>}
+        {aviso && <div role="status" className="small text-warning-emphasis" style={{ background: 'var(--aviso-tinte)', borderRadius: 'var(--radio-chico)', padding: '8px 12px' }}>{aviso}</div>}
         <CampoCantidad id="par-seguridad" etiqueta="Stock de seguridad" valor={seguridad} unidad={unidad}
           enCambio={(v) => { setSeguridad(v); setErrores((x) => ({ ...x, seguridad: undefined, punto: undefined })) }}
           error={errores.seguridad} ayuda="Colchón frente a la demora del proveedor." />
         <CampoCantidad id="par-punto" etiqueta="Punto de reposición" valor={punto} unidad={unidad}
           enCambio={(v) => { setPunto(v); setErrores((x) => ({ ...x, punto: undefined })) }}
           error={errores.punto} ayuda="Saldo que dispara el aviso; igual o mayor que el stock de seguridad." />
-        {error && <div role="alert" style={{ fontSize: 13, color: 'var(--grave)' }}>{error}</div>}
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+        {error && <div role="alert" className="small text-danger">{error}</div>}
+        <div className="d-flex justify-content-end gap-2">
           <Boton tipo="secundario" enClic={enCerrar}>Cancelar</Boton>
           <Boton enClic={guardar} deshabilitado={guardando}>{guardando ? 'Guardando…' : 'Guardar'}</Boton>
         </div>
@@ -122,17 +122,17 @@ function Historial({ p, enCerrar }: { p: ParametroReposicion; enCerrar: () => vo
   return (
     <Modal titulo={`Historial · ${p.descripcion}`} enCerrar={enCerrar}>
       {filas === null ? <Vacio titulo="Cargando…" detalle="" /> : fallo ? <Vacio titulo="No se pudo abrir el historial" detalle={fallo} /> : (
-        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-          <thead><tr style={{ color: 'var(--tinta-3)', fontSize: 11.5 }}>
-            <th style={{ textAlign: 'left', padding: 6 }}>Vigente desde</th>
-            <th style={{ textAlign: 'right', padding: 6 }}>Stock de seguridad</th>
-            <th style={{ textAlign: 'right', padding: 6 }}>Punto de reposición</th>
+        <table className="w-100 small" style={{ borderCollapse: 'collapse' }}>
+          <thead><tr className="text-body-secondary small">
+            <th className="text-start" style={{ padding: 6 }}>Vigente desde</th>
+            <th className="text-end" style={{ padding: 6 }}>Stock de seguridad</th>
+            <th className="text-end" style={{ padding: 6 }}>Punto de reposición</th>
           </tr></thead>
           <tbody>{filas.map((f, i) => (
             <tr key={i} style={{ borderTop: '1px solid var(--linea)', fontWeight: i === 0 ? 700 : 400 }}>
               <td style={{ padding: 6 }}>{fecha(f.vigenteDesde)}{i === 0 ? ' · vigente' : ''}</td>
-              <td className="n" style={{ padding: 6, textAlign: 'right' }}>{n(f.stockSeguridad)} {f.unidadCompra}</td>
-              <td className="n" style={{ padding: 6, textAlign: 'right' }}>{n(f.puntoReposicion)} {f.unidadCompra}</td>
+              <td className="n text-end" style={{ padding: 6 }}>{n(f.stockSeguridad)} {f.unidadCompra}</td>
+              <td className="n text-end" style={{ padding: 6 }}>{n(f.puntoReposicion)} {f.unidadCompra}</td>
             </tr>
           ))}</tbody>
         </table>
@@ -155,8 +155,8 @@ export function Parametros() {
     () => insumos.filter((i) => !(vigentes ?? []).some((v) => v.insumoCodigo === i.codigo)), [insumos, vigentes])
 
   return (
-    <div className="pagina" style={{ display: 'flex', flexDirection: 'column', gap: 15 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
+    <div className="d-flex flex-column gap-3 pb-4">
+      <div className="d-flex justify-content-between align-items-center gap-3 flex-wrap">
         <Titulo sub="Cuándo reponer cada insumo y con cuánto colchón. Cambiarlos no borra lo anterior: queda en su historial.">
           Parámetros de reposición
         </Titulo>
@@ -170,7 +170,7 @@ export function Parametros() {
               detalle={insumos.length ? 'Define el stock de seguridad y el punto de reposición de los insumos críticos primero.'
                 : 'Primero carga el requerimiento de la obra en «Importar del S10».'} />
           ) : (
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <table className="w-100" style={{ borderCollapse: 'collapse' }}>
               <thead><tr style={{ background: 'var(--tarjeta-suave)', borderBottom: '1px solid var(--borde)' }}>
                 {['Insumo', 'Stock de seguridad', 'Punto de reposición', 'Vigente desde', ''].map((h, i) => (
                   <th key={i} style={{ padding: '11px 16px', fontSize: 11, fontWeight: 600, color: 'var(--tinta-3)', textAlign: i === 0 || i === 3 ? 'left' : 'right' }}>{h}</th>
@@ -179,13 +179,13 @@ export function Parametros() {
               <tbody>{vigentes.map((p) => (
                 <tr key={p.insumoCodigo} style={{ borderBottom: '1px solid var(--linea)' }}>
                   <td style={{ padding: '11px 16px' }}>
-                    <div style={{ fontSize: 13.5, fontWeight: 600 }}>{p.descripcion}</div>
-                    <div className="n" style={{ fontSize: 11.5, color: 'var(--tinta-3)' }}>{p.insumoCodigo}</div>
+                    <div className="small fw-semibold">{p.descripcion}</div>
+                    <div className="n small text-body-secondary">{p.insumoCodigo}</div>
                   </td>
-                  <td className="n" style={{ padding: '11px 16px', textAlign: 'right', fontSize: 13.5 }}>{n(p.stockSeguridad)} {p.unidadCompra}</td>
-                  <td className="n" style={{ padding: '11px 16px', textAlign: 'right', fontSize: 13.5, fontWeight: 700 }}>{n(p.puntoReposicion)} {p.unidadCompra}</td>
-                  <td style={{ padding: '11px 16px', fontSize: 12.5, color: 'var(--tinta-2)' }}>{fecha(p.vigenteDesde)}</td>
-                  <td style={{ padding: '11px 16px', textAlign: 'right', whiteSpace: 'nowrap' }}>
+                  <td className="n text-end small" style={{ padding: '11px 16px' }}>{n(p.stockSeguridad)} {p.unidadCompra}</td>
+                  <td className="n text-end small fw-bold" style={{ padding: '11px 16px' }}>{n(p.puntoReposicion)} {p.unidadCompra}</td>
+                  <td className="small text-body-secondary" style={{ padding: '11px 16px' }}>{fecha(p.vigenteDesde)}</td>
+                  <td className="text-end text-nowrap" style={{ padding: '11px 16px' }}>
                     <Boton tipo="fantasma" enClic={() => setViendo(p)}>Historial</Boton>
                     <Boton tipo="secundario" enClic={() => setEditando(p)}>Cambiar</Boton>
                   </td>

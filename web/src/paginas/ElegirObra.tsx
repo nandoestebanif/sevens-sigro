@@ -4,7 +4,7 @@
    aquellas donde está asignada); después la misma entrada «Preparando tu obra».
    ───────────────────────────────────────────────────────────────────────── */
 import { useState } from 'react'
-import { Fondo } from '../ui/vidrio'
+import { Alert, Card, Container, ListGroup } from 'react-bootstrap'
 
 export interface ObraParaElegir { id: string; nombre: string; rol: string }
 
@@ -23,35 +23,25 @@ export function ElegirObra({ nombre, obras, alElegir }: {
     }
   }
   return (
-    <>
-      <Fondo dibujo="entrar" />
-      <div className="pagina" style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '40px 20px' }}>
-        <section className="vidrio-fuerte entrar-formulario" aria-labelledby="elegir-obra-titulo" style={{ boxShadow: 'var(--vidrio-sombra-alta)', display: 'flex', flexDirection: 'column', gap: 16 }}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <h1 id="elegir-obra-titulo" style={{ fontSize: 30, fontWeight: 800, letterSpacing: '-0.03em', margin: 0 }}>Elige la obra</h1>
-            <p style={{ fontSize: 15, color: 'var(--tinta-2)', lineHeight: 1.45, margin: 0 }}>
-              Hola, {nombre}. Tienes {obras.length} obras asignadas: verás solo lo de la que elijas y puedes cambiarla desde el menú.
-            </p>
-          </div>
-          <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 10 }}>
+    <Container className="min-vh-100 d-flex align-items-center justify-content-center py-5">
+      <Card className="shadow" style={{ maxWidth: 480, width: '100%' }}>
+        <Card.Body className="p-4">
+          <h1 id="elegir-obra-titulo" className="h4">Elige la obra</h1>
+          <p className="text-body-secondary small">
+            Hola, {nombre}. Tienes {obras.length} obras asignadas: verás solo lo de la que elijas y puedes cambiarla desde el menú.
+          </p>
+          {/* ListGroup con «action»: cada fila es un botón */}
+          <ListGroup aria-labelledby="elegir-obra-titulo">
             {obras.map((o) => (
-              <li key={o.id}>
-                <button
-                  type="button" className="vidrio foco-vidrio" onClick={() => elegir(o)} disabled={eligiendo !== null}
-                  style={{
-                    width: '100%', minHeight: 64, borderRadius: 20, padding: '12px 16px', textAlign: 'left',
-                    display: 'flex', flexDirection: 'column', gap: 2, cursor: eligiendo ? 'default' : 'pointer', color: 'var(--tinta)',
-                  }}
-                >
-                  <span style={{ fontSize: 16, fontWeight: 800 }}>{o.nombre}</span>
-                  <span style={{ fontSize: 13, color: 'var(--tinta-2)' }}>{eligiendo === o.id ? 'Abriendo…' : o.rol}</span>
-                </button>
-              </li>
+              <ListGroup.Item key={o.id} action onClick={() => elegir(o)} disabled={eligiendo !== null}>
+                <div className="fw-semibold">{o.nombre}</div>
+                <small className="text-body-secondary">{eligiendo === o.id ? 'Abriendo…' : o.rol}</small>
+              </ListGroup.Item>
             ))}
-          </ul>
-          {error && <div role="alert" style={{ fontSize: 14, fontWeight: 600, color: 'var(--grave)' }}>{error}</div>}
-        </section>
-      </div>
-    </>
+          </ListGroup>
+          {error && <Alert variant="danger" className="mt-3 mb-0 py-2">{error}</Alert>}
+        </Card.Body>
+      </Card>
+    </Container>
   )
 }

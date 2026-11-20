@@ -18,7 +18,7 @@ import { ErrorApi } from '../api/cliente'
 import { almacenesDeLaObra, fechaCorte, inventario, type Inventario as Inv } from '../api/costo'
 import { usaApiReal } from '../api/http'
 import { Chip, Vacio } from '../ui/base'
-import { Aviso, Chips, Encabezado, Fondo, Kpi, TituloSeccion, Vidrio } from '../ui/vidrio'
+import { Aviso, Chips, Encabezado, Kpi, TituloSeccion, Vidrio } from '../ui/piezas'
 
 const soles = (v: number, dec = 2) => v.toLocaleString('es-PE', { minimumFractionDigits: dec, maximumFractionDigits: dec })
 const cant = (v: number) => v.toLocaleString('es-PE', { maximumFractionDigits: 4 })
@@ -50,8 +50,7 @@ export function Inventario() {
 
   return (
     <>
-      <Fondo dibujo="movimientos" />
-      <div className="pagina" style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+      <div className="d-flex flex-column gap-3 pb-4">
         <Encabezado titulo="Inventario valorizado"
           sub="Cuánto capital está detenido en el almacén: cantidad × costo promedio ponderado de cada insumo, a una fecha de corte." />
         <Chips>
@@ -64,22 +63,22 @@ export function Inventario() {
         ) : (
           <>
             <Vidrio estilo={{ display: 'flex', flexWrap: 'wrap', gap: 14, alignItems: 'flex-end' }} etiqueta="Qué consultar">
-              <label style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 13, fontWeight: 600, color: 'var(--tinta-2)', flex: '2 1 260px' }}>
+              <label className="d-flex flex-column gap-2 small fw-semibold text-body-secondary" style={{ flex: '2 1 260px' }}>
                 Almacén
-                <select className="campo" aria-label="Almacén" value={almacen} onChange={(e) => setAlmacen(e.target.value)}
-                  style={{ height: 44, padding: '0 12px', fontSize: 15, borderRadius: 14 }}>
+                <select className="form-select px-3" aria-label="Almacén" value={almacen} onChange={(e) => setAlmacen(e.target.value)}
+                  style={{ height: 44, borderRadius: 14 }}>
                   <option value="todos">Todos los almacenes (consolidado)</option>
                   {almacenes.map((a) => <option key={a.id} value={String(a.id)}>{a.nombre}</option>)}
                 </select>
               </label>
-              <label style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 13, fontWeight: 600, color: 'var(--tinta-2)', flex: '1 1 180px' }}>
+              <label className="d-flex flex-column gap-2 small fw-semibold text-body-secondary" style={{ flex: '1 1 180px' }}>
                 Fecha de corte
-                <input type="date" className="campo" aria-label="Fecha de corte" value={fecha} max={hoyLima()}
-                  onChange={(e) => setFecha(e.target.value)} style={{ height: 44, padding: '0 12px', fontSize: 15, borderRadius: 14 }} />
+                <input type="date" className="form-control px-3" aria-label="Fecha de corte" value={fecha} max={hoyLima()}
+                  onChange={(e) => setFecha(e.target.value)} style={{ height: 44, borderRadius: 14 }} />
               </label>
               {fecha && (
-                <button type="button" className="foco-vidrio" onClick={() => setFecha('')}
-                  style={{ height: 44, padding: '0 16px', borderRadius: 22, border: '1px solid var(--separador)', background: 'transparent', color: 'var(--tinta)', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>
+                <button type="button" onClick={() => setFecha('')}
+                  className="px-3 fw-semibold" style={{ height: 44, borderRadius: 22, border: '1px solid var(--separador)', background: 'transparent' }}>
                   Volver a «ahora»
                 </button>
               )}
@@ -91,7 +90,7 @@ export function Inventario() {
             {v && (
               <>
                 {v.corteAjustado && <Aviso tono="info" rol="status">Pediste una fecha futura: se usó el stock de ahora.</Aviso>}
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 14 }}>
+                <div className="d-flex flex-wrap gap-3">
                   <Kpi rotulo="Capital detenido en almacén" prefijo="S/" valor={soles(v.valorTotal, 0)} pie={nombreAlmacen} />
                   <Kpi rotulo="Insumos con stock" valor={String(v.porInsumo.length)} pie="con saldo distinto de cero" />
                   <Kpi rotulo="Fecha de corte" valor={fechaCorte(v.corte).split(',')[0]} pie={`hasta las ${fechaCorte(v.corte).split(', ')[1] ?? ''} (hora de Lima)`} />
@@ -101,13 +100,13 @@ export function Inventario() {
                   <Vidrio estilo={{ display: 'flex', flexDirection: 'column', gap: 10 }} etiqueta="Por almacén">
                     <TituloSeccion>Por almacén</TituloSeccion>
                     {v.porAlmacen.map((a) => (
-                      <div key={a.id} style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                        <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', gap: 8, fontSize: 14 }}>
-                          <button type="button" className="foco-vidrio" onClick={() => setAlmacen(String(a.id))}
-                            style={{ background: 'none', border: 0, padding: 0, color: 'var(--tinta)', fontWeight: 700, fontSize: 14, cursor: 'pointer', textAlign: 'left' }}>
+                      <div key={a.id} className="d-flex flex-column gap-2">
+                        <div className="d-flex flex-wrap justify-content-between gap-2">
+                          <button type="button" onClick={() => setAlmacen(String(a.id))}
+                            className="p-0 fw-bold text-start" style={{ background: 'none', border: 0 }}>
                             {a.nombre}
                           </button>
-                          <span className="n" style={{ color: 'var(--tinta-2)' }}><b style={{ color: 'var(--tinta)' }}>S/ {soles(a.valor, 0)}</b> · {a.insumos} insumos · {a.porcentaje.toLocaleString('es-PE')} %</span>
+                          <span className="n text-body-secondary"><b>S/ {soles(a.valor, 0)}</b> · {a.insumos} insumos · {a.porcentaje.toLocaleString('es-PE')} %</span>
                         </div>
                         <div aria-hidden style={{ height: 8, borderRadius: 4, background: 'var(--separador)' }}>
                           <div style={{ width: `${Math.min(100, a.porcentaje)}%`, height: '100%', borderRadius: 4, background: 'var(--accion)' }} />
@@ -120,34 +119,34 @@ export function Inventario() {
                 <Vidrio estilo={{ display: 'flex', flexDirection: 'column', gap: 12 }} etiqueta="Por insumo">
                   <TituloSeccion>Por insumo · de mayor a menor valor</TituloSeccion>
                   <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Buscar por nombre o código…" aria-label="Buscar insumo"
-                    className="campo" style={{ height: 44, padding: '0 14px', fontSize: 15, borderRadius: 22 }} />
+                    className="form-control" />
                   {v.porInsumo.length === 0 ? (
                     <Vacio titulo="Sin stock a esa fecha" detalle="No hay insumos con saldo en el almacén elegido a la fecha de corte." />
                   ) : (
-                    <div style={{ overflowX: 'auto' }}>
-                      <table className="tabla-vidrio">
+                    <div className="overflow-x-auto">
+                      <table className="table table-hover align-middle mb-0">
                         <thead>
                           <tr>
-                            <th style={{ textAlign: 'left' }}>Insumo</th><th className="n">Cantidad</th><th className="n">Costo promedio</th>
+                            <th className="text-start">Insumo</th><th className="n">Cantidad</th><th className="n">Costo promedio</th>
                             <th className="n">Valor</th><th className="n">% del total</th><th className="n">Último movimiento</th>
                           </tr>
                         </thead>
                         <tbody>
                           {filas.map((i) => (
                             <tr key={i.codigo}>
-                              <td><strong>{i.descripcion}</strong><div style={{ fontSize: 12, color: 'var(--tinta-2)' }}>SKU {i.codigo}</div></td>
+                              <td><strong>{i.descripcion}</strong><div className="small text-body-secondary">SKU {i.codigo}</div></td>
                               <td className="n">{cant(i.cantidad)} {i.unidad}</td>
                               <td className="n">{i.costoPromedio === null ? '—' : `S/ ${soles(i.costoPromedio)}`}</td>
                               <td className="n"><strong>S/ {soles(i.valor)}</strong></td>
                               <td className="n">{i.porcentaje.toLocaleString('es-PE')} %</td>
-                              <td className="n" style={{ whiteSpace: 'nowrap' }}>{fechaCorte(i.ultimoMovimiento).split(',')[0]}</td>
+                              <td className="n text-nowrap">{fechaCorte(i.ultimoMovimiento).split(',')[0]}</td>
                             </tr>
                           ))}
                         </tbody>
                       </table>
                     </div>
                   )}
-                  <p style={{ fontSize: 12, color: 'var(--tinta-2)', lineHeight: 1.5 }}>{v.criterio} {v.declaracion}</p>
+                  <p className="small text-body-secondary">{v.criterio} {v.declaracion}</p>
                 </Vidrio>
               </>
             )}

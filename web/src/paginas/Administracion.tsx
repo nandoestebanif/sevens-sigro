@@ -32,24 +32,24 @@ export function Administracion({ obra }: { obra: { id: string; nombre: string } 
 
   if (!usaApiReal) {
     return (
-      <div className="pagina"><Tarjeta>
+      <div className="d-flex flex-column gap-3 pb-4"><Tarjeta>
         <Vacio titulo="La administración necesita el servidor" detalle="Configura VITE_API_URL e ingresa con tu usuario: aquí no se muestran datos de ejemplo." />
       </Tarjeta></div>
     )
   }
-  if (!obra) return <div className="pagina" role="status"><Vacio titulo="Cargando…" detalle="Consultando la obra activa." /></div>
+  if (!obra) return <div className="d-flex flex-column gap-3 pb-4" role="status"><Vacio titulo="Cargando…" detalle="Consultando la obra activa." /></div>
   if (!esAdministrador(sesion, obra.id)) {
     return (
-      <div className="pagina"><Tarjeta>
+      <div className="d-flex flex-column gap-3 pb-4"><Tarjeta>
         <Vacio titulo="Solo para el administrador" detalle={`No eres administrador de ${obra.nombre}. Si deberías serlo, pídeselo al administrador de la obra.`} />
       </Tarjeta></div>
     )
   }
 
   return (
-    <div className="pagina" style={{ display: 'flex', flexDirection: 'column', gap: 15 }}>
+    <div className="d-flex flex-column gap-3 pb-4">
       <Titulo sub={`${obra.nombre} · todo cambio queda registrado con tu nombre y la fecha; nada se borra`}>Administración</Titulo>
-      <div role="tablist" aria-label="Secciones de administración" style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+      <div role="tablist" aria-label="Secciones de administración" className="d-flex gap-2 flex-wrap">
         {PESTANAS.map((p) => {
           const sel = p.clave === activa
           return (
