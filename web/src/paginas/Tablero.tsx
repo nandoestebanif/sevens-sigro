@@ -27,7 +27,7 @@ import { GastoRecursos } from './GastoRecursos'
 import type { AvanceInsumo, ResumenTablero } from '../api/tipos'
 import { Chip, Medidor, Vacio, type TonoChip } from '../ui/base'
 import { Aviso, Chips, Encabezado, Kpi, Segmentado, TituloSeccion, Vidrio } from '../ui/piezas'
-import { GraficoCurva, GraficoFamilias } from '../ui/GraficosPerezosos'
+import { GraficoCurva, GraficoDesvios, GraficoFamilias } from '../ui/GraficosPerezosos'
 import { EsqueletoPagina } from '../ui/Esqueleto'
 
 const soles = (v: number) => v.toLocaleString('es-PE', { maximumFractionDigits: 0 })
@@ -102,6 +102,24 @@ export function Tablero() {
               <Aviso tono="info">
                 <strong>{r.avisoPlanificado}</strong>{r.supuesto ? ` ${r.supuesto}` : ''}
               </Aviso>
+            )}
+            {/* Gráficos con las cifras reales del servidor (HU-57): sin desviación real, no se dibuja nada */}
+            {conDesviacionReal && planificado > 0 && (
+              <div className="row g-3">
+                <div className="col-12 col-xxl-6">
+                  <Vidrio etiqueta="Gasto esperado y real">
+                    <TituloSeccion>Gasto esperado en el plazo y dónde estamos</TituloSeccion>
+                    <GraficoCurva planificado={planificado} gastado={r.gastoTotal} semana={r.semana} semanasTotales={r.semanasTotales} />
+                  </Vidrio>
+                </div>
+                <div className="col-12 col-xxl-6">
+                  <Vidrio etiqueta="Insumos con mayor desviación">
+                    <TituloSeccion>Insumos con mayor desviación</TituloSeccion>
+                    <span className="small text-body-secondary">rojo: se consumió más de lo esperado a la fecha · verde: menos</span>
+                    <GraficoDesvios insumos={r.insumos.map((i) => ({ etiqueta: i.descripcion, importe: i.desviacionImporte ?? 0 }))} />
+                  </Vidrio>
+                </div>
+              </div>
             )}
           </>
         ) : (
