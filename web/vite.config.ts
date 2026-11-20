@@ -14,12 +14,18 @@ export default defineConfig(({ mode }) => ({
       brotliSize: true,
     }),
   ],
+  css: {
+    preprocessorOptions: {
+      // Bootstrap 5.3 todavía usa @import de Sass: se silencian sus avisos de deprecación
+      scss: { quietDeps: true, silenceDeprecations: ['import', 'global-builtin', 'color-functions', 'mixed-decls'] },
+    },
+  },
   build: {
     rollupOptions: {
       output: {
         // React y el router cambian casi nunca: en su propio archivo, el navegador los conserva en caché
         // entre despliegues aunque cambie el código de SIGRO
-        manualChunks: { react: ['react', 'react-dom', 'react-router-dom'] },
+        manualChunks: { react: ['react', 'react-dom', 'react-router-dom'], bootstrap: ['react-bootstrap'] },
       },
     },
   },

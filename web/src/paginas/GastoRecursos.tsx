@@ -22,7 +22,7 @@ import { Link } from 'react-router-dom'
 import { ErrorApi } from '../api/cliente'
 import { fechaCorte, gasto, type Cifra, type ClaveCifra, type Gasto } from '../api/costo'
 import { Chip, Vacio } from '../ui/base'
-import { Aviso, TituloSeccion, Vidrio } from '../ui/vidrio'
+import { Aviso, TituloSeccion, Vidrio } from '../ui/piezas'
 
 const soles = (v: number) => v.toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 const horas = (v: number | null) => (v === null ? '—' : v.toLocaleString('es-PE', { maximumFractionDigits: 1 }))
@@ -35,18 +35,18 @@ const FAMILIA: Record<string, string> = { material: 'Materiales', materiales: 'M
 function Tarjeta({ c, g }: { c: Cifra; g: Gasto }) {
   const esHoras = c.clave === 'horas_hombre'
   return (
-    <div style={{ flex: '1 1 200px', minWidth: 0, background: 'var(--vidrio-celda)', borderRadius: 18, padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 6 }}>
-      <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--tinta-2)' }}>{ROTULO[c.clave]}</span>
+    <div className="d-flex flex-column gap-2" style={{ flex: '1 1 200px', minWidth: 0, background: 'var(--vidrio-celda)', borderRadius: 18, padding: '14px 16px' }}>
+      <span className="small fw-bold text-uppercase text-body-secondary">{ROTULO[c.clave]}</span>
       {esHoras && c.valor === null ? (
-        <span className="n" style={{ fontSize: 22, fontWeight: 800 }}>
-          {horas(g.horas.normales)} h <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--tinta-2)' }}>+ {horas(g.horas.extra)} h extra</span>
+        <span className="n fs-4 fw-bold">
+          {horas(g.horas.normales)} h <span className="fw-semibold text-body-secondary">+ {horas(g.horas.extra)} h extra</span>
         </span>
       ) : (
-        <span className="n" style={{ fontSize: 24, fontWeight: 800 }}>{c.valor === null ? 'Sin dato' : `S/ ${soles(c.valor)}`}</span>
+        <span className="n fs-4 fw-bold">{c.valor === null ? 'Sin dato' : `S/ ${soles(c.valor)}`}</span>
       )}
-      <span style={{ fontSize: 12.5, color: 'var(--tinta-2)', lineHeight: 1.45 }}>{c.definicion}</span>
-      {c.nota && <span style={{ fontSize: 12.5, color: 'var(--aviso)', fontWeight: 600, lineHeight: 1.45 }}>{c.nota}</span>}
-      <span style={{ fontSize: 12, color: 'var(--tinta-2)', marginTop: 'auto' }}>Corte: {fechaCorte(c.corte)}</span>
+      <span className="small text-body-secondary">{c.definicion}</span>
+      {c.nota && <span className="small text-warning-emphasis fw-semibold">{c.nota}</span>}
+      <span className="small text-body-secondary" style={{ marginTop: 'auto' }}>Corte: {fechaCorte(c.corte)}</span>
     </div>
   )
 }
@@ -63,28 +63,28 @@ export function GastoRecursos() {
   }, [fecha])
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+    <div className="d-flex flex-column gap-3">
       <Vidrio estilo={{ borderLeft: '4px solid var(--accion)', padding: '14px 20px' }} etiqueta="Alcance del reporte">
-        <p style={{ fontSize: 14, color: 'var(--tinta-2)', lineHeight: 1.55 }}>
-          <strong style={{ color: 'var(--tinta)' }}>Esto es el gasto en recursos, no el costo total de la obra.</strong>{' '}
+        <p className="text-body-secondary">
+          <strong>Esto es el gasto en recursos, no el costo total de la obra.</strong>{' '}
           {g?.declaracion ?? 'Quedan fuera los gastos generales, los subcontratos, los servicios y la planilla.'}
         </p>
       </Vidrio>
 
       <Vidrio estilo={{ display: 'flex', flexDirection: 'column', gap: 14 }} etiqueta="Gasto en recursos">
-        <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'flex-end', gap: 12 }}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+        <div className="d-flex flex-wrap justify-content-between align-items-end gap-3">
+          <div className="d-flex flex-column gap-1">
             <TituloSeccion>Dónde está el dinero puesto en recursos</TituloSeccion>
-            <span style={{ fontSize: 13, color: 'var(--tinta-2)' }}>
+            <span className="small text-body-secondary">
               Las cinco cifras se cortan en el mismo instante: {g ? <strong>{fechaCorte(g.corte)}</strong> : '…'} (hora de Lima)
             </span>
           </div>
-          <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, fontWeight: 600, color: 'var(--tinta-2)' }}>
+          <label className="d-flex align-items-center gap-2 small fw-semibold text-body-secondary">
             Fecha de corte
-            <input type="date" className="campo" aria-label="Fecha de corte del gasto" value={fecha} max={hoyLima()}
-              onChange={(e) => setFecha(e.target.value)} style={{ height: 40, padding: '0 10px', fontSize: 14, borderRadius: 12 }} />
-            {fecha && <button type="button" className="foco-vidrio" onClick={() => setFecha('')}
-              style={{ height: 40, padding: '0 12px', borderRadius: 20, border: '1px solid var(--separador)', background: 'transparent', color: 'var(--tinta)', fontWeight: 600, cursor: 'pointer' }}>Ahora</button>}
+            <input type="date" className="form-control px-3" aria-label="Fecha de corte del gasto" value={fecha} max={hoyLima()}
+              onChange={(e) => setFecha(e.target.value)} style={{ height: 40, borderRadius: 12 }} />
+            {fecha && <button type="button" onClick={() => setFecha('')}
+              className="px-3 fw-semibold" style={{ height: 40, borderRadius: 20, border: '1px solid var(--separador)', background: 'transparent' }}>Ahora</button>}
           </label>
         </div>
 
@@ -98,19 +98,19 @@ export function GastoRecursos() {
                 <ul style={{ margin: '4px 0 0', paddingLeft: 18 }}>{g.conciliacion.map((t) => <li key={t}>{t}</li>)}</ul>
               </Aviso>
             )}
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
+            <div className="d-flex flex-wrap gap-3">
               {g.cifras.map((c) => <Tarjeta key={c.clave} c={c} g={g} />)}
             </div>
             {g.otrosMovimientos !== null && g.otrosMovimientos !== 0 && (
-              <p style={{ fontSize: 13, color: 'var(--tinta-2)' }}>
+              <p className="small text-body-secondary">
                 Traslados entre obras y ajustes de conteo: <strong>S/ {soles(g.otrosMovimientos)}</strong>. También mueven el stock:
                 recibido − consumido + estos movimientos = en stock.
               </p>
             )}
             {g.porFamilia.length > 0 && (
-              <div style={{ overflowX: 'auto' }}>
-                <table className="tabla-vidrio">
-                  <thead><tr><th style={{ textAlign: 'left' }}>Familia de recurso</th><th className="n">Recibido</th><th className="n">Consumido</th><th className="n">En stock</th><th className="n">Último hecho</th></tr></thead>
+              <div className="overflow-x-auto">
+                <table className="table table-hover align-middle mb-0">
+                  <thead><tr><th className="text-start">Familia de recurso</th><th className="n">Recibido</th><th className="n">Consumido</th><th className="n">En stock</th><th className="n">Último hecho</th></tr></thead>
                   <tbody>
                     {g.porFamilia.map((f) => (
                       <tr key={f.familia}>
@@ -123,9 +123,9 @@ export function GastoRecursos() {
                 </table>
               </div>
             )}
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
+            <div className="d-flex flex-wrap gap-2 align-items-center">
               <Chip tono="neutro">{g.criterio}</Chip>
-              <Link to="/inventario" className="foco-vidrio" style={{ fontSize: 13, fontWeight: 600, color: 'var(--accion)' }}>Ver el inventario valorizado →</Link>
+              <Link to="/inventario" style={{ fontSize: 13, fontWeight: 600, color: 'var(--accion)' }}>Ver el inventario valorizado →</Link>
             </div>
           </>
         )}

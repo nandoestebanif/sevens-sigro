@@ -21,7 +21,7 @@ import { useEffect, useState } from 'react'
 import { ErrorApi, api } from '../api/cliente'
 import type { Movimiento, StockInsumo } from '../api/tipos'
 import { Chip, Modal, Vacio } from '../ui/base'
-import { Aviso, Chips, Encabezado, Fondo, Pildora, TituloSeccion, Vidrio } from '../ui/vidrio'
+import { Aviso, Chips, Encabezado, Pildora, TituloSeccion, Vidrio } from '../ui/piezas'
 
 const n = (v: number) => v.toLocaleString('es-PE')
 const hora = (iso: string) => diaHoraLima(iso) // en hora de Lima, no en la UTC del servidor
@@ -56,17 +56,17 @@ function Reverso({ movimiento, enCerrar, enListo }: {
 
   return (
     <Modal titulo={`Corregir ${movimiento.id} con un reverso`} enCerrar={enCerrar}>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+      <div className="d-flex flex-column gap-3">
         <div style={{ padding: '12px 14px', background: 'var(--vidrio-celda)', borderRadius: 16 }}>
-          <div style={{ fontSize: 13.5, color: 'var(--tinta-2)', lineHeight: 1.6 }}>
-            <strong style={{ color: 'var(--tinta)' }}>{TIPO[movimiento.tipo].texto}</strong>{' '}
+          <div className="small text-body-secondary">
+            <strong>{TIPO[movimiento.tipo].texto}</strong>{' '}
             · {movimiento.descripcion}<br />
             {n(movimiento.cantidad)} {movimiento.unidad} · S/ {movimiento.costoUnitario.toFixed(2)} c/u ·{' '}
             {movimiento.almacen} · {hora(movimiento.fechaServidor)}
           </div>
         </div>
         <div>
-          <label htmlFor="rev-motivo" style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--tinta-2)', marginBottom: 6 }}>
+          <label htmlFor="rev-motivo" className="d-block small fw-semibold text-body-secondary mb-2">
             Motivo de la corrección (obligatorio)
           </label>
           <textarea
@@ -75,18 +75,18 @@ function Reverso({ movimiento, enCerrar, enListo }: {
             onChange={(e) => setMotivo(e.target.value)}
             placeholder="p. ej. Se digitó 12; el conteo real fue 2"
             rows={2}
-            className="campo"
+            className="form-control"
             style={{ height: 'auto', padding: '10px 14px', resize: 'vertical', borderColor: error ? 'var(--grave)' : undefined }}
           />
-          {error && <div role="alert" style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--grave)', marginTop: 5 }}>{error}</div>}
+          {error && <div role="alert" className="small fw-semibold text-danger mt-2">{error}</div>}
         </div>
-        <p style={{ fontSize: 13, color: 'var(--tinta-2)', lineHeight: 1.5 }}>
+        <p className="small text-body-secondary">
           El original <strong>no se toca</strong>: queda en el libro con la marca de quién
           lo anuló. El reverso hereda la cantidad y el costo congelado, y el saldo se
           recalcula con ambos. Si además corresponde otra cantidad, se registra el
           movimiento correcto aparte.
         </p>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, justifyContent: 'flex-end' }}>
+        <div className="d-flex flex-wrap gap-2 justify-content-end">
           <Pildora tipo="secundario" enClic={enCerrar}>Cancelar</Pildora>
           <Pildora enClic={corregir} deshabilitado={guardando}>
             {guardando ? 'Registrando…' : 'Registrar el reverso'}
@@ -115,8 +115,7 @@ export function Movimientos() {
 
   return (
     <>
-    <Fondo dibujo="movimientos" />
-    <div className="pagina" style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+    <div className="d-flex flex-column gap-3 pb-4">
       <Encabezado
         titulo="Ingresos y salidas"
         sub={`El movimiento es un libro que no se borra: corregir es registrar un reverso. ${corte ? `Último movimiento considerado: ${hora(corte)} (hora del servidor).` : ''}`}
@@ -132,15 +131,15 @@ export function Movimientos() {
 
       {/* ── HU-43 · stock por almacén y consolidado ── */}
       <Vidrio estilo={{ display: 'flex', flexDirection: 'column', gap: 12 }} etiqueta="Stock al momento">
-        <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'baseline', gap: 8 }}>
+        <div className="d-flex flex-wrap justify-content-between align-items-baseline gap-2">
           <TituloSeccion>Stock al momento</TituloSeccion>
-          <span style={{ fontSize: 13, color: 'var(--tinta-2)' }}>el saldo se deriva de los movimientos: no es un campo editable</span>
+          <span className="small text-body-secondary">el saldo se deriva de los movimientos: no es un campo editable</span>
         </div>
         {stock === null ? (
           <Vacio titulo="Cargando…" detalle="Sumando los movimientos del libro." />
         ) : (
-          <div style={{ overflowX: 'auto' }}>
-            <table className="tabla-vidrio">
+          <div className="overflow-x-auto">
+            <table className="table table-hover align-middle mb-0">
               <thead>
                 <tr>
                   <th>Insumo</th><th>Por almacén</th><th className="n">Consolidado</th><th className="n">Punto de reposición</th><th className="n">Último movimiento</th>
@@ -150,22 +149,22 @@ export function Movimientos() {
                 {stock.map((s) => (
                   <tr key={s.insumoId}>
                     <td style={{ minWidth: 240 }}>
-                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', fontWeight: 600 }}>
+                      <span className="d-inline-flex align-items-center gap-2 flex-wrap fw-semibold">
                         {s.descripcion}
                         {s.bajoPunto && <Chip tono="grave">bajo el punto</Chip>}
                       </span>
-                      <div className="n" style={{ fontSize: 12, color: 'var(--tinta-2)', marginTop: 2, textAlign: 'left' }}>SKU {s.insumoId}</div>
+                      <div className="n small text-body-secondary mt-1 text-start">SKU {s.insumoId}</div>
                     </td>
-                    <td style={{ color: 'var(--tinta-2)' }}>
+                    <td className="text-body-secondary">
                       {s.porAlmacen.map((a) => (
-                        <div key={a.almacen} className="n" style={{ textAlign: 'left', whiteSpace: 'nowrap' }}>{a.almacen}: <strong style={{ color: 'var(--tinta)' }}>{n(a.saldo)}</strong> {s.unidad}</div>
+                        <div key={a.almacen} className="n text-start text-nowrap">{a.almacen}: <strong>{n(a.saldo)}</strong> {s.unidad}</div>
                       ))}
                     </td>
-                    <td className="n" style={{ fontWeight: 800, whiteSpace: 'nowrap' }}>{n(s.saldoTotal)} {s.unidad}</td>
+                    <td className="n fw-bold text-nowrap">{n(s.saldoTotal)} {s.unidad}</td>
                     <td className="n" style={{ color: s.bajoPunto ? 'var(--grave)' : 'var(--tinta-2)', fontWeight: s.bajoPunto ? 700 : 400, whiteSpace: 'nowrap' }}>
                       {s.puntoReposicion === null ? '—' : `${n(s.puntoReposicion)} ${s.unidad}`}
                     </td>
-                    <td className="n" style={{ color: 'var(--tinta-2)', whiteSpace: 'nowrap' }}>{hora(s.ultimoMovimiento)}</td>
+                    <td className="n text-body-secondary text-nowrap">{hora(s.ultimoMovimiento)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -178,15 +177,15 @@ export function Movimientos() {
 
       {/* ── HU-45 · kárdex con reverso ── */}
       <Vidrio estilo={{ display: 'flex', flexDirection: 'column', gap: 12 }} etiqueta="Kárdex">
-        <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'baseline', gap: 8 }}>
+        <div className="d-flex flex-wrap justify-content-between align-items-baseline gap-2">
           <TituloSeccion>Kárdex · los movimientos del libro</TituloSeccion>
-          <span style={{ fontSize: 13, color: 'var(--tinta-2)' }}>aquí no hay editar ni eliminar: solo corregir con reverso</span>
+          <span className="small text-body-secondary">aquí no hay editar ni eliminar: solo corregir con reverso</span>
         </div>
         {kardex === null ? (
           <Vacio titulo="Cargando…" detalle="Abriendo el libro de movimientos." />
         ) : (
-          <div style={{ overflowX: 'auto' }}>
-            <table className="tabla-vidrio" style={{ minWidth: 860 }}>
+          <div className="overflow-x-auto">
+            <table className="table table-hover align-middle mb-0" style={{ minWidth: 860 }}>
               <thead>
                 <tr>
                   <th>Mov.</th><th>Fecha (servidor)</th><th>Tipo</th><th>Insumo y motivo</th>
@@ -199,9 +198,9 @@ export function Movimientos() {
                   const importe = m.importe ?? Number((m.cantidad * m.costoUnitario).toFixed(2))
                   return (
                     <tr key={m.id} style={{ background: m.tipo === 'reverso' ? 'var(--aviso-tinte)' : undefined }}>
-                      <td className="n" style={{ color: 'var(--tinta-2)', whiteSpace: 'nowrap', textAlign: 'left' }}>{m.id}</td>
-                      <td className="n" style={{ color: 'var(--tinta-2)', whiteSpace: 'nowrap', textAlign: 'left' }}>{hora(m.fechaServidor)}</td>
-                      <td style={{ whiteSpace: 'nowrap' }}>
+                      <td className="n text-body-secondary text-nowrap text-start">{m.id}</td>
+                      <td className="n text-body-secondary text-nowrap text-start">{hora(m.fechaServidor)}</td>
+                      <td className="text-nowrap">
                         <Chip tono={m.tipo === 'ingreso' ? 'bien' : m.tipo === 'salida' ? 'marca' : 'aviso'}>
                           {TIPO[m.tipo].texto}
                         </Chip>
@@ -210,21 +209,21 @@ export function Movimientos() {
                         <div style={{ fontWeight: 600, textDecoration: anulado ? 'line-through' : 'none', color: anulado ? 'var(--tinta-2)' : 'var(--tinta)' }}>
                           {m.descripcion}
                         </div>
-                        <div style={{ fontSize: 12.5, color: 'var(--tinta-2)', marginTop: 2 }}>
+                        <div className="small text-body-secondary mt-1">
                           {m.motivo} · {m.almacen} · {m.autor}
                           {m.semana != null && ` · Semana ${m.semana}`}
                           {m.reversaA && <strong> · anula a {m.reversaA}</strong>}
-                          {anulado && <strong style={{ color: 'var(--aviso)' }}> · anulado por {m.anuladoPor}</strong>}
+                          {anulado && <strong className="text-warning-emphasis"> · anulado por {m.anuladoPor}</strong>}
                         </div>
                       </td>
                       <td className="n" style={{ fontWeight: 700, whiteSpace: 'nowrap', textDecoration: anulado ? 'line-through' : 'none', color: anulado ? 'var(--tinta-2)' : m.tipo === 'ingreso' ? 'var(--bien)' : m.tipo === 'salida' ? 'var(--grave)' : 'var(--tinta)' }}>
                         {TIPO[m.tipo].signo} {n(m.cantidad)} {m.unidad}
                       </td>
-                      <td className="n" style={{ whiteSpace: 'nowrap' }}>S/ {m.costoUnitario.toFixed(2)}</td>
+                      <td className="n text-nowrap">S/ {m.costoUnitario.toFixed(2)}</td>
                       <td className="n" style={{ fontWeight: 700, whiteSpace: 'nowrap', textDecoration: anulado ? 'line-through' : 'none', color: anulado ? 'var(--tinta-2)' : 'var(--tinta)' }}>
                         S/ {importe.toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </td>
-                      <td style={{ textAlign: 'right' }}>
+                      <td className="text-end">
                         {m.tipo !== 'reverso' && !anulado && (
                           <Pildora tipo="secundario" chica enClic={() => setCorrigiendo(m)}>Corregir</Pildora>
                         )}
@@ -236,10 +235,10 @@ export function Movimientos() {
             </table>
           </div>
         )}
-        <span style={{ fontSize: 13, color: 'var(--tinta-2)' }}>Cada salida congela el promedio de ese momento.</span>
+        <span className="small text-body-secondary">Cada salida congela el promedio de ese momento.</span>
       </Vidrio>
 
-      <p style={{ fontSize: 13, color: 'var(--tinta-plano)', padding: '0 4px', lineHeight: 1.5 }}>
+      <p className="small text-body-secondary px-1">
         El registro de ingresos y salidas en obra lo hace el almacenero desde el celular
         (con o sin señal); esta pantalla es la consulta de oficina. El costo de cada salida
         queda <strong>congelado</strong> al promedio vigente en ese instante (NIC 2): un

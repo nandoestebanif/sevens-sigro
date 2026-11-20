@@ -14,9 +14,9 @@ export function Usuarios({ usuarioSesionId }: { usuarioSesionId: number | null }
   const [hecho, setHecho] = useState<string | null>(null)
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-        <p style={{ fontSize: 13, color: 'var(--tinta-3)', lineHeight: 1.5, flex: 1, minWidth: 260 }}>
+    <div className="d-flex flex-column gap-3">
+      <div className="d-flex justify-content-between align-items-center gap-3 flex-wrap">
+        <p className="small text-body-secondary flex-grow-1" style={{ minWidth: 260 }}>
           Los usuarios son de la empresa; el rol de cada uno se da por obra en «Asignaciones». Una baja no borra a la
           persona ni lo que registró: solo le corta el acceso.
         </p>
@@ -110,11 +110,11 @@ function AltaUsuario({ enCerrar, enCreado }: { enCerrar: () => void; enCreado: (
 
   return (
     <Modal titulo="Registrar usuario" enCerrar={enCerrar}>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+      <div className="d-flex flex-column gap-3">
         <Campo id="alta-nombre" etiqueta="Nombres y apellidos" valor={nombre} enCambio={(v) => { setNombre(v); setErrores((e) => ({ ...e, nombre: '' })) }} autoFoco error={errores.nombre || undefined} />
         <Campo id="alta-usuario" etiqueta="Usuario para entrar" valor={usuario} marcador="Ej.: jperez" enCambio={(v) => { setUsuario(v); setErrores((e) => ({ ...e, usuario: '' })) }} error={errores.usuario || undefined} />
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          <label htmlFor="alta-clave" style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--tinta-2)' }}>Clave temporal</label>
+        <div className="d-flex flex-column gap-2">
+          <label htmlFor="alta-clave" className="small fw-semibold text-body-secondary">Clave temporal</label>
           <input
             id="alta-clave"
             type="password"
@@ -129,11 +129,11 @@ function AltaUsuario({ enCerrar, enCreado }: { enCerrar: () => void; enCreado: (
             }}
           />
           {errores.clave
-            ? <span role="alert" style={{ fontSize: 12, color: 'var(--grave)' }}>{errores.clave}</span>
-            : <span id="alta-clave-ayuda" style={{ fontSize: 12, color: 'var(--tinta-3)' }}>El servidor revisa que sea segura y te dice si no lo es. Entrégala en persona.</span>}
+            ? <span role="alert" className="small text-danger">{errores.clave}</span>
+            : <span id="alta-clave-ayuda" className="small text-body-secondary">El servidor revisa que sea segura y te dice si no lo es. Entrégala en persona.</span>}
         </div>
         {general && <AvisoError texto={general} />}
-        <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+        <div className="d-flex gap-2 justify-content-end">
           <Boton tipo="secundario" enClic={enCerrar}>Cancelar</Boton>
           <Boton enClic={guardar} deshabilitado={ocupado}>{ocupado ? 'Guardando…' : 'Registrar usuario'}</Boton>
         </div>
