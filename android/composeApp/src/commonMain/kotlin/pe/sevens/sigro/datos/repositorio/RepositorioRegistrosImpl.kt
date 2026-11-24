@@ -15,6 +15,7 @@ import pe.sevens.sigro.datos.local.RegistroLocalEntity
 import pe.sevens.sigro.datos.remoto.ApiSigro
 import pe.sevens.sigro.datos.remoto.JornadaIn
 import pe.sevens.sigro.datos.remoto.jsonSigro
+import pe.sevens.sigro.dominio.MAX_INTENTOS_AUTOMATICOS
 import pe.sevens.sigro.dominio.ErrorSigro
 import pe.sevens.sigro.dominio.EstadoAsistencia
 import pe.sevens.sigro.dominio.EstadoEnvio
@@ -98,8 +99,8 @@ class RepositorioRegistrosImpl(
         return aDominio(fila)
     }
 
-    override suspend fun sincronizar(): ResultadoSincronizacion = unaALaVez.withLock {
-        val cola = registros.pendientes(tiposConServicio)
+    override suspend fun sincronizar(manual: Boolean): ResultadoSincronizacion = unaALaVez.withLock {
+        val cola = registros.pendientes(tiposConServicio, if (manual) Int.MAX_VALUE else MAX_INTENTOS_AUTOMATICOS)
         if (cola.isEmpty()) return@withLock ResultadoSincronizacion(0, 0, 0)
         val servidor = cred.servidor()
         if (servidor == null || !cred.haySesion()) return@withLock ResultadoSincronizacion(0, 0, cola.size)
