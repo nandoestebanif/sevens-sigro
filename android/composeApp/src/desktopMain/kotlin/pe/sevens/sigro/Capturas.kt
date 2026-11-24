@@ -147,7 +147,7 @@ private class SalidasFalsas : RepositorioSalidas {
     override fun salidasDeObra(obraId: Int) = lista
     override val pendientes: Flow<Int> = lista.map { l -> l.count { it.estado == EstadoEnvio.PENDIENTE } }
     override suspend fun registrar(nueva: NuevaSalida) = lista.value.first()
-    override suspend fun sincronizar() = ResultadoSincronizacion(0, 0, 2)
+    override suspend fun sincronizar(manual: Boolean) = ResultadoSincronizacion(0, 0, 2)
 }
 
 private object DispositivoFalso : RepositorioDispositivo {
@@ -170,7 +170,7 @@ private class RegistrosFalsos : RepositorioRegistros {
     override suspend fun registrarAsistencia(obraId: Int, fecha: String, marcas: List<MarcaAsistencia>) = emptyList<RegistroLocal>()
     override suspend fun yaMarcados(obraId: Int, fecha: String) = emptySet<Int>()
     override suspend fun registrarAlmacen(obraId: Int, registro: RegistroAlmacen) = lista.value.last()
-    override suspend fun sincronizar() = ResultadoSincronizacion(0, 0, 1)
+    override suspend fun sincronizar(manual: Boolean) = ResultadoSincronizacion(0, 0, 1)
 }
 
 /** Catálogo real del cliente como si viniera del servidor. El factor del acero es un [marcador] del ejemplo. */
