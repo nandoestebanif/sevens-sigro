@@ -49,7 +49,9 @@ import pe.sevens.sigro.dominio.RepositorioRegistros
 import pe.sevens.sigro.dominio.ValidarAlmacen
 import pe.sevens.sigro.dominio.ValidarSalida
 import pe.sevens.sigro.dominio.VerificacionRecepcion
+import pe.sevens.sigro.plataforma.Plataforma
 import pe.sevens.sigro.ui.componentes.AvisoNaranja
+import pe.sevens.sigro.ui.componentes.SeccionFotoGuia
 import pe.sevens.sigro.ui.componentes.AvisoRojo
 import pe.sevens.sigro.ui.componentes.BotonNegro
 import pe.sevens.sigro.ui.componentes.CampoVidrio
@@ -119,6 +121,8 @@ data class EstadoEntrada(
     val sinVerificar: Boolean = false,
     /** HU-35/36: el aviso de exceso se calculó en el celular (sin señal) con la última consulta al servidor. */
     val excesoSinSenal: Boolean = false,
+    /** Foto de la guía de remisión (ruta en el almacenamiento privado de la app); opcional. */
+    val fotoGuia: String? = null,
 ) {
     /** Recibir una parte exige saber el insumo y el pendiente de cada línea (con señal). */
     val puedeParcial: Boolean get() = compra?.conPendientes == true
@@ -265,6 +269,8 @@ class EntradaViewModel(
 
     fun otra() = _e.update { EstadoEntrada(compras = it.compras) }
 
+    fun fotoGuia(ruta: String?) = _e.update { it.copy(fotoGuia = ruta) }
+
     private fun proponer(c: CompraParaRecibir, todo: Boolean): Map<Int, String> =
         c.lineas.indices.associateWith { i -> if (todo) c.lineas[i].recibible else "" }
 
@@ -334,6 +340,7 @@ fun PantallaEntrada(obraId: Int, alVolver: () -> Unit, vm: EntradaViewModel = ko
             GuardadoEnCelular(
                 "Entrada guardada",
                 "Lo recibido de ${e.compra?.proveedor ?: "la compra"} quedó en el celular con su código único." +
+                    (if (e.fotoGuia != null) " La foto de la guía quedó guardada en el celular." else "") +
                     (if (e.excesoSinSenal) " Sin señal se revisó lo requerido en el S10 con la última consulta al servidor y va con tu motivo; al enviarse, el servidor lo vuelve a revisar."
                     else if (e.sinVerificar) " Sin señal no se pudo revisar lo requerido en el S10: si se pasa, «Mis registros» te pedirá registrarla de nuevo con el motivo." else ""),
                 "Registrar otra entrada", vm::otra, alVolver, conServicio = true,
@@ -402,6 +409,8 @@ fun PantallaEntrada(obraId: Int, alVolver: () -> Unit, vm: EntradaViewModel = ko
                 Text("Para recibir solo una parte hace falta señal (para saber cuánto falta).", fontSize = 13.sp, lineHeight = 18.sp, color = Paleta.Texto3)
             }
         }
+        // Capacidad nativa: cámara con sus estados de permiso. El nombre ata la foto a la compra.
+        SeccionFotoGuia("guia-compra-${compra.id}-${Plataforma.ahoraMs()}", e.fotoGuia, vm::fotoGuia)
         e.errores[-1]?.let { AvisoRojo(it) }
         BotonNegro(
             if (e.exceso != null) "Guardar con el motivo" else "Guardar entrada", { vm.guardar(obraId) },
