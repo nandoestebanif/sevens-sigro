@@ -22,11 +22,18 @@ internal sealed interface DecisionEnvio {
  * regla de negocio (`almacen_no_existe`, `compra_no_existe`): se rechaza con el `mensaje` del servidor,
  * igual que un 422, para que el almacenero lo vea en «Mis registros».
  */
-internal fun decidirEnvio(e: ErrorSigro, que: String): DecisionEnvio = when {
-    e.esTransitorio -> DecisionEnvio.Reintentar("Sin señal o el servidor está ocupado: se enviará solo.", cortar = true)
-    e.estadoHttp == 401 -> DecisionEnvio.Reintentar("Tu sesión venció: vuelve a ingresar y se envía.", cortar = true)
-    e.estadoHttp == 404 && e.codigo == "http_404" ->
-        DecisionEnvio.Reintentar("El servidor aún no recibe $que: queda guardada en el celular.", cortar = true)
-    e.estadoHttp == 409 && e.codigo.contains("uuid") -> DecisionEnvio.YaRecibido // el servidor ya la tenía (regla 3)
-    else -> DecisionEnvio.Rechazar(e.message) // regla de negocio: stock insuficiente, dispositivo no autorizado…
+internal fun decidirEnvio(e: ErrorSigro, que: String): DecisionEnvio = when (e) {
+    // `when` exhaustivo sobre la jerarquía sellada: si mañana se agrega un tipo de error, esto no compila
+    // hasta decidir qué hacer con él.
+    is ErrorSigro.SinConexion, is ErrorSigro.Servidor ->
+        DecisionEnvio.Reintentar("Sin señal o el servidor está ocupado: se enviará solo.", cortar = true)
+    is ErrorSigro.SesionVencida -> DecisionEnvio.Reintentar("Tu sesión venció: vuelve a ingresar y se envía.", cortar = true)
+    is ErrorSigro.YaRegistrado -> DecisionEnvio.YaRecibido // el servidor ya la tenía (regla 3)
+    is ErrorSigro.Negocio ->
+        if (e.estadoHttp == 404 && e.codigo == "http_404") {
+            DecisionEnvio.Reintentar("El servidor aún no recibe $que: queda guardada en el celular.", cortar = true)
+        } else {
+            DecisionEnvio.Rechazar(e.message) // stock insuficiente, dispositivo no autorizado…
+        }
+    is ErrorSigro.SinPermiso, is ErrorSigro.Validacion -> DecisionEnvio.Rechazar(e.message)
 }
