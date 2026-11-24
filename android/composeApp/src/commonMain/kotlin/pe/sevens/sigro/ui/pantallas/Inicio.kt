@@ -103,6 +103,8 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
 import org.koin.compose.viewmodel.koinViewModel
+import pe.sevens.sigro.dominio.intentosAgotados
+import pe.sevens.sigro.dominio.MAX_INTENTOS_AUTOMATICOS
 import pe.sevens.sigro.dominio.ErrorSigro
 import pe.sevens.sigro.dominio.EstadoEnvio
 import pe.sevens.sigro.dominio.ObraAsignada
@@ -138,6 +140,8 @@ data class ResumenObra(
     val salidasHoy: Int,
     val porEnviar: Int,
     val rechazadas: Int,
+    /** Pendientes que agotaron sus intentos automáticos: se envían solo con «Enviar ahora». */
+    val noSePudieronEnviar: Int,
     /** Los 3 más recientes de cualquier tipo: salida, entrada, ingreso, asistencia… (los mismos de «Mis registros»). */
     val ultimas: List<FilaRegistro>,
 )
@@ -157,6 +161,7 @@ fun resumirObra(
         salidasHoy = registros.count { it.salida != null && dia(it.horaMs) == hoy },
         porEnviar = registros.count { it.estado == EstadoEnvio.PENDIENTE },
         rechazadas = registros.count { it.estado == EstadoEnvio.RECHAZADO },
+        noSePudieronEnviar = registros.count { intentosAgotados(it.estado, it.intentos) },
         ultimas = registros.sortedByDescending { it.horaMs }.take(3),
     )
 }
@@ -201,8 +206,8 @@ class InicioViewModel(
         _estado.update { it.copy(enviando = true) }
         viewModelScope.launch {
             // Las dos colas, como en «Mis registros». Si una falla (sin señal), la otra igual se intenta.
-            val a = runCatching { salidas.sincronizar() }.getOrElse { ResultadoSincronizacion(0, 0, 0) }
-            val b = runCatching { registros.sincronizar() }.getOrElse { ResultadoSincronizacion(0, 0, 0) }
+            val a = runCatching { salidas.sincronizar(manual = true) }.getOrElse { ResultadoSincronizacion(0, 0, 0) }
+            val b = runCatching { registros.sincronizar(manual = true) }.getOrElse { ResultadoSincronizacion(0, 0, 0) }
             val r = ResultadoSincronizacion(a.enviados + b.enviados, a.rechazados + b.rechazados, a.siguenPendientes + b.siguenPendientes)
             val texto = when {
                 r.enviados == 0 && r.rechazados == 0 && r.siguenPendientes == 0 -> "Todo está enviado"
@@ -344,6 +349,15 @@ private fun TarjetaResumen(r: ResumenObra, pendientesTotales: Int, enviando: Boo
             Cifra(r.salidasHoy, if (r.salidasHoy == 1) "Salida hoy" else "Salidas hoy", Paleta.Tinta, null)
             Cifra(r.porEnviar, "Por enviar", Paleta.Ambar, alVerRegistros, conBorde = true)
             Cifra(r.rechazadas, if (r.rechazadas == 1) "Rechazada" else "Rechazadas", if (r.rechazadas > 0) Paleta.Rojo else Paleta.Texto3, if (r.rechazadas > 0) alVerRechazados else null, conBorde = true)
+        }
+        // Estado visible de la cola (rúbrica offline): filas que no se pudieron enviar tras los reintentos.
+        if (r.noSePudieronEnviar > 0) {
+            Box(Modifier.fillMaxWidth().height(1.dp).background(Paleta.Separador))
+            Text(
+                "${r.noSePudieronEnviar} sin enviar tras ${MAX_INTENTOS_AUTOMATICOS} intentos: revisa la señal o la dirección del servidor y toca «Enviar ahora».",
+                fontSize = 13.sp, lineHeight = 18.sp, color = Paleta.RechazadoTexto,
+                modifier = Modifier.fillMaxWidth().clickable(onClick = alVerRegistros).padding(horizontal = 18.dp, vertical = 10.dp),
+            )
         }
         // La cola se envía sola; el botón es para no esperar al reintento (HU-38).
         if (pendientesTotales > 0) {
