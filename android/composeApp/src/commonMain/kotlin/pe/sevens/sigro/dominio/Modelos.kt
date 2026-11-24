@@ -113,17 +113,56 @@ data class EstadoDispositivo(
     }
 }
 
-/** Error de la API con el mismo contrato que usa la web: {codigo, mensaje}. */
-class ErrorSigro(
+/**
+ * Error de la API traducido a una jerarquía SELLADA: la pantalla y la política de envío deciden con un `when`
+ * exhaustivo (el compilador avisa si aparece un tipo nuevo y alguien no lo maneja).
+ * Todos conservan {codigo, mensaje} del contrato del servidor y el estado HTTP cuando lo hubo.
+ *
+ * Se crea siempre con la función [ErrorSigro] de abajo, que clasifica: así quien lanza el error no tiene que
+ * saber a qué subtipo corresponde.
+ */
+sealed class ErrorSigro(
     val codigo: String,
     override val message: String,
-    val estadoHttp: Int? = null,
+    val estadoHttp: Int?,
+    @Suppress("UNUSED_PARAMETER") sellado: Sellado,   // distingue el constructor de la función ErrorSigro(…)
 ) : Exception(message) {
+    /** Marca interna: solo los subtipos de aquí pueden construir un ErrorSigro. */
+    object Sellado
+
+    /** Sin señal o el servidor no respondió (no hubo respuesta HTTP útil). */
+    class SinConexion(codigo: String, mensaje: String, estadoHttp: Int? = null) : ErrorSigro(codigo, mensaje, estadoHttp, Sellado)
+    /** 5xx, 408 o 429: el servidor está caído u ocupado; el mismo pedido se acepta más tarde. */
+    class Servidor(codigo: String, mensaje: String, estadoHttp: Int) : ErrorSigro(codigo, mensaje, estadoHttp, Sellado)
+    /** 401 o sin sesión guardada: hay que volver a ingresar. */
+    class SesionVencida(codigo: String, mensaje: String, estadoHttp: Int?) : ErrorSigro(codigo, mensaje, estadoHttp, Sellado)
+    /** 403: el rol no tiene ese privilegio en esta obra. La sesión NO se cierra. */
+    class SinPermiso(codigo: String, mensaje: String) : ErrorSigro(codigo, mensaje, 403, Sellado)
+    /** 409 por uuid_cliente repetido: el servidor ya tenía ese registro (regla 3). */
+    class YaRegistrado(codigo: String, mensaje: String) : ErrorSigro(codigo, mensaje, 409, Sellado)
+    /** 400/422 o validación local: un dato está mal escrito. */
+    class Validacion(codigo: String, mensaje: String, estadoHttp: Int?) : ErrorSigro(codigo, mensaje, estadoHttp, Sellado)
+    /** Regla de negocio (stock insuficiente, celular no autorizado, 404 con código…). */
+    class Negocio(codigo: String, mensaje: String, estadoHttp: Int?) : ErrorSigro(codigo, mensaje, estadoHttp, Sellado)
+
     /**
      * Sin señal, servidor caído u ocupado: se reintenta, no se rechaza.
      * 408 (tiempo agotado) y 429 (demasiadas peticiones) no son una regla de negocio: el mismo registro
      * se acepta más tarde. Sin esto, un registro válido quedaba RECHAZADO para siempre por un tope de la nube.
      */
-    val esTransitorio: Boolean
-        get() = codigo == "sin_conexion" || (estadoHttp != null && (estadoHttp >= 500 || estadoHttp == 408 || estadoHttp == 429))
+    val esTransitorio: Boolean get() = this is SinConexion || this is Servidor
+}
+
+private val SIN_CONEXION = setOf("sin_conexion", "servidor_no_responde")
+private val SIN_SESION = setOf("sin_sesion", "credenciales")
+
+/** Traduce {codigo, mensaje, estado HTTP} al subtipo que corresponde. Es la única puerta para crear un error. */
+fun ErrorSigro(codigo: String, message: String, estadoHttp: Int? = null): ErrorSigro = when {
+    codigo in SIN_CONEXION -> ErrorSigro.SinConexion(codigo, message, estadoHttp)
+    estadoHttp != null && (estadoHttp >= 500 || estadoHttp == 408 || estadoHttp == 429) -> ErrorSigro.Servidor(codigo, message, estadoHttp)
+    estadoHttp == 401 || codigo in SIN_SESION -> ErrorSigro.SesionVencida(codigo, message, estadoHttp)
+    estadoHttp == 403 -> ErrorSigro.SinPermiso(codigo, message)
+    estadoHttp == 409 && codigo.contains("uuid") -> ErrorSigro.YaRegistrado(codigo, message)
+    estadoHttp == 400 || estadoHttp == 422 || (estadoHttp == null && codigo !in SIN_CONEXION) -> ErrorSigro.Validacion(codigo, message, estadoHttp)
+    else -> ErrorSigro.Negocio(codigo, message, estadoHttp)
 }
