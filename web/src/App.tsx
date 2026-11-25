@@ -3,7 +3,7 @@ import { CambiarClave, Campana } from './ui/Cuenta'
 import { puede } from './api/permisos'
 import { Component, Suspense, lazy, useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { HashRouter, NavLink, Navigate, Route, Routes, useLocation } from 'react-router-dom'
-import { grupoDeRuta, iniciales } from './menu'
+import { grupoDeRuta, iniciales, rutaVisible } from './menu'
 import { api } from './api/cliente'
 import { cerrarSesion, sesionActual, usaApiReal } from './api/http'
 import { ElegirObra } from './paginas/ElegirObra'
@@ -59,6 +59,8 @@ const Movimientos = lazy(() => import('./paginas/Movimientos').then((m) => ({ de
 const Semana = lazy(() => import('./paginas/Semana').then((m) => ({ default: m.Semana })))
 const Solicitudes = lazy(() => import('./paginas/Solicitudes').then((m) => ({ default: m.Solicitudes })))
 const ManoDeObra = lazy(() => import('./paginas/ManoDeObra').then((m) => ({ default: m.ManoDeObra })))
+const Existencias = lazy(() => import('./paginas/Existencias').then((m) => ({ default: m.Existencias })))
+const Trabajadores = lazy(() => import('./paginas/Trabajadores').then((m) => ({ default: m.Trabajadores })))
 const Requerimiento = lazy(() => import('./paginas/Requerimiento').then((m) => ({ default: m.Requerimiento })))
 const Obras = lazy(() => import('./paginas/Obra').then((m) => ({ default: m.Obras })))
 const Parametros = lazy(() => import('./paginas/Parametros').then((m) => ({ default: m.Parametros })))
@@ -82,6 +84,8 @@ const ICONOS = {
   compras: 'M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z|M3 6h18|M16 10a4 4 0 0 1-8 0',
   proveedores: 'M5 18H3V6h12v12H9|M19 18h2v-5l-3-4h-4v9h1|M7.5 20a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3|M17.5 20a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3',
   inventario: 'M3 7l9-4 9 4-9 4-9-4|M3 7v10l9 4 9-4V7|M12 11v10',
+  stock: 'M3 3h7v7H3z|M14 3h7v7h-7z|M3 14h7v7H3z|M14 14h7v7h-7z',
+  herramienta: 'M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z',
   llave: 'M15.5 7.5a3.5 3.5 0 1 1-4.95 4.95 3.5 3.5 0 0 1 4.95-4.95|M10.5 12.5L3 20|M6 17l2 2|M8 15l2 2',
   solicitudes: 'M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2|M9 5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v0a2 2 0 0 1-2 2h-2a2 2 0 0 1-2-2|M9 12h6|M9 16h4',
   personal: 'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2|M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8|M22 21v-2a4 4 0 0 0-3-3.87|M16 3.13a4 4 0 0 1 0 7.75',
@@ -108,11 +112,18 @@ const GRUPO_ADMINISTRACION: (typeof GRUPOS)[number] = {
   items: [{ ruta: '/administracion', nombre: 'Administración', icono: 'administracion' }],
 }
 
+/** Si un rol de campo escribe a mano la dirección de otro módulo, vuelve al suyo (el servidor igual respondería 403). */
+function GuardiaRol({ rol }: { rol: string | null | undefined }) {
+  const { pathname } = useLocation()
+  if (!rol || pathname === '/' || rutaVisible(rol, pathname)) return null
+  return <Navigate to={inicioDelRol(rol)} replace />
+}
+
 /** Al entrar, cada rol cae en lo que más usa (antes todos iban a Proveedores). */
 export function inicioDelRol(rol: string | null | undefined): string {
   switch (rol) {
     case 'almacenero': return '/movimientos'
-    case 'ssoma': return '/mano-de-obra'
+    case 'ssoma': return '/trabajadores'
     case 'administrador': case 'residente': case 'gerente': return '/tablero'
     default: return '/tablero'
   }
@@ -138,7 +149,8 @@ const GRUPOS: { rotulo: string; items: { ruta: string; nombre: string; icono: ke
       { ruta: '/tablero', nombre: 'Gasto en recursos', icono: 'tablero', permiso: 'costo.consultar' },
       { ruta: '/reposicion', nombre: 'Reposición', icono: 'reposicion', permiso: 'reposicion.consultar' },
       { ruta: '/parametros', nombre: 'Reposición: parámetros', icono: 'parametros', permiso: 'reposicion.consultar' },
-      { ruta: '/mano-de-obra', nombre: 'Mano de obra', icono: 'personal', permiso: 'trabajador.consultar' },
+      { ruta: '/trabajadores', nombre: 'Trabajadores', icono: 'personal', permiso: 'trabajador.consultar' },
+      { ruta: '/mano-de-obra', nombre: 'Mano de obra y horas', icono: 'personal', permiso: 'trabajador.consultar' },
     ],
   },
   {
@@ -152,6 +164,8 @@ const GRUPOS: { rotulo: string; items: { ruta: string; nombre: string; icono: ke
   {
     rotulo: 'Almacén',
     items: [
+      { ruta: '/stock', nombre: 'Insumos en almacén', icono: 'stock', permiso: 'stock.consultar' },
+      { ruta: '/herramientas', nombre: 'Herramientas y equipos', icono: 'herramienta', permiso: 'stock.consultar' },
       { ruta: '/movimientos', nombre: 'Ingresos y salidas', icono: 'movimientos', permiso: 'stock.consultar' },
       { ruta: '/semana', nombre: 'Movimiento semanal', icono: 'movimientos', permiso: 'stock.consultar' },
       { ruta: '/inventario', nombre: 'Inventario valorizado', icono: 'inventario', permiso: 'costo.consultar' },
@@ -365,7 +379,7 @@ function Sistema({ preparando = false, nombreObra = '', alTerminar }: {
   const rol = sesion?.obras.find((o) => String(o.id) === obra?.id)?.rol ?? sesion?.obras[0]?.rol
   // cada rol ve solo las pantallas que puede usar; un grupo vacío no se muestra
   const visibles = usaApiReal
-    ? GRUPOS.map((g) => ({ ...g, items: g.items.filter((i) => !i.permiso || puede(rol, i.permiso)) })).filter((g) => g.items.length)
+    ? GRUPOS.map((g) => ({ ...g, items: g.items.filter((i) => (!i.permiso || puede(rol, i.permiso)) && rutaVisible(rol, i.ruta)) })).filter((g) => g.items.length)
     : GRUPOS
   const grupos = usaApiReal && esAdministrador(sesion, obra?.id) ? [...visibles, GRUPO_ADMINISTRACION] : visibles
 
@@ -474,6 +488,7 @@ function Sistema({ preparando = false, nombreObra = '', alTerminar }: {
             <Container fluid key={obra?.id ?? 'sin-obra'} className="px-0">
               <GuardianErrores>
                 <Suspense fallback={<CargandoPantalla />}>
+                  <GuardiaRol rol={usaApiReal ? rol : null} />
                   <Routes>
                     <Route path="/" element={<Navigate to={inicioDelRol(rol)} replace />} />
                     <Route path="/proveedores" element={<Proveedores />} />
@@ -485,6 +500,9 @@ function Sistema({ preparando = false, nombreObra = '', alTerminar }: {
                     <Route path="/movimientos" element={<Movimientos />} />
                     <Route path="/semana" element={<Semana />} />
                     <Route path="/mano-de-obra" element={<ManoDeObra />} />
+                    <Route path="/stock" element={<Existencias />} />
+                    <Route path="/herramientas" element={<Existencias soloEquipos />} />
+                    <Route path="/trabajadores" element={<Trabajadores />} />
                     <Route path="/solicitudes" element={<Solicitudes />} />
                     <Route path="/requerimiento" element={<Requerimiento />} />
                     <Route path="/importar" element={<Importar />} />
