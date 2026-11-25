@@ -182,7 +182,10 @@ h1, .h1, h2, .h2, h3, .h3 { letter-spacing: -0.02em; }
 .sigro-menu .accordion-button {
   gap: 0.85rem; min-height: 3rem; padding: 0 0.85rem; border-radius: 0.9rem !important;
   background: transparent; color: var(--sigro-menu-texto); font-size: 0.9rem; font-weight: 400; box-shadow: none;
-  &::after { width: 1rem; height: 1rem; background-size: 1rem; filter: invert(1) brightness(0.8); }
+  &::after {
+    width: 1rem; height: 1rem; background-size: 1rem;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23a9aaaa' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpath d='M6 9l6 6 6-6'/%3e%3c/svg%3e") !important;
+  }
   &:hover { background: #242424; color: #fff; }
   &:not(.collapsed) { background: var(--sigro-menu-item); color: #fff; font-weight: 500; svg { color: $primary; } }
 }
@@ -259,6 +262,8 @@ h1, .h1, h2, .h2, h3, .h3 { letter-spacing: -0.02em; }
   --marca: var(--bs-primary);
   --accion: var(--bs-primary);
   --accion-tinta: #{$dark};
+  --pildora: var(--bs-primary);
+  --vidrio-sombra-alta: none;
   --marca-tinte: var(--bs-primary-bg-subtle);
   --marca-tinte-tinta: var(--bs-primary-text-emphasis);
   --bien: var(--bs-success-text-emphasis);

@@ -11,7 +11,7 @@ import {  } from './ui/piezas'
 import { esAdministrador } from './paginas/administracion/reglas'
 import type { Obra, ObraActiva } from './api/tipos'
 import logoBlanco from './assets/sevens-logo-blanco.webp'
-import { Accordion, Alert, Badge, Button, Container, Form, Nav, Navbar, NavDropdown, Offcanvas } from 'react-bootstrap'
+import { Accordion, Alert, Badge, Button, Container, Form, Nav, NavDropdown, Offcanvas } from 'react-bootstrap'
 import { EsqueletoPagina } from './ui/Esqueleto'
 import { useInstalar } from './ui/instalar'
 
@@ -84,7 +84,16 @@ const ICONOS = {
   parametros: 'M4 21v-7|M4 10V3|M12 21v-9|M12 8V3|M20 21v-5|M20 12V3|M1 14h6|M9 8h6|M17 16h6',
   obra: 'M3 21h18|M5 21V7l7-4 7 4v14|M9 21v-4h6v4|M9 10h.01|M15 10h.01|M9 14h.01|M15 14h.01',
   administracion: 'M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10|M9 12l2 2 4-4',
+  salir: 'M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3|M10 17l5-5-5-5|M15 12H3',
 }
+
+/* Ícono de cada área del menú (el de su primera pantalla, salvo donde hay uno más claro) */
+const ICONO_GRUPO: Record<string, keyof typeof ICONOS> = {
+  'Preparar la obra': 'obra', 'Control de la obra': 'tablero', Abastecimiento: 'compras',
+  Almacén: 'inventario', Catálogo: 'catalogo', Administración: 'administracion',
+}
+
+const iniciales = (nombre: string) => nombre.trim().split(/\s+/).slice(0, 2).map((p) => p[0]?.toUpperCase() ?? '').join('')
 
 /* Solo para el administrador de la obra activa (HU-13, HU-14, HU-15). Esconderla es comodidad:
    la API verifica el rol en cada petición y responde 403 si no corresponde. */
@@ -191,22 +200,32 @@ function MenuSecciones({ grupos, alNavegar }: { grupos: typeof GRUPOS; alNavegar
   useEffect(() => { if (actual) setAbierto(actual) }, [actual])
 
   return (
-    <Accordion as="nav" aria-label="Secciones" activeKey={abierto} onSelect={(k) => setAbierto(typeof k === 'string' ? k : null)} flush>
-      {grupos.map((g) => (
-        <Accordion.Item key={g.rotulo} eventKey={g.rotulo}>
-          <Accordion.Header>{g.rotulo}</Accordion.Header>
-          <Accordion.Body className="p-1">
-            <Nav className="flex-column">
-              {g.items.map((s) => (
-                <Nav.Link key={s.ruta} as={NavLink} to={s.ruta} onClick={alNavegar} className="d-flex align-items-center gap-2 rounded">
-                  <Icono d={ICONOS[s.icono]} tam={17} />
-                  {s.nombre}
-                </Nav.Link>
-              ))}
-            </Nav>
-          </Accordion.Body>
-        </Accordion.Item>
-      ))}
+    <Accordion as="nav" aria-label="Secciones" activeKey={abierto} onSelect={(k) => setAbierto(typeof k === 'string' ? k : null)}>
+      {grupos.map((g) => {
+        const icono = ICONOS[ICONO_GRUPO[g.rotulo] ?? g.items[0].icono]
+        // un área de una sola pantalla no se despliega: es un enlace directo
+        if (g.items.length === 1) {
+          const s = g.items[0]
+          return (
+            <NavLink key={g.rotulo} to={s.ruta} onClick={alNavegar} className="sigro-item">
+              <Icono d={icono} tam={20} />{s.nombre}
+            </NavLink>
+          )
+        }
+        return (
+          <Accordion.Item key={g.rotulo} eventKey={g.rotulo}>
+            <Accordion.Header><Icono d={icono} tam={20} />{g.rotulo}</Accordion.Header>
+            <Accordion.Body>
+              {/* subpáginas colgando de una línea curva; NavLink marca «active» la pantalla abierta */}
+              <div className="sigro-sub">
+                {g.items.map((s) => (
+                  <NavLink key={s.ruta} to={s.ruta} onClick={alNavegar}>{s.nombre}</NavLink>
+                ))}
+              </div>
+            </Accordion.Body>
+          </Accordion.Item>
+        )
+      })}
     </Accordion>
   )
 }
@@ -328,57 +347,67 @@ function Sistema({ preparando = false, nombreObra = '', alTerminar }: {
           alDibujarse={() => setDibujado(true)}
         />
       )}
-      <div ref={marco} className="min-vh-100">
-        {/* Barra superior (Navbar oscura): logo, obra activa, ajustes y usuario */}
-        <Navbar bg="dark" data-bs-theme="dark" sticky="top" className="px-3">
-          <Button variant="outline-light" size="sm" className="d-lg-none me-2" onClick={() => setMenuAbierto(true)} aria-label="Abrir menú">
-            ☰
-          </Button>
-          <Navbar.Brand as={NavLink} to="/tablero" aria-label="SIGRO · inicio">
-            <img src={logoBlanco} alt="SEVEN'S Ingenieros SAC" height={34} />
-          </Navbar.Brand>
-
-          {/* obra activa: si hay más de una, se elige aquí (regla 9: solo ves lo de esta obra) */}
-          <div className="d-none d-md-flex align-items-center gap-2 text-white-50 small ms-2">
-            <span>Obra:</span>
-            {obras.length > 1 ? (
-              <Form.Select size="sm" id="obra-activa" aria-label="Obra activa" value={obra?.id ?? ''}
-                onChange={(e) => cambiarObra(e.target.value)} style={{ width: 220 }}>
-                {obras.map((o) => <option key={o.id} value={o.id}>{o.nombre}</option>)}
-              </Form.Select>
-            ) : (
-              <span className="text-white fw-semibold">{obra?.nombre ?? '…'}</span>
-            )}
-            {obra && <Badge bg="secondary">{obra.semana === 0 ? 'aún no inicia' : `semana ${obra.semana} de ${obra.semanasTotales}`}</Badge>}
-          </div>
-
-          <Nav className="ms-auto align-items-center">
-            <AjustesPantalla />
-            {usaApiReal && sesion && (
-              <NavDropdown align="end" id="usuario" title={sesion.usuario.nombre.trim().split(/\s+/)[0]}>
-                <NavDropdown.ItemText className="small">
-                  <div className="fw-semibold">{sesion.usuario.nombre}</div>
-                  {rol && <div className="text-body-secondary">{ROLES[rol] ?? rol}</div>}
-                </NavDropdown.ItemText>
-                <NavDropdown.Divider />
-                <NavDropdown.Item onClick={cerrarSesion}>Cerrar sesión</NavDropdown.Item>
-              </NavDropdown>
-            )}
-          </Nav>
-        </Navbar>
-
-        <div className="d-flex">
-          {/* Offcanvas «responsive»: a partir de lg se ve fijo a la izquierda; en pantallas chicas se abre con ☰ */}
-          <Offcanvas show={menuAbierto} onHide={() => setMenuAbierto(false)} responsive="lg" className="sigro-menu border-end bg-body">
-            <Offcanvas.Header closeButton>
-              <Offcanvas.Title>Menú</Offcanvas.Title>
-            </Offcanvas.Header>
-            <Offcanvas.Body className="d-block p-0">
+      <div ref={marco} className="sigro-armazon">
+        {/* Menú flotante (Offcanvas «responsive»): a partir de lg se ve fijo a la izquierda; en pantallas chicas se abre con ☰ */}
+        <Offcanvas show={menuAbierto} onHide={() => setMenuAbierto(false)} responsive="lg" className="sigro-menu" aria-label="Menú">
+          <Offcanvas.Body className="d-block p-0">
+            <div className="sigro-panel">
+              <div className="d-flex align-items-start justify-content-between">
+                <NavLink to="/tablero" aria-label="SIGRO · inicio" className="d-block px-2 pt-1" onClick={() => setMenuAbierto(false)}>
+                  <img src={logoBlanco} alt="SEVEN'S Ingenieros SAC" height={54} />
+                </NavLink>
+                <button type="button" className="btn-close btn-close-white d-lg-none" aria-label="Cerrar menú" onClick={() => setMenuAbierto(false)} />
+              </div>
+              {sesion && (
+                <div className="sigro-perfil">
+                  <span className="avatar" aria-hidden="true">{iniciales(sesion.usuario.nombre)}</span>
+                  <div className="min-w-0">
+                    {rol && <div className="rol">{ROLES[rol] ?? rol}</div>}
+                    <div className="nombre text-truncate">{sesion.usuario.nombre}</div>
+                  </div>
+                </div>
+              )}
+              <div className="sigro-rotulo">Menú</div>
               <MenuSecciones grupos={grupos} alNavegar={() => setMenuAbierto(false)} />
-            </Offcanvas.Body>
-          </Offcanvas>
+              {/* la API decide quién registra compras (compra.registrar); aquí solo se ofrece el atajo */}
+              {(!rol || ['almacenero', 'residente', 'administrador'].includes(rol)) && (
+                <div className="sigro-llamado">
+                  <div className="titulo">¿Llegó una compra?</div>
+                  <p>Regístrala con su comprobante y queda en el libro.</p>
+                  <NavLink to="/compras" className="btn btn-primary w-100" onClick={() => setMenuAbierto(false)}>+ Registrar compra</NavLink>
+                </div>
+              )}
+              {usaApiReal && sesion && (
+                <button type="button" className="sigro-item border-0 bg-transparent w-100 mt-2" onClick={cerrarSesion}>
+                  <Icono d={ICONOS.salir} tam={20} />Cerrar sesión
+                </button>
+              )}
+            </div>
+          </Offcanvas.Body>
+        </Offcanvas>
 
-          <main className="flex-grow-1 p-3 p-lg-4 min-w-0" >
+        <div className="sigro-columna">
+          {/* Barra superior: obra activa, semana del plazo y ajustes de pantalla */}
+          <header className="sigro-barra">
+            <Button variant="primary" className="d-lg-none" onClick={() => setMenuAbierto(true)} aria-label="Abrir menú">☰</Button>
+            {/* obra activa: si hay más de una, se elige aquí (regla 9: solo ves lo de esta obra) */}
+            <div className="d-flex flex-wrap align-items-center gap-2">
+              <label htmlFor="obra-activa" className="small text-body-secondary">Obra</label>
+              {obras.length > 1 ? (
+                <Form.Select id="obra-activa" value={obra?.id ?? ''} onChange={(e) => cambiarObra(e.target.value)}>
+                  {obras.map((o) => <option key={o.id} value={o.id}>{o.nombre}</option>)}
+                </Form.Select>
+              ) : (
+                <span id="obra-activa" className="fw-semibold">{obra?.nombre ?? '…'}</span>
+              )}
+              {obra && <Badge pill>{obra.semana === 0 ? 'aún no inicia' : `semana ${obra.semana} de ${obra.semanasTotales}`}</Badge>}
+            </div>
+            <Nav className="ms-auto align-items-center">
+              <AjustesPantalla />
+            </Nav>
+          </header>
+
+          <main className="flex-grow-1 p-3 p-lg-4 min-w-0">
             {/* la clave remonta las pantallas al cambiar de obra: vuelven a consultar */}
             <Container fluid key={obra?.id ?? 'sin-obra'} className="px-0">
               <GuardianErrores>
