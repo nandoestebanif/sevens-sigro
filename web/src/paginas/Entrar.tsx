@@ -10,10 +10,16 @@ import { useState } from 'react'
 import { ErrorApi } from '../api/error'
 import { API_URL, iniciarSesion } from '../api/http'
 import { Alert, Button, Card, Col, Container, Form, InputGroup, Row } from 'react-bootstrap'
-import logo from '../assets/sevens-logo.png'
+import logo from '../assets/sevens-logo-blanco.webp'
+import { DibujoObra, type Ilustracion } from '../ui/Ilustraciones'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { esquemaEntrar, type DatosEntrar } from '../formularios/esquemas'
+
+/* las tres partes de SIGRO, como tarjetas «ticket» de la portada */
+const PARTES: { nombre: string; dibujo: Ilustracion }[] = [
+  { nombre: 'Compras', dibujo: 'factura' }, { nombre: 'Almacén', dibujo: 'camion' }, { nombre: 'Gasto en recursos', dibujo: 'grua' },
+]
 
 const PROMESAS = [
   'El presupuesto del S10 se importa tal cual: 284 insumos, al céntimo.',
@@ -52,19 +58,34 @@ export function Entrar({ saliendo = false }: { saliendo?: boolean }) {
   const textoBoton = conectando ? 'Conectando con el servidor…' : enviando || saliendo ? 'Entrando…' : 'Entrar'
 
   return (
-    <Container className="min-vh-100 d-flex align-items-center justify-content-center py-5">
-      <Row className="w-100 justify-content-center g-4 align-items-center">
-        {/* columna de presentación: logo y qué hace SIGRO (se oculta en celulares) */}
-        <Col lg={5} className="d-none d-lg-block">
-          <img src={logo} alt="SEVEN'S Ingenieros SAC" height={90} className="mb-4" />
-          <h1 className="h3 mb-3">Lo que pide el S10, lo que se compra y lo que se gasta. En un solo lugar.</h1>
-          <ul className="list-unstyled text-body-secondary">
-            {PROMESAS.map((t) => <li key={t} className="mb-2">✓ {t}</li>)}
-          </ul>
+    <Container fluid className="min-vh-100 d-flex align-items-stretch p-3">
+      <Row className="w-100 g-4 align-items-center mx-0">
+        {/* portada: logo, qué hace SIGRO y sus tres partes (se oculta en celulares) */}
+        <Col lg={6} className="d-none d-lg-flex align-self-stretch">
+          <div className="sigro-portada w-100 p-5 d-flex flex-column justify-content-between gap-4">
+            <img src={logo} alt="SEVEN'S Ingenieros SAC" height={86} className="align-self-start" />
+            <div>
+              <h1 className="display-6 fw-semibold mb-4" style={{ maxWidth: 560 }}>
+                Lo que pide el S10, lo que se compra y lo que se gasta. <span className="text-primary">En un solo lugar.</span>
+              </h1>
+              <ul className="list-unstyled mb-0" style={{ color: '#d2d3d3' }}>
+                {PROMESAS.map((t) => <li key={t} className="mb-2">✓ {t}</li>)}
+              </ul>
+            </div>
+            <div className="d-flex gap-3">
+              {PARTES.map((p) => (
+                <div key={p.nombre} className="sigro-ticket" style={{ flex: '1 1 0', minHeight: 140 }}>
+                  <span className="franja" aria-hidden="true" />
+                  <span className="ilustracion"><DibujoObra cual={p.dibujo} ancho={66} /></span>
+                  <div className="fw-semibold small position-relative" style={{ marginTop: 78 }}>{p.nombre}</div>
+                </div>
+              ))}
+            </div>
+          </div>
         </Col>
 
-        <Col sm={10} md={7} lg={5} xl={4}>
-          <Card className="shadow">
+        <Col sm={10} md={7} lg={5} xl={4} className="mx-auto">
+          <Card>
             <Card.Body className="p-4">
               <Form noValidate onSubmit={handleSubmit(entrar)}>
                 <h2 className="h4 mb-1">Ingresar</h2>
