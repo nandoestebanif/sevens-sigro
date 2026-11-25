@@ -20,7 +20,8 @@ describe('existencias del almacén', () => {
     const xs = [ex('3', 9), ex('1', 0), ex('2', 4, { estado: 'bajo_punto' }), ex('4', 2, { tipo: 'equipo', almacenes: [{ almacen: 'Frente', cantidad: 2 }] })]
     expect(ordenarPorUrgencia(xs).map((x) => x.codigo)).toEqual(['1', '2', '3', '4'])
     expect(filtrar(xs, { estado: 'reponer', almacen: '', soloEquipos: false }).map((x) => x.codigo)).toEqual(['2'])
-    expect(filtrar(xs, { estado: 'todos', almacen: 'Frente', soloEquipos: false }).map((x) => x.codigo)).toEqual(['4'])
+    expect(filtrar(xs, { estado: 'todos', almacen: 'Frente', soloEquipos: false }).map((x) => x.codigo)).toEqual([])
+    expect(filtrar(xs, { estado: 'todos', almacen: '', soloEquipos: false }).map((x) => x.codigo)).toEqual(['3', '1', '2'])  // materiales: sin el equipo
     expect(filtrar(xs, { estado: 'todos', almacen: '', soloEquipos: true }).map((x) => x.codigo)).toEqual(['4'])
     expect(resumir(xs)).toMatchObject({ conStock: 3, porReponer: 1, sinStock: 1, valor: 150 })
     expect(dondeEsta(ex('9', 3, { almacenes: [{ almacen: 'Central', cantidad: 2 }, { almacen: 'Frente', cantidad: 1 }, { almacen: 'B', cantidad: 0 }] }), String)).toBe('Central 2 · Frente 1')

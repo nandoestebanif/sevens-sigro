@@ -22,6 +22,7 @@ import { Chips, Encabezado, Pildora, Segmentado, TituloSeccion, Vidrio } from '.
 import { EsqueletoTabla } from '../ui/Esqueleto'
 import { AccionesFila, TablaDatos } from '../ui/TablaDatos'
 import { puedo } from '../api/permisos'
+import { filtrarNumero } from '../formularios/reglas'
 
 const n2 = (v: number) => v.toLocaleString('es-PE', { maximumFractionDigits: 0 })
 
@@ -55,7 +56,8 @@ function Alerta({ a }: { a: AlertaReposicion }) {
           id={`sug-${a.insumoId}`}
           className="n form-control fw-bold text-end"
           value={cantidad}
-          onChange={(e) => setCantidad(e.target.value)}
+          inputMode="decimal"
+          onChange={(e) => setCantidad((c) => filtrarNumero(c, e.target.value))}
           style={{ width: 110, height: 44 }}
         />
         <span className="small text-body-secondary">{a.unidad}</span>

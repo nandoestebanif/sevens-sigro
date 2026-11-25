@@ -181,7 +181,8 @@ fun PantallaPendientes(
 
     PantallaVidrio(
         "Mis registros", plano = { planoRegistros(it) }, alVolver = alVolver,
-        subtitulo = if (porEnviar > 0) "$porEnviar por enviar" else "Todo enviado", modulo = Modulo.REGISTROS) {
+        subtitulo = if (porEnviar > 0) "$porEnviar por enviar" else "Todo enviado", modulo = Modulo.REGISTROS,
+        actualizando = enviando, alActualizar = vm::enviarAhora) {
         // Rediseño: el resumen de la cola es un ticket menta con su botón negro, como en la web
         if (porEnviar > 0) {
             Ticket(Paleta.TicketMenta, Modifier.fillMaxWidth()) {

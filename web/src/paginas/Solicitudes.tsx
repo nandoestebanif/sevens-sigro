@@ -22,6 +22,7 @@ import { EsqueletoTabla } from '../ui/Esqueleto'
 import { Aviso, Chips, Encabezado, Pildora, Segmentado, TituloSeccion, Vidrio } from '../ui/piezas'
 import { AccionesFila, TablaDatos } from '../ui/TablaDatos'
 import { useAvisos } from '../ui/Avisos'
+import { filtrarNumero } from '../formularios/reglas'
 
 const cant = (v: number) => v.toLocaleString('es-PE', { maximumFractionDigits: 4 })
 const dia = (iso: string) => `${iso.slice(8, 10)}/${iso.slice(5, 7)}/${iso.slice(0, 4)}`
@@ -177,7 +178,7 @@ function NuevaSolicitud({ enListo }: { enListo: (s: Solicitud) => void }) {
         </div>
         <label className="d-flex flex-column gap-1 small fw-semibold" style={{ flex: '1 1 120px' }}>
           Cantidad
-          <input className="form-control" inputMode="decimal" value={cantidad} onChange={(e) => setCantidad(e.target.value)} placeholder="0" />
+          <input className="form-control" inputMode="decimal" value={cantidad} onChange={(e) => setCantidad((c) => filtrarNumero(c, e.target.value))} placeholder="0" />
         </label>
         <Pildora tipo="secundario" enClic={agregar}>Agregar</Pildora>
       </div>

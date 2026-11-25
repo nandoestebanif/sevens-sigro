@@ -26,6 +26,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import org.koin.compose.viewmodel.koinViewModel
+import pe.sevens.sigro.dominio.Limites
 import pe.sevens.sigro.dominio.Texto
 import pe.sevens.sigro.dominio.Insumo
 import pe.sevens.sigro.dominio.LineaAlmacen
@@ -93,7 +94,7 @@ class ConteoViewModel(
     }
     private fun cambiar(idx: Int, f: (LineaConteo) -> LineaConteo) =
         _e.update { s -> s.copy(lineas = s.lineas.mapIndexed { i, l -> if (i == idx) f(l) else l }, errores = s.errores - "$idx") }
-    fun contado(idx: Int, v: String) = cambiar(idx) { it.copy(contado = v) }
+    fun contado(idx: Int, v: String) = cambiar(idx) { it.copy(contado = Limites.cantidad(it.contado, v)) }
     fun motivo(idx: Int, m: MotivoDiferencia) = cambiar(idx) { it.copy(motivo = if (it.motivo == m) null else m) }
     fun quitar(idx: Int) = _e.update { s -> s.copy(lineas = s.lineas.filterIndexed { i, _ -> i != idx }, errores = emptyMap()) }
 

@@ -97,6 +97,7 @@ val moduloDatos = module {
     single { ClaveReciente({ Plataforma.ahoraMs() }) } // la contraseña recién escrita, solo en memoria
     single { get<BaseDatosSigro>().stock() }
     single<RepositorioStock> { RepositorioStockImpl(get(), get(), get()) }
+    single<pe.sevens.sigro.dominio.RepositorioPrestamos> { pe.sevens.sigro.datos.repositorio.RepositorioPrestamosImpl(get(), get()) }
 }
 
 val moduloPresentacion = module {
@@ -116,6 +117,7 @@ val moduloPresentacion = module {
     viewModel { TrabajadorNuevoViewModel(get()) }
     viewModel { AsistenciaViewModel(get(), get(), get(), get()) }
     viewModel { StockViewModel(get()) }
+    viewModel { pe.sevens.sigro.ui.pantallas.HerramientasViewModel(get()) }
     viewModel { EntradaViewModel(get(), get(), get()) }
     viewModel { IngresoSinCompraViewModel(get(), get(), get(), get()) }
     viewModel { TrasladoViewModel(get(), get(), get()) }

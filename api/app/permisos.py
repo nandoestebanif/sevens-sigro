@@ -59,6 +59,8 @@ ACCIONES: dict[str, frozenset[str]] = {
     "conteo.registrar": frozenset({ALMACENERO}),                       # HU-46
     "movimiento.revertir": frozenset({ALMACENERO, RESIDENTE}),         # HU-45
     "stock.consultar": TODOS,                                          # HU-43, kárdex
+    "herramienta.prestar": frozenset({ALMACENERO}),                    # préstamo y devolución de herramientas (0023)
+    "herramienta.consultar": TODOS,                                    # quién tiene qué herramienta
     # --- costo (modelo de lectura)
     "costo.consultar": frozenset({RESIDENTE, ADMIN, GERENTE}),         # HU-58
     # --- catálogo de insumos (HU-07, HU-08, HU-17)

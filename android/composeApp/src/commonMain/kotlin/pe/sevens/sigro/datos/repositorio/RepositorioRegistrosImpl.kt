@@ -7,6 +7,9 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.addJsonObject
+import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonArray
@@ -109,7 +112,8 @@ class RepositorioRegistrosImpl(
         for (r in cola) {
             val tipo = TipoRegistro.valueOf(r.tipo)
             try {
-                val respuesta = api.enviarRegistro(servidor, ruta(tipo, r.obraId), r.cuerpo)
+                val respuesta = if (tipo == TipoRegistro.CONTEO) enviarConteo(servidor, r.obraId, r.cuerpo)
+                else api.enviarRegistro(servidor, ruta(tipo, r.obraId), r.cuerpo)
                 registros.marcar(r.uuidCliente, EstadoEnvio.ENVIADO.name, null, null, reloj())
                 // A1: quién registró y la hora del servidor, tal como vinieron en el 201/200.
                 cred.recibo(respuesta)?.let { registros.anotarRecibo(r.uuidCliente, it.registradoPorId, it.registradoPor, it.fechaServidor) }
@@ -131,6 +135,43 @@ class RepositorioRegistrosImpl(
             }
         }
         ResultadoSincronizacion(enviados, rechazados, registros.pendientes(tiposConServicio).size)
+    }
+
+    /**
+     * HU-46: el conteo físico en el servidor son tres pasos y los tres se pueden repetir sin duplicar:
+     * abrir (mismo uuid ⇒ el mismo conteo), contar cada insumo (si ya se contó, 409 «insumo_ya_contado» y se sigue)
+     * y confirmar (un conteo ya confirmado se devuelve igual). Si se corta a la mitad, el reintento termina lo que falta.
+     * Una diferencia sin motivo la rechaza el servidor (422) y el registro queda «Rechazado» con ese motivo.
+     */
+    private suspend fun enviarConteo(servidor: String, obraId: Int, cuerpo: String): JsonObject? {
+        val c = jsonSigro.parseToJsonElement(cuerpo).jsonObject
+        val abrir = buildJsonObject {
+            c["uuid_cliente"]?.let { put("uuid_cliente", it) }
+            c["hora_dispositivo_ms"]?.let { put("hora_dispositivo_ms", it) }
+            c["fecha"]?.let { put("fecha", it) }
+            c["almacen_id"]?.let { put("almacen_id", it) }
+        }
+        val conteo = api.enviarRegistro(servidor, "/obras/$obraId/almacen/conteos", abrir.toString())
+        val id = conteo?.get("id")?.jsonPrimitive?.content ?: return conteo
+        if (conteo["estado"]?.jsonPrimitive?.content == "confirmado") return conteo
+        val ya = conteo["lineas"]?.jsonArray.orEmpty().mapNotNull { it.jsonObject["insumo_id"]?.jsonPrimitive?.content }.toSet()
+        for (l in c["lineas"]?.jsonArray.orEmpty()) {
+            val o = l.jsonObject
+            val insumo = o["insumo_id"]?.jsonPrimitive?.content ?: continue
+            if (insumo in ya) continue
+            val linea = buildJsonObject {
+                put("insumo_id", o["insumo_id"]!!)
+                put("cantidad_contada", o["contado"] ?: JsonNull)
+                put("motivo", o["motivo"] ?: JsonNull)
+                o["unidad"]?.let { put("unidad", it) } // la del catálogo del celular; el servidor la pasa a la del S10
+            }
+            try {
+                api.enviarRegistro(servidor, "/obras/$obraId/almacen/conteos/$id/lineas", linea.toString())
+            } catch (e: ErrorSigro) {
+                if (e.codigo != "insumo_ya_contado") throw e
+            }
+        }
+        return api.enviarRegistro(servidor, "/obras/$obraId/almacen/conteos/$id/confirmar", "{}")
     }
 
     private fun nueva(
@@ -232,7 +273,7 @@ class RepositorioRegistrosImpl(
                     put("fecha", r.fecha)
                     putJsonArray("lineas") {
                         r.lineas.forEach { (l, m) ->
-                            addJsonObject { put("insumo_id", l.insumo.id); put("contado", cant(l.cantidad)); put("motivo", m?.legible) }
+                            addJsonObject { put("insumo_id", l.insumo.id); put("contado", cant(l.cantidad)); put("unidad", l.insumo.unidad); put("motivo", m?.legible) }
                         }
                     }
                 }

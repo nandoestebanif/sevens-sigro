@@ -32,4 +32,6 @@ sealed interface Destino {
     data object Conteo : Destino
     data object Cierre : Destino
     data object Stock : Destino
+    /** Préstamo y devolución de herramientas y equipos (con señal). */
+    data object Herramientas : Destino
 }

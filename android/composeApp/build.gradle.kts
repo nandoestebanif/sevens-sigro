@@ -80,8 +80,8 @@ android {
         applicationId = "pe.sevens.sigro"
         minSdk = 26
         targetSdk = 35
-        versionCode = 11
-        versionName = "1.0.0"
+        versionCode = 12
+        versionName = "1.1.0"
         // SQLite empaquetado (Room KMP) trae su .so por ABI (~2 MB cada una). x86 de 32 bits no existe en
         // celulares; x86_64 se queda para el emulador.
         ndk { abiFilters += listOf("arm64-v8a", "armeabi-v7a", "x86_64") }
@@ -161,6 +161,12 @@ kover {
         filters {
             includes {
                 packages("pe.sevens.sigro.dominio", "pe.sevens.sigro.dominio.casosdeuso", "pe.sevens.sigro.datos.repositorio", "pe.sevens.sigro.datos.remoto")
+            }
+            // Los DTO @Serializable solo transportan datos: el código que genera kotlinx.serialization (write$Self,
+            // $$serializer) suma ramas que no son lógica nuestra. Lo que se mide es el repositorio que los usa.
+            excludes {
+                annotatedBy("kotlinx.serialization.Serializable")
+                classes("*\$\$serializer")
             }
         }
     }

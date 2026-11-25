@@ -5,7 +5,7 @@
    horas lleva cada uno y quiénes están de baja (nadie se borra, regla 10). El SSOMA y el
    almacenero los registran desde el celular; el administrador también desde aquí.
    ───────────────────────────────────────────────────────────────────────── */
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { ErrorApi } from '../api/cliente'
 import { usaApiReal } from '../api/http'
 import { manoDeObra, type HorasFila, type Trabajador } from '../api/manoDeObra'
@@ -18,6 +18,7 @@ import { AccionesFila, TablaDatos } from '../ui/TablaDatos'
 import { CATEGORIAS, categoria, horas } from './mano-de-obra-reglas'
 import { BajaTrabajador, DetalleTrabajador, FormTrabajador } from './TrabajadorFormularios'
 import { enObra, filtrarTrabajadores, horasPorTrabajador, resumirPersonal, type EstadoTrabajador } from './trabajadores-reglas'
+import { EnVivo, useActualizacion } from '../ui/Actualizacion'
 
 const hoyLima = () => new Date().toLocaleDateString('en-CA', { timeZone: 'America/Lima' })
 const dia = (iso: string | null) => (iso ? `${iso.slice(8, 10)}/${iso.slice(5, 7)}/${iso.slice(0, 4)}` : '—')
@@ -36,11 +37,10 @@ export function Trabajadores() {
   const puedeRegistrar = puedo('trabajador.registrar')
   const hoy = hoyLima()
 
-  useEffect(() => {
-    if (!usaApiReal) return
-    manoDeObra.trabajadores().then(setTrabajadores).catch((e) => setError(e instanceof ErrorApi ? e.message : 'No se pudo cargar a los trabajadores.'))
-    manoDeObra.horas().then(setFilasHoras).catch(() => setFilasHoras([]))       // sin horas, la lista igual se ve
-  }, [])
+  const vivo = useActualizacion(() => Promise.all([
+    manoDeObra.trabajadores().then(setTrabajadores).catch((e) => setError(e instanceof ErrorApi ? e.message : 'No se pudo cargar a los trabajadores.')),
+    manoDeObra.horas().then(setFilasHoras).catch(() => setFilasHoras([])),       // sin horas, la lista igual se ve
+  ]), { activo: usaApiReal })
 
   const reemplazar = useCallback((t: Trabajador) => setTrabajadores((xs) => {
     const l = xs ?? []
@@ -53,7 +53,7 @@ export function Trabajadores() {
   return (
     <div className="d-flex flex-column gap-3 pb-4">
       <Encabezado titulo="Trabajadores" sub="El personal de la obra: quién está, en qué categoría y cuadrilla, y cuántas horas lleva."
-        acciones={puedeRegistrar ? <Boton enClic={() => { setHecho(null); setEditando('nuevo') }}>+ Registrar trabajador</Boton> : undefined} />
+        acciones={<>{usaApiReal && <EnVivo {...vivo} />}{puedeRegistrar && <Boton enClic={() => { setHecho(null); setEditando('nuevo') }}>+ Registrar trabajador</Boton>}</>} />
       <Chips>
         <Chip tono="neutro">Los registran el SSOMA o el almacenero en el celular, y el administrador también desde aquí</Chip>
         <Chip tono="neutro">Nadie se borra: la baja es una fecha</Chip>

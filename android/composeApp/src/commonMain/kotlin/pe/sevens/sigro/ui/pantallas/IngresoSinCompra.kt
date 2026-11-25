@@ -1,5 +1,6 @@
 package pe.sevens.sigro.ui.pantallas
 
+import pe.sevens.sigro.dominio.Limites
 import pe.sevens.sigro.dominio.ValidacionEnVivo
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Save
@@ -103,9 +104,9 @@ class IngresoSinCompraViewModel(
     fun origen(o: OrigenIngreso) { _e.update { it.copy(origen = o) }; enVivo.revisarYa() }
     fun elegir(i: Insumo) { buscador.limpiar(); _e.update { it.copy(insumo = i) }; enVivo.salir("insumo") }
     fun quitar() { _e.update { it.copy(insumo = null) }; enVivo.revisarYa() }
-    fun cantidad(v: String) { _e.update { it.copy(cantidad = v) }; enVivo.cambio("cantidad") }
-    fun costo(v: String) { _e.update { it.copy(costo = v) }; enVivo.cambio("costo") }
-    fun detalle(v: String) { _e.update { it.copy(detalle = v) }; enVivo.cambio("detalle") }
+    fun cantidad(v: String) { _e.update { it.copy(cantidad = Limites.cantidad(it.cantidad, v)) }; enVivo.cambio("cantidad") }
+    fun costo(v: String) { _e.update { it.copy(costo = Limites.costo(it.costo, v)) }; enVivo.cambio("costo") }
+    fun detalle(v: String) { _e.update { it.copy(detalle = Limites.texto(v, Limites.DETALLE)) }; enVivo.cambio("detalle") }
     fun salirDe(campo: String) = enVivo.salir(campo)
 
     fun guardar(obraId: Int) {
