@@ -312,6 +312,8 @@ export const catalogoHttp = {
    todo es de la obra activa (regla 9): la ruta lleva su id y el servidor verifica la asignación */
 export const obraId = async () => (await obrasHttp.activa()).id
 export const num = (x: unknown) => Number(x ?? 0) // la API manda los decimales como texto exacto
+/** Mano de obra del S10: se planifica en horas hombre y no se compra. */
+export const esHoraHombre = (unidad: string) => /^h\.?h\.?$/i.test(unidad.trim())
 
 interface SaldoApi {
   insumoId: number; insumoCodigo: string; descripcion: string; unidadS10: string; unidadCompra: string
@@ -341,7 +343,8 @@ export const reposicionHttp = {
     // crítico = insumo con punto de reposición vigente (HU-25). Sin permiso para verlos, nadie es crítico y la pantalla carga.
     const criticos = marcados ?? await reposicionHttp.parametros()
       .then((ps) => new Set(ps.map((p) => p.insumoCodigo))).catch(() => new Set<string>())
-    return xs.map((s) => {
+    // las horas hombre del S10 (unidad «hh») no se compran: se controlan en Mano de obra (HU-64/65)
+    return xs.filter((s) => !esHoraHombre(s.unidadS10)).map((s) => {
       const req = num(s.requerido), comp = num(s.comprado)
       return {
         insumoId: String(s.insumoId), codigo: s.insumoCodigo, descripcion: s.descripcion,
