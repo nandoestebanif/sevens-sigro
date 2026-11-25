@@ -1,4 +1,5 @@
 /* SIGRO · armazón de la web de oficina con React-Bootstrap: Navbar arriba, menú lateral (Offcanvas + Accordion), obra activa y rutas. */
+import { puede } from './api/permisos'
 import { Component, Suspense, lazy, useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { HashRouter, NavLink, Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { grupoDeRuta } from './menu'
@@ -55,6 +56,7 @@ const Compras = lazy(() => import('./paginas/Compras').then((m) => ({ default: m
 const Importar = lazy(() => import('./paginas/Importar').then((m) => ({ default: m.Importar })))
 const Movimientos = lazy(() => import('./paginas/Movimientos').then((m) => ({ default: m.Movimientos })))
 const Semana = lazy(() => import('./paginas/Semana').then((m) => ({ default: m.Semana })))
+const Solicitudes = lazy(() => import('./paginas/Solicitudes').then((m) => ({ default: m.Solicitudes })))
 const ManoDeObra = lazy(() => import('./paginas/ManoDeObra').then((m) => ({ default: m.ManoDeObra })))
 const Requerimiento = lazy(() => import('./paginas/Requerimiento').then((m) => ({ default: m.Requerimiento })))
 const Obras = lazy(() => import('./paginas/Obra').then((m) => ({ default: m.Obras })))
@@ -79,6 +81,7 @@ const ICONOS = {
   compras: 'M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z|M3 6h18|M16 10a4 4 0 0 1-8 0',
   proveedores: 'M5 18H3V6h12v12H9|M19 18h2v-5l-3-4h-4v9h1|M7.5 20a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3|M17.5 20a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3',
   inventario: 'M3 7l9-4 9 4-9 4-9-4|M3 7v10l9 4 9-4V7|M12 11v10',
+  solicitudes: 'M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2|M9 5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v0a2 2 0 0 1-2 2h-2a2 2 0 0 1-2-2|M9 12h6|M9 16h4',
   personal: 'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2|M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8|M22 21v-2a4 4 0 0 0-3-3.87|M16 3.13a4 4 0 0 1 0 7.75',
   movimientos: 'M8 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2h-3|M12 17V7|M8 10l4-4 4 4',
   catalogo: 'M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z|M3.3 7 12 12l8.7-5|M12 22V12',
@@ -104,15 +107,26 @@ const GRUPO_ADMINISTRACION: (typeof GRUPOS)[number] = {
   items: [{ ruta: '/administracion', nombre: 'Administración', icono: 'administracion' }],
 }
 
-const GRUPOS: { rotulo: string; items: { ruta: string; nombre: string; icono: keyof typeof ICONOS }[] }[] = [
+/** Al entrar, cada rol cae en lo que más usa (antes todos iban a Proveedores). */
+export function inicioDelRol(rol: string | null | undefined): string {
+  switch (rol) {
+    case 'almacenero': return '/movimientos'
+    case 'ssoma': return '/mano-de-obra'
+    case 'administrador': case 'residente': case 'gerente': return '/tablero'
+    default: return '/tablero'
+  }
+}
+
+// `permiso`: la acción de api/permisos.ts que hace falta para ver la pantalla (el servidor igual lo verifica)
+const GRUPOS: { rotulo: string; items: { ruta: string; nombre: string; icono: keyof typeof ICONOS; permiso?: string }[] }[] = [
   {
     // la importación del S10 es parte de PREPARAR la obra (se hace al crearla);
     // aquí vivirán también «Crear la obra» (HU-01) y sus parámetros
     rotulo: 'Preparar la obra',
     items: [
-      { ruta: '/obra', nombre: 'Crear la obra', icono: 'obra' },
-      { ruta: '/importar', nombre: 'Importar del S10', icono: 'importar' },
-      { ruta: '/requerimiento', nombre: 'Requerimiento', icono: 'importar' },
+      { ruta: '/obra', nombre: 'Crear la obra', icono: 'obra', permiso: 'proyecto.crear' },
+      { ruta: '/importar', nombre: 'Importar del S10', icono: 'importar', permiso: 'requerimiento.importar' },
+      { ruta: '/requerimiento', nombre: 'Requerimiento', icono: 'importar', permiso: 'requerimiento.consultar' },
     ],
   },
   {
@@ -120,25 +134,26 @@ const GRUPOS: { rotulo: string; items: { ruta: string; nombre: string; icono: ke
     items: [
       // «gasto en recursos», nunca «costo de obra»: el sistema no informa el
       // costo total (gastos generales, subcontratos y planilla quedan fuera)
-      { ruta: '/tablero', nombre: 'Gasto en recursos', icono: 'tablero' },
-      { ruta: '/reposicion', nombre: 'Reposición', icono: 'reposicion' },
-      { ruta: '/parametros', nombre: 'Reposición: parámetros', icono: 'parametros' },
-      { ruta: '/mano-de-obra', nombre: 'Mano de obra', icono: 'personal' },
+      { ruta: '/tablero', nombre: 'Gasto en recursos', icono: 'tablero', permiso: 'costo.consultar' },
+      { ruta: '/reposicion', nombre: 'Reposición', icono: 'reposicion', permiso: 'reposicion.consultar' },
+      { ruta: '/parametros', nombre: 'Reposición: parámetros', icono: 'parametros', permiso: 'reposicion.consultar' },
+      { ruta: '/mano-de-obra', nombre: 'Mano de obra', icono: 'personal', permiso: 'trabajador.consultar' },
     ],
   },
   {
     rotulo: 'Abastecimiento',
     items: [
-      { ruta: '/compras', nombre: 'Compras', icono: 'compras' },
-      { ruta: '/proveedores', nombre: 'Proveedores', icono: 'proveedores' },
+      { ruta: '/solicitudes', nombre: 'Solicitudes de compra', icono: 'solicitudes', permiso: 'solicitud.consultar' },
+      { ruta: '/compras', nombre: 'Compras', icono: 'compras', permiso: 'compra.consultar' },
+      { ruta: '/proveedores', nombre: 'Proveedores', icono: 'proveedores', permiso: 'proveedor.consultar' },
     ],
   },
   {
     rotulo: 'Almacén',
     items: [
-      { ruta: '/movimientos', nombre: 'Ingresos y salidas', icono: 'movimientos' },
-      { ruta: '/semana', nombre: 'Movimiento semanal', icono: 'movimientos' },
-      { ruta: '/inventario', nombre: 'Inventario valorizado', icono: 'inventario' },
+      { ruta: '/movimientos', nombre: 'Ingresos y salidas', icono: 'movimientos', permiso: 'stock.consultar' },
+      { ruta: '/semana', nombre: 'Movimiento semanal', icono: 'movimientos', permiso: 'stock.consultar' },
+      { ruta: '/inventario', nombre: 'Inventario valorizado', icono: 'inventario', permiso: 'costo.consultar' },
     ],
   },
   {
@@ -335,7 +350,11 @@ function Sistema({ preparando = false, nombreObra = '', alTerminar }: {
 
   const sesion = sesionActual()
   const rol = sesion?.obras.find((o) => String(o.id) === obra?.id)?.rol ?? sesion?.obras[0]?.rol
-  const grupos = usaApiReal && esAdministrador(sesion, obra?.id) ? [...GRUPOS, GRUPO_ADMINISTRACION] : GRUPOS
+  // cada rol ve solo las pantallas que puede usar; un grupo vacío no se muestra
+  const visibles = usaApiReal
+    ? GRUPOS.map((g) => ({ ...g, items: g.items.filter((i) => !i.permiso || puede(rol, i.permiso)) })).filter((g) => g.items.length)
+    : GRUPOS
+  const grupos = usaApiReal && esAdministrador(sesion, obra?.id) ? [...visibles, GRUPO_ADMINISTRACION] : visibles
 
   const [menuAbierto, setMenuAbierto] = useState(false)
 
@@ -415,7 +434,7 @@ function Sistema({ preparando = false, nombreObra = '', alTerminar }: {
               <GuardianErrores>
                 <Suspense fallback={<CargandoPantalla />}>
                   <Routes>
-                    <Route path="/" element={<Navigate to="/proveedores" replace />} />
+                    <Route path="/" element={<Navigate to={inicioDelRol(rol)} replace />} />
                     <Route path="/proveedores" element={<Proveedores />} />
                     <Route path="/compras" element={<Compras />} />
                     <Route path="/tablero" element={<Tablero />} />
@@ -425,6 +444,7 @@ function Sistema({ preparando = false, nombreObra = '', alTerminar }: {
                     <Route path="/movimientos" element={<Movimientos />} />
                     <Route path="/semana" element={<Semana />} />
                     <Route path="/mano-de-obra" element={<ManoDeObra />} />
+                    <Route path="/solicitudes" element={<Solicitudes />} />
                     <Route path="/requerimiento" element={<Requerimiento />} />
                     <Route path="/importar" element={<Importar />} />
                     <Route path="/obra" element={<Obras />} />
