@@ -132,8 +132,12 @@ def horas_acumuladas(periodo_id: int | None = Query(None, ge=1), a: Actor = Depe
     rows = filas(
         a.sesion,
         "SELECT h.periodo_id, h.trabajador_id, t.nombre AS trabajador, h.cuadrilla, h.categoria, "
-        "h.dias_presente, h.dias_ausente, h.dias_permiso, h.horas_normales, h.horas_extra "
+        "h.dias_presente, h.dias_ausente, h.dias_permiso, h.horas_normales, h.horas_extra, u.ultima AS ultima_jornada "
         "FROM tareo.horas_acumuladas h JOIN tareo.trabajador t ON t.id = h.trabajador_id "
+        # HU-64 c3: la fecha de la última jornada vigente que entró en la suma de esa fila
+        "LEFT JOIN (SELECT periodo_id, trabajador_id, categoria, max(fecha) AS ultima FROM tareo.jornada_vigente "
+        "           WHERE proyecto_id = :p GROUP BY periodo_id, trabajador_id, categoria) u "
+        "       ON u.periodo_id = h.periodo_id AND u.trabajador_id = h.trabajador_id AND u.categoria = h.categoria "
         "WHERE h.proyecto_id = :p AND (CAST(:pe AS bigint) IS NULL OR h.periodo_id = :pe)",
         p=a.obra_id, pe=periodo_id,
     )

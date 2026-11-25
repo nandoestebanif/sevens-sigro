@@ -10,6 +10,7 @@ import pe.sevens.sigro.datos.local.InsumoDao
 import pe.sevens.sigro.datos.local.TrabajadorDao
 import pe.sevens.sigro.datos.local.TrabajadorLocalEntity
 import pe.sevens.sigro.datos.remoto.ApiSigro
+import pe.sevens.sigro.datos.remoto.BajaIn
 import pe.sevens.sigro.datos.remoto.InsumoDto
 import pe.sevens.sigro.datos.remoto.InsumoIn
 import pe.sevens.sigro.datos.remoto.LineaCantidadDto
@@ -25,6 +26,7 @@ import pe.sevens.sigro.dominio.ErrorSigro
 import pe.sevens.sigro.dominio.EstadoLineaRecepcion
 import pe.sevens.sigro.dominio.ExcesoLinea
 import pe.sevens.sigro.dominio.FichaInsumo
+import pe.sevens.sigro.dominio.HorasTrabajador
 import pe.sevens.sigro.dominio.LineaCompra
 import pe.sevens.sigro.dominio.NuevoInsumo
 import pe.sevens.sigro.dominio.NuevoTrabajador
@@ -92,6 +94,20 @@ class RepositorioTrabajadoresImpl(
         local.guardarTodos(listOf(fila))
         return aDominio(fila)
     }
+
+    override suspend fun darDeBaja(obraId: Int, trabajadorId: Int, fechaSalida: String): Trabajador {
+        val fila = aLocal(obraId, api.darDeBaja(cred.exigir(), obraId, trabajadorId, BajaIn(fechaSalida.trim())))
+        local.guardarTodos(listOf(fila))
+        return aDominio(fila)
+    }
+
+    override suspend fun horas(obraId: Int): List<HorasTrabajador> =
+        api.horasAcumuladas(cred.exigir(), obraId).map {
+            HorasTrabajador(
+                it.periodoNumero, it.trabajadorId, it.trabajador, it.cuadrilla, it.categoria, it.diasPresente, it.diasAusente,
+                it.diasPermiso, it.horasNormales.toDoubleOrNull() ?: 0.0, it.horasExtra.toDoubleOrNull() ?: 0.0, it.ultimaJornada,
+            )
+        }
 
     private fun aLocal(obraId: Int, d: TrabajadorDto) = TrabajadorLocalEntity(
         d.id, obraId, d.nombre, d.tipoDocumento, d.documento, d.categoria, d.cuadrilla, d.fechaIngreso, d.fechaSalida,

@@ -128,6 +128,86 @@ data class Trabajador(
     fun activoEl(fecha: String): Boolean = fechaIngreso <= fecha && (fechaSalida == null || fechaSalida >= fecha)
 }
 
+/** HU-62 c2 · la fecha de salida: no antes del ingreso ni en el futuro (una baja registra lo que ya pasó). */
+object ValidarBaja {
+    private val iso = Regex("""\d{4}-\d{2}-\d{2}""")
+    fun error(t: Trabajador, fecha: String, hoy: String): String? {
+        val f = fecha.trim()
+        return when {
+            !iso.matches(f) -> "Usa el formato AAAA-MM-DD"
+            f < t.fechaIngreso -> "No puede ser antes de su ingreso (${t.fechaIngreso})"
+            f > hoy -> "No puede ser una fecha futura"
+            else -> null
+        }
+    }
+}
+
+/** HU-64 · horas de un trabajador en un periodo y una categoría, tal como las suma el servidor. */
+data class HorasTrabajador(
+    val periodo: Int,
+    val trabajadorId: Int,
+    val trabajador: String,
+    val cuadrilla: String,
+    val categoria: String,
+    val diasPresente: Int,
+    val diasAusente: Int,
+    val diasPermiso: Int,
+    val horasNormales: Double,
+    val horasExtra: Double,
+    val ultimaJornada: String?,
+)
+
+/** Una fila del resumen: un trabajador o una cuadrilla. Las horas extra siempre van aparte (HU-64 c1). */
+data class FilaHoras(
+    val nombre: String,
+    val detalle: String,
+    val diasPresente: Int,
+    val horasNormales: Double,
+    val horasExtra: Double,
+    val ultimaJornada: String?,
+)
+
+data class ResumenHoras(
+    val porTrabajador: List<FilaHoras>,
+    val porCuadrilla: List<FilaHoras>,
+    val horasNormales: Double,
+    val horasExtra: Double,
+    val ultimaJornada: String?,
+    val periodos: List<Int>,
+)
+
+/**
+ * HU-64 c2 · suma las filas del servidor por trabajador y por cuadrilla, de toda la obra (`periodo` nulo) o de una
+ * semana. No calcula nada que el servidor no haya dado: solo agrupa. Ordena de más a menos horas.
+ */
+fun resumirHoras(filas: List<HorasTrabajador>, periodo: Int?): ResumenHoras {
+    val elegidas = if (periodo == null) filas else filas.filter { it.periodo == periodo }
+    fun agrupar(clave: (HorasTrabajador) -> String, detalle: (List<HorasTrabajador>) -> String) =
+        elegidas.groupBy(clave).map { (k, l) ->
+            FilaHoras(k, detalle(l), l.sumOf { it.diasPresente }, l.sumOf { it.horasNormales }, l.sumOf { it.horasExtra },
+                l.mapNotNull { it.ultimaJornada }.maxOrNull())
+        }.sortedWith(compareByDescending<FilaHoras> { it.horasNormales + it.horasExtra }.thenBy { it.nombre })
+    return ResumenHoras(
+        porTrabajador = agrupar({ it.trabajador }) { l ->
+            l.first().cuadrilla + " · " + l.map { Categoria.de(it.categoria)?.legible ?: it.categoria }.distinct().joinToString(", ")
+        },
+        porCuadrilla = agrupar({ it.cuadrilla }) { l ->
+            val n = l.map { it.trabajadorId }.distinct().size
+            "$n ${if (n == 1) "trabajador" else "trabajadores"}"
+        },
+        horasNormales = elegidas.sumOf { it.horasNormales },
+        horasExtra = elegidas.sumOf { it.horasExtra },
+        ultimaJornada = elegidas.mapNotNull { it.ultimaJornada }.maxOrNull(),
+        periodos = filas.map { it.periodo }.distinct().sorted(),
+    )
+}
+
+/** «12.5 h» / «8 h»: sin decimales de más. */
+fun horasLegibles(h: Double): String {
+    val r = kotlin.math.round(h * 10) / 10
+    return (if (r % 1.0 == 0.0) r.toLong().toString() else r.toString()) + " h"
+}
+
 data class NuevoTrabajador(
     val nombre: String,
     val tipoDocumento: String,

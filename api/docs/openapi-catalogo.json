@@ -726,6 +726,45 @@
       ],
       "title": "Tipo",
       "default": "material"
+     },
+     "medida": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 80
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Medida",
+      "description": "D08: p. ej. 1/2\" x 9 m"
+     },
+     "norma": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 80
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Norma",
+      "description": "D08: p. ej. NTP 399.003, ASTM A615"
+     },
+     "marca": {
+      "anyOf": [
+       {
+        "type": "string",
+        "maxLength": 80
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Marca",
+      "description": "D08: p. ej. PAVCO"
      }
     },
     "additionalProperties": false,
@@ -846,6 +885,39 @@
      "verificado": {
       "type": "boolean",
       "title": "Verificado"
+     },
+     "medida": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Medida"
+     },
+     "norma": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Norma"
+     },
+     "marca": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Marca"
      }
     },
     "type": "object",

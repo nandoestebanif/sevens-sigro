@@ -42,6 +42,8 @@ private class TrabajadoresEnMemoria(lista: List<Trabajador>) : RepositorioTrabaj
     override fun deObra(obraId: Int) = flujo
     override suspend fun actualizar(obraId: Int) = flujo.value.size
     override suspend fun registrar(obraId: Int, nuevo: NuevoTrabajador) = error("no se usa")
+    override suspend fun darDeBaja(obraId: Int, trabajadorId: Int, fechaSalida: String) = error("no se usa")
+    override suspend fun horas(obraId: Int) = error("no se usa")
 }
 
 private class ColaEspia(private val ya: Set<Int> = emptySet()) : RepositorioRegistros {
