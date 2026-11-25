@@ -29,6 +29,26 @@ public class Acceso {
     static ErrorSigro noAutenticado() { return new ErrorSigro(401, "no_autenticado", "Inicia sesión para continuar."); }
     static ErrorSigro sinPermiso() { return new ErrorSigro(403, "sin_permiso", "No tienes permiso para esta operación en esta obra."); }
 
+    /** Acciones del panel de administración: si el usuario configuró su PIN, también lo exigen (cabecera X-SIGRO-PIN). */
+    public static final Set<String> CON_PIN = Set.of("usuario.crear", "usuario.consultar", "asignacion.escribir", "dispositivo.autorizar", "bitacora.consultar");
+
+    private static String cabecera(String nombre) {
+        var a = RequestContextHolder.getRequestAttributes();
+        return a instanceof ServletRequestAttributes sa ? sa.getRequest().getHeader(nombre) : null;
+    }
+
+    /** ¿Tiene PIN configurado? (sin PIN, el panel web obliga a crearlo antes de entrar). */
+    public boolean tienePin(long usuarioId) {
+        return obras.en(() -> obras.escalar("SELECT pin_hash FROM obra.usuario WHERE id = :i", P.de("i", usuarioId))) != null;
+    }
+
+    void exigirPin(Actor a, String accion) {
+        if (!CON_PIN.contains(accion) || !tienePin(a.usuarioId())) return;
+        String t = cabecera("X-SIGRO-PIN");
+        Long uid = t == null ? null : tokens.leerPin(t);
+        if (uid == null || uid != a.usuarioId()) throw new ErrorSigro(403, "pin_requerido", "Escribe tu PIN de administrador para continuar.");
+    }
+
     private static String bearer() {
         var a = RequestContextHolder.getRequestAttributes();
         if (!(a instanceof ServletRequestAttributes sa)) return null;
@@ -58,7 +78,9 @@ public class Acceso {
         if (obraId < 1) throw new ErrorSigro(422, "datos_invalidos", "obra_id: Input should be greater than or equal to 1");
         String rol = rolEnObra(a.usuarioId(), obraId);
         if (rol == null || !roles.contains(rol)) throw sinPermiso();
-        return new Actor(a.usuarioId(), a.nombre(), obraId, rol);
+        var actor = new Actor(a.usuarioId(), a.nombre(), obraId, rol);
+        exigirPin(actor, accion);
+        return actor;
     }
 
     /** Para acciones sin obra en la ruta: en alguna obra, un rol que la admita. */
@@ -70,7 +92,9 @@ public class Acceso {
                         + "AND rol = ANY(:roles) ORDER BY (rol = 'administrador') DESC, proyecto_id LIMIT 1",
                 P.de("u", a.usuarioId(), "roles", P.textos(new ArrayList<>(roles)))));
         if (f == null) throw sinPermiso();
-        return new Actor(a.usuarioId(), a.nombre(), (Long) f.get("proyecto_id"), (String) f.get("rol"));
+        var actor = new Actor(a.usuarioId(), a.nombre(), (Long) f.get("proyecto_id"), (String) f.get("rol"));
+        exigirPin(actor, accion);
+        return actor;
     }
 
     public String rolEnObra(long usuarioId, long obraId) {
