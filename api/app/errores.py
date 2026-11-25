@@ -30,6 +30,8 @@ _SQLSTATE = {
     "22003": (422, "valor_fuera_de_rango"),
     "22007": (422, "fecha_invalida"),
     "22008": (422, "fecha_invalida"),
+    "22021": (422, "texto_invalido"),   # bytes que no son UTF-8 válido
+    "22P05": (422, "texto_invalido"),   # carácter que no se puede guardar
 }
 
 
@@ -83,6 +85,11 @@ def _mensaje(orig, restriccion: str | None, sqlstate: str | None) -> str:
 
 def traducir(exc: DBAPIError) -> ErrorSigro:
     orig = exc.orig
+    # PostgreSQL no admite el carácter NUL (\x00) en un texto; psycopg lo rechaza ANTES de llegar al motor, sin SQLSTATE.
+    # Era un 500 en cualquier ruta que recibe texto (lo encontró el fuzzing con Schemathesis, 24/11/2026): es un dato
+    # inválido del cliente, no un defecto del servidor.
+    if "NUL (0x00)" in str(orig):
+        return ErrorSigro(422, "texto_invalido", "Un texto trae un carácter no permitido (NUL). Corrígelo y vuelve a enviar.")
     sqlstate = getattr(orig, "sqlstate", None)
     http, codigo = _SQLSTATE.get(sqlstate, (None, None))
     if http is None:

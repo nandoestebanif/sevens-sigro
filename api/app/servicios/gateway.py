@@ -19,6 +19,7 @@ from starlette.applications import Starlette
 from starlette.middleware import Middleware
 from starlette.middleware.cors import CORSMiddleware
 from starlette.requests import Request
+from starlette.datastructures import MutableHeaders
 from starlette.responses import JSONResponse, Response
 from starlette.routing import Route
 
@@ -201,6 +202,41 @@ async def salud_servicios(_: Request) -> JSONResponse:
     return JSONResponse({**cuerpo, **_memoria()}, status_code=200 if cuerpo["listo"] else 503, headers={"Cache-Control": "no-store"})
 
 
+# Cabeceras de seguridad en TODA respuesta del gateway (revisión del 24/11/2026). Solo se ponen si el servicio no mandó
+# la suya. Sin Content-Security-Policy a propósito: la API responde JSON y archivos (comprobantes de HU-34) que el
+# navegador abre en su visor; la CSP de la web vive en render.yaml.
+CABECERAS_SEGURIDAD = (
+    ("x-content-type-options", "nosniff"),
+    ("x-frame-options", "DENY"),
+    ("referrer-policy", "no-referrer"),
+    ("cache-control", "no-store"),          # respuestas con datos de la obra: ni el navegador ni un proxy las guardan
+)
+
+
+class CabecerasSeguridad:
+    """Middleware ASGI puro (no envuelve el cuerpo: los archivos grandes siguen saliendo en streaming)."""
+
+    def __init__(self, app):
+        self.app = app
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] != "http":
+            return await self.app(scope, receive, send)
+        https = scope.get("scheme") == "https" or dict(scope.get("headers") or []).get(b"x-forwarded-proto") == b"https"
+
+        async def enviar(mensaje):
+            if mensaje["type"] == "http.response.start":
+                h = MutableHeaders(scope=mensaje)
+                for nombre, valor in CABECERAS_SEGURIDAD:
+                    if nombre not in h:
+                        h[nombre] = valor
+                if https and "strict-transport-security" not in h:
+                    h["strict-transport-security"] = "max-age=31536000; includeSubDomains"
+            await send(mensaje)
+
+        await self.app(scope, receive, enviar)
+
+
 @asynccontextmanager
 async def _vida(_: Starlette):
     _http()
@@ -223,6 +259,7 @@ def crear_app() -> Starlette:
             Route("/api/v1/{resto:path}", _reenviar, methods=["GET", "POST", "PUT", "PATCH", "DELETE"]),
         ],
         middleware=[Middleware(medicion.MedirPeticion, nombre=medicion.GATEWAY),     # el primero es el más externo
+                    Middleware(CabecerasSeguridad),
                     Middleware(CORSMiddleware, allow_origins=origenes, allow_methods=["GET", "POST"],
                                allow_headers=["Authorization", "Content-Type"])],
     )
