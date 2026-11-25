@@ -104,6 +104,12 @@ public final class Reglas {
         return q4par(x.signum() > 0 ? x : BigDecimal.ZERO);
     }
 
+    /** Herramientas: lo que se puede prestar = saldo del almacén − lo prestado sin devolver (nunca negativo). */
+    public static BigDecimal disponibleParaPrestar(BigDecimal saldo, BigDecimal prestadoSinDevolver) {
+        BigDecimal d = saldo.subtract(prestadoSinDevolver);
+        return d.signum() > 0 ? d : BigDecimal.ZERO;
+    }
+
     /** str.capitalize() de Python: primera letra en mayúscula y el resto en minúscula. */
     public static String capitalizar(String s) {
         if (s.isEmpty()) return s;

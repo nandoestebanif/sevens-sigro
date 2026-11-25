@@ -50,6 +50,8 @@ public final class Permisos {
             Map.entry("conteo.registrar", Set.of("almacenero")),
             Map.entry("movimiento.revertir", Set.of("almacenero", "residente")),
             Map.entry("stock.consultar", Set.of("almacenero", "ssoma", "residente", "administrador", "gerente")),
+            Map.entry("herramienta.prestar", Set.of("almacenero")),
+            Map.entry("herramienta.consultar", Set.of("almacenero", "ssoma", "residente", "administrador", "gerente")),
             Map.entry("costo.consultar", Set.of("residente", "administrador", "gerente")),
             Map.entry("insumo.consultar", Set.of("almacenero", "ssoma", "residente", "administrador", "gerente")),
             Map.entry("insumo.registrar", Set.of("almacenero", "residente", "administrador")),
