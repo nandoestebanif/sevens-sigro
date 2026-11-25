@@ -53,4 +53,10 @@ class ReglasTest {
         assertEquals(422, e.estado());
         assertEquals("fuera_de_plazo", e.codigo());
     }
+
+    @Test
+    void disponibleParaPrestarEsSaldoMenosPrestado() {
+        assertEquals(new BigDecimal("2"), Reglas.disponibleParaPrestar(new BigDecimal("5"), new BigDecimal("3")));
+        assertEquals(BigDecimal.ZERO, Reglas.disponibleParaPrestar(new BigDecimal("1"), new BigDecimal("3")), "nunca negativo");
+    }
 }

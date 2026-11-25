@@ -51,5 +51,15 @@ final class Contratos {
             });
     static final Esquema ANULAR = con(desde(false, false), texto("motivo").min(3).max(300));
     static final Esquema CONTEO = con(desde(false, true), entero("almacen_id").opcional().ge(1));
+    static final String[] ESTADOS_DEVOLUCION = {"bueno", "danado", "perdido"};
+    static final Esquema PRESTAMO = con(desde(false, false), entero("almacen_id").opcional().ge(1), entero("insumo_id").ge(1), cantidad("cantidad"),
+            entero("trabajador_id").opcional().ge(1), texto("responsable").min(3).max(120), fecha("devolver_el").opcional(),
+            texto("nota").opcional().max(300));
+    static final Esquema DEVOLUCION = de(texto("estado").uno(ESTADOS_DEVOLUCION), texto("nota").opcional().max(300))
+            .despues(d -> {
+                String n = d.texto("nota");
+                if (!"bueno".equals(d.texto("estado")) && (n == null || n.strip().isEmpty()))
+                    throw error("Si vuelve dañada o se perdió, escribe qué pasó: queda como constancia.");
+            });
     static final Esquema CONTEO_LINEA = de(entero("insumo_id").ge(1), decimal("cantidad_contada").ge(0).digitos(18, 4), texto("motivo").opcional().max(300));
 }
