@@ -18,3 +18,17 @@ export function alternarGrupo(abierto: string | null, rotulo: string): string | 
 export function iniciales(nombre: string): string {
   return nombre.trim().split(/\s+/).filter(Boolean).slice(0, 2).map((p) => p[0]?.toLocaleUpperCase('es-PE') ?? '').join('')
 }
+
+/** Menú por función (25/11): cada rol de campo ve solo su módulo. El almacenero, el almacén (y las compras que
+    recibe); el SSOMA, el personal y las herramientas. Residente, administrador y gerente ven lo que sus permisos
+    admiten. Esconder es comodidad: el servidor igual verifica el rol en cada petición (regla 9). */
+export const MENU_POR_ROL: Readonly<Record<string, readonly string[]>> = {
+  almacenero: ['/movimientos', '/stock', '/herramientas', '/semana', '/compras', '/catalogo'],
+  ssoma: ['/trabajadores', '/mano-de-obra', '/herramientas'],
+}
+
+/** ¿Esta ruta va en el menú de ese rol? Sin lista propia, decide el permiso de cada pantalla. */
+export function rutaVisible(rol: string | null | undefined, ruta: string): boolean {
+  const lista = rol ? MENU_POR_ROL[rol] : undefined
+  return !lista || lista.some((r) => ruta === r || ruta.startsWith(`${r}/`))
+}
