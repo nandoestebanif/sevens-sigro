@@ -12,6 +12,7 @@ import { API_URL, iniciarSesion } from '../api/http'
 import { Alert, Button, Card, Form, InputGroup } from 'react-bootstrap'
 import { PantallaEntrada, Portada } from '../ui/Portada'
 import { useForm } from 'react-hook-form'
+import { PAUSA_MS } from '../formularios/enVivo'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { esquemaEntrar, type DatosEntrar } from '../formularios/esquemas'
 
@@ -28,7 +29,9 @@ function servidor(): string {
 /** `saliendo`: ya entró; la tarjeta se desvanece antes de la capa «Preparando tu obra» (App.tsx). */
 export function Entrar({ saliendo = false }: { saliendo?: boolean }) {
   // React Hook Form guarda los campos y sus errores; Zod (esquemaEntrar) dice qué es válido
-  const { register, handleSubmit, formState: { errors, isSubmitting: enviando } } = useForm<DatosEntrar>({
+  const { register, handleSubmit, formState: { errors, dirtyFields, isSubmitting: enviando } } = useForm<DatosEntrar>({
+    // validación en vivo: revisa al escribir y al salir; un error nuevo espera la pausa y lo corregido se quita ya
+    mode: 'all', delayError: PAUSA_MS,
     resolver: zodResolver(esquemaEntrar),
     defaultValues: { usuario: '', clave: '' },
   })
@@ -69,7 +72,7 @@ export function Entrar({ saliendo = false }: { saliendo?: boolean }) {
               <Form.Label>Usuario</Form.Label>
               {/* {...register('usuario')} conecta el campo: valor, cambios y validación */}
               <Form.Control {...register('usuario')} placeholder="Tu usuario" autoComplete="username" autoFocus
-                isInvalid={!!errors.usuario} />
+                isInvalid={!!errors.usuario} isValid={!!dirtyFields.usuario && !errors.usuario} />
               <Form.Control.Feedback type="invalid">{errors.usuario?.message}</Form.Control.Feedback>
             </Form.Group>
 

@@ -27,6 +27,7 @@ import { AccionesFila, TablaDatos } from '../ui/TablaDatos'
 import { puedo } from '../api/permisos'
 import { EsqueletoTabla } from '../ui/Esqueleto'
 import { useForm } from 'react-hook-form'
+import { PAUSA_MS } from '../formularios/enVivo'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Form } from 'react-bootstrap'
 import { esquemaProveedor, type DatosProveedor } from '../formularios/esquemas'
@@ -43,7 +44,9 @@ export function AltaProveedor({ enCerrar, enCreado }: {
   enCreado: (p: Proveedor) => void
 }) {
   // React Hook Form + Zod: el esquema (formularios/esquemas.ts) valida; el formulario guarda los valores y errores.
-  const { register, handleSubmit, setValue, setError, watch, formState: { errors, isSubmitting } } = useForm<DatosProveedor>({
+  const { register, handleSubmit, setValue, setError, watch, formState: { errors, dirtyFields, isSubmitting } } = useForm<DatosProveedor>({
+    // validación en vivo: revisa al escribir y al salir; un error nuevo espera la pausa y lo corregido se quita ya
+    mode: 'all', delayError: PAUSA_MS,
     resolver: zodResolver(esquemaProveedor),
     defaultValues: { ruc: '', razonSocial: '' },
   })
@@ -64,7 +67,7 @@ export function AltaProveedor({ enCerrar, enCreado }: {
     consultarRucEnSunat(limpio).then((r) => {
       if (!vigente) return
       setConsultando(false)
-      if (r) { setSunat(r); setValue('razonSocial', r.razon_social ?? '', { shouldValidate: true }) }
+      if (r) { setSunat(r); setValue('razonSocial', r.razon_social ?? '', { shouldValidate: true, shouldDirty: true }) }
     })
     return () => { vigente = false }
   }, [ruc, setValue])
@@ -89,7 +92,7 @@ export function AltaProveedor({ enCerrar, enCreado }: {
         <Form.Group controlId="alta-ruc">
           <Form.Label className="small fw-semibold">RUC o DNI</Form.Label>
           {/* register conecta el campo con el formulario: valor, cambios y validación */}
-          <Form.Control {...register('ruc')} inputMode="numeric" autoFocus placeholder="RUC de 11 dígitos o DNI de 8" isInvalid={!!errors.ruc} />
+          <Form.Control {...register('ruc')} inputMode="numeric" autoFocus placeholder="RUC de 11 dígitos o DNI de 8" isInvalid={!!errors.ruc} isValid={!!dirtyFields.ruc && !errors.ruc} />
           <Form.Control.Feedback type="invalid">{errors.ruc?.message}</Form.Control.Feedback>
         </Form.Group>
         {consultando && <span className="small text-body-secondary">Consultando en SUNAT…</span>}
@@ -104,7 +107,7 @@ export function AltaProveedor({ enCerrar, enCreado }: {
         )}
         <Form.Group controlId="alta-razon">
           <Form.Label className="small fw-semibold">Razón social</Form.Label>
-          <Form.Control {...register('razonSocial')} isInvalid={!!errors.razonSocial} />
+          <Form.Control {...register('razonSocial')} isInvalid={!!errors.razonSocial} isValid={!!dirtyFields.razonSocial && !errors.razonSocial} />
           <Form.Control.Feedback type="invalid">{errors.razonSocial?.message}</Form.Control.Feedback>
         </Form.Group>
         <p className="small text-body-secondary">

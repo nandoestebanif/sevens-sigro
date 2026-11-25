@@ -2,7 +2,8 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Badge, Button, Dropdown } from 'react-bootstrap'
 import { useNavigate } from 'react-router-dom'
-import { cuenta, destinoDeAviso, errorCambioClave, type Aviso } from '../api/cuenta'
+import { cuenta, destinoDeAviso, erroresCambioClave, type Aviso } from '../api/cuenta'
+import { useEnVivo } from '../formularios/enVivo'
 import { ErrorApi } from '../api/error'
 import { Modal } from './base'
 
@@ -74,20 +75,28 @@ export function CambiarClave({ enCerrar }: { enCerrar: () => void }) {
   const [ocupado, setOcupado] = useState(false)
 
   const guardar = async () => {
-    const e = errorCambioClave(actual, nueva, repetida)
-    if (e) { setError(e); return }
+    if (v.alGuardar()) return
     setOcupado(true); setError('')
     try { await cuenta.cambiarClave(actual, nueva); setListo(true); setActual(''); setNueva(''); setRepetida('') } catch (x) {
       setError(x instanceof ErrorApi ? x.message : 'No se pudo cambiar la contraseña.')
     } finally { setOcupado(false) }
   }
 
-  const campo = (id: string, etiqueta: string, valor: string, cambiar: (v: string) => void, auto: string) => (
-    <label htmlFor={id} className="d-flex flex-column gap-1 small fw-semibold">
-      {etiqueta}
-      <input id={id} type="password" className="form-control" autoComplete={auto} value={valor} onChange={(e) => { cambiar(e.target.value); setError('') }} />
-    </label>
-  )
+  // validación en vivo: cada clave con su aviso mientras se escribe (la fuerza, con la regla del servidor)
+  const v = useEnVivo(erroresCambioClave(actual, nueva, repetida))
+  const campo = (id: string, clave: 'actual' | 'nueva' | 'repetida', etiqueta: string, valor: string, cambiar: (v: string) => void, auto: string) => {
+    const c = v.campo(clave)
+    return (
+      <label htmlFor={id} className="d-flex flex-column gap-1 small fw-semibold">
+        {etiqueta}
+        <input id={id} type="password" autoComplete={auto} value={valor}
+          className={`form-control${c.error ? ' is-invalid' : c.valido ? ' is-valid' : ''}`}
+          aria-invalid={!!c.error} aria-describedby={c.error ? `${id}-error` : undefined}
+          onChange={(e) => { cambiar(e.target.value); setError(''); v.cambio(clave) }} onBlur={c.enSalir} />
+        {c.error && <span id={`${id}-error`} className="invalid-feedback d-block fw-normal" aria-live="polite">{c.error}</span>}
+      </label>
+    )
+  }
 
   return (
     <Modal titulo="Cambiar mi contraseña" enCerrar={enCerrar}>
@@ -98,10 +107,10 @@ export function CambiarClave({ enCerrar }: { enCerrar: () => void }) {
         </div>
       ) : (
         <form className="d-flex flex-column gap-3" onSubmit={(e) => { e.preventDefault(); void guardar() }}>
-          {campo('clave-actual', 'Contraseña actual', actual, setActual, 'current-password')}
-          {campo('clave-nueva', 'Nueva contraseña', nueva, setNueva, 'new-password')}
-          {campo('clave-repetida', 'Repite la nueva contraseña', repetida, setRepetida, 'new-password')}
-          <span className="small text-body-secondary">Al menos 8 caracteres, con mayúsculas, minúsculas y números. El servidor revisa que sea segura.</span>
+          {campo('clave-actual', 'actual', 'Contraseña actual', actual, setActual, 'current-password')}
+          {campo('clave-nueva', 'nueva', 'Nueva contraseña', nueva, setNueva, 'new-password')}
+          {campo('clave-repetida', 'repetida', 'Repite la nueva contraseña', repetida, setRepetida, 'new-password')}
+          <span className="small text-body-secondary">Al menos 10 caracteres, con mayúsculas, minúsculas y un número (la misma regla que revisa el servidor).</span>
           {error && <span role="alert" className="small text-danger">{error}</span>}
           <div className="d-flex gap-2 justify-content-end">
             <Button variant="outline-secondary" onClick={enCerrar}>Cancelar</Button>

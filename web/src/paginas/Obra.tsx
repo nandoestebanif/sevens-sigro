@@ -23,6 +23,7 @@ import { usaApiReal } from '../api/http'
 import { plazo, type CambioPlazo } from '../api/oficina'
 import { EsqueletoTabla } from '../ui/Esqueleto'
 import { useForm } from 'react-hook-form'
+import { PAUSA_MS } from '../formularios/enVivo'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Button, Col, Form, Row } from 'react-bootstrap'
 import { esquemaObra, type DatosObra } from '../formularios/esquemas'
@@ -152,7 +153,9 @@ export function Obras() {
   const [obras, setObras] = useState<Obra[] | null>(null)
   const avisar = useAvisos()
   // React Hook Form + Zod (esquemaObra): nombre, formato del presupuesto y «fin después del inicio»
-  const { register, handleSubmit, reset, setError, formState: { errors, isSubmitting } } = useForm<DatosObra>({
+  const { register, handleSubmit, reset, setError, formState: { errors, dirtyFields, isSubmitting } } = useForm<DatosObra>({
+    // validación en vivo: revisa al escribir y al salir; un error nuevo espera la pausa y lo corregido se quita ya
+    mode: 'all', delayError: PAUSA_MS,
     resolver: zodResolver(esquemaObra),
     defaultValues: { nombre: '', presupuesto: '', inicio: '', fin: '' },
   })
@@ -188,22 +191,22 @@ export function Obras() {
           <Row className="g-3 align-items-start">
             <Form.Group as={Col} md={12} lg={4} controlId="o-nombre">
               <Form.Label className="small fw-semibold">Nombre de la obra</Form.Label>
-              <Form.Control {...register('nombre')} placeholder="p. ej. Multifamiliar Los Cedros" isInvalid={!!errors.nombre} />
+              <Form.Control {...register('nombre')} placeholder="p. ej. Multifamiliar Los Cedros" isInvalid={!!errors.nombre} isValid={!!dirtyFields.nombre && !errors.nombre} />
               <Form.Control.Feedback type="invalid">{errors.nombre?.message}</Form.Control.Feedback>
             </Form.Group>
             <Form.Group as={Col} sm={6} lg={3} controlId="o-pres">
               <Form.Label className="small fw-semibold">Presupuesto S10 (opcional)</Form.Label>
-              <Form.Control {...register('presupuesto')} placeholder="2701006-002" isInvalid={!!errors.presupuesto} />
+              <Form.Control {...register('presupuesto')} placeholder="2701006-002" isInvalid={!!errors.presupuesto} isValid={!!dirtyFields.presupuesto && !errors.presupuesto} />
               <Form.Control.Feedback type="invalid">{errors.presupuesto?.message}</Form.Control.Feedback>
             </Form.Group>
             <Form.Group as={Col} xs={6} sm={3} lg={2} controlId="o-inicio">
               <Form.Label className="small fw-semibold">Inicio</Form.Label>
-              <Form.Control type="date" {...register('inicio')} isInvalid={!!errors.inicio} />
+              <Form.Control type="date" {...register('inicio', { deps: ['fin'] })} isInvalid={!!errors.inicio} isValid={!!dirtyFields.inicio && !errors.inicio} />
               <Form.Control.Feedback type="invalid">{errors.inicio?.message}</Form.Control.Feedback>
             </Form.Group>
             <Form.Group as={Col} xs={6} sm={3} lg={2} controlId="o-fin">
               <Form.Label className="small fw-semibold">Fin</Form.Label>
-              <Form.Control type="date" {...register('fin')} isInvalid={!!errors.fin} />
+              <Form.Control type="date" {...register('fin')} isInvalid={!!errors.fin} isValid={!!dirtyFields.fin && !errors.fin} />
               <Form.Control.Feedback type="invalid">{errors.fin?.message}</Form.Control.Feedback>
             </Form.Group>
             <Col xs={12} lg={1} className="d-grid pt-lg-4">

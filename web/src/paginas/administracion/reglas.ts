@@ -1,6 +1,7 @@
 /* SIGRO · Administración · reglas de pantalla sin React ni red (se prueban con Vitest).
    Aquí NO se decide quién puede qué: eso lo hace la API en cada petición (regla 9).
    Solo se decide qué mostrar y cómo decirlo. */
+import { claveAceptable } from '../../formularios/reglas'
 import type { Asignacion, Dispositivo, EstadoDispositivo, Rol, TipoAlmacen, Usuario } from '../../api/administracion'
 
 export const ROLES: { valor: Rol; texto: string }[] = [
@@ -69,6 +70,7 @@ export function validarAltaUsuario(d: { nombre: string; usuario: string; clave: 
   else if (d.nombre.trim().length > 120) e.nombre = 'El nombre admite como máximo 120 caracteres.'
   if (!PATRON_USUARIO.test(d.usuario.trim())) e.usuario = 'El usuario lleva de 3 a 40 letras, números, punto, guion o guion bajo, sin espacios.'
   if (!d.clave) e.clave = 'Escribe una clave temporal.'
+  else { const c = claveAceptable(d.clave); if (c) e.clave = c } // la misma regla que el servidor
   return e
 }
 

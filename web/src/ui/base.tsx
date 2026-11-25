@@ -51,8 +51,11 @@ export function Chip({ tono, children }: { tono: TonoChip; children: ReactNode }
   )
 }
 
-/** Campo de texto con su etiqueta y su mensaje de error (Form.Group + Form.Control). */
-export function Campo({ etiqueta, valor, enCambio, marcador, error, autoFoco, id, deshabilitado }: {
+/**
+ * Campo de texto con su etiqueta y su mensaje de error (Form.Group + Form.Control). Con validación en vivo
+ * (formularios/enVivo.ts): `enSalir` al perder el foco y `valido` pone el ✓ de Bootstrap.
+ */
+export function Campo({ etiqueta, valor, enCambio, marcador, error, autoFoco, id, deshabilitado, valido, enSalir, ayuda, tipo = 'text', modoTeclado }: {
   etiqueta: string
   valor: string
   enCambio: (v: string) => void
@@ -61,19 +64,31 @@ export function Campo({ etiqueta, valor, enCambio, marcador, error, autoFoco, id
   autoFoco?: boolean
   id: string
   deshabilitado?: boolean
+  valido?: boolean
+  enSalir?: () => void
+  ayuda?: string
+  tipo?: 'text' | 'password' | 'email'
+  modoTeclado?: 'decimal' | 'numeric' | 'text'
 }) {
   return (
     <Form.Group controlId={id}>
       <Form.Label className="small fw-semibold">{etiqueta}</Form.Label>
       <Form.Control
+        type={tipo}
         value={valor}
         placeholder={marcador}
         autoFocus={autoFoco}
         disabled={deshabilitado}
         isInvalid={!!error}
+        isValid={!!valido && !error}
+        inputMode={modoTeclado}
+        aria-describedby={error ? `${id}-error` : ayuda ? `${id}-ayuda` : undefined}
         onChange={(e) => enCambio(e.target.value)}
+        onBlur={enSalir}
       />
-      <Form.Control.Feedback type="invalid">{error}</Form.Control.Feedback>
+      {error
+        ? <Form.Control.Feedback type="invalid" id={`${id}-error`} aria-live="polite">{error}</Form.Control.Feedback>
+        : ayuda && <Form.Text id={`${id}-ayuda`} className="text-body-secondary">{ayuda}</Form.Text>}
     </Form.Group>
   )
 }
