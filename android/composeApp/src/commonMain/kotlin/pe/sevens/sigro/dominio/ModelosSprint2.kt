@@ -300,7 +300,7 @@ enum class TipoRegistro(val legible: String, val conServicio: Boolean) {
     ENTRADA_COMPRA("Entrada de compra", true), // POST /obras/{id}/almacen/recepciones (M5)
     INGRESO_SIN_COMPRA("Ingreso sin compra", true), // POST /obras/{id}/almacen/ingresos (A5)
     TRASLADO("Traslado", false),
-    CONTEO("Conteo físico", false),
+    CONTEO("Conteo físico", true), // abrir → contar cada insumo → confirmar (RepositorioRegistrosImpl.enviarConteo)
     CIERRE("Cierre de obra", false),
 }
 
