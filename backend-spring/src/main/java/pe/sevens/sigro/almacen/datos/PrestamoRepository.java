@@ -23,4 +23,7 @@ public interface PrestamoRepository {
     void devolver(long id, long usuarioId, String estado, String nota);
 
     List<Map<String, Object>> deLaObra(long obraId, boolean soloSinDevolver);
+
+    /** Herramientas y equipos con saldo, por almacén: en almacén, prestado sin devolver y disponible para prestar. */
+    List<Map<String, Object>> disponibles(long obraId);
 }
