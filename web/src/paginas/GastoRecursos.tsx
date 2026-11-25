@@ -17,7 +17,7 @@
    Si las cifras no cuadran entre sí, el servidor lo marca y la pantalla lo
    muestra como «por conciliar» en lugar de presentar números contradictorios.
    ───────────────────────────────────────────────────────────────────────── */
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ErrorApi } from '../api/cliente'
 import { fechaCorte, gasto, type Cifra, type ClaveCifra, type Gasto } from '../api/costo'
@@ -28,6 +28,7 @@ import { GraficoFlujo } from '../ui/GraficosPerezosos'
 import { Termino } from '../ui/Glosario'
 import { EsqueletoKpis } from '../ui/Esqueleto'
 import { Fecha } from '../ui/Fecha'
+import { EnVivo, useActualizacion } from '../ui/Actualizacion'
 
 const soles = (v: number) => v.toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 const horas = (v: number | null) => (v === null ? '—' : v.toLocaleString('es-PE', { maximumFractionDigits: 1 }))
@@ -64,12 +65,15 @@ export function GastoRecursos() {
   const [fecha, setFecha] = useState('')
   const [g, setG] = useState<Gasto | null>(null)
   const [error, setError] = useState('')
+  // En vivo: con el corte de hoy, el gasto se recalcula solo (cada 30 s y al volver a la pestaña)
+  const vivo = useActualizacion(() => gasto(fecha || undefined).then((x) => { setG(x); setError('') }).catch((e) => setError(
+    e instanceof ErrorApi && e.codigo === 'sin_permiso' ? 'El gasto de la obra lo consultan el residente, el administrador y el gerente.'
+      : e instanceof ErrorApi ? e.message : 'No se pudo consultar el gasto de la obra.')), { activo: !fecha })
+  const primera = useRef(true)
   useEffect(() => {
-    setG(null); setError('')
-    gasto(fecha || undefined).then(setG).catch((e) => setError(
-      e instanceof ErrorApi && e.codigo === 'sin_permiso' ? 'El gasto de la obra lo consultan el residente, el administrador y el gerente.'
-        : e instanceof ErrorApi ? e.message : 'No se pudo consultar el gasto de la obra.'))
-  }, [fecha])
+    if (primera.current) { primera.current = false; return }
+    setG(null); vivo.actualizar()   // otra fecha de corte: se consulta de nuevo
+  }, [fecha]) // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div className="d-flex flex-column gap-3">
@@ -78,6 +82,7 @@ export function GastoRecursos() {
         <strong className="text-body">Gasto en recursos, no costo total de la obra:</strong>{' '}
         {g?.declaracion ?? 'quedan fuera gastos generales, subcontratos, servicios y planilla.'}
       </p>
+      {!fecha && <div><EnVivo {...vivo} /></div>}
 
       <Vidrio estilo={{ display: 'flex', flexDirection: 'column', gap: 14 }} etiqueta="Gasto en recursos">
         <div className="d-flex flex-wrap justify-content-between align-items-end gap-3">

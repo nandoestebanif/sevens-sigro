@@ -7,7 +7,7 @@
    La misma pantalla, con `soloEquipos`, lista las herramientas y equipos (tipo «equipo»
    del catálogo), para controlar lo que se presta a las cuadrillas.
    ───────────────────────────────────────────────────────────────────────── */
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { ErrorApi } from '../api/cliente'
 import { usaApiReal } from '../api/http'
 import { existencias } from '../api/existencias'
@@ -18,6 +18,7 @@ import { EsqueletoKpis } from '../ui/Esqueleto'
 import { Aviso, Chips, Encabezado, Kpi, Segmentado, TituloSeccion, Vidrio } from '../ui/piezas'
 import { TablaDatos } from '../ui/TablaDatos'
 import { TEXTO_ESTADO, dondeEsta, filtrar, ordenarPorUrgencia, resumir, type EstadoExistencia, type Existencia, type FiltroEstado } from './existencias-reglas'
+import { EnVivo, useActualizacion } from '../ui/Actualizacion'
 
 const cifra = (n: number) => n.toLocaleString('es-PE', { maximumFractionDigits: 2 })
 const soles = (n: number) => n.toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
@@ -34,10 +35,8 @@ export function Existencias({ soloEquipos = false }: { soloEquipos?: boolean }) 
   const veCosto = puedo('costo.consultar')         // el valor lo ven residente, administrador y gerente
   const titulo = soloEquipos ? 'Herramientas y equipos' : 'Insumos en almacén'
 
-  useEffect(() => {
-    if (!usaApiReal) return
-    existencias().then(setDatos).catch((e) => setError(e instanceof ErrorApi ? e.message : 'No se pudo consultar el almacén.'))
-  }, [])
+  const vivo = useActualizacion(() => existencias().then((d) => { setDatos(d); setError('') })
+    .catch((e) => setError(e instanceof ErrorApi ? e.message : 'No se pudo consultar el almacén.')), { activo: usaApiReal })
 
   const base = useMemo(() => (datos ? datos.filas.filter((x) => !soloEquipos || x.tipo === 'equipo') : []), [datos, soloEquipos])
   const filas = useMemo(() => ordenarPorUrgencia(filtrar(base, { estado, almacen, soloEquipos })), [base, estado, almacen, soloEquipos])
@@ -45,7 +44,7 @@ export function Existencias({ soloEquipos = false }: { soloEquipos?: boolean }) 
 
   return (
     <div className="d-flex flex-column gap-3 pb-4">
-      <Encabezado titulo={titulo}
+      <Encabezado titulo={titulo} acciones={usaApiReal ? <EnVivo {...vivo} /> : undefined}
         sub={soloEquipos
           ? 'Las herramientas y equipos que hay en los almacenes de la obra: cuántos, dónde y cuáles faltan.'
           : 'Lo que hay en cada almacén de la obra, cuánto y qué toca reponer.'} />

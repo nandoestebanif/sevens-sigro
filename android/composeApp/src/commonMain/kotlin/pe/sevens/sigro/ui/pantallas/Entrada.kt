@@ -356,7 +356,11 @@ fun PantallaEntrada(obraId: Int, alVolver: () -> Unit, vm: EntradaViewModel = ko
     val almacen by vm.almacen.estado.collectAsState()
     LaunchedEffect(obraId) { vm.cargar(obraId) }
 
-    PantallaVidrio("Entrada", plano = { planoEntrada(it) }, alVolver = alVolver, subtitulo = "Lo que llegó de una compra", modulo = Modulo.ENTRADA) {
+    PantallaVidrio(
+        "Entrada", plano = { planoEntrada(it) }, alVolver = alVolver, subtitulo = "Lo que llegó de una compra", modulo = Modulo.ENTRADA,
+        // solo la lista de compras: una vez elegida, deslizar no borra lo que se está recibiendo
+        actualizando = e.cargando, alActualizar = if (e.compra == null && !e.guardada) ({ vm.cargar(obraId) }) else null,
+    ) {
         if (e.guardada) {
             GuardadoEnCelular(
                 "Entrada guardada",

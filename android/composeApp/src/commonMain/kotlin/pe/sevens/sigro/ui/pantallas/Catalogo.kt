@@ -127,7 +127,10 @@ class CatalogoViewModel(private val insumos: RepositorioInsumos) : ViewModel() {
 @Composable
 fun PantallaCatalogo(alVolver: () -> Unit, alAbrir: (FichaInsumo) -> Unit, alNuevo: () -> Unit, vm: CatalogoViewModel = koinViewModel()) {
     val e by vm.estado.collectAsState()
-    PantallaVidrio("Catálogo", plano = { planoCatBuscar(it) }, alVolver = alVolver, subtitulo = "Busca por nombre o código", modulo = Modulo.CATALOGO) {
+    PantallaVidrio(
+        "Catálogo", plano = { planoCatBuscar(it) }, alVolver = alVolver, subtitulo = "Busca por nombre o código", modulo = Modulo.CATALOGO,
+        actualizando = e.buscando, alActualizar = { vm.buscar(e.q) },
+    ) {
         CampoVidrio(
             e.q, vm::buscar, "Buscar insumo", marcador = "Nombre o código",
             finalIcono = { Icon(Icons.Filled.Search, contentDescription = null, tint = Paleta.Texto3, modifier = Modifier.padding(end = 10.dp)) },

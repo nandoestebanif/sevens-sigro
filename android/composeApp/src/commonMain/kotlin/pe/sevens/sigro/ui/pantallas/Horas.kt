@@ -99,6 +99,7 @@ fun PantallaHoras(obraId: Int, obraNombre: String, alVolver: () -> Unit, vm: Hor
 
     PantallaVidrio(
         "Horas acumuladas", plano = { planoTrabajadores(it) }, alVolver = alVolver, subtitulo = obraNombre,
+        actualizando = e.cargando, alActualizar = { vm.cargar(obraId) },
         acciones = {
             IconButton(onClick = { vm.cargar(obraId) }, enabled = !e.cargando, modifier = Modifier.size(48.dp).vidrio(CircleShape, sombra = 4.dp)) {
                 if (e.cargando) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp, color = Paleta.Naranja)

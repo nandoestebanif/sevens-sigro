@@ -123,7 +123,10 @@ fun PantallaPerfil(
     val e by vm.estado.collectAsState()
     LaunchedEffect(Unit) { vm.cargar() }
 
-    PantallaVidrio("Perfil", plano = { planoCelular(it) }, alVolver = alVolver) {
+    PantallaVidrio(
+        "Perfil", plano = { planoCelular(it) }, alVolver = alVolver,
+        actualizando = e.actualizando, alActualizar = { vm.cargar(); vm.actualizarCatalogo() },
+    ) {
         TarjetaVidrio(Modifier.semantics(mergeDescendants = true) {}) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
                 Box(Modifier.size(56.dp).background(Paleta.NaranjaClaro, CircleShape), contentAlignment = Alignment.Center) {
