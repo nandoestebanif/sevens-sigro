@@ -311,6 +311,9 @@ h1, .h1, h2, .h2, h3, .h3 { letter-spacing: -0.02em; }
 @keyframes sigro-izar { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
 @media (prefers-reduced-motion: reduce) { .sigro-capa .grua svg { animation: none; } }
 
+// el esqueleto del ticket: misma forma, en el gris de la tarjeta, sin muescas ni color
+.sigro-ticket.sigro-ticket-esqueleto { --sigro-ticket: var(--sigro-tarjeta) !important; color: var(--bs-secondary-color); min-height: 9rem; }
+
 // ── Estado vacío: la ilustración en un círculo suave sobre el texto ──
 .sigro-vacio .dibujo {
   display: inline-flex; align-items: center; justify-content: center; width: 7rem; height: 7rem; border-radius: 50%;
