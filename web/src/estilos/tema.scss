@@ -273,7 +273,7 @@ h1, .h1, h2, .h2, h3, .h3 { letter-spacing: -0.02em; }
 }
 
 // ── Ingresar ──
-.sigro-portada { background: #161717; color: #fff; border-radius: 2rem; }
+.sigro-portada { background: #161717; color: #fff; border-radius: 2rem; .text-primary { color: #fad85d !important; } h1 { color: #fff; } }
 
 // Compatibilidad: pantallas que aún escriben estilos en línea con los nombres de
 // color de la versión anterior. Apuntan a las variables de Bootstrap.
