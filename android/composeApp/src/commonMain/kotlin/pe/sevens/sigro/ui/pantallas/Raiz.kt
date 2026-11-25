@@ -22,6 +22,16 @@ sealed interface EstadoRaiz {
     data class Dentro(val sesion: Sesion, val obra: ObraAsignada) : EstadoRaiz
 }
 
+/** Las obras de la sesión en cualquier estado (vacío sin sesión): para el color y el dibujo de «Entrando a …». */
+fun obrasDe(estado: EstadoRaiz): List<ObraAsignada> = when (estado) {
+    is EstadoRaiz.Dentro -> estado.sesion.obras
+    is EstadoRaiz.ElegirObra -> estado.sesion.obras
+    EstadoRaiz.Cargando, EstadoRaiz.SinSesion -> emptyList()
+}
+
+/** Lugar de [obra] en la lista (0 si no está): decide su color y su dibujo. */
+fun indiceDeObra(obras: List<ObraAsignada>, obra: ObraAsignada): Int = obras.indexOfFirst { it.id == obra.id }.coerceAtLeast(0)
+
 class RaizViewModel(private val sesiones: RepositorioSesion) : ViewModel() {
     val estado: StateFlow<EstadoRaiz> = combine(sesiones.sesion, sesiones.obraElegida) { s, o ->
         when {

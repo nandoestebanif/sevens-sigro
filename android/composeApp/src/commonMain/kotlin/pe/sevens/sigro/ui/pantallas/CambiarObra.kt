@@ -1,6 +1,9 @@
 package pe.sevens.sigro.ui.pantallas
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
@@ -44,6 +47,8 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -284,6 +289,19 @@ fun HojaCambiarObra(
         if (otras.isEmpty()) {
             Text("Ninguna otra obra con ese nombre.", fontSize = 14.sp, color = Paleta.Texto3, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth().padding(8.dp))
         }
+    }
+}
+
+/**
+ * Capa «Entrando a …» sobre toda la app mientras [entrando] no sea `null` (aparece en 150 ms, se va en 350 ms).
+ * Recuerda la última obra para que el texto no desaparezca a mitad de la salida.
+ */
+@Composable
+fun CapaEntrando(entrando: ObraAsignada?, obras: List<ObraAsignada>) {
+    var ultima by remember { mutableStateOf<ObraAsignada?>(null) }
+    if (entrando != null) ultima = entrando
+    AnimatedVisibility(entrando != null, enter = fadeIn(tween(150)), exit = fadeOut(tween(350))) {
+        ultima?.let { PantallaEntrando(it, indiceDeObra(obras, it)) }
     }
 }
 
