@@ -91,6 +91,9 @@ import pe.sevens.sigro.ui.componentes.planoObras
 import pe.sevens.sigro.ui.componentes.svg
 import pe.sevens.sigro.ui.componentes.vidrio
 import pe.sevens.sigro.ui.tema.Paleta
+import pe.sevens.sigro.ui.componentes.Ilustracion
+import pe.sevens.sigro.ui.componentes.DibujoObra
+import androidx.compose.foundation.layout.offset
 
 /*
  * 1.2 · Elegir obra (lienzo Obras.dc.html). Solo las obras donde la persona está asignada (regla 9),
@@ -196,21 +199,16 @@ fun PantallaObras(sesion: Sesion, alElegir: (ObraAsignada) -> Unit, alSalir: () 
     }
 }
 
-private val edificioIzq by lazy { svg("M40 250V90h150v160M40 130h150M40 170h150M40 210h150M77 90v160M115 90v160M152 90v160") }
-private val edificioDer by lazy { svg("M215 250V60h120v190M215 100h120M215 140h120M215 180h120M215 220h120M255 60v190M295 60v190") }
-private val grua by lazy { svg("M335 60l30-30M365 30v220M345 30h40") }
 
-/** Franja superior oscura con la obra (hoy ilustración; luego una foto), como en Entrar. */
+/** Franja superior: la portada negra de la marca con la grúa sobre un círculo amarillo (como la web). */
 @Composable
 private fun FranjaObra(modifier: Modifier) {
-    Canvas(modifier.clipToBounds().semantics { contentDescription = "Ilustración: edificio en construcción" }) {
-        drawRect(Paleta.Neutro)
-        val k = size.width / 390f
-        withTransform({ scale(k, k, Offset.Zero); translate(0f, 40f) }) {
-            drawRect(Paleta.Noche, Offset(0f, 250f), Size(390f, 200f))
-            listOf(edificioIzq, edificioDer, grua).forEach { drawPath(it, Paleta.NeutroSuave, style = Stroke(3f)) }
-        }
-        drawRect(Brush.verticalGradient(0f to Color(0x59111827), 0.6f to Color(0x8C111827), 1f to Color(0xD9111827)))
+    Box(modifier.clipToBounds().background(Paleta.Noche).semantics { contentDescription = "Ilustración: edificio en construcción" }) {
+        Box(
+            Modifier.align(Alignment.BottomEnd).offset(x = 40.dp, y = 40.dp).size(240.dp)
+                .background(Paleta.TicketAmarillo.copy(alpha = 0.16f), CircleShape),
+        )
+        DibujoObra(Ilustracion.GRUA, Modifier.align(Alignment.BottomEnd).padding(end = 8.dp, bottom = 6.dp), ancho = 150.dp)
     }
 }
 
