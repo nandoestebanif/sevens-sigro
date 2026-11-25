@@ -62,6 +62,8 @@ def run_migrations_online() -> None:
             include_schemas=True,
             include_object=incluir,
             compare_type=True,
+            # las descripciones (COMMENT, 0019) viven en las migraciones, no en los modelos: «alembic check» no las compara
+            autogenerate_plugins=[f"alembic.autogenerate.{p}" for p in ("schemas", "tables", "types", "constraints", "defaults")],
         )
         with context.begin_transaction():
             context.run_migrations()
