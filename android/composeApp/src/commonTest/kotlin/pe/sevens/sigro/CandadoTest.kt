@@ -409,4 +409,29 @@ class CandadoTest {
         assertTrue(ReglaCandado.ofrecer(soloCandado, DisponibilidadHuella.DISPONIBLE, completar = true))
         assertFalse(ReglaCandado.ofrecer(AjusteHuella(ofrecida = true), DisponibilidadHuella.DISPONIBLE, completar = true), "si dijo «ahora no», no se insiste")
     }
+
+    @Test
+    fun alActivarSeDiceSiQuedoElAccesoOSoloElCandado() = runTest(principal) {
+        val clave = ClaveReciente({ 0 })
+        val vm = CandadoViewModel(Sesiones(7), Guardado(), reloj = { 0 }, clave = clave)
+        advanceUntilIdle()
+        clave.guardar("adiel", "Clave2026x")
+        vm.activar(HuellaFalsa()); advanceUntilIdle()
+        assertEquals(CandadoViewModel.MENSAJE_CON_ACCESO, vm.estado.value.mensaje)
+        val vm2 = CandadoViewModel(Sesiones(7), Guardado(), reloj = { 0 }, clave = ClaveReciente({ 0 }).apply { guardar("adiel", "x") })
+        advanceUntilIdle()
+        vm2.activar(HuellaFalsa(guarda = false)); advanceUntilIdle()
+        assertEquals(CandadoViewModel.MENSAJE_SIN_HUELLA_FUERTE, vm2.estado.value.mensaje, "dice por qué no queda el acceso")
+    }
+
+    @Test
+    fun enElDialogoPuedeElegirSuContrasena() = runTest(principal) {
+        val guardado = Guardado().apply { cuentaGuardada = cuenta }
+        val vm = EntrarViewModel(Entradas(), guardado, ClaveReciente({ 0 }))
+        vm.recargar(); advanceUntilIdle()
+        vm.entrarConHuella(HuellaFalsa(alDescifrar = { ResultadoSecreto.UsarContrasena })); advanceUntilIdle()
+        assertTrue(vm.estado.value.conFormulario)
+        assertEquals("adiel", vm.estado.value.usuario)
+        assertEquals(cuenta, guardado.cuentaGuardada, "la huella se queda")
+    }
 }

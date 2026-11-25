@@ -53,10 +53,11 @@ private tailrec fun Context.fragmentActivity(): FragmentActivity? = when (this) 
     else -> null
 }
 
-/** Lo que devolvió el diálogo: listo (con el cifrador ya autorizado), cancelado o error. */
+/** Lo que devolvió el diálogo: listo (con el cifrador ya autorizado), cancelado, «usar contraseña» o error. */
 private sealed interface Respuesta {
     data class Lista(val cifrador: Cipher?) : Respuesta
     data object Cancelada : Respuesta
+    data object Negativo : Respuesta
     data class Error(val mensaje: String) : Respuesta
 }
 
@@ -73,7 +74,15 @@ private class BiometriaAndroid(private val actividad: FragmentActivity?) : Biome
         }
     }
 
-    override fun guardaClaves(): Boolean = conLlave && disponibilidad() == DisponibilidadHuella.DISPONIBLE
+    /**
+     * La contraseña se ata a una llave que pide SOLO la huella (BIOMETRIC_STRONG), el patrón que recomienda Android y
+     * el que usan las apps de bancos: anda desde Android 8. Con «huella o PIN» atado a una llave falla en varios
+     * celulares (Samsung, Xiaomi), por eso aquí no se combina con el PIN; el diálogo ofrece «Usar mi contraseña».
+     */
+    override fun guardaClaves(): Boolean {
+        val a = actividad ?: return false
+        return BiometricManager.from(a).canAuthenticate(BIOMETRIC_STRONG) == BiometricManager.BIOMETRIC_SUCCESS
+    }
 
     // ── candado ──────────────────────────────────────────────────────────────────────────────
     override suspend fun verificar(titulo: String, detalle: String): ResultadoHuella {
@@ -90,7 +99,7 @@ private class BiometriaAndroid(private val actividad: FragmentActivity?) : Biome
             // con llave: se usa una vez para confirmar que el Keystore la aceptó tras la huella
             is Respuesta.Lista -> if (runCatching { r.cifrador?.doFinal(byteArrayOf(1)) }.isSuccess) ResultadoHuella.Ok
                 else ResultadoHuella.Fallo("No se pudo confirmar la huella. Inténtalo de nuevo.")
-            Respuesta.Cancelada -> ResultadoHuella.Cancelada
+            Respuesta.Cancelada, Respuesta.Negativo -> ResultadoHuella.Cancelada
             is Respuesta.Error -> ResultadoHuella.Fallo(r.mensaje)
         }
     }
@@ -102,37 +111,39 @@ private class BiometriaAndroid(private val actividad: FragmentActivity?) : Biome
         if (!guardaClaves()) return ResultadoSecreto.NoSoportado
         val cifrador = try {
             borrar(ALIAS_CLAVE) // cada activación estrena llave: la anterior (de otra cuenta o contraseña) no sirve más
-            cifradorNuevo(ALIAS_CLAVE)
+            val llaveNueva = crearSoloHuella(ALIAS_CLAVE)
+            Cipher.getInstance(TRANSFORMACION).apply { init(Cipher.ENCRYPT_MODE, llaveNueva) }
         } catch (e: Exception) {
-            return ResultadoSecreto.NoSoportado
+            return ResultadoSecreto.Fallo("Este celular no pudo crear la llave de la huella (${e.javaClass.simpleName}).")
         }
-        return when (val r = pedir(titulo, detalle, cifrador, exigirLlave = true)) {
+        return when (val r = pedirSoloHuella(titulo, detalle, cifrador, negativo = "Cancelar")) {
             is Respuesta.Lista -> runCatching {
                 val c = r.cifrador ?: error("sin llave")
                 val datos = c.doFinal(secreto.encodeToByteArray())
                 ResultadoSecreto.Ok(b64(c.iv) + ":" + b64(datos))
             }.getOrElse { ResultadoSecreto.Fallo("No se pudo guardar el acceso con huella. Inténtalo de nuevo.") }
-            Respuesta.Cancelada -> ResultadoSecreto.Cancelada
+            Respuesta.Cancelada, Respuesta.Negativo -> ResultadoSecreto.Cancelada
             is Respuesta.Error -> ResultadoSecreto.Fallo(r.mensaje)
         }
     }
 
     override suspend fun descifrar(titulo: String, detalle: String, sobre: String): ResultadoSecreto {
-        if (!conLlave) return ResultadoSecreto.NoSoportado
+        if (!guardaClaves()) return ResultadoSecreto.NoSoportado
         val partes = sobre.split(':')
         if (partes.size != 2) return ResultadoSecreto.Fallo("El acceso con huella guardado está dañado: entra con tu contraseña.")
         val cifrador = try {
-            val llave = llave(ALIAS_CLAVE) ?: return ResultadoSecreto.HuellaNueva
+            val llave = llave(ALIAS_CLAVE) ?: return ResultadoSecreto.HuellaNueva // la llave ya no está: se guardó en otro celular o se borró
             Cipher.getInstance(TRANSFORMACION).apply { init(Cipher.DECRYPT_MODE, llave, GCMParameterSpec(128, deB64(partes[0]))) }
         } catch (e: KeyPermanentlyInvalidatedException) {
             olvidarClave(); return ResultadoSecreto.HuellaNueva
         } catch (e: Exception) {
             return ResultadoSecreto.Fallo("No se pudo abrir el acceso con huella: entra con tu contraseña.")
         }
-        return when (val r = pedir(titulo, detalle, cifrador, exigirLlave = true)) {
+        return when (val r = pedirSoloHuella(titulo, detalle, cifrador, negativo = "Usar mi contraseña")) {
             is Respuesta.Lista -> runCatching { ResultadoSecreto.Ok(r.cifrador!!.doFinal(deB64(partes[1])).decodeToString()) }
                 .getOrElse { ResultadoSecreto.Fallo("No se pudo abrir el acceso con huella: entra con tu contraseña.") }
             Respuesta.Cancelada -> ResultadoSecreto.Cancelada
+            Respuesta.Negativo -> ResultadoSecreto.UsarContrasena
             is Respuesta.Error -> ResultadoSecreto.Fallo(r.mensaje)
         }
     }
@@ -171,6 +182,59 @@ private class BiometriaAndroid(private val actividad: FragmentActivity?) : Biome
             }
             cont.invokeOnCancellation { prompt.cancelAuthentication() }
         }
+    }
+
+    /** Diálogo de SOLO huella (para la llave de la contraseña), con un botón propio: [negativo]. */
+    private suspend fun pedirSoloHuella(titulo: String, detalle: String, cifrador: Cipher, negativo: String): Respuesta {
+        val a = actividad ?: return Respuesta.Error("No se pudo abrir la huella en esta pantalla.")
+        return suspendCancellableCoroutine { cont ->
+            val prompt = BiometricPrompt(a, ContextCompat.getMainExecutor(a), object : BiometricPrompt.AuthenticationCallback() {
+                override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
+                    if (cont.isActive) cont.resume(Respuesta.Lista(result.cryptoObject?.cipher))
+                }
+
+                override fun onAuthenticationError(codigo: Int, mensaje: CharSequence) {
+                    if (!cont.isActive) return
+                    cont.resume(
+                        when (codigo) {
+                            BiometricPrompt.ERROR_NEGATIVE_BUTTON -> Respuesta.Negativo
+                            BiometricPrompt.ERROR_USER_CANCELED, BiometricPrompt.ERROR_CANCELED -> Respuesta.Cancelada
+                            else -> Respuesta.Error(mensaje.toString())
+                        },
+                    )
+                }
+            })
+            val info = BiometricPrompt.PromptInfo.Builder()
+                .setTitle(titulo)
+                .setSubtitle(detalle)
+                .setAllowedAuthenticators(BIOMETRIC_STRONG)
+                .setNegativeButtonText(negativo)
+                .setConfirmationRequired(false)
+                .build()
+            try {
+                prompt.authenticate(info, BiometricPrompt.CryptoObject(cifrador))
+            } catch (e: Exception) {
+                if (cont.isActive) cont.resume(Respuesta.Error("Este celular no permitió usar la huella con la llave (${e.javaClass.simpleName})."))
+            }
+            cont.invokeOnCancellation { prompt.cancelAuthentication() }
+        }
+    }
+
+    /** Llave AES/GCM que solo se usa tras la huella (no el PIN), una vez por uso, invalidada si se agrega una huella. */
+    private fun crearSoloHuella(alias: String): SecretKey {
+        val gen = KeyGenerator.getInstance(KeyProperties.KEY_ALGORITHM_AES, KEYSTORE)
+        val spec = KeyGenParameterSpec.Builder(alias, KeyProperties.PURPOSE_ENCRYPT or KeyProperties.PURPOSE_DECRYPT)
+            .setBlockModes(KeyProperties.BLOCK_MODE_GCM)
+            .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE)
+            .setUserAuthenticationRequired(true)
+            .setInvalidatedByBiometricEnrollment(true)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            spec.setUserAuthenticationParameters(0, KeyProperties.AUTH_BIOMETRIC_STRONG)
+        } else {
+            @Suppress("DEPRECATION") spec.setUserAuthenticationValidityDurationSeconds(-1) // cada uso, solo con huella
+        }
+        gen.init(spec.build())
+        return gen.generateKey()
     }
 
     /** Cifrador para cifrar con la llave [alias] (la crea si no existe). Lanza KeyPermanentlyInvalidatedException si cambió la huella. */

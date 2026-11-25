@@ -199,9 +199,9 @@ class CandadoViewModel(
         }
     }
 
-    /** Lo que respondió la huella al activarla (desde la oferta o desde Perfil). */
-    fun alActivar(r: ResultadoHuella) = when (r) {
-        ResultadoHuella.Ok -> { guardarAjuste { it.copy(activa = true, ofrecida = true) }; _e.update { it.copy(mensaje = "Listo: la próxima vez entras con tu huella.") } }
+    /** Lo que respondió la huella al activarla (desde la oferta o desde Perfil). [listo]: qué decir si salió bien. */
+    fun alActivar(r: ResultadoHuella, listo: String = MENSAJE_SOLO_CANDADO) = when (r) {
+        ResultadoHuella.Ok -> { guardarAjuste { it.copy(activa = true, ofrecida = true) }; _e.update { it.copy(mensaje = listo) } }
         ResultadoHuella.Cancelada -> Unit
         is ResultadoHuella.Fallo -> _e.update { it.copy(mensaje = r.mensaje) }
         ResultadoHuella.HuellaNueva -> _e.update { it.copy(mensaje = "La huella del celular cambió. Vuelve a activarla.") }
@@ -214,17 +214,18 @@ class CandadoViewModel(
     suspend fun activar(bio: Biometria) {
         val s = sesion ?: return
         val reciente = clave.tomar(s.usuario)
-        if (reciente == null || !bio.guardaClaves()) return alActivar(bio.verificar("Activa tu huella en SIGRO", s.nombre))
+        if (!bio.guardaClaves()) return alActivar(bio.verificar("Activa tu huella en SIGRO", s.nombre), MENSAJE_SIN_HUELLA_FUERTE)
+        if (reciente == null) return alActivar(bio.verificar("Activa tu huella en SIGRO", s.nombre), MENSAJE_SIN_CLAVE)
         when (val r = bio.cifrar("Activa tu huella en SIGRO", s.nombre, reciente)) {
             is ResultadoSecreto.Ok -> {
-                runCatching { repo.guardarCuenta(CuentaConHuella(s.usuarioId, s.usuario, s.nombre, s.servidor, r.valor)) }
-                _e.update { it.copy(entraConHuella = true) }
-                alActivar(ResultadoHuella.Ok)
+                val guardo = runCatching { repo.guardarCuenta(CuentaConHuella(s.usuarioId, s.usuario, s.nombre, s.servidor, r.valor)) }.isSuccess
+                _e.update { it.copy(entraConHuella = guardo) }
+                alActivar(ResultadoHuella.Ok, if (guardo) MENSAJE_CON_ACCESO else "La huella quedó, pero no se pudo guardar el acceso. Vuelve a activarla.")
             }
-            ResultadoSecreto.Cancelada -> clave.guardar(s.usuario, reciente) // la devuelve: puede intentarlo otra vez
-            is ResultadoSecreto.Fallo -> alActivar(ResultadoHuella.Fallo(r.mensaje))
+            ResultadoSecreto.Cancelada, ResultadoSecreto.UsarContrasena -> clave.guardar(s.usuario, reciente) // la devuelve: puede intentarlo otra vez
+            is ResultadoSecreto.Fallo -> { clave.guardar(s.usuario, reciente); alActivar(ResultadoHuella.Fallo(r.mensaje)) }
             ResultadoSecreto.HuellaNueva -> alActivar(ResultadoHuella.HuellaNueva)
-            ResultadoSecreto.NoSoportado -> alActivar(bio.verificar("Activa tu huella en SIGRO", s.nombre))
+            ResultadoSecreto.NoSoportado -> alActivar(bio.verificar("Activa tu huella en SIGRO", s.nombre), MENSAJE_SIN_HUELLA_FUERTE)
         }
     }
 
@@ -276,6 +277,10 @@ class CandadoViewModel(
     }
 
     companion object {
+        const val MENSAJE_CON_ACCESO = "Listo: entras con tu huella aunque cierres sesión."
+        const val MENSAJE_SOLO_CANDADO = "Listo: tu huella desbloquea la app."
+        const val MENSAJE_SIN_CLAVE = "Listo: tu huella desbloquea la app. Para entrar con ella tras cerrar sesión, cierra sesión, entra con tu contraseña y acepta la huella."
+        const val MENSAJE_SIN_HUELLA_FUERTE = "Listo: tu huella desbloquea la app. Este celular no tiene una huella de seguridad alta registrada: tras cerrar sesión se entra con contraseña."
         const val MENSAJE_HUELLA_NUEVA = "Se agregó una huella nueva en el celular. Por seguridad, entra con tu contraseña y vuelve a activar la huella."
         /** Cada cuánto se revisa, con la app abierta, si ya pasó el tiempo sin usarla. */
         const val REVISAR_CADA_MS = 20_000L
@@ -321,6 +326,21 @@ fun BoxScope.CapaCandado(vm: CandadoViewModel, sesion: Sesion?, obra: ObraAsigna
         )
     }
 
+    // lo que pasó al activar o al fallar la huella: un aviso arriba, unos segundos (así se sabe si quedó el acceso)
+    val aviso = e.mensaje.takeIf { !e.bloqueada && sesion != null }
+    LaunchedEffect(aviso) { if (aviso != null) { delay(6_000); vm.mensajeVisto() } }
+    AnimatedVisibility(aviso != null, Modifier.align(Alignment.TopCenter), enter = slideInVertically { -it } + fadeIn(), exit = fadeOut()) {
+        Row(
+            Modifier.statusBarsPadding().padding(12.dp).widthIn(max = 520.dp).fillMaxWidth().clip(RoundedCornerShape(18.dp))
+                .background(Paleta.Noche).border(1.dp, Paleta.TicketAmarillo.copy(alpha = 0.5f), RoundedCornerShape(18.dp))
+                .clickable(onClickLabel = "Cerrar aviso") { vm.mensajeVisto() }.padding(horizontal = 14.dp, vertical = 12.dp)
+                .semantics { liveRegion = LiveRegionMode.Polite },
+            verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Icon(Icons.Filled.Fingerprint, contentDescription = null, tint = Paleta.TicketAmarillo, modifier = Modifier.size(22.dp))
+            Text(aviso.orEmpty(), fontSize = 13.sp, lineHeight = 18.sp, color = Color.White)
+        }
+    }
     // mientras se lee el ajuste guardado, con sesión abierta se tapa todo: el inicio no se asoma ni un instante
     if (sesion != null && !e.listo) Box(Modifier.fillMaxSize().background(Paleta.Noche))
     if (e.bloqueada && sesion != null) {
@@ -554,7 +574,7 @@ fun SeccionSeguridad(vm: CandadoViewModel, biometria: Biometria) {
                 fontSize = 12.sp, lineHeight = 17.sp, color = Paleta.Texto3,
             )
         }
-        e.mensaje?.let { Text(it, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = Paleta.Texto2, modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite }) }
+        // el resultado de activar se ve en el aviso de arriba (CapaCandado), no aquí: un solo mensaje
     }
 }
 

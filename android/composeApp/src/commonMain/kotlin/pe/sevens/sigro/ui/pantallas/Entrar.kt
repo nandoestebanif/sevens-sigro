@@ -168,6 +168,7 @@ class EntrarViewModel(
             is ResultadoSecreto.Fallo -> _estado.update { it.copy(error = r.mensaje) }
             ResultadoSecreto.HuellaNueva -> olvidarHuella(bio, "Se agregó una huella nueva en el celular. Por seguridad, entra con tu contraseña.", c.usuario)
             ResultadoSecreto.NoSoportado -> _estado.update { it.copy(conFormulario = true) }
+            ResultadoSecreto.UsarContrasena -> conContrasena() // tocó «Usar mi contraseña» en el diálogo
         }
     }
 

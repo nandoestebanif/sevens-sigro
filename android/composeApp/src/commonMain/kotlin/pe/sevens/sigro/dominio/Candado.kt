@@ -38,8 +38,10 @@ sealed interface ResultadoSecreto {
     data class Fallo(val mensaje: String) : ResultadoSecreto
     /** La llave se invalidó porque se agregó una huella al celular: el secreto ya no se puede abrir. */
     data object HuellaNueva : ResultadoSecreto
-    /** Este celular no puede atar un secreto a la huella (Android 10 o menos): solo desbloquea la app. */
+    /** Este celular no tiene una huella de seguridad alta (o ninguna registrada): la huella solo desbloquea la app. */
     data object NoSoportado : ResultadoSecreto
+    /** En el diálogo de la huella tocó «Usar mi contraseña». */
+    data object UsarContrasena : ResultadoSecreto
 }
 
 /** La huella del celular (expect/actual en plataforma: BiometricPrompt en Android). */
@@ -49,7 +51,7 @@ interface Biometria {
     /** Borra la llave del Keystore del candado (al desactivar o al cerrar sesión). */
     fun olvidar() {}
 
-    /** Si puede guardar la contraseña cifrada con una llave que solo abre la huella (Android 11+). */
+    /** Si puede guardar la contraseña cifrada con una llave que solo abre la huella (huella de seguridad alta registrada). */
     fun guardaClaves(): Boolean = false
     /** Cifra [secreto] tras la huella. En [ResultadoSecreto.Ok] viene el «sobre» cifrado (texto) para guardar. */
     suspend fun cifrar(titulo: String, detalle: String, secreto: String): ResultadoSecreto = ResultadoSecreto.NoSoportado
