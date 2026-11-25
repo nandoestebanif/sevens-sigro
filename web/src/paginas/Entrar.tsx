@@ -9,17 +9,11 @@
 import { useState } from 'react'
 import { ErrorApi } from '../api/error'
 import { API_URL, iniciarSesion } from '../api/http'
-import { Alert, Button, Card, Col, Container, Form, InputGroup, Row } from 'react-bootstrap'
-import logo from '../assets/sevens-logo-blanco.webp'
-import { DibujoObra, type Ilustracion } from '../ui/Ilustraciones'
+import { Alert, Button, Card, Form, InputGroup } from 'react-bootstrap'
+import { PantallaEntrada, Portada } from '../ui/Portada'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { esquemaEntrar, type DatosEntrar } from '../formularios/esquemas'
-
-/* las tres partes de SIGRO, como tarjetas «ticket» de la portada */
-const PARTES: { nombre: string; dibujo: Ilustracion }[] = [
-  { nombre: 'Compras', dibujo: 'factura' }, { nombre: 'Almacén', dibujo: 'camion' }, { nombre: 'Gasto en recursos', dibujo: 'grua' },
-]
 
 const PROMESAS = [
   'El presupuesto del S10 se importa tal cual: 284 insumos, al céntimo.',
@@ -58,72 +52,50 @@ export function Entrar({ saliendo = false }: { saliendo?: boolean }) {
   const textoBoton = conectando ? 'Conectando con el servidor…' : enviando || saliendo ? 'Entrando…' : 'Entrar'
 
   return (
-    <Container fluid className="min-vh-100 d-flex align-items-stretch p-3">
-      <Row className="w-100 g-4 align-items-center mx-0">
-        {/* portada: logo, qué hace SIGRO y sus tres partes (se oculta en celulares) */}
-        <Col lg={6} className="d-none d-lg-flex align-self-stretch">
-          <div className="sigro-portada w-100 p-5 d-flex flex-column justify-content-between gap-4">
-            <img src={logo} alt="SEVEN'S Ingenieros SAC" height={86} className="align-self-start" />
-            <div>
-              <h1 className="display-6 fw-semibold mb-4" style={{ maxWidth: 560 }}>
-                Lo que pide el S10, lo que se compra y lo que se gasta. <span className="text-primary">En un solo lugar.</span>
-              </h1>
-              <ul className="list-unstyled mb-0" style={{ color: '#d2d3d3' }}>
-                {PROMESAS.map((t) => <li key={t} className="mb-2">✓ {t}</li>)}
-              </ul>
-            </div>
-            <div className="d-flex gap-3">
-              {PARTES.map((p) => (
-                <div key={p.nombre} className="sigro-ticket" style={{ flex: '1 1 0', minHeight: 140 }}>
-                  <span className="franja" aria-hidden="true" />
-                  <span className="ilustracion"><DibujoObra cual={p.dibujo} ancho={66} /></span>
-                  <div className="fw-semibold small position-relative" style={{ marginTop: 78 }}>{p.nombre}</div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </Col>
+    <PantallaEntrada portada={
+      <Portada titulo="Lo que pide el S10, lo que se compra y lo que se gasta." remate="En un solo lugar.">
+        <ul className="list-unstyled mb-0" style={{ color: '#d2d3d3' }}>
+          {PROMESAS.map((t) => <li key={t} className="mb-2">✓ {t}</li>)}
+        </ul>
+      </Portada>
+    }>
+      <Card>
+        <Card.Body className="p-4">
+          <Form noValidate onSubmit={handleSubmit(entrar)}>
+            <h2 className="h4 mb-1">Ingresar</h2>
+            <p className="text-body-secondary small">Con tu usuario de SIGRO. Verás solo las obras donde estás asignado.</p>
 
-        <Col sm={10} md={7} lg={5} xl={4} className="mx-auto">
-          <Card>
-            <Card.Body className="p-4">
-              <Form noValidate onSubmit={handleSubmit(entrar)}>
-                <h2 className="h4 mb-1">Ingresar</h2>
-                <p className="text-body-secondary small">Con tu usuario de SIGRO. Verás solo las obras donde estás asignado.</p>
+            <Form.Group className="mb-3" controlId="usuario">
+              <Form.Label>Usuario</Form.Label>
+              {/* {...register('usuario')} conecta el campo: valor, cambios y validación */}
+              <Form.Control {...register('usuario')} placeholder="Tu usuario" autoComplete="username" autoFocus
+                isInvalid={!!errors.usuario} />
+              <Form.Control.Feedback type="invalid">{errors.usuario?.message}</Form.Control.Feedback>
+            </Form.Group>
 
-                <Form.Group className="mb-3" controlId="usuario">
-                  <Form.Label>Usuario</Form.Label>
-                  {/* {...register('usuario')} conecta el campo: valor, cambios y validación */}
-                  <Form.Control {...register('usuario')} placeholder="Tu usuario" autoComplete="username" autoFocus
-                    isInvalid={!!errors.usuario} />
-                  <Form.Control.Feedback type="invalid">{errors.usuario?.message}</Form.Control.Feedback>
-                </Form.Group>
+            <Form.Group className="mb-3" controlId="clave">
+              <Form.Label>Contraseña</Form.Label>
+              {/* InputGroup: el campo y el botón «Ver» quedan pegados */}
+              <InputGroup hasValidation>
+                <Form.Control {...register('clave')} type={verClave ? 'text' : 'password'} placeholder="Tu contraseña"
+                  autoComplete="current-password" isInvalid={!!errors.clave} />
+                <Button variant="outline-secondary" onClick={() => setVerClave(!verClave)}
+                  aria-label={verClave ? 'Ocultar contraseña' : 'Mostrar contraseña'} aria-pressed={verClave}>
+                  {verClave ? 'Ocultar' : 'Ver'}
+                </Button>
+                <Form.Control.Feedback type="invalid">{errors.clave?.message}</Form.Control.Feedback>
+              </InputGroup>
+            </Form.Group>
 
-                <Form.Group className="mb-3" controlId="clave">
-                  <Form.Label>Contraseña</Form.Label>
-                  {/* InputGroup: el campo y el botón «Ver» quedan pegados */}
-                  <InputGroup hasValidation>
-                    <Form.Control {...register('clave')} type={verClave ? 'text' : 'password'} placeholder="Tu contraseña"
-                      autoComplete="current-password" isInvalid={!!errors.clave} />
-                    <Button variant="outline-secondary" onClick={() => setVerClave(!verClave)}
-                      aria-label={verClave ? 'Ocultar contraseña' : 'Mostrar contraseña'} aria-pressed={verClave}>
-                      {verClave ? 'Ocultar' : 'Ver'}
-                    </Button>
-                    <Form.Control.Feedback type="invalid">{errors.clave?.message}</Form.Control.Feedback>
-                  </InputGroup>
-                </Form.Group>
-
-                {error && <Alert variant="danger" className="py-2">{error}</Alert>}
-                <Button type="submit" size="lg" className="w-100" disabled={enviando || saliendo}>{textoBoton}</Button>
-                <p className="text-center small text-body-secondary mt-3 mb-0">
-                  ¿No tienes usuario? Pídelo al administrador de la obra.
-                </p>
-                {API_URL && <p className="text-center small text-body-secondary mb-0">Servidor: {servidor()}</p>}
-              </Form>
-            </Card.Body>
-          </Card>
-        </Col>
-      </Row>
-    </Container>
+            {error && <Alert variant="danger" className="py-2">{error}</Alert>}
+            <Button type="submit" size="lg" className="w-100" disabled={enviando || saliendo}>{textoBoton}</Button>
+            <p className="text-center small text-body-secondary mt-3 mb-0">
+              ¿No tienes usuario? Pídelo al administrador de la obra.
+            </p>
+            {API_URL && <p className="text-center small text-body-secondary mb-0">Servidor: {servidor()}</p>}
+          </Form>
+        </Card.Body>
+      </Card>
+    </PantallaEntrada>
   )
 }
