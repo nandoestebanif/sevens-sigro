@@ -8,13 +8,15 @@
     <!-- required=false: la app se instala igual en un equipo sin cámara (la opción se oculta). -->
     <uses-feature android:name="android.hardware.camera.any" android:required="false" />
 
-    <!-- networkSecurityConfig: permite http solo hacia la PC de desarrollo; el ambiente de pruebas va por https. -->
+    <!-- usesCleartextTraffic=false: http apagado por defecto en toda versión de Android; networkSecurityConfig lo
+         permite solo hacia el emulador y la PC de desarrollo. El ambiente de pruebas y la nube van por https. -->
     <application
         android:name=".SigroApp"
         android:label="@string/app_name"
         android:icon="@mipmap/ic_launcher"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:allowBackup="false"
+        android:usesCleartextTraffic="false"
         android:networkSecurityConfig="@xml/seguridad_red"
         android:theme="@style/Tema.Sigro">
         <activity

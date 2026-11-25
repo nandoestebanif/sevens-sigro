@@ -18,7 +18,7 @@ fun credencialesDePrueba(ajustes: AjusteDao, seguro: AlmacenSeguro = AlmacenSegu
     Credenciales(ajustes, BovedaSesion(seguro, ajustes))
 
 /** Tabla `ajuste` en memoria. */
-class AjustesDePrueba(inicial: Map<String, String> = mapOf("servidor" to "http://api.prueba")) : pe.sevens.sigro.datos.local.AjusteDao {
+class AjustesDePrueba(inicial: Map<String, String> = mapOf("servidor" to "https://api.prueba")) : pe.sevens.sigro.datos.local.AjusteDao {
     val m = kotlinx.coroutines.flow.MutableStateFlow(inicial)
     override suspend fun guardar(a: pe.sevens.sigro.datos.local.AjusteEntity) { m.value = m.value + (a.clave to a.valor) }
     override suspend fun leer(clave: String) = m.value[clave]

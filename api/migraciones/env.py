@@ -13,6 +13,7 @@ from alembic import context
 from sqlalchemy import create_engine, pool
 
 from app.base import Base
+from app.config import base_local
 import app.modulos.catalogo.modelos  # noqa: F401  (registra tablas en Base.metadata)
 import app.modulos.compras.modelos  # noqa: F401
 import app.modulos.obra.modelos  # noqa: F401
@@ -23,10 +24,7 @@ config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-URL = os.environ.get(
-    "SIGRO_DATABASE_URL",
-    "postgresql+psycopg://sigro_owner:sigro_owner_dev@localhost:5432/sigro_dev",
-)
+URL = os.environ.get("SIGRO_DATABASE_URL") or base_local("sigro_owner")
 
 target_metadata = Base.metadata
 
