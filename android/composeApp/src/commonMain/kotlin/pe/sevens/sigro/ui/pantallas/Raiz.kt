@@ -2,8 +2,11 @@ package pe.sevens.sigro.ui.pantallas
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -28,7 +31,25 @@ class RaizViewModel(private val sesiones: RepositorioSesion) : ViewModel() {
         }
     }.stateIn(viewModelScope, SharingStarted.Eagerly, EstadoRaiz.Cargando)
 
-    fun elegir(obra: ObraAsignada) = viewModelScope.launch { sesiones.elegirObra(obra) }
+    private val _entrando = MutableStateFlow<ObraAsignada?>(null)
+
+    /** Obra a la que se está entrando (pantalla «Entrando a …»); `null` el resto del tiempo. */
+    val entrando: StateFlow<ObraAsignada?> = _entrando.asStateFlow()
+
+    /**
+     * Entra a [obra] desde «Elegir obra» o desde la hoja «Cambiar de obra». Primero se cubre la pantalla con
+     * «Entrando a …», debajo se guarda la obra (la navegación vuelve al inicio de la nueva) y se descubre tras
+     * [ENTRANDO_MS]. La cola no se toca: cada registro va a la obra donde se hizo.
+     */
+    fun elegir(obra: ObraAsignada) = viewModelScope.launch {
+        _entrando.value = obra
+        try {
+            sesiones.elegirObra(obra)
+            delay(ENTRANDO_MS)
+        } finally {
+            _entrando.value = null
+        }
+    }
     fun cambiarDeObra() = viewModelScope.launch { sesiones.cambiarDeObra() }
     fun salir() = viewModelScope.launch { sesiones.cerrarSesion() }
 }

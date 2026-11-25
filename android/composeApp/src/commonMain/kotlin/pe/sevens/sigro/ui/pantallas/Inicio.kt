@@ -256,6 +256,7 @@ fun PantallaInicio(
     obra: ObraAsignada,
     irA: (Destino) -> Unit,
     vm: InicioViewModel = koinViewModel(),
+    alElegirObra: (ObraAsignada) -> Unit = {},
 ) {
     val e by vm.estado.collectAsState()
     val pendientes by vm.pendientes.collectAsState()
@@ -263,11 +264,12 @@ fun PantallaInicio(
     val lista by flujo.collectAsState(initial = emptyList())
     val resumen = remember(lista) { resumirObra(lista, Plataforma.ahoraMs()) }
     var conMas by remember { mutableStateOf(false) }
+    var cambiandoObra by remember { mutableStateOf(false) }
     val avisos = remember { SnackbarHostState() }
     LaunchedEffect(e.mensaje) {
         e.mensaje?.let { avisos.showSnackbar(it); vm.mensajeVisto() }
     }
-    ManejarAtras(activo = conMas, alVolver = { conMas = false })
+    ManejarAtras(activo = conMas || cambiandoObra, alVolver = { conMas = false; cambiandoObra = false })
 
     FondoPlano(plano = { planoInicio(it) }) {
         Column(
@@ -276,7 +278,7 @@ fun PantallaInicio(
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
             // Rediseño v2: cabecera grande con la obra, el estado de la cola y la grúa
-            CabeceraInicio(sesion, obra, resumen, pendientes, alCambiarObra = vm::cambiarDeObra)
+            CabeceraInicio(sesion, obra, resumen, pendientes, alCambiarObra = { cambiandoObra = true })
             CifrasDeHoy(resumen, alVerRegistros = { irA(Destino.Pendientes) }, alVerRechazados = { irA(Destino.Rechazados) })
             AvisosCola(resumen, pendientes, e.enviando, alEnviar = vm::enviarAhora, alVerRegistros = { irA(Destino.Pendientes) })
             // Accesos en mosaico: Salida (lo que más se usa) grande; Entrada e Ingreso al lado; Personal abajo
@@ -341,6 +343,21 @@ fun PantallaInicio(
             modifier = Modifier.align(Alignment.BottomCenter),
         ) {
             HojaMas(irA = { conMas = false; irA(it) }, alCerrar = { conMas = false })
+        }
+
+        // Rediseño v3: «cambiar obra» abre una hoja sobre el inicio (ya no saca a la pantalla de entrada)
+        AnimatedVisibility(cambiandoObra, enter = fadeIn(), exit = fadeOut()) {
+            Box(
+                Modifier.fillMaxSize().background(Color(0x8C0A0A0A))
+                    .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClickLabel = "Cerrar") { cambiandoObra = false },
+            )
+        }
+        AnimatedVisibility(
+            cambiandoObra,
+            enter = slideInVertically { it }, exit = slideOutVertically { it },
+            modifier = Modifier.align(Alignment.BottomCenter),
+        ) {
+            HojaCambiarObra(sesion, obra, alElegir = { cambiandoObra = false; alElegirObra(it) }, alCerrar = { cambiandoObra = false })
         }
     }
 }
