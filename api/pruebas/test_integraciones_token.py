@@ -38,3 +38,26 @@ def test_integraciones_rechaza_el_token_devuelve_none(monkeypatch):
     monkeypatch.setenv("SIGRO_SERVICIO_TOKEN", "mal")
     c = httpx.Client(transport=httpx.MockTransport(lambda req: httpx.Response(401, json={"detail": "token inválido"})))
     assert integraciones.consultar_ruc("20606456892", cliente=c) is None
+
+
+def test_consulta_de_dni_con_token_y_respuesta_normalizada(monkeypatch):
+    monkeypatch.setenv("SIGRO_INTEGRACIONES_URL", "http://integraciones:8000")
+    monkeypatch.setenv("SIGRO_SERVICIO_TOKEN", "token-de-prueba-0123456789-0123456789")
+    vistas: list = []
+
+    def responder(req: httpx.Request) -> httpx.Response:
+        vistas.append(req)
+        return httpx.Response(200, json={"dni": "45678912", "nombres": "ROSA", "apellido_paterno": "MAMANI",
+                                         "apellido_materno": "", "nombre_completo": "MAMANI ROSA"})
+    r = integraciones.consultar_dni("45678912", cliente=httpx.Client(transport=httpx.MockTransport(responder)))
+    assert r == integraciones.DniReniec(dni="45678912", nombres="ROSA", apellido_paterno="MAMANI", apellido_materno="")
+    assert str(vistas[0].url) == "http://integraciones:8000/dni/45678912"
+    assert vistas[0].headers["X-Servicio-Token"] == "token-de-prueba-0123456789-0123456789"
+
+
+def test_dni_sin_respuesta_o_sin_nombres_devuelve_none(monkeypatch):
+    monkeypatch.setenv("SIGRO_INTEGRACIONES_URL", "http://integraciones:8000")
+    for respuesta in (httpx.Response(404, json={}), httpx.Response(200, json={"dni": "45678912", "nombres": "",
+                                                                              "apellido_paterno": "", "apellido_materno": ""})):
+        c = httpx.Client(transport=httpx.MockTransport(lambda req, r=respuesta: r))
+        assert integraciones.consultar_dni("45678912", cliente=c) is None

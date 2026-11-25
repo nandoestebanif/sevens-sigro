@@ -11,7 +11,7 @@ from decimal import Decimal
 from uuid import UUID
 
 from sqlalchemy import (
-    BigInteger, Date, DateTime, ForeignKey, ForeignKeyConstraint, Identity, Index, Numeric, Text,
+    BigInteger, CheckConstraint, Date, DateTime, ForeignKey, ForeignKeyConstraint, Identity, Index, Numeric, Text,
     UniqueConstraint, func, text,
 )
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
@@ -26,12 +26,19 @@ class Trabajador(Base):
         UniqueConstraint("proyecto_id", "documento", name="uq_trabajador_proyecto_id_documento"),
         UniqueConstraint("id", "proyecto_id", name="uq_trabajador_id_proyecto_id"),
         Index("ix_trabajador_proyecto_id_cuadrilla", "proyecto_id", "cuadrilla"),
+        CheckConstraint(
+            "nombres IS NULL OR (btrim(nombres) <> '' AND apellido_paterno IS NOT NULL AND btrim(apellido_paterno) <> '')",
+            name="ck_trabajador_nombres_y_apellidos",
+        ),
         {"schema": "tareo"},
     )
 
     id: Mapped[int] = mapped_column(BigInteger, Identity(always=True), primary_key=True)
     proyecto_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("obra.proyecto.id", name="fk_trabajador_proyecto_id_proyecto"))
-    nombre: Mapped[str] = mapped_column(Text)
+    nombre: Mapped[str] = mapped_column(Text)           # para mostrar: «Paterno Materno, Nombres» (0020)
+    nombres: Mapped[str | None] = mapped_column(Text)
+    apellido_paterno: Mapped[str | None] = mapped_column(Text)
+    apellido_materno: Mapped[str | None] = mapped_column(Text)
     tipo_documento: Mapped[str] = mapped_column(Text, server_default="DNI")
     documento: Mapped[str] = mapped_column(Text)
     categoria: Mapped[str] = mapped_column(Text)
