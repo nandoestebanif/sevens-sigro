@@ -22,7 +22,7 @@
    normalizado exacto.
    ───────────────────────────────────────────────────────────────────────── */
 import { fechaHoraLima } from '../api/horaLima'
-import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { ErrorApi, api } from '../api/cliente'
 import type { HistorialFactor, InsumoMaestro } from '../api/tipos'
 import { Campo, Chip, Modal, Vacio } from '../ui/base'
@@ -117,12 +117,13 @@ function ModalFactor({ insumo, enCerrar, enGuardado }: {
   const avisar = useAvisos()
   const [guardando, setGuardando] = useState(false)
 
-  const cargarHistorial = () => {
+  // useCallback: el historial se recarga solo al cambiar de insumo (y a mano, tras guardar un factor)
+  const cargarHistorial = useCallback(() => {
     api.historialFactorConversion(insumo.codigo).then(setHistorial).catch(() => setHistorial([]))
-  }
+  }, [insumo.codigo])
   useEffect(() => {
     cargarHistorial()
-  }, [insumo.codigo])
+  }, [cargarHistorial])
 
   const factorNum = Number(factor)
   const valido = Number.isFinite(factorNum) && factorNum > 0
@@ -322,6 +323,11 @@ function AltaInsumo({ editando, enCerrar, enListo }: {
   )
 }
 
+/* orden por columna del catálogo: fuera del componente, así useMemo no depende de una función nueva en cada render */
+type ColCatalogo = 'codigo' | 'nombre' | 'um' | 'marca' | 'precio'
+const valorCol = (i: InsumoMaestro, k: ColCatalogo): string | number =>
+  k === 'codigo' ? i.codigo : k === 'nombre' ? i.nombre : k === 'um' ? i.um : k === 'marca' ? i.marca : i.precioPromedio
+
 export function Catalogo() {
   const [maestro, setMaestro] = useState<InsumoMaestro[] | null>(null)
   const [busqueda, setBusqueda] = useState('')
@@ -344,11 +350,8 @@ export function Catalogo() {
   }, [maestro])
 
   // orden por columna (encabezados con ▲▼): se filtra y luego se ordena; la tabla sigue virtualizada
-  type Col = 'codigo' | 'nombre' | 'um' | 'marca' | 'precio'
-  const [orden, setOrden] = useState<Orden<Col> | null>(null)
-  const valorCol = (i: InsumoMaestro, k: Col): string | number =>
-    k === 'codigo' ? i.codigo : k === 'nombre' ? i.nombre : k === 'um' ? i.um : k === 'marca' ? i.marca : i.precioPromedio
-  const enOrdenar = (k: Col) => setOrden((o) => alternarOrden(o, k))
+  const [orden, setOrden] = useState<Orden<ColCatalogo> | null>(null)
+  const enOrdenar = (k: ColCatalogo) => setOrden((o) => alternarOrden(o, k))
 
   const visibles = useMemo(() => {
     const q = busqueda.trim().toLowerCase()

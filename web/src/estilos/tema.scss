@@ -125,6 +125,8 @@ h1, .h1, h2, .h2, h3, .h3 { letter-spacing: -0.02em; }
 .card.shadow-sm, .card.shadow { box-shadow: none !important; }
 [data-bs-theme="light"] .card.shadow-sm, [data-bs-theme="light"] .card.shadow { box-shadow: 0 1px 2px rgba(22, 23, 23, 0.05) !important; }
 .table > thead th { color: var(--bs-secondary-color); white-space: nowrap; }
+// los botones de una fila no se parten en varias líneas (p. ej. «Validar de nuevo» en Proveedores)
+.table td .btn, .table td .sigro-chip { white-space: nowrap; }
 .btn-outline-secondary { --bs-btn-color: var(--bs-body-color); --bs-btn-border-color: var(--bs-border-color); --bs-btn-hover-bg: var(--bs-tertiary-bg); --bs-btn-hover-color: var(--bs-body-color); --bs-btn-hover-border-color: var(--bs-secondary-color); }
 .btn-outline-primary { --bs-btn-color: var(--bs-body-color); --bs-btn-border-color: var(--bs-border-color); --bs-btn-hover-bg: #{$primary}; --bs-btn-hover-color: #{$dark}; --bs-btn-hover-border-color: #{$primary}; --bs-btn-active-color: #{$dark}; }
 .form-control, .form-select { border-radius: var(--bs-border-radius); }
@@ -221,6 +223,33 @@ h1, .h1, h2, .h2, h3, .h3 { letter-spacing: -0.02em; }
 }
 .sigro-menu :focus-visible { outline-color: $primary; }
 
+// botón circular al borde del panel para contraer / expandir
+.sigro-contraer {
+  position: absolute; right: 0.75rem; top: 1.4rem; z-index: 2; width: 2rem; height: 2rem; padding: 0;
+  border-radius: 50%; border: 1px solid #424343; background: #242424; color: #d2d3d3;
+  align-items: center; justify-content: center;
+  &:hover { color: #fff; border-color: #6d6e6e; }
+}
+
+// menú contraído: solo íconos; los textos quedan para el lector de pantalla (no se esconden con display:none)
+@include media-breakpoint-up(lg) {
+  .sigro-menu.compacto {
+    flex-basis: 6.5rem; width: 6.5rem;
+    .sigro-panel { padding: 4.25rem 0.75rem 1rem; align-items: stretch; }
+    .sigro-contraer { right: 50%; margin-right: -1rem; top: 1rem; }
+    .txt { position: absolute !important; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+    .sigro-rotulo { margin: 1rem 0 0.4rem; height: 1px; background: var(--sigro-menu-item); }
+    .sigro-perfil { justify-content: center; padding: 0.9rem 0; }
+    .accordion-button, .sigro-item { justify-content: center; padding: 0; gap: 0; }
+    .accordion-button::after { display: none; }
+    .accordion-collapse { display: none !important; }
+    .sigro-llamado { padding: 0.5rem; background: transparent; .btn { padding: 0.5rem 0; font-size: 1.2rem; line-height: 1; } }
+    a[aria-label="SIGRO · inicio"] { padding: 0 !important; display: flex !important; justify-content: center; width: 100%; }
+  }
+}
+.sigro-menu { transition: flex-basis 0.2s ease, width 0.2s ease; }
+@media (prefers-reduced-motion: reduce) { .sigro-menu { transition: none; } }
+
 // ── Tarjetas «ticket» de cifra: color de fondo, franja de luz, muescas e ilustración ──
 .sigro-ticket {
   position: relative; overflow: hidden; min-width: 0;
@@ -274,6 +303,60 @@ h1, .h1, h2, .h2, h3, .h3 { letter-spacing: -0.02em; }
   padding: 4px; gap: 2px; border-radius: 999px; background: var(--bs-body-bg); border: 1px solid var(--bs-border-color);
   > .btn { border: 0 !important; border-radius: 999px !important; font-weight: 500; }
   > .btn-outline-primary { --bs-btn-color: var(--bs-body-color); --bs-btn-hover-bg: var(--bs-tertiary-bg); --bs-btn-hover-color: var(--bs-body-color); }
+}
+
+// ── Elegir obra: cada obra es un botón con su color, como los tickets ──
+.sigro-obra-opcion {
+  --sigro-ticket: #2ee6c5;
+  > button {
+    width: 100%; display: flex; align-items: center; gap: 0.9rem; padding: 0.75rem 1rem 0.75rem 0.75rem;
+    border: 1px solid var(--bs-border-color); border-radius: 1.1rem; background: var(--bs-body-bg); color: var(--bs-body-color);
+    font: inherit; transition: border-color 0.15s, transform 0.15s;
+    &:hover:not(:disabled) { border-color: var(--sigro-ticket); transform: translateY(-1px); }
+    &:disabled { opacity: 0.6; }
+    &[aria-busy="true"] { opacity: 1; border-color: var(--sigro-ticket); }
+  }
+  .icono { flex: none; width: 3.25rem; height: 3.25rem; border-radius: 0.9rem; background: var(--sigro-ticket); display: flex; align-items: center; justify-content: center; }
+  .flecha { font-size: 1.2rem; color: var(--bs-secondary-color); }
+}
+.sigro-obra-opcion:nth-child(5n + 2) { --sigro-ticket: #fad85d; }
+.sigro-obra-opcion:nth-child(5n + 3) { --sigro-ticket: #f2a6ff; }
+.sigro-obra-opcion:nth-child(5n + 4) { --sigro-ticket: #ffb3c1; }
+.sigro-obra-opcion:nth-child(5n + 5) { --sigro-ticket: #ffc58f; }
+@media (prefers-reduced-motion: reduce) { .sigro-obra-opcion > button { transition: none; &:hover:not(:disabled) { transform: none; } } }
+
+// ── «Preparando tu obra» y la espera del servidor ──
+.sigro-capa {
+  width: min(28rem, calc(100vw - 2rem)); padding: 2.5rem 2rem 2rem; border-radius: 2rem;
+  background: #161717; color: #d2d3d3;
+  h1 { color: #fff; }
+  .grua { width: 9rem; height: 8rem; border-radius: 1.6rem; background: #fad85d; display: flex; align-items: flex-end; justify-content: center; overflow: hidden; }
+  .grua svg { animation: sigro-izar 2.4s ease-in-out infinite; transform-origin: 50% 100%; }
+  .progress { --bs-progress-bg: #2b2c2c; --bs-progress-bar-bg: #fad85d; height: 0.6rem; border-radius: 999px; }
+  .btn-outline-secondary { --bs-btn-color: #fff; --bs-btn-border-color: #424343; }
+}
+@keyframes sigro-izar { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
+@media (prefers-reduced-motion: reduce) { .sigro-capa .grua svg { animation: none; } }
+
+// el esqueleto del ticket: misma forma, en el gris de la tarjeta, sin muescas ni color
+.sigro-ticket.sigro-ticket-esqueleto { --sigro-ticket: var(--sigro-tarjeta) !important; color: var(--bs-secondary-color); min-height: 9rem; }
+
+// ── Modales, menús desplegables, globos y avisos flotantes con la misma piel ──
+.modal { --bs-modal-bg: var(--sigro-tarjeta); --bs-modal-border-width: 0; --bs-modal-border-radius: 1.75rem; --bs-modal-inner-border-radius: 1.75rem; --bs-modal-header-border-color: var(--bs-border-color); --bs-modal-footer-border-color: var(--bs-border-color); --bs-modal-padding: 1.5rem; --bs-modal-header-padding: 1.25rem 1.5rem; }
+.modal-title { font-weight: 600; }
+.modal-backdrop { --bs-backdrop-opacity: 0.65; }
+.dropdown-menu { --bs-dropdown-bg: var(--sigro-tarjeta); --bs-dropdown-border-color: var(--bs-border-color); --bs-dropdown-border-radius: 1rem; --bs-dropdown-link-active-bg: #fad85d; --bs-dropdown-link-active-color: #161717; --bs-dropdown-link-hover-bg: var(--bs-tertiary-bg); padding: 0.4rem; }
+.dropdown-item { border-radius: 0.6rem; }
+.popover { --bs-popover-bg: var(--sigro-tarjeta); --bs-popover-border-color: var(--bs-border-color); --bs-popover-border-radius: 1rem; --bs-popover-header-bg: var(--sigro-tarjeta); }
+.toast { --bs-toast-border-radius: 1rem; --bs-toast-border-color: var(--bs-border-color); --bs-toast-header-bg: transparent; box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35); }
+.nav-tabs { --bs-nav-tabs-border-color: var(--bs-border-color); --bs-nav-tabs-link-active-bg: var(--sigro-tarjeta); --bs-nav-tabs-link-active-border-color: var(--bs-border-color) var(--bs-border-color) var(--sigro-tarjeta); --bs-nav-tabs-border-radius: 0.9rem; }
+.nav-tabs .nav-link { color: var(--bs-secondary-color); font-weight: 500; }
+.nav-tabs .nav-link.active { color: var(--bs-body-color); box-shadow: inset 0 -3px 0 #fad85d; }
+
+// ── Estado vacío: la ilustración en un círculo suave sobre el texto ──
+.sigro-vacio .dibujo {
+  display: inline-flex; align-items: center; justify-content: center; width: 7rem; height: 7rem; border-radius: 50%;
+  background: var(--bs-tertiary-bg);
 }
 
 // ── Ingresar ──

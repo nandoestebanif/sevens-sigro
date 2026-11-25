@@ -1,7 +1,7 @@
 /* Menú lateral en acordeón y modo compacto por alto útil. */
 import { describe, expect, it } from 'vitest'
 import { CORTE_BAJO, tipoDeAlto } from './escala'
-import { alternarGrupo, grupoDeRuta } from './menu'
+import { alternarGrupo, grupoDeRuta, iniciales } from './menu'
 
 const grupos = [
   { rotulo: 'Preparar la obra', items: [{ ruta: '/obra' }, { ruta: '/importar' }] },
@@ -29,5 +29,16 @@ describe('alto útil', () => {
     expect(tipoDeAlto(768, '100')).toBe('normal') // 768
     expect(tipoDeAlto(1080, '125')).toBe('normal') // 864
     expect(tipoDeAlto(CORTE_BAJO - 1, '100')).toBe('bajo')
+  })
+})
+
+describe('avatar del menú', () => {
+  it('toma la inicial de las dos primeras palabras, en mayúscula', () => {
+    expect(iniciales('Adiel Luján')).toBe('AL')
+    expect(iniciales('  víctor   hugo ramos ')).toBe('VH')
+    expect(iniciales('Pool')).toBe('P')
+  })
+  it('un nombre vacío no rompe el avatar', () => {
+    expect(iniciales('   ')).toBe('')
   })
 })

@@ -16,9 +16,20 @@ import {
 } from 'chart.js'
 import { useEffect, useState } from 'react'
 import { Bar, Doughnut, Line } from 'react-chartjs-2'
+import { MARCA, PALETA } from '../estilos/paleta'
 
 // Chart.js es modular: se registra solo lo que se usa (así el paquete pesa menos).
 ChartJS.register(ArcElement, BarElement, CategoryScale, LinearScale, LineElement, PointElement, Filler, Legend, Tooltip)
+
+// Rediseño 24/11: la misma letra de la web, barras redondeadas y un globo de ayuda oscuro en los dos modos.
+ChartJS.defaults.font.family = 'Poppins, system-ui, sans-serif'
+ChartJS.defaults.font.size = 12
+ChartJS.defaults.elements.bar.borderRadius = 8
+ChartJS.defaults.datasets.bar.maxBarThickness = 44
+Object.assign(ChartJS.defaults.plugins.tooltip, {
+  backgroundColor: MARCA.negro, titleColor: '#ffffff', bodyColor: '#d2d3d3', padding: 12, cornerRadius: 12, boxPadding: 6,
+  borderColor: '#3d3e3e', borderWidth: 1,
+})
 
 const soles = (v: number) => `${v < 0 ? "−" : ""}S/ ${Math.abs(v).toLocaleString("es-PE", { maximumFractionDigits: 0 })}`
 
@@ -30,7 +41,7 @@ function useColoresTema() {
       texto: css.getPropertyValue('--bs-body-color').trim() || '#212529',
       secundario: css.getPropertyValue('--bs-secondary-color').trim() || '#6c757d',
       rejilla: css.getPropertyValue('--bs-border-color-translucent').trim() || 'rgba(0,0,0,.1)',
-      primario: css.getPropertyValue('--bs-primary').trim() || '#c2410c',
+      primario: css.getPropertyValue('--bs-primary').trim() || MARCA.amarillo,
     }
   }
   const [c, setC] = useState(leer)
@@ -58,8 +69,8 @@ function base(c: ReturnType<typeof useColoresTema>): ChartOptions<'bar' | 'line'
       tooltip: { callbacks: { label: (x) => `${x.dataset.label}: ${soles(Number(x.parsed.y))}` } },
     },
     scales: {
-      x: { ticks: { color: c.secundario }, grid: { color: c.rejilla } },
-      y: { ticks: { color: c.secundario, callback: (v) => soles(Number(v)) }, grid: { color: c.rejilla }, beginAtZero: true },
+      x: { ticks: { color: c.secundario }, grid: { display: false }, border: { color: c.rejilla } },
+      y: { ticks: { color: c.secundario, callback: (v) => soles(Number(v)) }, grid: { color: c.rejilla }, border: { display: false }, beginAtZero: true },
     },
   }
 }
@@ -100,16 +111,16 @@ export function GraficoCurva({ planificado, gastado, semana, semanasTotales }: {
       <Line
         options={{
           ...(base(c) as ChartOptions<'line'>),
-          scales: { ...(base(c).scales as object), x: { ticks: { color: c.secundario, maxTicksLimit: 13 }, grid: { color: c.rejilla }, title: { display: true, text: 'semana', color: c.secundario } } },
+          scales: { ...(base(c).scales as object), x: { ticks: { color: c.secundario, maxTicksLimit: 13 }, grid: { display: false }, title: { display: true, text: 'semana', color: c.secundario } } },
         }}
         data={{
           labels: semanas.map(String),
           datasets: [
-            { label: 'Esperado (lineal en el plazo)', data: esperado, borderColor: c.secundario, borderDash: [6, 4], pointRadius: 0, fill: false },
+            { label: 'Esperado (lineal en el plazo)', data: esperado, borderColor: PALETA.menta, borderWidth: 2, borderDash: [6, 5], pointRadius: 0, fill: false },
             {
               label: `Gastado hoy (semana ${semana})`,
               data: semanas.map((s) => (s === semana ? gastado : null)),
-              borderColor: c.primario, backgroundColor: c.primario, pointRadius: 7, pointHoverRadius: 9, showLine: false,
+              borderColor: '#ffffff', backgroundColor: PALETA.violeta, borderWidth: 3, pointRadius: 9, pointHoverRadius: 11, showLine: false,
             },
           ],
         }}
@@ -121,7 +132,7 @@ export function GraficoCurva({ planificado, gastado, semana, semanasTotales }: {
 /** Dona: reparto de un total (p. ej. el inventario valorizado por almacén, HU-56). */
 export function GraficoReparto({ partes }: { partes: { etiqueta: string; valor: number }[] }) {
   const c = useColoresTema()
-  const paleta = [c.primario, '#0369a1', '#4d7c0f', '#7c3aed', '#b45309', '#0f766e']
+  const paleta = [PALETA.violeta, PALETA.menta, PALETA.amarillo, PALETA.rosa, PALETA.lila, PALETA.naranja]
   return (
     <div style={{ height: 240 }} role="img" aria-label={partes.map((p) => `${p.etiqueta}: ${soles(p.valor)}`).join('; ')}>
       <Doughnut
@@ -134,7 +145,7 @@ export function GraficoReparto({ partes }: { partes: { etiqueta: string; valor: 
         }}
         data={{
           labels: partes.map((p) => p.etiqueta),
-          datasets: [{ data: partes.map((p) => p.valor), backgroundColor: partes.map((_, i) => paleta[i % paleta.length]), borderWidth: 0 }],
+          datasets: [{ data: partes.map((p) => p.valor), backgroundColor: partes.map((_, i) => paleta[i % paleta.length]), borderWidth: 0, borderRadius: 6, spacing: 3 }],
         }}
       />
     </div>
@@ -153,9 +164,9 @@ export function GraficoFlujo({ familias }: { familias: FlujoFamilia[] }) {
         data={{
           labels: familias.map((f) => f.etiqueta),
           datasets: [
-            { label: 'Recibido', data: familias.map((f) => f.recibido), backgroundColor: resolver('var(--bs-info)') },
-            { label: 'Consumido', data: familias.map((f) => f.consumido), backgroundColor: c.primario },
-            { label: 'En stock', data: familias.map((f) => f.enStock), backgroundColor: resolver('var(--bs-success)') },
+            { label: 'Recibido', data: familias.map((f) => f.recibido), backgroundColor: PALETA.violeta },
+            { label: 'Consumido', data: familias.map((f) => f.consumido), backgroundColor: PALETA.menta },
+            { label: 'En stock', data: familias.map((f) => f.enStock), backgroundColor: PALETA.amarillo },
           ],
         }}
       />
@@ -194,7 +205,7 @@ export function GraficoDesvios({ insumos, cuantos = 8 }: { insumos: DesvioInsumo
           datasets: [{
             label: 'Desviación (S/)',
             data: top.map((i) => i.importe),
-            backgroundColor: top.map((i) => resolver(i.importe > 0 ? 'var(--bs-danger)' : 'var(--bs-success)')),
+            backgroundColor: top.map((i) => (i.importe > 0 ? PALETA.rojo : PALETA.menta)),
           }],
         }}
       />
