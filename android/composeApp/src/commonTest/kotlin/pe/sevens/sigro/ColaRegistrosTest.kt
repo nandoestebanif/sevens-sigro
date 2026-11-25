@@ -56,8 +56,8 @@ private class RegistrosEnMemoria : RegistroDao {
         filas.value = filas.value + r
     }
     override fun observarDeObra(obraId: Int) = filas.map { l -> l.filter { it.obraId == obraId } }
-    override suspend fun pendientes(tipos: List<String>) =
-        filas.value.filter { it.estado == "PENDIENTE" && it.tipo in tipos }.sortedBy { it.horaDispositivoMs }
+    override suspend fun pendientes(tipos: List<String>, maxIntentos: Int) =
+        filas.value.filter { it.estado == "PENDIENTE" && it.intentos < maxIntentos && it.tipo in tipos }.sortedBy { it.horaDispositivoMs }
     override fun contarPendientes(tipos: List<String>) = filas.map { l -> l.count { it.estado == "PENDIENTE" && it.tipo in tipos } }
     override suspend fun clavesVigentes(obraId: Int, prefijo: String) =
         filas.value.filter { it.obraId == obraId && it.clave?.startsWith(prefijo) == true && it.estado != "RECHAZADO" }.mapNotNull { it.clave }

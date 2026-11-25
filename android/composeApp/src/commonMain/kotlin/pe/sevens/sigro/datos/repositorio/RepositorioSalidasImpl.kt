@@ -8,6 +8,7 @@ import pe.sevens.sigro.datos.local.SalidaDao
 import pe.sevens.sigro.datos.local.SalidaLocalEntity
 import pe.sevens.sigro.datos.remoto.ApiSigro
 import pe.sevens.sigro.datos.remoto.SalidaIn
+import pe.sevens.sigro.dominio.MAX_INTENTOS_AUTOMATICOS
 import pe.sevens.sigro.dominio.ErrorSigro
 import pe.sevens.sigro.dominio.EstadoEnvio
 import pe.sevens.sigro.dominio.Insumo
@@ -67,8 +68,9 @@ class RepositorioSalidasImpl(
         return aDominio(fila)
     }
 
-    override suspend fun sincronizar(): ResultadoSincronizacion = unaALaVez.withLock {
-        val cola = salidas.pendientes()
+    override suspend fun sincronizar(manual: Boolean): ResultadoSincronizacion = unaALaVez.withLock {
+        // reintento acotado: el automático no vuelve a probar los que agotaron sus intentos; el manual sí
+        val cola = salidas.pendientes(if (manual) Int.MAX_VALUE else MAX_INTENTOS_AUTOMATICOS)
         if (cola.isEmpty()) return@withLock ResultadoSincronizacion(0, 0, 0)
         val servidor = cred.servidor()
         if (servidor == null || !cred.haySesion()) {

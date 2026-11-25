@@ -48,7 +48,7 @@ interface RepositorioRegistros {
     /** Registros de almacén: se guardan con su uuid; se envían los que ya tienen servicio (hoy, la entrada). */
     suspend fun registrarAlmacen(obraId: Int, registro: RegistroAlmacen): RegistroLocal
     /** Envía lo que tiene servicio. Seguro de repetir: el uuid hace idempotente cada envío. */
-    suspend fun sincronizar(): ResultadoSincronizacion
+    suspend fun sincronizar(manual: Boolean = false): ResultadoSincronizacion
 }
 
 /** Lo que guardan las pantallas de almacén. El cuerpo sigue el contrato propuesto (api/docs/propuestas). */
