@@ -93,6 +93,7 @@ import pe.sevens.sigro.ui.componentes.planoSalida
 import pe.sevens.sigro.ui.componentes.svg
 import pe.sevens.sigro.ui.componentes.vidrio
 import pe.sevens.sigro.ui.tema.Paleta
+import pe.sevens.sigro.dominio.casosdeuso.RegistrarSalida
 
 /* HU-40 · Registrar salida de material + HU-37 · sin conexión. */
 
@@ -126,6 +127,7 @@ class SalidaViewModel(
     private val stock: RepositorioStock? = null,
     private val trabajadores: RepositorioTrabajadores? = null,
 ) : ViewModel() {
+    private val registrarSalida = RegistrarSalida(salidas, programador)
     private val _e = MutableStateFlow(EstadoSalida())
     val estado = _e.asStateFlow()
     private var busquedaJob: Job? = null
@@ -193,8 +195,8 @@ class SalidaViewModel(
         if (errores.isNotEmpty()) { _e.update { it.copy(errores = errores) }; return }
         _e.update { it.copy(guardando = true) }
         viewModelScope.launch {
-            salidas.registrar(NuevaSalida(obraId, s.insumo!!, s.cantidad, s.motivo, s.quienRetira, s.frente, alm.elegido?.id))
-            programador.programar() // si hay señal se envía ya; si no, cuando vuelva
+            // caso de uso: guarda en el celular y pide la sincronización (si hay señal se envía ya; si no, cuando vuelva)
+            registrarSalida(NuevaSalida(obraId, s.insumo!!, s.cantidad, s.motivo, s.quienRetira, s.frente, alm.elegido?.id))
             _e.update { it.copy(guardando = false, guardada = true) }
         }
     }

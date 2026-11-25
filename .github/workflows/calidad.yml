@@ -1,0 +1,80 @@
+# Calidad · SonarCloud (rúbrica de Móviles: calidad del código y cobertura)
+# Dos proyectos: la app (android/) y el servicio (api/). Cada uno sube su cobertura real:
+#   app  → Kover (pruebas de commonTest)        servicio → pytest-cov (pruebas contra PostgreSQL 16 real)
+# Necesita el secreto SONAR_TOKEN (SonarCloud → My Account → Security). Sin él, el flujo se salta solo.
+name: calidad
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  app:
+    runs-on: ubuntu-latest
+    env:
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+        if: env.SONAR_TOKEN != ''
+        with:
+          fetch-depth: 0          # Sonar necesita la historia para «código nuevo»
+      - uses: actions/setup-java@v4
+        if: env.SONAR_TOKEN != ''
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: gradle/actions/setup-gradle@v4
+        if: env.SONAR_TOKEN != ''
+      - name: Pruebas y cobertura (Kover)
+        if: env.SONAR_TOKEN != ''
+        working-directory: android
+        run: ./gradlew :composeApp:testDebugUnitTest :composeApp:koverXmlReportDebug
+      - name: Análisis SonarCloud de la app
+        if: env.SONAR_TOKEN != ''
+        uses: SonarSource/sonarqube-scan-action@v5
+        with:
+          projectBaseDir: android
+
+  servicio:
+    runs-on: ubuntu-latest
+    env:
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+      SIGRO_TEST_SERVIDOR: sigro_owner:sigro_owner_dev@localhost:5432
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: sigro_owner
+          POSTGRES_PASSWORD: sigro_owner_dev
+          POSTGRES_DB: postgres
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U sigro_owner"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+        if: env.SONAR_TOKEN != ''
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        if: env.SONAR_TOKEN != ''
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: api/requirements-dev.txt
+      - name: Pruebas y cobertura (pytest-cov)
+        if: env.SONAR_TOKEN != ''
+        working-directory: api
+        run: |
+          pip install -r requirements-dev.txt
+          python -m pytest -q -p no:cacheprovider --cov --cov-report=xml
+      - name: Análisis SonarCloud del servicio
+        if: env.SONAR_TOKEN != ''
+        uses: SonarSource/sonarqube-scan-action@v5
+        with:
+          projectBaseDir: api

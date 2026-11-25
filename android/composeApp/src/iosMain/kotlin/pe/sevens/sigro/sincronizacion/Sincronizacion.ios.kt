@@ -7,6 +7,7 @@ import kotlinx.coroutines.launch
 import pe.sevens.sigro.dominio.ProgramadorSincronizacion
 import pe.sevens.sigro.dominio.RepositorioRegistros
 import pe.sevens.sigro.dominio.RepositorioSalidas
+import pe.sevens.sigro.dominio.casosdeuso.SincronizarCola
 
 /**
  * HU-38 en iOS. Hoy: intenta enviar al registrar, al abrir la app y con «Enviar ahora».
@@ -20,6 +21,6 @@ class ProgramadorIos(
 ) : ProgramadorSincronizacion {
     private val ambito = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     override fun programar() {
-        ambito.launch { runCatching { salidas.sincronizar() }; runCatching { registros.sincronizar() } }
+        ambito.launch { SincronizarCola(salidas, registros)() }
     }
 }

@@ -22,6 +22,8 @@ import pe.sevens.sigro.dominio.EstadoEnvio
 import pe.sevens.sigro.dominio.Insumo
 import pe.sevens.sigro.dominio.NuevaSalida
 import kotlin.test.Test
+import pe.sevens.sigro.dominio.MAX_INTENTOS_AUTOMATICOS
+import pe.sevens.sigro.dominio.intentosAgotados
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertNotNull
@@ -48,7 +50,7 @@ private class SalidasEnMemoria : SalidaDao {
         filas.value = filas.value + s
     }
     override fun observarDeObra(obraId: Int) = filas.map { l -> l.filter { it.obraId == obraId } }
-    override suspend fun pendientes() = filas.value.filter { it.estado == "PENDIENTE" }.sortedBy { it.horaDispositivoMs }
+    override suspend fun pendientes(maxIntentos: Int) = filas.value.filter { it.estado == "PENDIENTE" && it.intentos < maxIntentos }.sortedBy { it.horaDispositivoMs }
     override fun contarPendientes() = filas.map { l -> l.count { it.estado == "PENDIENTE" } }
     override suspend fun marcar(uuid: String, estado: String, motivoRechazo: String?, nota: String?, ahora: Long) {
         filas.value = filas.value.map {
@@ -160,5 +162,24 @@ class SincronizacionTest {
         val s = e.repo.registrar(nueva())
         e.repo.sincronizar()
         assertEquals("ENVIADO", e.salidas.una(s.uuidCliente).estado)
+    }
+
+    /** Reintento acotado: tras MAX_INTENTOS_AUTOMATICOS fallas por señal, el envío automático deja de probar. */
+    @Test
+    fun elAutomaticoDejaDeIntentarAlAgotarseYElManualReintenta() = runTest {
+        val e = Escenario { null } // siempre sin señal
+        val s = e.repo.registrar(nueva())
+        repeat(MAX_INTENTOS_AUTOMATICOS) { e.repo.sincronizar() }
+        assertEquals(MAX_INTENTOS_AUTOMATICOS, e.salidas.una(s.uuidCliente).intentos)
+        assertTrue(intentosAgotados(EstadoEnvio.PENDIENTE, e.salidas.una(s.uuidCliente).intentos), "se marca como no enviada")
+
+        val llamadas = e.cuerpos.size
+        e.repo.sincronizar()                                    // automático: ya no la intenta
+        assertEquals(llamadas, e.cuerpos.size, "el automático no vuelve a llamar al servidor")
+
+        e.responder = { HttpStatusCode.Created to "{}" }       // vuelve la señal
+        val r = e.repo.sincronizar(manual = true)              // «Enviar ahora»
+        assertEquals(1, r.enviados)
+        assertEquals("ENVIADO", e.salidas.una(s.uuidCliente).estado, "no se perdió: se envió con el mismo uuid")
     }
 }

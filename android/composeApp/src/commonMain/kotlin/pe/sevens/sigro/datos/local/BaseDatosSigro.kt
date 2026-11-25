@@ -133,8 +133,9 @@ interface SalidaDao {
     @Query("SELECT * FROM salida_local WHERE obraId = :obraId ORDER BY horaDispositivoMs DESC")
     fun observarDeObra(obraId: Int): Flow<List<SalidaLocalEntity>>
 
-    @Query("SELECT * FROM salida_local WHERE estado = 'PENDIENTE' ORDER BY horaDispositivoMs")
-    suspend fun pendientes(): List<SalidaLocalEntity>
+    /** `maxIntentos`: el envío automático deja fuera los que ya agotaron sus intentos. */
+    @Query("SELECT * FROM salida_local WHERE estado = 'PENDIENTE' AND intentos < :maxIntentos ORDER BY horaDispositivoMs")
+    suspend fun pendientes(maxIntentos: Int = Int.MAX_VALUE): List<SalidaLocalEntity>
 
     @Query("SELECT COUNT(*) FROM salida_local WHERE estado = 'PENDIENTE'")
     fun contarPendientes(): Flow<Int>
@@ -170,8 +171,8 @@ interface RegistroDao {
     @Query("SELECT * FROM registro_local WHERE obraId = :obraId ORDER BY horaDispositivoMs DESC")
     fun observarDeObra(obraId: Int): Flow<List<RegistroLocalEntity>>
 
-    @Query("SELECT * FROM registro_local WHERE estado = 'PENDIENTE' AND tipo IN (:tipos) ORDER BY horaDispositivoMs")
-    suspend fun pendientes(tipos: List<String>): List<RegistroLocalEntity>
+    @Query("SELECT * FROM registro_local WHERE estado = 'PENDIENTE' AND tipo IN (:tipos) AND intentos < :maxIntentos ORDER BY horaDispositivoMs")
+    suspend fun pendientes(tipos: List<String>, maxIntentos: Int = Int.MAX_VALUE): List<RegistroLocalEntity>
 
     @Query("SELECT COUNT(*) FROM registro_local WHERE estado = 'PENDIENTE' AND tipo IN (:tipos)")
     fun contarPendientes(tipos: List<String>): Flow<Int>
