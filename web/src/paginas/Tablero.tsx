@@ -139,14 +139,14 @@ export function Tablero() {
           </Vidrio>
   
           <div className="d-flex flex-wrap gap-3">
-            <Kpi ayuda="planificado" rotulo="Planificado en recursos" prefijo="S/" valor={soles(planificado)} pie="Materiales, herramientas y horas hombre del S10" />
-            <Kpi rotulo="Gastado a la fecha" prefijo="S/" valor={soles(r.gastoTotal)} pie={`${pct1(gastoPct)} % de lo planificado`} />
+            <Kpi ilustracion="factura" ayuda="planificado" rotulo="Planificado en recursos" prefijo="S/" valor={soles(planificado)} pie="Materiales, herramientas y horas hombre del S10" />
+            <Kpi ilustracion="cemento" rotulo="Gastado a la fecha" prefijo="S/" valor={soles(r.gastoTotal)} pie={`${pct1(gastoPct)} % de lo planificado`} />
             <Kpi
-              ayuda="desviación"
+              ilustracion="casco" ayuda="desviación"
               rotulo="Desviación del gasto" valor={pts(desvioGlobal)} color={colorDesvio(desvioGlobal)}
               pie={`Gasto ${pct1(gastoPct)} % frente a ${pct1(r.avancePlazoPct)} % del plazo`}
             />
-            <Kpi ayuda="avance del plazo" rotulo="Avance del plazo" valor={`${pct1(r.avancePlazoPct)} %`} pie={`semana ${r.semana} de ${r.semanasTotales}`} />
+            <Kpi ilustracion="calendario" ayuda="avance del plazo" rotulo="Avance del plazo" valor={`${pct1(r.avancePlazoPct)} %`} pie={`semana ${r.semana} de ${r.semanasTotales}`} />
           </div>
           </>
         )}
