@@ -1,5 +1,6 @@
 package pe.sevens.sigro.ui.pantallas
 
+import pe.sevens.sigro.dominio.ValidacionEnVivo
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -110,6 +111,8 @@ data class EstadoEntrada(
     val llegoTodo: Boolean = true,
     val recibido: Map<Int, String> = emptyMap(),
     val errores: Map<Int, String> = emptyMap(),
+    /** Líneas ya revisadas que están bien (✓), de la validación en vivo. */
+    val correctos: Set<Int> = emptySet(),
     val guardando: Boolean = false,
     val guardada: Boolean = false,
     /** HU-36: consultando al servidor si se pasa lo requerido. */
@@ -156,8 +159,21 @@ class EntradaViewModel(
      * Al elegir la compra se pide lo pendiente al servidor y se propone «llegó todo» (lo recibido = lo
      * pendiente). Sin señal se puede igual registrar «llegó todo»; recibir una parte espera a tener señal.
      */
+    /**
+     * Validación en vivo de cada línea («solo quedan N por recibir» al escribir). Las claves negativas (toda la
+     * entrada, el motivo) no son de una línea: se conservan tal cual.
+     */
+    private val enVivo = ValidacionEnVivo(
+        viewModelScope,
+        validar = { _e.value.let { s -> s.compra?.let { c -> validarRecepcion(c, s.recibido).filterKeys { it >= 0 } } ?: emptyMap() } },
+        publicar = { r -> _e.update { it.copy(errores = it.errores.filterKeys { k -> k < 0 } + r.errores, correctos = r.correctos) } },
+    )
+
+    fun salirDe(linea: Int) = enVivo.salir(linea)
+
     fun elegir(obraId: Int, c: CompraParaRecibir) {
         _e.update { it.copy(compra = c, consultando = true, llegoTodo = true, recibido = proponer(c, true), errores = emptyMap()) }
+        enVivo.reiniciar()
         viewModelScope.launch {
             val conPendientes = try { obra.conPendientes(obraId, c) } catch (x: ErrorSigro) { null }
             _e.update { s ->
@@ -168,7 +184,7 @@ class EntradaViewModel(
         }
     }
 
-    fun cambiarCompra() = _e.update { it.copy(compra = null, consultando = false, recibido = emptyMap(), errores = emptyMap()).sinExceso() }
+    fun cambiarCompra() { _e.update { it.copy(compra = null, consultando = false, recibido = emptyMap(), errores = emptyMap()).sinExceso() }; enVivo.reiniciar() }
 
     fun elegirAlmacen(obraId: Int, a: AlmacenObra) {
         almacen.elegir(obraId, a)
@@ -180,10 +196,13 @@ class EntradaViewModel(
         if (s.llegoTodo && !s.puedeParcial) return@update s // sin el pendiente del servidor no se puede partir
         val todo = !s.llegoTodo
         s.copy(llegoTodo = todo, recibido = proponer(c, todo), errores = emptyMap()).sinExceso()
-    }
+    }.also { enVivo.reiniciar() }
 
     /** Cambiar una cantidad obliga a volver a preguntar al servidor (el aviso anterior ya no vale). */
-    fun recibido(i: Int, v: String) = _e.update { it.copy(recibido = it.recibido + (i to v), errores = it.errores - i - (-1)).sinExceso() }
+    fun recibido(i: Int, v: String) {
+        _e.update { it.copy(recibido = it.recibido + (i to v), errores = it.errores - (-1)).sinExceso() }
+        enVivo.cambio(i)
+    }
 
     fun motivo(m: MotivoExceso) = _e.update { it.copy(motivo = m, errores = it.errores - ERROR_MOTIVO) }
     fun motivoDetalle(v: String) = _e.update { it.copy(motivoDetalle = v, errores = it.errores - ERROR_MOTIVO) }
@@ -198,7 +217,7 @@ class EntradaViewModel(
         if (!c.conPendientes) return@update s.copy(errores = s.errores + (-1 to "Para recibir solo una parte hace falta señal."))
         val base = if (s.llegoTodo) proponer(c, true) else s.recibido
         s.copy(llegoTodo = false, recibido = base + ExcesoRequerido.hastaLoRequerido(c.lineas, base, v), errores = emptyMap()).sinExceso()
-    }
+    }.also { enVivo.revisarYa() }
 
     fun guardar(obraId: Int) {
         val s = _e.value
@@ -209,7 +228,7 @@ class EntradaViewModel(
             almacen.estado.value.falta -> mapOf(-1 to "Elige a qué almacén entra")
             else -> validarRecepcion(c, s.recibido)
         }
-        if (errores.isNotEmpty()) { _e.update { it.copy(errores = errores) }; return }
+        if (errores.isNotEmpty()) { enVivo.alGuardar(); _e.update { it.copy(errores = errores) }; return }
         val lineas = c.lineas.mapIndexedNotNull { i, l ->
             val v = s.recibido[i].orEmpty()
             if ((ValidarSalida.normalizarCantidad(v).toDoubleOrNull() ?: 0.0) > 0.0) l to v else null
@@ -395,7 +414,10 @@ fun PantallaEntrada(obraId: Int, alVolver: () -> Unit, vm: EntradaViewModel = ko
                     if (e.llegoTodo) {
                         Text("Recibido: ${Texto.cantidadConUnidad(e.recibido[i].orEmpty(), l.unidad)}", fontSize = 15.sp, color = Paleta.Tinta)
                     } else {
-                        CampoVidrio(e.recibido[i].orEmpty(), { vm.recibido(i, it) }, "Recibido", teclado = KeyboardType.Decimal, sufijo = Texto.unidad(l.unidad), error = e.errores[i])
+                        CampoVidrio(
+                            e.recibido[i].orEmpty(), { vm.recibido(i, it) }, "Recibido", teclado = KeyboardType.Decimal, sufijo = Texto.unidad(l.unidad),
+                            error = e.errores[i], alSalir = { vm.salirDe(i) }, correcto = i in e.correctos,
+                        )
                     }
                 }
             }
