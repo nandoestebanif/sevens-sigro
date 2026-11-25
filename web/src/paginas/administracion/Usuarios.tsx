@@ -2,6 +2,7 @@
    servidor) y baja: nada se borra (regla 10), la persona queda «de baja» y pierde el acceso al instante. */
 import { AccionesFila, TablaDatos } from '../../ui/TablaDatos'
 import { useState } from 'react'
+import { useEnVivo } from '../../formularios/enVivo'
 import { ErrorApi } from '../../api/error'
 import { administracion, type Usuario } from '../../api/administracion'
 import { Boton, Campo, Chip, Modal, Tarjeta } from '../../ui/base'
@@ -87,14 +88,20 @@ function AltaUsuario({ enCerrar, enCreado }: { enCerrar: () => void; enCreado: (
   const [nombre, setNombre] = useState('')
   const [usuario, setUsuario] = useState('')
   const [clave, setClave] = useState('')
+  // errores del servidor (p. ej. usuario repetido): van bajo su campo hasta que se vuelva a escribir en él
   const [errores, setErrores] = useState<Record<string, string>>({})
   const [general, setGeneral] = useState<string | null>(null)
   const [ocupado, setOcupado] = useState(false)
+  // validación en vivo con las mismas reglas del alta (la clave, con la regla del servidor)
+  const v = useEnVivo<'nombre' | 'usuario' | 'clave'>(validarAltaUsuario({ nombre, usuario, clave }))
+  const error = (k: 'nombre' | 'usuario' | 'clave') => errores[k] || v.errores[k] || undefined
+  const escribir = (k: 'nombre' | 'usuario' | 'clave', poner: (x: string) => void) => (x: string) => {
+    poner(x); v.cambio(k); setErrores((e) => ({ ...e, [k]: '' }))
+  }
 
   const guardar = async () => {
-    const e = validarAltaUsuario({ nombre, usuario, clave })
-    setErrores(e); setGeneral(null)
-    if (Object.keys(e).length) return
+    setGeneral(null)
+    if (v.alGuardar()) return
     setOcupado(true)
     try {
       const u = await administracion.crearUsuario({ nombre, usuario, clave })
@@ -112,23 +119,24 @@ function AltaUsuario({ enCerrar, enCreado }: { enCerrar: () => void; enCreado: (
   return (
     <Modal titulo="Registrar usuario" enCerrar={enCerrar}>
       <div className="d-flex flex-column gap-3">
-        <Campo id="alta-nombre" etiqueta="Nombres y apellidos" valor={nombre} enCambio={(v) => { setNombre(v); setErrores((e) => ({ ...e, nombre: '' })) }} autoFoco error={errores.nombre || undefined} />
-        <Campo id="alta-usuario" etiqueta="Usuario para entrar" valor={usuario} marcador="Ej.: jperez" enCambio={(v) => { setUsuario(v); setErrores((e) => ({ ...e, usuario: '' })) }} error={errores.usuario || undefined} />
+        <Campo id="alta-nombre" etiqueta="Nombres y apellidos" valor={nombre} enCambio={escribir('nombre', setNombre)} autoFoco {...v.campo('nombre')} error={error('nombre')} />
+        <Campo id="alta-usuario" etiqueta="Usuario para entrar" valor={usuario} marcador="Ej.: jperez" enCambio={escribir('usuario', setUsuario)} {...v.campo('usuario')} error={error('usuario')} />
         <div className="d-flex flex-column gap-2">
           <label htmlFor="alta-clave" className="small fw-semibold text-body-secondary">Clave temporal</label>
-          <input className="form-control"
+          <input className={`form-control${error('clave') ? ' is-invalid' : v.campo('clave').valido ? ' is-valid' : ''}`}
             id="alta-clave"
             type="password"
             autoComplete="new-password"
             value={clave}
-            onChange={(e) => { setClave(e.target.value); setErrores((x) => ({ ...x, clave: '' })) }}
-            aria-invalid={errores.clave ? true : undefined}
+            onChange={(e) => escribir('clave', setClave)(e.target.value)}
+            onBlur={() => v.salir('clave')}
+            aria-invalid={error('clave') ? true : undefined}
             aria-describedby="alta-clave-ayuda"
 
           />
-          {errores.clave
-            ? <span role="alert" className="small text-danger">{errores.clave}</span>
-            : <span id="alta-clave-ayuda" className="small text-body-secondary">El servidor revisa que sea segura y te dice si no lo es. Entrégala en persona.</span>}
+          {error('clave')
+            ? <span className="small text-danger" aria-live="polite">{error('clave')}</span>
+            : <span id="alta-clave-ayuda" className="small text-body-secondary">Al menos 10 caracteres, con mayúsculas, minúsculas y un número. Entrégala en persona.</span>}
         </div>
         {general && <AvisoError texto={general} />}
         <div className="d-flex gap-2 justify-content-end">
