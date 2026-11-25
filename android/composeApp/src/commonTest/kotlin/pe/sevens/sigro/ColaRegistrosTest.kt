@@ -42,7 +42,7 @@ import kotlin.test.assertTrue
  */
 
 private class AjustesFalsos : AjusteDao {
-    val m = MutableStateFlow(mapOf("servidor" to "http://api.prueba", "token" to "tkn"))
+    val m = MutableStateFlow(mapOf("servidor" to "https://api.prueba", "token" to "tkn"))
     override suspend fun guardar(a: AjusteEntity) { m.value = m.value + (a.clave to a.valor) }
     override suspend fun leer(clave: String) = m.value[clave]
     override fun observar(): Flow<List<AjusteEntity>> = m.map { it.map { (k, v) -> AjusteEntity(k, v) } }

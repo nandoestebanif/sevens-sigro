@@ -26,6 +26,8 @@ from pathlib import Path
 
 from sqlalchemy import create_engine, text
 
+from semillas.entrada import archivo_de_datos, conexion_postgres
+
 
 def leer(ruta: Path) -> list[dict]:
     datos = json.loads(ruta.read_text(encoding="utf-8"))
@@ -78,7 +80,7 @@ def cargar(url: str, insumos: list[tuple[str, str, str]]) -> Counter:
 
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("archivo", type=Path)
+    ap.add_argument("archivo", type=archivo_de_datos)
     ap.add_argument("--dry-run", action="store_true", help="solo cuenta; no escribe")
     ap.add_argument("--url", default=os.environ.get("SIGRO_APP_DATABASE_URL"), help="por defecto SIGRO_APP_DATABASE_URL")
     a = ap.parse_args(argv)
@@ -91,7 +93,12 @@ def main(argv: list[str] | None = None) -> int:
     if not a.url:
         print("Falta la conexión: define SIGRO_APP_DATABASE_URL o usa --url.", file=sys.stderr)
         return 2
-    print(f"Resultado: {dict(cargar(a.url, insumos))}")
+    try:
+        url = conexion_postgres(a.url)
+    except ValueError as e:
+        print(f"Conexión rechazada: {e}.", file=sys.stderr)
+        return 2
+    print(f"Resultado: {dict(cargar(url, insumos))}")
     return 0
 
 

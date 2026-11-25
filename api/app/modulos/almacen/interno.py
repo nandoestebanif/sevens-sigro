@@ -4,9 +4,8 @@ from __future__ import annotations
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, Query
-from sqlalchemy.orm import Session
 
-from app.db import obtener_sesion
+from app.db import SesionPorPeticion
 from app.internos import exigir_servicio
 from app.sql import fila, filas
 
@@ -14,7 +13,7 @@ interno = APIRouter(prefix="/interno", tags=["interno"], dependencies=[Depends(e
 
 
 @interno.get("/obras/{obra_id}/recibido-consumido")
-def recibido_consumido(obra_id: int, s: Session = Depends(obtener_sesion, scope="function")):
+def recibido_consumido(obra_id: int, s: SesionPorPeticion):
     """Por insumo, en la unidad del S10: lo recibido de compras y lo consumido por salidas, netos de sus reversos."""
     return filas(s, """
         SELECT m.insumo_id,
@@ -26,7 +25,7 @@ def recibido_consumido(obra_id: int, s: Session = Depends(obtener_sesion, scope=
 
 
 @interno.get("/obras/{obra_id}/costo-pagado")
-def costo_pagado(obra_id: int, s: Session = Depends(obtener_sesion, scope="function")):
+def costo_pagado(obra_id: int, s: SesionPorPeticion):
     """HU-33: por insumo, el promedio ponderado de lo PAGADO en esta obra, en la unidad del S10 y sin IGV: suma de
     cantidad × costo de los ingresos por compra, entre la cantidad, netos de sus reversos. Solo cuentan las recepciones
     (no los ingresos sin compra ni los traslados): es lo que se pagó a proveedores."""
@@ -39,7 +38,7 @@ def costo_pagado(obra_id: int, s: Session = Depends(obtener_sesion, scope="funct
 
 
 @interno.get("/obras/{obra_id}/saldos-valorizados")
-def saldos_valorizados(obra_id: int, corte: datetime | None = Query(None), s: Session = Depends(obtener_sesion, scope="function")):
+def saldos_valorizados(s: SesionPorPeticion, obra_id: int, corte: datetime | None = Query(None)):
     """HU-56: por almacén e insumo, el saldo y su valor A LA FECHA DE CORTE, reconstruidos del libro (R2): solo cuentan los
     movimientos con `fecha_servidor <= corte`. Valor = Σ sentido × cantidad × costo (cada salida lleva su promedio
     congelado, R4), de modo que valor / cantidad es el costo promedio ponderado vigente en ese instante. Sin `corte`
@@ -67,7 +66,7 @@ def saldos_valorizados(obra_id: int, corte: datetime | None = Query(None), s: Se
 
 
 @interno.get("/obras/{obra_id}/resumen-valorizado")
-def resumen_valorizado(obra_id: int, corte: datetime | None = Query(None), s: Session = Depends(obtener_sesion, scope="function")):
+def resumen_valorizado(s: SesionPorPeticion, obra_id: int, corte: datetime | None = Query(None)):
     """HU-58: recibido, consumido y en stock de la obra A LA FECHA DE CORTE, valorizados desde el libro (sin IGV).
     `recibido` = ingresos (con y sin compra) y `consumido` = salidas, ambos netos de sus reversos (un reverso cuenta como
     el movimiento que corrige); `otros` = traslados entre obras y ajustes de conteo, que también mueven el stock.
@@ -90,7 +89,7 @@ def resumen_valorizado(obra_id: int, corte: datetime | None = Query(None), s: Se
 
 
 @interno.get("/obras/{obra_id}/consumo-por-insumo")
-def consumo_por_insumo(obra_id: int, corte: datetime | None = Query(None), s: Session = Depends(obtener_sesion, scope="function")):
+def consumo_por_insumo(s: SesionPorPeticion, obra_id: int, corte: datetime | None = Query(None)):
     """HU-57: por insumo, lo consumido (salidas, netas de sus reversos) hasta la fecha de corte: cantidad en la unidad del
     S10 e importe al costo promedio congelado en cada salida (R4). Solo insumos con consumo distinto de cero."""
     ahora = datetime.now(timezone.utc)

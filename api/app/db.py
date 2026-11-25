@@ -18,9 +18,11 @@ from __future__ import annotations
 import os
 import time
 from collections.abc import Iterator
+from typing import Annotated
 import threading
 from urllib.parse import urlsplit
 
+from fastapi import Depends
 from sqlalchemy import create_engine, event
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session
@@ -106,3 +108,9 @@ def obtener_sesion() -> Iterator[Session]:
         except BaseException:
             s.rollback()
             raise
+
+
+# Sesión de base para un endpoint. scope="function" (FastAPI ≥ 0.121) cierra la sesión —y hace commit— al terminar
+# la función, ANTES de enviar la respuesta: el cliente nunca recibe un «ok» de algo que después falló al guardarse.
+# Se declara una sola vez aquí y los endpoints la piden con `s: SesionPorPeticion`.
+SesionPorPeticion = Annotated[Session, Depends(obtener_sesion, scope="function")]  # NOSONAR python:S930: el analizador aún no conoce el argumento scope de Depends

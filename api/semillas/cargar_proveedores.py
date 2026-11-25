@@ -22,6 +22,8 @@ from pathlib import Path
 
 from sqlalchemy import create_engine, text
 
+from semillas.entrada import archivo_de_datos, conexion_postgres
+
 from app.modulos.compras.dominio import ruc_valido
 
 FORMATO_DB = re.compile(r"^[0-9A-Za-z-]{4,20}$")     # ck_proveedor_ruc_formato
@@ -76,7 +78,7 @@ def cargar(url: str, proveedores: list[tuple[str, str]]) -> Counter:
 
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("archivo", type=Path)
+    ap.add_argument("archivo", type=archivo_de_datos)
     ap.add_argument("--dry-run", action="store_true", help="solo cuenta; no escribe")
     ap.add_argument("--url", default=os.environ.get("SIGRO_APP_DATABASE_URL"), help="por defecto SIGRO_APP_DATABASE_URL")
     a = ap.parse_args(argv)
@@ -89,7 +91,12 @@ def main(argv: list[str] | None = None) -> int:
     if not a.url:
         print("Falta la conexión: define SIGRO_APP_DATABASE_URL o usa --url.", file=sys.stderr)
         return 2
-    print(f"Resultado: {dict(cargar(a.url, proveedores))}")
+    try:
+        url = conexion_postgres(a.url)
+    except ValueError as e:
+        print(f"Conexión rechazada: {e}.", file=sys.stderr)
+        return 2
+    print(f"Resultado: {dict(cargar(url, proveedores))}")
     return 0
 
 

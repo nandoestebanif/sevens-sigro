@@ -1,6 +1,7 @@
 """Cargador de proveedores y arranque del primer administrador, contra una base real."""
 from __future__ import annotations
 
+import argparse
 import json
 from datetime import date
 
@@ -213,3 +214,26 @@ def test_crear_usuario_por_linea_de_comandos_lee_la_clave_solo_del_entorno(base,
     assert "ya estaba asignado" in capsys.readouterr().out
     with pytest.raises(SystemExit):
         cli.main([*argv[:-2], "--obra", "Multifamiliar Flores", "--clave", "x"])     # no existe opción de clave
+
+
+# ------------------------------------------------------------- entrada de las semillas (Sonar S8706/S8707)
+def test_las_semillas_solo_aceptan_un_json_existente(tmp_path):
+    from semillas.entrada import archivo_de_datos
+
+    bueno = tmp_path / "p.json"
+    bueno.write_text("[]", encoding="utf-8")
+    assert archivo_de_datos(str(bueno)) == bueno.resolve()
+    for malo in (tmp_path / "p.txt", tmp_path / "no-existe.json", tmp_path):
+        if malo.suffix == ".txt":
+            malo.write_text("x", encoding="utf-8")
+        with pytest.raises(argparse.ArgumentTypeError):
+            archivo_de_datos(str(malo))
+
+
+def test_las_semillas_solo_se_conectan_a_postgresql():
+    from semillas.entrada import conexion_postgres
+
+    assert conexion_postgres("postgresql://u:c@h:5432/b").startswith("postgresql+psycopg://u:c@h:5432/b")
+    for mala in ("sqlite:///tmp/x.db", "mysql://u@h/b", "postgresql+psycopg://u@/b", "no es url"):
+        with pytest.raises(ValueError):
+            conexion_postgres(mala)

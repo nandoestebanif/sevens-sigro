@@ -5,9 +5,16 @@ FROM python:3.13-slim
 ARG SERVICIO=obras
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 SIGRO_SERVICIO=${SERVICIO}
 WORKDIR /app
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
-COPY . .
+# requirements.lock: todas las dependencias (también las indirectas) con versión y hash fijos; pip solo instala
+# wheels ya compilados (--only-binary), así ningún paquete ejecuta código de instalación al construir.
+# Se regenera con:  pip-compile --generate-hashes --strip-extras --allow-unsafe -o requirements.lock requirements.txt
+COPY requirements.lock .
+RUN pip install --no-cache-dir --only-binary :all: --require-hashes -r requirements.lock
+# Solo lo que el servicio usa en ejecución: nada de pruebas, .env, semillas con datos del cliente ni archivos sueltos.
+COPY alembic.ini ./
+COPY app ./app
+COPY migraciones ./migraciones
+COPY docs ./docs
 RUN python -m app.servicios.podar "${SERVICIO}"
 # Sin root: ningún servicio necesita permisos de sistema.
 RUN useradd --system --no-create-home sigro && chown -R sigro /app

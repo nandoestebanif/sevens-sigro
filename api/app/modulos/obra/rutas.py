@@ -5,7 +5,7 @@ HU-13 asignar rol · HU-14 asignar usuarios a obras · autorización de disposit
 """
 from __future__ import annotations
 
-from datetime import date, datetime, timedelta, timezone
+from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy import text
@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session
 
 from app import eventos
 from app.config import cargar
-from app.db import obtener_sesion
+from app.db import SesionPorPeticion
 from app.dependencias import Actor, exigir, exigir_en_alguna_obra, usuario_autenticado
 from app.errores import ErrorSigro
 from app.modulos.obra import esquemas as e
@@ -36,7 +36,7 @@ def _obras_de(s: Session, usuario_id: int) -> list[dict]:
 
 # ------------------------------------------------------------------- sesión (HU-12)
 @auth.post("/login", response_model=e.SesionOut)
-def iniciar_sesion(datos: e.LoginIn, s: Session = Depends(obtener_sesion, scope="function")):
+def iniciar_sesion(datos: e.LoginIn, s: SesionPorPeticion):
     cfg = cargar()
     u = fila(s, "SELECT * FROM obra.usuario WHERE lower(usuario) = lower(:n)", n=datos.usuario.strip())
     ahora = datetime.now(timezone.utc)
