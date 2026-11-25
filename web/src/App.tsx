@@ -366,7 +366,7 @@ function Sistema({ preparando = false, nombreObra = '', alTerminar }: {
               {(!rol || ['almacenero', 'residente', 'administrador'].includes(rol)) && (
                 <div className="sigro-llamado">
                   <div className="titulo">¿Llegó una compra?</div>
-                  <NavLink to="/compras" className="btn btn-primary w-100" onClick={() => setMenuAbierto(false)}>+ Registrar compra</NavLink>
+                  <NavLink to="/compras?nueva=1" className="btn btn-primary w-100" onClick={() => setMenuAbierto(false)}>+ Registrar compra</NavLink>
                 </div>
               )}
               {/* perfil abajo, con su botón de salir: el menú entra entero en una laptop (1366×768) sin barra propia */}

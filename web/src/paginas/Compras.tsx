@@ -15,12 +15,14 @@
    Lienzo W6 «Compras» (estilo vidrio): la lista a la izquierda, el registro a la derecha.
    ───────────────────────────────────────────────────────────────────────── */
 import { useEffect, useMemo, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { ErrorApi, api } from '../api/cliente'
 import type { Compra, ComprobanteCompra, EstadoCompra, InsumoCatalogo, LineaCompra, LineaRecepcion, Proveedor, TipoComprobante, VerificacionRecepcion } from '../api/tipos'
 import { Campo, Chip, Modal, Vacio, type TonoChip } from '../ui/base'
-import { Aviso, Chips, Encabezado, Pildora, TituloSeccion } from '../ui/piezas'
+import { Aviso, Chips, Encabezado, Pildora, Segmentado, TituloSeccion, Vidrio } from '../ui/piezas'
+import { AccionesFila, TablaDatos } from '../ui/TablaDatos'
+import { puedo } from '../api/permisos'
 import { BuscarOpcion } from '../ui/BuscarOpcion'
-import { ListGroup } from 'react-bootstrap'
 import { usaApiReal } from '../api/http'
 import { desvioPct, precios, type PrecioReferencia } from '../api/oficina'
 import { AltaProveedor } from './Proveedores'
@@ -308,7 +310,7 @@ function ComprobantesCompra({ compra, enCerrar, enCambio }: {
     <Modal titulo={`Comprobantes · ${compra.numeroComprobante}`} enCerrar={enCerrar}>
       <div className="d-flex flex-column gap-3">
         <p className="small text-body-secondary m-0">
-          {compra.proveedorRazonSocial} · {compra.fecha}. Formatos permitidos: PDF, JPG o PNG (máximo 5 MB).
+          {compra.proveedorRazonSocial} · {compra.fecha}. Formatos permitidos: PDF, JPG o PNG (máximo 10 MB).
         </p>
 
         {compra.estado !== 'anulada' && (
@@ -382,6 +384,12 @@ function ComprobantesCompra({ compra, enCerrar, enCambio }: {
 }
 
 export function Compras() {
+  const puedeRegistrar = puedo('compra.registrar')
+  // «/compras?nueva=1» (atajo del menú) abre directo el formulario
+  const [params, setParams] = useSearchParams()
+  const vista: 'lista' | 'nueva' = params.get('nueva') && puedeRegistrar ? 'nueva' : 'lista'
+  const irA = (v: 'lista' | 'nueva') => setParams(v === 'nueva' ? { nueva: '1' } : {})
+  const [filtro, setFiltro] = useState<'vigentes' | 'por_recibir' | 'anuladas' | 'todas'>('vigentes')
   const [proveedores, setProveedores] = useState<Proveedor[]>([])
   const [insumos, setInsumos] = useState<InsumoCatalogo[]>([])
   const [compras, setCompras] = useState<Compra[]>([])
@@ -482,6 +490,7 @@ export function Compras() {
         }
       }
       setExito(compra)
+      irA('lista')
       avisar(`Compra ${compra.numeroComprobante} registrada. El stock no se movió: se moverá con la recepción, desde la app.`)
       setLineas([])
       setNumero('')
@@ -500,15 +509,23 @@ export function Compras() {
     <div className="d-flex flex-column gap-3 pb-4">
       <Encabezado
         titulo="Compras"
-        sub="Lo que el residente compra a sus proveedores · la compra no mueve el stock: lo mueve la recepción en almacén"
+        sub="La compra no mueve el stock: lo mueve la recepción en el almacén."
       />
 
       <Chips>
         <Chip tono="info">Compras y recepciones: las del ambiente de pruebas · insumos del S10 real</Chip>
         <Chip tono="marca">Proveedores: los reales del cliente</Chip>
+        <Chip tono="neutro">Una compra no se edita: se anula con motivo y sigue en la lista</Chip>
+        <Chip tono="neutro">El IGV se guarda aparte porque no es costo del insumo (NIC 2)</Chip>
+        <Chip tono="neutro">Una compra admite varias recepciones hasta completar lo comprado</Chip>
       </Chips>
 
-      <div className="d-flex flex-wrap gap-3 align-items-start">
+      {puedeRegistrar && (
+        <Segmentado etiqueta="Compras" pestanas valor={vista} enCambio={irA}
+          opciones={[{ valor: 'lista', texto: `Compras registradas${compras.length ? ` · ${compras.length}` : ''}` }, { valor: 'nueva', texto: 'Registrar compra' }]} />
+      )}
+
+      {vista === 'nueva' && (
         <section className="card card-body shadow d-flex flex-column gap-3 min-w-0 rounded-3 py-3 px-4" aria-label="Registrar la compra"  style={{ flex: '999 1 560px', boxShadow: 'var(--vidrio-sombra-alta)' }}>
           <div className="d-flex flex-column gap-1">
             <TituloSeccion>Registrar la compra</TituloSeccion>
@@ -637,7 +654,7 @@ export function Compras() {
           </div>
 
           <label className="d-flex flex-column gap-2 small fw-semibold text-body-secondary">
-            Comprobante digital (PDF, JPG o PNG, opcional — máx. 5 MB)
+            Comprobante digital (PDF, JPG o PNG, opcional — máx. 10 MB)
             <input
               key={inputArchivoClave}
               id="c-archivo"
@@ -661,57 +678,54 @@ export function Compras() {
           </span>
         </section>
 
-        {/* lo principal es registrar; las compras ya registradas van al costado, compactas, para recibirlas */}
-        <aside className="card card-body shadow-sm d-flex flex-column gap-2 min-w-0 rounded-3 py-3 px-3" aria-label="Compras registradas"  style={{ flex: '1 1 340px' }}>
-          <div className="d-flex flex-column gap-1">
-            <TituloSeccion>Compras registradas{compras.length ? ` · ${compras.length}` : ''}</TituloSeccion>
-            <span className="small text-body-secondary">una compra admite varias recepciones hasta completar lo comprado</span>
-          </div>
-          {compras.length === 0 ? (
-            <Vacio titulo="Todavía no hay compras" detalle="Las que registres aparecerán aquí con su estado de recepción." />
-          ) : (
-            <ListGroup variant="flush">
-              {compras.map((c) => {
+      )}
+
+      {vista === 'lista' && (
+        <Vidrio estilo={{ display: 'flex', flexDirection: 'column', gap: 12 }} etiqueta="Compras registradas">
+          <TablaDatos
+            etiqueta="Compras registradas"
+            filas={compras.filter((c) => filtro === 'todas' ? true : filtro === 'anuladas' ? c.estado === 'anulada'
+              : filtro === 'por_recibir' ? c.estado !== 'anulada' && c.estado !== 'recibida' : c.estado !== 'anulada')}
+            clave={(c) => c.id}
+            buscar={(c) => `${c.numeroComprobante} ${c.proveedorRazonSocial} ${c.fecha} ${c.lineas.map((l) => l.descripcion).join(' ')}`}
+            marcadorBusqueda="Buscar por comprobante, proveedor o insumo…"
+            ordenInicial={{ clave: 'fecha', dir: 'desc' }}
+            filtros={<Segmentado etiqueta="Estado de las compras" valor={filtro} enCambio={setFiltro} opciones={[
+              { valor: 'vigentes', texto: 'Vigentes' }, { valor: 'por_recibir', texto: 'Por recibir' },
+              { valor: 'anuladas', texto: 'Anuladas' }, { valor: 'todas', texto: 'Todas' }]} />}
+            vacio={{ titulo: 'Todavía no hay compras', detalle: puedeRegistrar ? 'Regístrala con su comprobante en «Registrar compra».' : 'Aquí aparecen las compras de la obra con su estado de recepción.' }}
+            columnas={[
+              { clave: 'comprobante', titulo: 'Comprobante', valor: (c) => c.numeroComprobante, celda: (c) => (
+                <>
+                  <strong className="n">{c.tipoComprobante === 'factura' ? 'Factura' : c.tipoComprobante === 'boleta' ? 'Boleta' : 'Comprobante'} {c.numeroComprobante}</strong>
+                  <div className="small text-body-secondary text-truncate" style={{ maxWidth: 320 }} title={c.proveedorRazonSocial}>{c.proveedorRazonSocial}</div>
+                  {c.estado === 'anulada' && c.motivoAnulacion && <div className="small text-danger">Anulada: {c.motivoAnulacion}</div>}
+                </>
+              ) },
+              { clave: 'fecha', titulo: 'Fecha', numerica: true, valor: (c) => c.fecha, celda: (c) => <span className="text-nowrap">{c.fecha}</span> },
+              { clave: 'insumos', titulo: 'Insumos', numerica: true, soloEscritorio: true, valor: (c) => c.lineas.length, celda: (c) => c.lineas.length },
+              { clave: 'total', titulo: 'Total', numerica: true, valor: (c) => c.totales.total, celda: (c) => <strong className="text-nowrap">S/ {soles(c.totales.total)}</strong> },
+              { clave: 'estado', titulo: 'Estado', valor: (c) => ESTADO_COMPRA[c.estado].texto, celda: (c) => {
                 const vigentes = c.comprobantesVigentes ?? (c.adjunto ? 1 : 0)
                 return (
-                <ListGroup.Item key={c.id} className="d-flex flex-column gap-1 px-1">
-                  <div className="d-flex justify-content-between align-items-baseline gap-2">
-                    <span className="n fw-bold">{c.tipoComprobante === 'factura' ? 'Factura' : 'Boleta'} {c.numeroComprobante}</span>
-                    <span className="n fw-bold text-nowrap">S/ {soles(c.totales.total)}</span>
-                  </div>
-                  <span className="small text-body-secondary overflow-hidden text-nowrap" style={{ textOverflow: 'ellipsis' }} title={c.proveedorRazonSocial}>{c.proveedorRazonSocial}</span>
-                  <div className="d-flex align-items-center gap-2 flex-wrap">
-                    <span className="n small text-body-secondary">{c.fecha} · {c.lineas.length} {c.lineas.length === 1 ? 'insumo' : 'insumos'}</span>
+                  <div className="d-flex flex-wrap gap-1">
                     <Chip tono={ESTADO_COMPRA[c.estado].tono}>{ESTADO_COMPRA[c.estado].texto}</Chip>
-                    <Chip tono={vigentes > 0 ? 'bien' : 'neutro'}>
-                      {vigentes > 0 ? (vigentes === 1 ? '1 comprobante' : `${vigentes} comprobantes`) : 'Sin comprobante'}
-                    </Chip>
-                    {c.estado === 'anulada' && c.motivoAnulacion && (
-                      <span className="small text-danger" style={{ flexBasis: '100%' }}>Motivo de anulación: {c.motivoAnulacion}</span>
-                    )}
-                    {c.proveedorEstado === 'con_alerta_sunat' && (
-                      <Chip tono="aviso">{c.proveedorAlertaSunat ? `SUNAT: ${c.proveedorAlertaSunat}` : 'Alerta SUNAT'}</Chip>
-                    )}
-                    <span className="d-inline-flex gap-2 flex-wrap" style={{ marginLeft: 'auto' }}>
-                      <Pildora tipo="secundario" chica etiqueta={`Comprobantes de ${c.numeroComprobante}`} enClic={() => setComprobantesDe(c)}>Comprobantes</Pildora>
-                      {c.estado !== 'recibida' && c.estado !== 'anulada' && (
-                        <Pildora tipo="secundario" chica etiqueta={`Recibir la compra ${c.numeroComprobante}`} enClic={() => setRecibiendo(c)}>Recibir</Pildora>
-                      )}
-                      {c.estado !== 'anulada' && (
-                        <Pildora tipo="secundario" chica etiqueta={`Anular la compra ${c.numeroComprobante}`} enClic={() => {; setAnulando(c) }}>Anular</Pildora>
-                      )}
-                    </span>
+                    {vigentes === 0 && c.estado !== 'anulada' && <Chip tono="aviso">Sin comprobante</Chip>}
+                    {c.proveedorEstado === 'con_alerta_sunat' && <Chip tono="aviso">{c.proveedorAlertaSunat ? `SUNAT: ${c.proveedorAlertaSunat}` : 'Alerta SUNAT'}</Chip>}
                   </div>
-                </ListGroup.Item>
                 )
-              })}
-            </ListGroup>
-          )}
-          <span className="small text-body-secondary">
-            Una compra no se edita. El IGV se guarda aparte porque no es costo del insumo (NIC 2).
-          </span>
-        </aside>
-      </div>
+              } },
+            ]}
+            acciones={(c) => (
+              <AccionesFila de={`la compra ${c.numeroComprobante}`} acciones={[
+                { texto: 'Comprobantes', enClic: () => setComprobantesDe(c) },
+                c.estado !== 'recibida' && c.estado !== 'anulada' && { texto: 'Recibir', enClic: () => setRecibiendo(c) },
+                puedeRegistrar && c.estado !== 'anulada' && { texto: 'Anular', peligro: true, enClic: () => setAnulando(c) },
+              ]} />
+            )}
+          />
+        </Vidrio>
+      )}
 
       {recibiendo && (
         <RecepcionCompra

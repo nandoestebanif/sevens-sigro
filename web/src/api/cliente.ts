@@ -625,7 +625,7 @@ export class ClienteSimulado implements ClienteSigro {
     if (!['application/pdf', 'image/jpeg', 'image/png'].includes(archivo.type)) {
       throw new ErrorApi('tipo_archivo', 'Solo se admiten archivos PDF, JPG o PNG.')
     }
-    if (archivo.size > 5 * 1024 * 1024) throw new ErrorApi('tamano_archivo', 'El archivo supera los 5 MB permitidos.')
+    if (archivo.size > 10 * 1024 * 1024) throw new ErrorApi('tamano_archivo', 'El archivo supera los 10 MB permitidos (HU-34).')
     const id = String(Date.now())
     const item: ComprobanteCompra = {
       id, compraId, nombre: archivo.name, tipoMime: archivo.type as ComprobanteCompra['tipoMime'],
