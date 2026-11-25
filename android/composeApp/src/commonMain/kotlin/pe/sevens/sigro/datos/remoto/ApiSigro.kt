@@ -61,6 +61,25 @@ import pe.sevens.sigro.dominio.ErrorSigro
     val cuadrilla: String,
     @SerialName("fecha_ingreso") val fechaIngreso: String,
 )
+/** HU-62 c2 · cuerpo de POST /obras/{id}/trabajadores/{tid}/baja: la baja es una fecha, no un borrado (regla 10). */
+@Serializable data class BajaIn(@SerialName("fecha_salida") val fechaSalida: String)
+
+/** HU-64 · una fila de GET /obras/{id}/horas-acumuladas: un trabajador, en un periodo, con una categoría. */
+@Serializable data class HorasDto(
+    @SerialName("periodo_id") val periodoId: Int,
+    @SerialName("periodo_numero") val periodoNumero: Int,
+    @SerialName("trabajador_id") val trabajadorId: Int,
+    val trabajador: String,
+    val cuadrilla: String,
+    val categoria: String,
+    @SerialName("dias_presente") val diasPresente: Int,
+    @SerialName("dias_ausente") val diasAusente: Int,
+    @SerialName("dias_permiso") val diasPermiso: Int,
+    @SerialName("horas_normales") val horasNormales: String,
+    @SerialName("horas_extra") val horasExtra: String,
+    @SerialName("ultima_jornada") val ultimaJornada: String? = null,
+)
+
 @Serializable data class TrabajadorDto(
     val id: Int,
     val nombre: String,
@@ -256,6 +275,14 @@ class ApiSigro(
 
     suspend fun registrarTrabajador(servidor: String, obraId: Int, nuevo: TrabajadorIn): TrabajadorDto =
         llamar { http.post(url(servidor, "/obras/$obraId/trabajadores")) { cuerpo(nuevo) } }
+
+    /** HU-62 c2: el servidor pone la fecha de salida; las jornadas ya registradas se conservan. */
+    suspend fun darDeBaja(servidor: String, obraId: Int, trabajadorId: Int, baja: BajaIn): TrabajadorDto =
+        llamar { http.post(url(servidor, "/obras/$obraId/trabajadores/$trabajadorId/baja")) { cuerpo(baja) } }
+
+    /** HU-64: horas vigentes (ya con correcciones) por trabajador, periodo y categoría. */
+    suspend fun horasAcumuladas(servidor: String, obraId: Int): List<HorasDto> =
+        llamar { http.get(url(servidor, "/obras/$obraId/horas-acumuladas")) }
 
     /** HU-63: la jornada VIGENTE de ese trabajador y día (el servidor ya resuelve la cadena de correcciones). */
     suspend fun jornadasVigentes(servidor: String, obraId: Int, fecha: String, trabajadorId: Int): List<JornadaDto> =

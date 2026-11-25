@@ -19,6 +19,10 @@ interface RepositorioTrabajadores {
     suspend fun actualizar(obraId: Int): Int
     /** POST /obras/{id}/trabajadores: necesita señal. */
     suspend fun registrar(obraId: Int, nuevo: NuevoTrabajador): Trabajador
+    /** HU-62 c2 · baja con fecha de salida; necesita señal. El trabajador queda en el celular como «De baja». */
+    suspend fun darDeBaja(obraId: Int, trabajadorId: Int, fechaSalida: String): Trabajador
+    /** HU-64 · horas acumuladas que calcula el servidor; necesita señal. */
+    suspend fun horas(obraId: Int): List<HorasTrabajador>
 }
 
 /**
