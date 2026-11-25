@@ -298,6 +298,19 @@ h1, .h1, h2, .h2, h3, .h3 { letter-spacing: -0.02em; }
 .sigro-obra-opcion:nth-child(5n + 5) { --sigro-ticket: #ffc58f; }
 @media (prefers-reduced-motion: reduce) { .sigro-obra-opcion > button { transition: none; &:hover:not(:disabled) { transform: none; } } }
 
+// ── «Preparando tu obra» y la espera del servidor ──
+.sigro-capa {
+  width: min(28rem, calc(100vw - 2rem)); padding: 2.5rem 2rem 2rem; border-radius: 2rem;
+  background: #161717; color: #d2d3d3;
+  h1 { color: #fff; }
+  .grua { width: 9rem; height: 8rem; border-radius: 1.6rem; background: #fad85d; display: flex; align-items: flex-end; justify-content: center; overflow: hidden; }
+  .grua svg { animation: sigro-izar 2.4s ease-in-out infinite; transform-origin: 50% 100%; }
+  .progress { --bs-progress-bg: #2b2c2c; --bs-progress-bar-bg: #fad85d; height: 0.6rem; border-radius: 999px; }
+  .btn-outline-secondary { --bs-btn-color: #fff; --bs-btn-border-color: #424343; }
+}
+@keyframes sigro-izar { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
+@media (prefers-reduced-motion: reduce) { .sigro-capa .grua svg { animation: none; } }
+
 // ── Ingresar ──
 .sigro-portada { background: #161717; color: #fff; border-radius: 2rem; .text-primary { color: #fad85d !important; } h1 { color: #fff; } }
 
