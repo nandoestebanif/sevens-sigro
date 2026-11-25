@@ -86,6 +86,14 @@ class ClaveReciente(private val reloj: () -> Long, private val vigenciaMs: Long 
 
     fun olvidar() { guardada = null }
 
+    private var conContrasena = false
+
+    /** Desde el candado eligió «entrar con mi contraseña»: la pantalla de entrar abre el formulario, sin pedir huella. */
+    fun preferirContrasena() { conContrasena = true }
+
+    /** ¿La próxima entrada va con contraseña? Se responde una sola vez. */
+    fun tomarPreferirContrasena(): Boolean = conContrasena.also { conContrasena = false }
+
     private fun vigente(usuario: String): String? {
         val (u, c, t) = guardada ?: return null
         val ahora = reloj()

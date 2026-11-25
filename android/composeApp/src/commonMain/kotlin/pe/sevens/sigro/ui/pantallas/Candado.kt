@@ -35,6 +35,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.CloudUpload
 import androidx.compose.material.icons.filled.Fingerprint
+import androidx.compose.material.icons.filled.Key
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.VerifiedUser
 import androidx.compose.material3.Icon
@@ -251,6 +252,15 @@ class CandadoViewModel(
         viewModelScope.launch { sesiones.cerrarSesion() }
     }
 
+    /**
+     * Desde el candado, «entrar con mi contraseña»: se cierra la sesión (la cola queda), la huella se conserva y la
+     * pantalla de entrar abre el formulario con su usuario, sin pedir huella.
+     */
+    fun entrarConContrasena() {
+        clave.preferirContrasena()
+        cerrarSesion(olvidarHuella = false)
+    }
+
     /** Borra la contraseña cifrada si es de esta persona (la de otra cuenta en el mismo celular no se toca). */
     private fun olvidarCuentaPropia() {
         val id = _e.value.usuarioId ?: return
@@ -317,6 +327,7 @@ fun BoxScope.CapaCandado(vm: CandadoViewModel, sesion: Sesion?, obra: ObraAsigna
             minutos = e.ajuste.minutos, disponible = disponible, mensaje = e.mensaje,
             alDesbloquear = { alcance.launch { vm.alDesbloquear(biometria.verificar("Entra a SIGRO", listOfNotNull(sesion.nombre, obra?.nombre).joinToString(" · "))) } },
             alCerrarSesion = { biometria.olvidar(); biometria.olvidarClave(); vm.cerrarSesion(olvidarHuella = true) },
+            alContrasena = vm::entrarConContrasena,
         )
     }
 }
@@ -326,6 +337,8 @@ fun BoxScope.CapaCandado(vm: CandadoViewModel, sesion: Sesion?, obra: ObraAsigna
 fun PantallaBloqueada(
     nombre: String, rol: String?, obraNombre: String?, porEnviar: Int, minutos: Int,
     disponible: DisponibilidadHuella, mensaje: String?, alDesbloquear: () -> Unit, alCerrarSesion: () -> Unit,
+    /** No puede poner la huella: sale a «Entrar» con su usuario puesto para escribir la contraseña (su huella queda). */
+    alContrasena: () -> Unit = {},
     pedirAlAbrir: Boolean = true,
 ) {
     ManejarAtras(activo = true) {} // «atrás» no deja ver lo de debajo
@@ -412,6 +425,15 @@ fun PantallaBloqueada(
             }
             Spacer(Modifier.height(28.dp))
             if (puede) BotonNegro("Usar mi huella o el PIN del celular", alDesbloquear, icono = Icons.Filled.Fingerprint, colorIcono = Paleta.SobreTicket)
+            // si no puede poner la huella (guantes, dedo herido): su contraseña. El fondo es negro en los dos modos.
+            androidx.compose.material3.OutlinedButton(
+                onClick = alContrasena, modifier = Modifier.fillMaxWidth().padding(top = 10.dp).heightIn(min = 52.dp),
+                shape = RoundedCornerShape(16.dp), border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF4A4B4B)),
+                colors = androidx.compose.material3.ButtonDefaults.outlinedButtonColors(contentColor = Color.White),
+            ) {
+                Icon(Icons.Filled.Key, contentDescription = null, modifier = Modifier.size(18.dp))
+                Text("  Entrar con mi contraseña", fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+            }
             Text(
                 "No soy ${nombre.substringBefore(' ')} · cerrar sesión", fontSize = 13.sp, color = Color(0xFFA9AAAA),
                 modifier = Modifier.padding(top = 12.dp).clip(RoundedCornerShape(8.dp)).clickable(role = Role.Button, onClick = alCerrarSesion).padding(10.dp),
