@@ -33,10 +33,12 @@ jobs:
       - name: Pruebas y cobertura (Kover)
         if: env.SONAR_TOKEN != ''
         working-directory: android
-        run: ./gradlew :composeApp:testDebugUnitTest :composeApp:koverXmlReportDebug
+        run: |
+          ./gradlew :composeApp:testDebugUnitTest :composeApp:koverXmlReportDebug
+          python3 scripts/kover_a_sonar.py composeApp/build/reports/kover/reportDebug.xml build/sonar-cobertura.xml
       - name: Análisis SonarCloud de la app
         if: env.SONAR_TOKEN != ''
-        uses: SonarSource/sonarqube-scan-action@v5
+        uses: SonarSource/sonarqube-scan-action@v6
         with:
           projectBaseDir: android
 
@@ -75,6 +77,6 @@ jobs:
           python -m pytest -q -p no:cacheprovider --cov --cov-report=xml
       - name: Análisis SonarCloud del servicio
         if: env.SONAR_TOKEN != ''
-        uses: SonarSource/sonarqube-scan-action@v5
+        uses: SonarSource/sonarqube-scan-action@v6
         with:
           projectBaseDir: api
