@@ -391,7 +391,7 @@ function Sistema({ preparando = false, nombreObra = '', alTerminar }: {
           <header className="sigro-barra">
             <Button variant="primary" className="d-lg-none" onClick={() => setMenuAbierto(true)} aria-label="Abrir menú">☰</Button>
             {/* obra activa: si hay más de una, se elige aquí (regla 9: solo ves lo de esta obra) */}
-            <div className="d-flex flex-wrap align-items-center gap-2">
+            <div className="sigro-obra d-flex flex-wrap align-items-center gap-2">
               <label htmlFor="obra-activa" className="small text-body-secondary">Obra</label>
               {obras.length > 1 ? (
                 <Form.Select id="obra-activa" value={obra?.id ?? ''} onChange={(e) => cambiarObra(e.target.value)}>
