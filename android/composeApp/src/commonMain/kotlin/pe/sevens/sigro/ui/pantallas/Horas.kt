@@ -49,6 +49,7 @@ import pe.sevens.sigro.ui.componentes.TituloSeccion
 import pe.sevens.sigro.ui.componentes.planoTrabajadores
 import pe.sevens.sigro.ui.componentes.vidrio
 import pe.sevens.sigro.ui.tema.Paleta
+import pe.sevens.sigro.ui.componentes.Modulo
 
 /*
  * 5.4 · Horas acumuladas (HU-64). Las calcula el servidor con las jornadas VIGENTES (ya corregidas); la app solo las
@@ -103,8 +104,7 @@ fun PantallaHoras(obraId: Int, obraNombre: String, alVolver: () -> Unit, vm: Hor
                 if (e.cargando) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp, color = Paleta.Naranja)
                 else Icon(Icons.Filled.Sync, contentDescription = "Actualizar horas", tint = Paleta.Tinta)
             }
-        },
-    ) {
+        }, modulo = Modulo.PERSONAL) {
         e.aviso?.let { AvisoNaranja(it) }
         if (e.cargado && e.filas.isEmpty()) {
             TarjetaVidrio {
