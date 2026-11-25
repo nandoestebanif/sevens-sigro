@@ -51,6 +51,42 @@ def consultar_ruc(ruc: str, cliente: httpx.Client | None = None) -> RucSunat | N
         return None
 
 
+@dataclass(frozen=True)
+class DniReniec:
+    dni: str
+    nombres: str
+    apellido_paterno: str
+    apellido_materno: str
+
+
+def consultar_dni(dni: str, cliente: httpx.Client | None = None) -> DniReniec | None:
+    """None cuando no se pudo consultar (sin servicio configurado, caído, sin token o DNI que RENIEC no conoce)."""
+    cfg = cargar()
+    base = cfg.integraciones_url
+    if not base:
+        return None
+    cabeceras = {"X-Servicio-Token": cfg.servicio_token} if cfg.servicio_token else {}
+    try:
+        propio = cliente is None
+        c = cliente or httpx.Client(timeout=TIMEOUT)
+        try:
+            r = c.get(f"{base.rstrip('/')}/dni/{dni}", headers=cabeceras)
+        finally:
+            if propio:
+                c.close()
+        if r.status_code != 200:
+            return None
+        d = r.json()
+        if not d["nombres"] or not d["apellido_paterno"]:
+            return None
+        return DniReniec(
+            dni=d["dni"], nombres=d["nombres"], apellido_paterno=d["apellido_paterno"],
+            apellido_materno=d.get("apellido_materno") or "",
+        )
+    except (httpx.HTTPError, KeyError, ValueError):
+        return None
+
+
 TIMEOUT_S10 = httpx.Timeout(60.0, connect=3.0)     # leer las 5 páginas del PDF real toma unos segundos
 
 
