@@ -11,7 +11,7 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
-from app import eventos
+from app import eventos, integraciones
 from app.config import cargar
 from app.db import SesionPorPeticion
 from app.dependencias import Actor, exigir, exigir_en_alguna_obra, usuario_autenticado
@@ -87,23 +87,79 @@ def cambiar_clave(datos: e.CambiarClaveIn, a: Actor = Depends(usuario_autenticad
 
 
 # ---------------------------------------------------------------------- usuarios
+_COLS_USUARIO = "id, nombre, usuario, estado, creado_en, fecha_baja, dni, correo, celular"
+
+
 @usuarios.post("", response_model=e.UsuarioOut, status_code=201)
 def crear_usuario(datos: e.UsuarioIn, a: Actor = Depends(exigir_en_alguna_obra("usuario.crear"))):
     motivo = clave_aceptable(datos.clave)
     if motivo:
         raise ErrorSigro(422, "clave_debil", motivo)
-    r = fila(
+    return fila(
         a.sesion,
-        "INSERT INTO obra.usuario (nombre, usuario, hash_clave) VALUES (:n, :u, :h) "
-        "RETURNING id, nombre, usuario, estado, creado_en",
+        "INSERT INTO obra.usuario (nombre, usuario, hash_clave, dni, correo, celular) "
+        "VALUES (:n, :u, :h, :d, :c, :t) RETURNING " + _COLS_USUARIO,
         n=datos.nombre.strip(), u=datos.usuario.strip(), h=hashear(datos.clave),
+        d=datos.dni, c=datos.correo, t=datos.celular,
     )
-    return r
 
 
 @usuarios.get("", response_model=list[e.UsuarioOut])
 def listar_usuarios(a: Actor = Depends(exigir_en_alguna_obra("usuario.consultar"))):
-    return filas(a.sesion, "SELECT id, nombre, usuario, estado, creado_en FROM obra.usuario ORDER BY nombre")
+    return filas(a.sesion, f"SELECT {_COLS_USUARIO} FROM obra.usuario ORDER BY nombre")
+
+
+@usuarios.get("/consulta-dni/{dni}", response_model=e.DniReniecOut)
+def consultar_dni_usuario(dni: str, a: Actor = Depends(exigir_en_alguna_obra("usuario.crear"))):
+    """Nombre de la persona tal como está en RENIEC, para registrarla sin errores (la misma consulta que tareo)."""
+    if not (len(dni) == 8 and dni.isdigit()):
+        raise ErrorSigro(422, "dni_invalido", "El DNI tiene 8 dígitos.")
+    r = integraciones.consultar_dni(dni)
+    if r is None:
+        raise ErrorSigro(404, "reniec_sin_respuesta", "RENIEC no respondió: escribe el nombre a mano.")
+    apellidos = " ".join(x for x in (r.apellido_paterno, r.apellido_materno) if x)
+    return {"dni": r.dni, "nombres": r.nombres, "apellido_paterno": r.apellido_paterno,
+            "apellido_materno": r.apellido_materno, "nombre_completo": f"{r.nombres} {apellidos}"}
+
+
+@usuarios.post("/{usuario_id}/contacto", response_model=e.UsuarioOut)
+def actualizar_contacto(usuario_id: int, datos: e.ContactoIn, a: Actor = Depends(exigir_en_alguna_obra("usuario.crear"))):
+    """Completa o corrige DNI, correo y celular. Lo que no se envía no cambia; enviarlo vacío lo quita."""
+    enviados = datos.model_fields_set
+    if not enviados:
+        raise ErrorSigro(422, "sin_cambios", "Envía al menos el DNI, el correo o el celular.")
+    r = fila(
+        a.sesion,
+        "UPDATE obra.usuario SET dni = CASE WHEN :cd THEN CAST(:d AS text) ELSE dni END, "
+        "correo = CASE WHEN :cc THEN CAST(:c AS text) ELSE correo END, "
+        "celular = CASE WHEN :ct THEN CAST(:t AS text) ELSE celular END "
+        "WHERE id = :i RETURNING " + _COLS_USUARIO,
+        i=usuario_id, d=datos.dni, c=datos.correo, t=datos.celular,
+        cd="dni" in enviados, cc="correo" in enviados, ct="celular" in enviados,
+    )
+    if r is None:
+        raise ErrorSigro(404, "no_existe", "Ese usuario no existe.")
+    return r
+
+
+@usuarios.post("/{usuario_id}/clave-temporal", response_model=e.UsuarioOut)
+def poner_clave_temporal(usuario_id: int, datos: e.ClaveTemporalIn, a: Actor = Depends(exigir_en_alguna_obra("usuario.crear"))):
+    """Para quien olvidó su clave: el administrador le pone una temporal (se la entrega en persona) y la persona la
+    cambia con «Cambiar mi contraseña». También quita el bloqueo por intentos fallidos."""
+    if usuario_id == a.usuario_id:
+        raise ErrorSigro(409, "clave_propia", "Tu propia clave cámbiala con «Cambiar mi contraseña».")
+    motivo = clave_aceptable(datos.clave)
+    if motivo:
+        raise ErrorSigro(422, "clave_debil", motivo)
+    r = fila(
+        a.sesion,
+        "UPDATE obra.usuario SET hash_clave = :h, intentos_fallidos = 0, bloqueado_hasta = NULL "
+        "WHERE id = :i AND estado = 'activo' RETURNING " + _COLS_USUARIO,
+        h=hashear(datos.clave), i=usuario_id,
+    )
+    if r is None:
+        raise ErrorSigro(404, "no_existe", "Ese usuario no existe o está de baja.")
+    return r
 
 
 @usuarios.post("/{usuario_id}/baja", response_model=e.UsuarioOut)
@@ -114,7 +170,7 @@ def dar_de_baja_usuario(usuario_id: int, a: Actor = Depends(exigir_en_alguna_obr
     r = fila(
         a.sesion,
         "UPDATE obra.usuario SET estado = 'baja', fecha_baja = now() WHERE id = :i AND estado = 'activo' "
-        "RETURNING id, nombre, usuario, estado, creado_en",
+        "RETURNING " + _COLS_USUARIO,
         i=usuario_id,
     )
     if r is None:
