@@ -1,5 +1,6 @@
 package pe.sevens.sigro.ui.pantallas
 
+import pe.sevens.sigro.dominio.ValidacionEnVivo
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
@@ -311,6 +312,8 @@ data class EstadoTrabajadorNuevo(
     val cuadrillaNueva: Boolean = false,
     val fechaIngreso: String = "",
     val errores: Map<String, String> = emptyMap(),
+    /** Campos ya revisados que están bien (✓), de la validación en vivo. */
+    val correctos: Set<String> = emptySet(),
     val guardando: Boolean = false,
     val error: String? = null,
     val creado: Trabajador? = null,
@@ -322,21 +325,35 @@ class TrabajadorNuevoViewModel(private val trabajadores: RepositorioTrabajadores
     private val _e = MutableStateFlow(EstadoTrabajadorNuevo(fechaIngreso = Plataforma.fechaIso(Plataforma.ahoraMs())))
     val estado = _e.asStateFlow()
 
-    /** Solo dígitos, máximo 8 (DNI). */
-    fun documento(v: String) = _e.update { it.copy(documento = v.filter(Char::isDigit).take(8), errores = it.errores - "documento") }
-    fun nombre(v: String) = _e.update { it.copy(nombre = v, errores = it.errores - "nombre") }
-    fun categoria(c: Categoria) = _e.update { it.copy(categoria = c, errores = it.errores - "categoria") }
-    fun cuadrilla(c: String) = _e.update { it.copy(cuadrilla = c, cuadrillaNueva = false, errores = it.errores - "cuadrilla") }
-    fun cuadrillaNueva() = _e.update { it.copy(cuadrilla = "", cuadrillaNueva = true) }
-    fun escribirCuadrilla(v: String) = _e.update { it.copy(cuadrilla = v, errores = it.errores - "cuadrilla") }
-    fun fechaIngreso(v: String) = _e.update { it.copy(fechaIngreso = v, errores = it.errores - "fechaIngreso") }
+    /** Los trabajadores que ya tiene la obra (copia del celular): así un DNI repetido se avisa al escribirlo. */
+    private var deLaObra: List<Trabajador> = emptyList()
+    private val enVivo = ValidacionEnVivo(
+        viewModelScope,
+        validar = { ValidarTrabajador.errores(_e.value.nuevo, deLaObra) },
+        publicar = { r -> _e.update { it.copy(errores = r.errores, correctos = r.correctos) } },
+    )
+
+    fun conocer(gente: List<Trabajador>) { deLaObra = gente; enVivo.revisarYa() }
+
+    /** Solo dígitos, máximo 8 (DNI). Con los 8 se revisa ya (un DNI repetido se ve sin esperar). */
+    fun documento(v: String) {
+        val d = v.filter(Char::isDigit).take(8)
+        _e.update { it.copy(documento = d) }
+        if (d.length == 8) enVivo.salir("documento") else enVivo.cambio("documento")
+    }
+    fun nombre(v: String) { _e.update { it.copy(nombre = v) }; enVivo.cambio("nombre") }
+    fun categoria(c: Categoria) { _e.update { it.copy(categoria = c) }; enVivo.salir("categoria") }
+    fun cuadrilla(c: String) { _e.update { it.copy(cuadrilla = c, cuadrillaNueva = false) }; enVivo.salir("cuadrilla") }
+    fun cuadrillaNueva() { _e.update { it.copy(cuadrilla = "", cuadrillaNueva = true) }; enVivo.revisarYa() }
+    fun escribirCuadrilla(v: String) { _e.update { it.copy(cuadrilla = v) }; enVivo.cambio("cuadrilla") }
+    fun fechaIngreso(v: String) { _e.update { it.copy(fechaIngreso = v) }; enVivo.cambio("fechaIngreso") }
+    fun salirDe(campo: String) = enVivo.salir(campo)
 
     fun guardar(obraId: Int) {
         viewModelScope.launch {
-            val deLaObra = trabajadores.deObra(obraId).first()
+            deLaObra = trabajadores.deObra(obraId).first()
             val s = _e.value
-            val errores = ValidarTrabajador.errores(s.nuevo, deLaObra)
-            if (errores.isNotEmpty()) { _e.update { it.copy(errores = errores) }; return@launch }
+            if (enVivo.alGuardar().isNotEmpty()) return@launch
             _e.update { it.copy(guardando = true, error = null) }
             try {
                 val t = trabajadores.registrar(obraId, s.nuevo)
@@ -348,7 +365,7 @@ class TrabajadorNuevoViewModel(private val trabajadores: RepositorioTrabajadores
         }
     }
 
-    fun otro() = _e.update { EstadoTrabajadorNuevo(cuadrilla = it.cuadrilla, fechaIngreso = it.fechaIngreso) }
+    fun otro() { _e.update { EstadoTrabajadorNuevo(cuadrilla = it.cuadrilla, fechaIngreso = it.fechaIngreso) }; enVivo.reiniciar() }
 }
 
 @Composable
@@ -357,6 +374,7 @@ fun PantallaTrabajadorNuevo(obraId: Int, alVolver: () -> Unit, vm: TrabajadorNue
     val flujo = remember(obraId) { lista.de(obraId) }
     val gente by flujo.collectAsState(initial = emptyList())
     val cuadrillas = remember(gente) { gente.map { it.cuadrilla }.distinct().sorted() }
+    LaunchedEffect(gente) { vm.conocer(gente) }
 
     PantallaVidrio("Nuevo trabajador", plano = { planoTrabajadorNuevo(it) }, alVolver = alVolver, subtitulo = "Se incorpora a la obra con su fecha", modulo = Modulo.PERSONAL) {
         val creado = e.creado
@@ -371,9 +389,15 @@ fun PantallaTrabajadorNuevo(obraId: Int, alVolver: () -> Unit, vm: TrabajadorNue
             return@PantallaVidrio
         }
         TarjetaVidrio {
-            CampoVidrio(e.documento, vm::documento, "DNI *", teclado = KeyboardType.Number, error = e.errores["documento"], marcador = "8 dígitos")
-            
-            CampoVidrio(e.nombre, vm::nombre, "Nombres y apellidos *", error = e.errores["nombre"])
+            CampoVidrio(
+                e.documento, vm::documento, "DNI *", teclado = KeyboardType.Number, error = e.errores["documento"], marcador = "8 dígitos",
+                ayuda = if (e.documento.isNotEmpty() && e.documento.length < 8) "Van ${e.documento.length} de 8 dígitos" else null,
+                alSalir = { vm.salirDe("documento") }, correcto = "documento" in e.correctos,
+            )
+            CampoVidrio(
+                e.nombre, vm::nombre, "Nombres y apellidos *", error = e.errores["nombre"],
+                alSalir = { vm.salirDe("nombre") }, correcto = "nombre" in e.correctos,
+            )
             Text("Categoría *", fontSize = 14.sp, color = Paleta.Texto3)
             Opciones(Categoria.entries, e.categoria, { it.legible }, vm::categoria, colorActivo = Paleta.Naranja)
             Text(e.errores["categoria"] ?: "Define el costo por hora que se aplica después.", fontSize = 13.sp, color = if ("categoria" in e.errores) Paleta.RechazadoTexto else Paleta.Texto3)
@@ -381,11 +405,17 @@ fun PantallaTrabajadorNuevo(obraId: Int, alVolver: () -> Unit, vm: TrabajadorNue
             val opciones = cuadrillas + "+ Nueva"
             Opciones(opciones, if (e.cuadrillaNueva) "+ Nueva" else e.cuadrilla.takeIf { it in cuadrillas }, { it }, { if (it == "+ Nueva") vm.cuadrillaNueva() else vm.cuadrilla(it) })
             if (e.cuadrillaNueva || cuadrillas.isEmpty()) {
-                CampoVidrio(e.cuadrilla, vm::escribirCuadrilla, "Nombre de la cuadrilla", marcador = "Ej.: Cuadrilla de concreto", error = e.errores["cuadrilla"])
+                CampoVidrio(
+                    e.cuadrilla, vm::escribirCuadrilla, "Nombre de la cuadrilla", marcador = "Ej.: Cuadrilla de concreto", error = e.errores["cuadrilla"],
+                    alSalir = { vm.salirDe("cuadrilla") }, correcto = "cuadrilla" in e.correctos,
+                )
             } else {
                 e.errores["cuadrilla"]?.let { Text(it, fontSize = 13.sp, color = Paleta.RechazadoTexto) }
             }
-            CampoVidrio(e.fechaIngreso, vm::fechaIngreso, "Fecha de ingreso *", error = e.errores["fechaIngreso"], ayuda = "Año-mes-día, como 2026-11-01")
+            CampoVidrio(
+                e.fechaIngreso, vm::fechaIngreso, "Fecha de ingreso *", error = e.errores["fechaIngreso"], ayuda = "Año-mes-día, como 2026-11-01",
+                alSalir = { vm.salirDe("fechaIngreso") }, correcto = "fechaIngreso" in e.correctos,
+            )
         }
         e.error?.let { AvisoRojo(it) }
         BotonNegro("Registrar trabajador", { vm.guardar(obraId) }, icono = Icons.Filled.Save, colorIcono = Paleta.NaranjaVivo, cargando = e.guardando)
