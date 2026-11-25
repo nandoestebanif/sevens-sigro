@@ -27,6 +27,8 @@ jobs:
           cache: npm
           cache-dependency-path: web/package-lock.json
       - run: npm ci
+      - name: ESLint (errores frenan; avisos no)
+        run: npm run lint
       - name: Pruebas (Vitest)
         run: npm test
       - name: TypeScript y build (tsc -b && vite build)
