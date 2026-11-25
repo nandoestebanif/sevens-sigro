@@ -278,6 +278,26 @@ h1, .h1, h2, .h2, h3, .h3 { letter-spacing: -0.02em; }
   > .btn-outline-primary { --bs-btn-color: var(--bs-body-color); --bs-btn-hover-bg: var(--bs-tertiary-bg); --bs-btn-hover-color: var(--bs-body-color); }
 }
 
+// ── Elegir obra: cada obra es un botón con su color, como los tickets ──
+.sigro-obra-opcion {
+  --sigro-ticket: #2ee6c5;
+  > button {
+    width: 100%; display: flex; align-items: center; gap: 0.9rem; padding: 0.75rem 1rem 0.75rem 0.75rem;
+    border: 1px solid var(--bs-border-color); border-radius: 1.1rem; background: var(--bs-body-bg); color: var(--bs-body-color);
+    font: inherit; transition: border-color 0.15s, transform 0.15s;
+    &:hover:not(:disabled) { border-color: var(--sigro-ticket); transform: translateY(-1px); }
+    &:disabled { opacity: 0.6; }
+    &[aria-busy="true"] { opacity: 1; border-color: var(--sigro-ticket); }
+  }
+  .icono { flex: none; width: 3.25rem; height: 3.25rem; border-radius: 0.9rem; background: var(--sigro-ticket); display: flex; align-items: center; justify-content: center; }
+  .flecha { font-size: 1.2rem; color: var(--bs-secondary-color); }
+}
+.sigro-obra-opcion:nth-child(5n + 2) { --sigro-ticket: #fad85d; }
+.sigro-obra-opcion:nth-child(5n + 3) { --sigro-ticket: #f2a6ff; }
+.sigro-obra-opcion:nth-child(5n + 4) { --sigro-ticket: #ffb3c1; }
+.sigro-obra-opcion:nth-child(5n + 5) { --sigro-ticket: #ffc58f; }
+@media (prefers-reduced-motion: reduce) { .sigro-obra-opcion > button { transition: none; &:hover:not(:disabled) { transform: none; } } }
+
 // ── Ingresar ──
 .sigro-portada { background: #161717; color: #fff; border-radius: 2rem; .text-primary { color: #fad85d !important; } h1 { color: #fff; } }
 
