@@ -117,6 +117,8 @@ fun PantallaPerfil(
     alVolver: () -> Unit,
     alCelular: () -> Unit,
     vm: PerfilViewModel = koinViewModel(),
+    /** Perfil › Seguridad (huella): lo pone la navegación; en las capturas va vacío o con dobles. */
+    seguridad: @Composable () -> Unit = {},
 ) {
     val e by vm.estado.collectAsState()
     LaunchedEffect(Unit) { vm.cargar() }
@@ -152,6 +154,8 @@ fun PantallaPerfil(
             }
             e.mensaje?.let { Text(it, fontSize = 13.sp, color = Paleta.Texto2) }
         }
+
+        seguridad()
 
         TarjetaVidrio {
             Text("Apariencia", fontSize = 13.sp, color = Paleta.Texto3)
