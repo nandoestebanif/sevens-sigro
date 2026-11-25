@@ -14,6 +14,7 @@
    - Un movimiento fuera del plazo o en semana cerrada lo rechaza el servidor;
      esta pantalla lo declara para que nadie lo descubra a la mala.
    ───────────────────────────────────────────────────────────────────────── */
+import { puedo } from '../api/permisos'
 import { useEffect, useState } from 'react'
 import { ErrorApi, api } from '../api/cliente'
 import type { Obra, Semana } from '../api/tipos'
@@ -83,7 +84,7 @@ function AmpliarPlazo({ obra, enListo }: { obra: Obra; enListo: () => void }) {
           <span className="small text-body-secondary">
             ¿Se aprobó una ampliación? El plazo no se pisa: queda el anterior, el nuevo, el motivo y quién lo cambió.
           </span>
-          <Boton tipo="secundario" enClic={() => setAbierto(true)}>Ampliar plazo</Boton>
+          {puedo('proyecto.ampliar_plazo') && <Boton tipo="secundario" enClic={() => setAbierto(true)}>Ampliar plazo</Boton>}
         </div>
       ) : (
         <div className="d-flex flex-wrap gap-3 align-items-end">
@@ -140,7 +141,7 @@ function FichaObra({ obra, enCambio }: { obra: Obra; enCambio: () => void }) {
         <span>■ cerradas: {cerradas} (no admiten movimientos nuevos)</span>
         <span className="fw-semibold text-primary" >■ en curso</span>
         <span>□ por venir</span>
-        {ultima.dias < 7 && <span>la última dura {ultima.dias} día{ultima.dias === 1 ? '' : 's'}: el plazo no calza en semanas exactas y el sistema no lo redondea</span>}
+        {ultima && ultima.dias < 7 && <span>la última dura {ultima.dias} día{ultima.dias === 1 ? '' : 's'}: el plazo no calza en semanas exactas y el sistema no lo redondea</span>}
       </div>
       {usaApiReal && <AmpliarPlazo obra={obra} enListo={enCambio} />}
     </Tarjeta>

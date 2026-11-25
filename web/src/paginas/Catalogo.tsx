@@ -21,6 +21,7 @@
    cómodo, la tabla los muestra en caja amable y el detalle enseña el nombre
    normalizado exacto.
    ───────────────────────────────────────────────────────────────────────── */
+import { puedo } from '../api/permisos'
 import { fechaHoraLima } from '../api/horaLima'
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { ErrorApi, api } from '../api/cliente'
@@ -94,8 +95,8 @@ function VerInsumo({ insumo, enCerrar, enEditar, enFactor }: {
         </p>
         <div className="d-flex flex-wrap gap-2 justify-content-end mt-2">
           <Pildora tipo="secundario" enClic={enCerrar}>Cerrar</Pildora>
-          <Pildora tipo="secundario" enClic={enFactor}>Factor de conversión</Pildora>
-          <Pildora enClic={enEditar}>Editar</Pildora>
+          {puedo('insumo.factor') && <Pildora tipo="secundario" enClic={enFactor}>Factor de conversión</Pildora>}
+          {puedo('insumo.registrar') && <Pildora enClic={enEditar}>Editar</Pildora>}
         </div>
       </div>
     </Modal>
@@ -397,7 +398,7 @@ export function Catalogo() {
               ]}
               extra={[{ texto: 'CSV', accion: exportar }]}
             />
-            <Pildora enClic={() => { setEditando(null); setAltaAbierta(true) }}>Agregar insumo</Pildora>
+            {puedo('insumo.registrar') && <Pildora enClic={() => { setEditando(null); setAltaAbierta(true) }}>Agregar insumo</Pildora>}
           </>
         }
       />
@@ -549,8 +550,8 @@ function FilaInsumo({ insumo: ins, medir, enVer, enFactor, enEditar }: {
       <td className="text-end text-nowrap" style={{ width: 235 }}>
         <span className="d-inline-flex gap-2">
           <Pildora tipo="secundario" chica enClic={enVer}>Ver</Pildora>
-          <Pildora tipo="secundario" chica enClic={enFactor}>Factor</Pildora>
-          <Pildora tipo="secundario" chica enClic={enEditar}>{ins.estado === 'por_verificar' ? 'Verificar' : 'Editar'}</Pildora>
+          {puedo('insumo.factor') && <Pildora tipo="secundario" chica enClic={enFactor}>Factor</Pildora>}
+          {puedo(ins.estado === 'por_verificar' ? 'insumo.verificar' : 'insumo.registrar') && <Pildora tipo="secundario" chica enClic={enEditar}>{ins.estado === 'por_verificar' ? 'Verificar' : 'Editar'}</Pildora>}
         </span>
       </td>
     </tr>
