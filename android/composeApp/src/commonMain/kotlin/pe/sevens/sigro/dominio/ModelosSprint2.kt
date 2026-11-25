@@ -234,7 +234,20 @@ object ValidarTrabajador {
         if (n.nombre.trim().length < 3) put("nombre", "Escribe nombres y apellidos")
         if (n.categoria == null) put("categoria", "Elige la categoría")
         if (n.cuadrilla.isBlank()) put("cuadrilla", "Elige o escribe la cuadrilla")
-        if (!fechaIso.matches(n.fechaIngreso.trim())) put("fechaIngreso", "Fecha como 2026-11-01")
+        val f = n.fechaIngreso.trim()
+        when {
+            !fechaIso.matches(f) -> put("fechaIngreso", "Fecha como 2026-11-01")
+            !fechaExiste(f) -> put("fechaIngreso", "Esa fecha no existe: revisa el mes y el día")
+        }
+    }
+
+    /** «2026-02-30» tiene la forma pero no existe: mes 1–12 y el día dentro del mes (con años bisiestos). */
+    fun fechaExiste(iso: String): Boolean {
+        val (a, m, d) = iso.split('-').map { it.toIntOrNull() ?: return false }
+        if (m !in 1..12 || d < 1) return false
+        val bisiesto = (a % 4 == 0 && a % 100 != 0) || a % 400 == 0
+        val dias = intArrayOf(31, if (bisiesto) 29 else 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31)[m - 1]
+        return d <= dias
     }
 }
 
@@ -513,7 +526,11 @@ object ValidarAlmacen {
     }
 
     /** HU-41: el costo unitario es obligatorio, sin él no se valoriza. */
-    fun costo(texto: String): String? = if (cantidad(texto) != null) "Escribe el costo unitario en soles" else null
+    fun costo(texto: String): String? = when (val e = cantidad(texto)) {
+        null -> null
+        "Escribe la cantidad" -> "Escribe el costo unitario en soles"
+        else -> e // al escribir se dice qué está mal: letras o cero
+    }
 }
 
 /* ── Asistencia · revisión del 17/11 (prueba de Fernando en celular) ── */

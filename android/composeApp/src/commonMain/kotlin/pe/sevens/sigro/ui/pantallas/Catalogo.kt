@@ -1,5 +1,6 @@
 package pe.sevens.sigro.ui.pantallas
 
+import pe.sevens.sigro.dominio.ValidacionEnVivo
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -260,6 +261,8 @@ data class EstadoInsumoNuevo(
     val parecidos: List<FichaInsumo> = emptyList(),
     val duplicado: FichaInsumo? = null,
     val errores: Map<String, String> = emptyMap(),
+    /** Campos ya revisados que están bien (✓), de la validación en vivo. */
+    val correctos: Set<String> = emptySet(),
     val guardando: Boolean = false,
     val error: String? = null,
     val creado: FichaInsumo? = null,
@@ -271,13 +274,20 @@ class InsumoNuevoViewModel(private val insumos: RepositorioInsumos) : ViewModel(
     private val _e = MutableStateFlow(EstadoInsumoNuevo())
     val estado = _e.asStateFlow()
     private var job: Job? = null
+    private val enVivo = ValidacionEnVivo(
+        viewModelScope,
+        validar = { ValidarInsumo.errores(_e.value.nuevo) },
+        publicar = { r -> _e.update { it.copy(errores = r.errores, correctos = r.correctos) } },
+    )
 
     fun tipo(t: TipoInsumoNuevo) = _e.update { it.copy(tipo = t) }
-    fun material(v: String) { _e.update { it.copy(material = v, errores = it.errores - "material") }; revisar() }
-    fun medida(v: String) { _e.update { it.copy(medida = v) }; revisar() }
-    fun marca(v: String) { _e.update { it.copy(marca = v) }; revisar() }
-    fun norma(v: String) { _e.update { it.copy(norma = v) }; revisar() }
-    fun unidad(v: String) = _e.update { it.copy(unidad = v, errores = it.errores - "unidad") }
+    fun material(v: String) { _e.update { it.copy(material = v) }; enVivo.cambio("material"); revisar() }
+    // medida, marca y norma entran al nombre completo (máx. 200): se revisa lo ya tocado
+    fun medida(v: String) { _e.update { it.copy(medida = v) }; enVivo.revisarYa(); revisar() }
+    fun marca(v: String) { _e.update { it.copy(marca = v) }; enVivo.revisarYa(); revisar() }
+    fun norma(v: String) { _e.update { it.copy(norma = v) }; enVivo.revisarYa(); revisar() }
+    fun unidad(v: String) { _e.update { it.copy(unidad = v) }; enVivo.salir("unidad") }
+    fun salirDe(campo: String) = enVivo.salir(campo)
 
     /** HU-10: si hay coincidencias se muestran antes de confirmar. Sin señal no se puede saber: no se muestran. */
     private fun revisar() {
@@ -294,8 +304,7 @@ class InsumoNuevoViewModel(private val insumos: RepositorioInsumos) : ViewModel(
 
     fun guardar() {
         val s = _e.value
-        val errores = ValidarInsumo.errores(s.nuevo)
-        if (errores.isNotEmpty()) { _e.update { it.copy(errores = errores) }; return }
+        if (enVivo.alGuardar().isNotEmpty()) return
         if (s.duplicado != null) return
         _e.update { it.copy(guardando = true, error = null) }
         viewModelScope.launch {
@@ -328,7 +337,10 @@ fun PantallaInsumoNuevo(alVolver: () -> Unit, alAbrir: (FichaInsumo) -> Unit, vm
         TarjetaVidrio {
             Text("Tipo", fontSize = 14.sp, color = Paleta.Texto3)
             Opciones(TipoInsumoNuevo.entries, e.tipo, { it.legible }, vm::tipo)
-            CampoVidrio(e.material, vm::material, "Material *", marcador = "Ej.: Fierro corrugado", error = e.errores["material"])
+            CampoVidrio(
+                e.material, vm::material, "Material *", marcador = "Ej.: Fierro corrugado", error = e.errores["material"],
+                alSalir = { vm.salirDe("material") }, correcto = "material" in e.correctos,
+            )
             CampoVidrio(e.medida, vm::medida, "Medida", marcador = "Ej.: 1/2\" x 9m")
             CampoVidrio(e.marca, vm::marca, "Marca", marcador = "Opcional")
             CampoVidrio(e.norma, vm::norma, "Norma", marcador = "Ej.: ASTM A615")
