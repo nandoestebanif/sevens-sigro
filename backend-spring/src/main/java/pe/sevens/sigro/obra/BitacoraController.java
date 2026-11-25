@@ -26,8 +26,9 @@ public class BitacoraController {
         acceso.exigir("bitacora.consultar", obraId);
         Long limite = Peticion.entero("limite", 1L, 500L);
         String solo = Peticion.texto("solo"); // «rechazos»: solo 401/403
+        // La obra y lo general (usuarios, proveedores, catálogo, inicios de sesión): no tienen obra en la ruta.
         return db.en(() -> R.todos(db.filas("SELECT b.id, b.momento, b.usuario_id, u.nombre AS usuario, b.metodo, b.ruta, b.estado, b.duracion_ms "
-                + "FROM obra.bitacora b LEFT JOIN obra.usuario u ON u.id = b.usuario_id WHERE b.proyecto_id = :p "
+                + "FROM obra.bitacora b LEFT JOIN obra.usuario u ON u.id = b.usuario_id WHERE (b.proyecto_id = :p OR b.proyecto_id IS NULL) "
                 + ("rechazos".equals(solo) ? "AND b.estado IN (401, 403) " : "") + "ORDER BY b.id DESC LIMIT :l",
                 P.de("p", obraId, "l", limite == null ? 200 : limite)), "id", "momento", "usuario_id", "usuario", "metodo", "ruta", "estado", "duracion_ms"));
     }
