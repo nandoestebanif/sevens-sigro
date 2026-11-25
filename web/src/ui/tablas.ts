@@ -55,3 +55,6 @@ export function filtrarTexto<T>(lista: readonly T[], busqueda: string, texto: (i
   if (!palabras.length) return [...lista]
   return lista.filter((x) => { const t = normalizar(texto(x)); return palabras.every((p) => t.includes(p)) })
 }
+
+/** Filas por página que se ofrecen en las listas; la primera es la de entrada (pantallas sin scroll largo). */
+export const TAMANOS = [10, 25, 50, 100]

@@ -16,6 +16,19 @@ export const PARTES_SIGRO: TarjetaPortada[] = [
   { nombre: 'Compras', dibujo: 'factura' }, { nombre: 'Almacén', dibujo: 'camion' }, { nombre: 'Gasto en recursos', dibujo: 'grua' },
 ]
 
+/** Cada palabra entra con un pequeño retraso (CSS «sigro-palabra»); con «reducir movimiento» aparece quieta. */
+function Palabras({ texto, desde = 0 }: { texto: ReactNode; desde?: number }) {
+  if (typeof texto !== 'string') return <>{texto}</>
+  return (
+    <>
+      {texto.split(/(\s+)/).map((w, i) => /^\s+$/.test(w)
+        ? w
+        : <span key={i} className="sigro-palabra" style={{ animationDelay: `${(desde + i / 2) * 70}ms` }}>{w}</span>)}
+    </>
+  )
+}
+const cuantas = (t: ReactNode) => (typeof t === 'string' ? t.split(/\s+/).length : 0)
+
 export function Portada({ titulo, remate, children, tarjetas = PARTES_SIGRO }: {
   titulo: ReactNode
   /** final del titular, en amarillo */
@@ -28,11 +41,15 @@ export function Portada({ titulo, remate, children, tarjetas = PARTES_SIGRO }: {
       <img src={logo} alt="SEVEN'S Ingenieros SAC" height={86} className="align-self-start" />
       <div>
         <h1 className="display-6 fw-semibold mb-4" style={{ maxWidth: 560 }}>
-          {titulo}{remate && <> <span className="text-primary">{remate}</span></>}
+          <span className="visually-hidden">{titulo}{remate ? ' ' : ''}{remate}</span>
+          <span aria-hidden="true">
+            <Palabras texto={titulo} />
+            {remate && <> <span className="text-primary sigro-remate"><Palabras texto={remate} desde={cuantas(titulo)} /></span></>}
+          </span>
         </h1>
-        {children}
+        <div className="sigro-aparece" style={{ animationDelay: `${(cuantas(titulo) + cuantas(remate)) * 70 + 150}ms` }}>{children}</div>
       </div>
-      <div className="d-flex gap-3">
+      <div className="d-flex gap-3 sigro-tickets">
         {tarjetas.map((p) => (
           <div key={p.nombre} className="sigro-ticket" style={{ flex: '1 1 0', minHeight: 140 }}>
             <span className="franja" aria-hidden="true" />

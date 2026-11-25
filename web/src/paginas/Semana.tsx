@@ -13,6 +13,7 @@
    ───────────────────────────────────────────────────────────────────────── */
 import { TablaDatos } from '../ui/TablaDatos'
 import { useEffect, useState } from 'react'
+import { SelectorSemana } from '../ui/SelectorSemana'
 import { ErrorApi, api } from '../api/cliente'
 import { sesionActual, usaApiReal } from '../api/http'
 import { plazo } from '../api/oficina'
@@ -28,6 +29,7 @@ const dia = (iso: string) => (iso ? `${iso.slice(8, 10)}/${iso.slice(5, 7)}` : '
 export function Semana() {
   const [obraId, setObraId] = useState('')
   const [total, setTotal] = useState(0)
+  const [actual, setActual] = useState(0)
   const [numero, setNumero] = useState<number | null>(null)
   const [r, setR] = useState<ReporteSemana | null>(null)
   const [error, setError] = useState('')
@@ -44,6 +46,7 @@ export function Semana() {
     api.obraActiva().then((o) => {
       setObraId(o.id)
       setTotal(o.semanasTotales)
+      setActual(o.semana)
       setNumero(Math.max(1, Math.min(o.semana || 1, o.semanasTotales || 1)))
     })
   }, [])
@@ -115,18 +118,7 @@ export function Semana() {
             <TituloSeccion>
               Semana {numero ?? '…'}{r?.inicio ? ` · ${dia(r.inicio)} al ${dia(r.fin)}` : ''}
             </TituloSeccion>
-            <label className="d-flex align-items-center gap-2 small fw-semibold text-body-secondary">
-              Semana
-              <select
-                aria-label="Semana a revisar"
-                className="form-select"
-                value={numero ?? ''}
-                onChange={(e) => setNumero(Number(e.target.value))}
-                 style={{ height: 40 }}
-              >
-                {Array.from({ length: total }, (_, i) => i + 1).map((k) => <option key={k} value={k}>{k}</option>)}
-              </select>
-            </label>
+            {numero !== null && total > 0 && <SelectorSemana numero={numero} total={total} actual={actual} alCambiar={setNumero} />}
           </div>
 
           {error && <Aviso tono="grave" rol="alert">{error}</Aviso>}
