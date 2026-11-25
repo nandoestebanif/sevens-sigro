@@ -20,8 +20,8 @@ export default defineConfig(({ mode }) => ({
         lang: 'es-PE',
         start_url: '/',
         display: 'standalone',
-        background_color: '#f5f6f8',
-        theme_color: '#212529',
+        background_color: '#161717',
+        theme_color: '#161717',
         icons: [
           { src: 'icono-192.png', sizes: '192x192', type: 'image/png' },
           { src: 'icono-512.png', sizes: '512x512', type: 'image/png' },
