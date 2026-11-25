@@ -15,3 +15,7 @@ local.properties
 *.pyc
 .pytest_cache/
 *.db
+
+# cobertura (se genera, no se versiona)
+.coverage
+coverage.xml
