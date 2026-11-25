@@ -366,16 +366,17 @@ class ArreglosPruebaTest {
     fun laDireccionDelGatewayRetiradoSeCambiaSola() = runTest {
         assertEquals(Servidores.PRUEBAS, Servidores.migrar("https://sigro-gateway.onrender.com"))
         assertEquals(Servidores.PRUEBAS, Servidores.migrar("https://SIGRO-GATEWAY.onrender.com/"))
+        assertEquals(Servidores.PRUEBAS, Servidores.migrar("https://sigro-api.onrender.com"))  // el Python quedó solo para el relevo
         assertEquals("http://10.0.2.2:8000", Servidores.migrar("http://10.0.2.2:8000"))  // NOSONAR kotlin:S1313: la dirección del emulador de Android es justo lo que esta prueba verifica
 
         val b = Banco(mapOf("servidor" to "https://sigro-gateway.onrender.com")) { _, _, _ -> HttpStatusCode.OK to "[]" }
-        assertEquals("https://sigro-api.onrender.com", b.sesion.servidorGuardado(), "lo que ve la pantalla «Entrar»")
-        assertEquals("https://sigro-api.onrender.com", b.ajustes.m.value["servidor"], "y queda guardado")
+        assertEquals(Servidores.PRUEBAS, b.sesion.servidorGuardado(), "lo que ve la pantalla «Entrar»")
+        assertEquals(Servidores.PRUEBAS, b.ajustes.m.value["servidor"], "y queda guardado")
 
         val c = Banco(mapOf("servidor" to "https://sigro-gateway.onrender.com")) { _, _, _ -> HttpStatusCode.OK to "[]" }
         c.dispositivo.estado(1)
         assertTrue(c.rutas.isNotEmpty())
-        assertEquals("https://sigro-api.onrender.com", c.ajustes.m.value["servidor"], "los envíos también usan el nuevo")
+        assertEquals(Servidores.PRUEBAS, c.ajustes.m.value["servidor"], "los envíos también usan el nuevo")
     }
 
     // ── A5 · ingreso sin compra ──────────────────────────────────────────────────────────────
