@@ -370,3 +370,8 @@ h1, .h1, h2, .h2, h3, .h3 { letter-spacing: -0.02em; }
 }
 .matriz-permisos code { color: var(--bs-secondary-color); font-size: 0.72rem; }
 .sigro-campana { color: var(--bs-body-color); border-radius: 999px; background: var(--sigro-tarjeta); width: 2.6rem; height: 2.6rem; display: inline-flex; align-items: center; justify-content: center; padding: 0; }
+@include media-breakpoint-down(md) {
+  .tabla-datos td.acciones { width: 100% !important; }
+  .tabla-datos td.principal, .tabla-datos td:first-child { display: block; min-width: 0; }
+  .tabla-datos .acciones .btn { min-height: 2.4rem; }
+}
