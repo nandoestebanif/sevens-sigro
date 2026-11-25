@@ -35,6 +35,11 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.sp
+import pe.sevens.sigro.ui.tema.Paleta
 import pe.sevens.sigro.ui.tema.Apariencia
 import pe.sevens.sigro.ui.tema.TemaSigro
 
@@ -68,22 +73,17 @@ fun FondoPlano(
  */
 @Composable
 fun Modifier.vidrio(forma: Shape, fuerte: Boolean = false, sombra: Dp = 10.dp): Modifier {
-    val elevacion = when {
-        sombra == 0.dp -> 0.dp
-        fuerte -> 3.dp
-        else -> 1.dp
-    }
+    // Rediseño: tarjeta plana como en la web. En oscuro, #2B2C2C sin borde ni sombra (la diferencia con el
+    // fondo #242424 basta); en claro, blanca con un borde fino y una sombra mínima para separarla del fondo.
     val colores = MaterialTheme.colorScheme
-    return this
-        .shadow(elevacion, forma)
-        .clip(forma)
-        .background(colores.surface)
-        .border(1.dp, colores.outlineVariant, forma)
+    val elevacion = if (Apariencia.oscuro || sombra == 0.dp) 0.dp else if (fuerte) 2.dp else 1.dp
+    val base = this.shadow(elevacion, forma).clip(forma).background(colores.surface)
+    return if (Apariencia.oscuro) base else base.border(1.dp, colores.outlineVariant, forma)
 }
 
 /**
- * Botón principal: `Button` de Material 3 (relleno con el color primario, naranja de la marca).
- * `contorno = true` da el secundario: `OutlinedButton`. Mínimo 52 dp de alto: se usa con guantes.
+ * Botón principal: `Button` de Material 3 en el amarillo de la marca con texto negro (en claro y en oscuro).
+ * `contorno = true` da el secundario: `OutlinedButton`. Mínimo 56 dp de alto y esquinas de 16: se usa con guantes.
  */
 @Composable
 fun BotonNegro(
@@ -96,7 +96,8 @@ fun BotonNegro(
     cargando: Boolean = false,
     contorno: Boolean = false,
 ) {
-    val m = modifier.fillMaxWidth().heightIn(min = 52.dp)
+    val m = modifier.fillMaxWidth().heightIn(min = 56.dp)
+    val forma = RoundedCornerShape(16.dp)
     // El contenido es el mismo para los dos tipos de botón: spinner o ícono, y el texto.
     val contenido: @Composable () -> Unit = {
         if (cargando) {
@@ -106,12 +107,15 @@ fun BotonNegro(
             Icon(icono, contentDescription = null, modifier = Modifier.size(20.dp))
             Spacer(Modifier.width(8.dp))
         }
-        Text(texto, style = MaterialTheme.typography.labelLarge)
+        Text(texto, style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold, fontSize = 16.sp))
     }
     if (contorno) {
-        OutlinedButton(onClick = alPulsar, enabled = habilitado && !cargando, modifier = m) { contenido() }
+        OutlinedButton(onClick = alPulsar, enabled = habilitado && !cargando, modifier = m, shape = forma) { contenido() }
     } else {
-        Button(onClick = alPulsar, enabled = habilitado && !cargando, modifier = m) { contenido() }
+        Button(
+            onClick = alPulsar, enabled = habilitado && !cargando, modifier = m, shape = forma,
+            colors = ButtonDefaults.buttonColors(containerColor = Paleta.Principal, contentColor = Paleta.SobrePrincipal),
+        ) { contenido() }
     }
 }
 
