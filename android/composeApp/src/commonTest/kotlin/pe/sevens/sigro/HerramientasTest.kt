@@ -43,3 +43,36 @@ class HerramientasTest {
         assertEquals(1, p.atrasados)
     }
 }
+
+class FiltroTipoRegistrosTest {
+    private fun fila(tipo: String, estado: pe.sevens.sigro.dominio.EstadoEnvio = pe.sevens.sigro.dominio.EstadoEnvio.ENVIADO) =
+        pe.sevens.sigro.ui.pantallas.FilaRegistro("u-$tipo-$estado", tipo, "t", null, "d", 0, estado, null, null, 0)
+
+    @Test
+    fun ofreceSoloLosTiposQueHayEnOrden() {
+        val l = listOf(fila("Asistencia"), fila("Salida"), fila("Conteo físico"), fila("Salida"))
+        assertEquals(listOf("Todo", "Salida", "Conteo físico", "Asistencia"), pe.sevens.sigro.ui.pantallas.tiposDe(l))
+    }
+
+    @Test
+    fun filtraPorTipoYSeCombinaConElEstado() {
+        val l = listOf(fila("Salida"), fila("Salida", pe.sevens.sigro.dominio.EstadoEnvio.RECHAZADO), fila("Entrada de compra"))
+        assertEquals(2, pe.sevens.sigro.ui.pantallas.filtrarPorTipo(l, "Salida").size)
+        assertEquals(3, pe.sevens.sigro.ui.pantallas.filtrarPorTipo(l, "Todo").size)
+        val rechazadas = pe.sevens.sigro.ui.pantallas.filtrarRegistros(l, pe.sevens.sigro.ui.pantallas.FiltroRegistros.RECHAZADOS)
+        assertEquals(1, pe.sevens.sigro.ui.pantallas.filtrarPorTipo(rechazadas, "Salida").size)
+    }
+}
+
+class VistaPorRolTest {
+    @Test
+    fun cadaRolVeLoSuyo() {
+        val alm = pe.sevens.sigro.dominio.VistaPorRol.accesos("almacenero")
+        val sso = pe.sevens.sigro.dominio.VistaPorRol.accesos("ssoma")
+        val res = pe.sevens.sigro.dominio.VistaPorRol.accesos("residente")
+        assertTrue(pe.sevens.sigro.dominio.AccesoApp.SALIDA in alm && pe.sevens.sigro.dominio.AccesoApp.PERSONAL !in alm, "el almacenero no registra personal")
+        assertTrue(pe.sevens.sigro.dominio.AccesoApp.PERSONAL in sso && pe.sevens.sigro.dominio.AccesoApp.SALIDA !in sso, "el SSOMA no registra almacén")
+        assertTrue(pe.sevens.sigro.dominio.AccesoApp.SALIDA !in res && pe.sevens.sigro.dominio.AccesoApp.PERSONAL !in res, "el residente consulta")
+        assertTrue(pe.sevens.sigro.dominio.VistaPorRol.registra("ssoma") && !pe.sevens.sigro.dominio.VistaPorRol.registra("gerente"))
+    }
+}

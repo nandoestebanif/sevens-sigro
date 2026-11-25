@@ -158,6 +158,15 @@ class PendientesViewModel(private val salidas: RepositorioSalidas, private val r
 /** Qué filas se ven según el filtro de arriba. */
 enum class FiltroRegistros(val texto: String) { TODOS("Todos"), POR_ENVIAR("Por enviar"), RECHAZADOS("Rechazados") }
 
+/** Filtro por tipo: «Todo» más los tipos que hay en la lista (Salida, Entrada de compra, Asistencia…), en orden fijo. */
+const val TODO_TIPO = "Todo"
+private val ORDEN_TIPOS = listOf("Salida", "Entrada de compra", "Ingreso sin compra", "Traslado", "Conteo físico", "Asistencia", "Cierre de obra")
+fun tiposDe(lista: List<FilaRegistro>): List<String> {
+    val hay = lista.map { it.tipo }.toSet()
+    return listOf(TODO_TIPO) + ORDEN_TIPOS.filter { it in hay } + hay.filter { it !in ORDEN_TIPOS }.sorted()
+}
+fun filtrarPorTipo(lista: List<FilaRegistro>, tipo: String): List<FilaRegistro> = if (tipo == TODO_TIPO) lista else lista.filter { it.tipo == tipo }
+
 fun filtrarRegistros(lista: List<FilaRegistro>, f: FiltroRegistros): List<FilaRegistro> = when (f) {
     FiltroRegistros.TODOS -> lista
     FiltroRegistros.POR_ENVIAR -> lista.filter { it.estado == EstadoEnvio.PENDIENTE }
@@ -177,7 +186,10 @@ fun PantallaPendientes(
     val enviando by vm.enviando.collectAsState()
     val porEnviar = lista.count { it.estado == EstadoEnvio.PENDIENTE }
     var filtro by rememberSaveable { mutableStateOf(if (soloRechazados) FiltroRegistros.RECHAZADOS else FiltroRegistros.TODOS) }
-    val visibles = filtrarRegistros(lista, filtro)
+    var tipo by rememberSaveable { mutableStateOf(TODO_TIPO) }
+    val tipos = tiposDe(lista)
+    if (tipo !in tipos) tipo = TODO_TIPO
+    val visibles = filtrarPorTipo(filtrarRegistros(lista, filtro), tipo)
 
     PantallaVidrio(
         "Mis registros", plano = { planoRegistros(it) }, alVolver = alVolver,
@@ -204,13 +216,15 @@ fun PantallaPendientes(
             }
         }
         if (lista.isNotEmpty()) Opciones(FiltroRegistros.entries, filtro, { it.texto }, { filtro = it })
+        if (tipos.size > 2) Opciones(tipos, tipo, { it }, { tipo = it }) // por tipo: salidas, entradas, asistencia, conteos…
         if (visibles.isEmpty()) {
             TarjetaVidrio {
                 Text(
                     when {
                         lista.isEmpty() -> "Todavía no hay registros en esta obra"
-                        filtro == FiltroRegistros.RECHAZADOS -> "No hay registros rechazados"
-                        else -> "No hay registros por enviar"
+                        filtro == FiltroRegistros.TODOS -> "No hay registros de «$tipo»"
+                        filtro == FiltroRegistros.RECHAZADOS -> "No hay registros rechazados" + if (tipo != TODO_TIPO) " de «$tipo»" else ""
+                        else -> "No hay registros por enviar" + if (tipo != TODO_TIPO) " de «$tipo»" else ""
                     },
                     fontSize = 17.sp, fontWeight = FontWeight.Bold, color = Paleta.Tinta,
                 )
