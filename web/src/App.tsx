@@ -109,7 +109,13 @@ const ICONO_GRUPO: Record<string, keyof typeof ICONOS> = {
    la API verifica el rol en cada petición y responde 403 si no corresponde. */
 const GRUPO_ADMINISTRACION: (typeof GRUPOS)[number] = {
   rotulo: 'Administración',
-  items: [{ ruta: '/administracion', nombre: 'Administración', icono: 'administracion' }],
+  items: [
+    { ruta: '/administracion/usuarios', nombre: 'Usuarios', icono: 'personal' },
+    { ruta: '/administracion/asignaciones', nombre: 'Asignaciones y roles', icono: 'obra' },
+    { ruta: '/administracion/permisos', nombre: 'Permisos por rol', icono: 'administracion' },
+    { ruta: '/administracion/celulares', nombre: 'Celulares autorizados', icono: 'llave' },
+    { ruta: '/administracion/almacenes', nombre: 'Almacenes de la obra', icono: 'inventario' },
+  ],
 }
 
 /** Si un rol de campo escribe a mano la dirección de otro módulo, vuelve al suyo (el servidor igual respondería 403). */

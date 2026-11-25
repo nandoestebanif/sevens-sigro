@@ -22,3 +22,14 @@ describe('préstamos de herramientas', () => {
     expect(opcionesPrestamo([taladro], [p({ cantidad: 9 })])[0].disponible).toBe(0)
   })
 })
+
+import { tipoVista } from './Compras'
+describe('vista de comprobantes', () => {
+  it('PDF en visor, JPG/PNG como imagen, por tipo o por extensión', () => {
+    expect(tipoVista('application/pdf', 'factura')).toBe('pdf')
+    expect(tipoVista('', 'F100-2322.PDF')).toBe('pdf')
+    expect(tipoVista('image/png', 'x')).toBe('imagen')
+    expect(tipoVista('application/octet-stream', 'guia.jpeg')).toBe('imagen')
+    expect(tipoVista('application/zip', 'a.zip')).toBe('otro')
+  })
+})
