@@ -18,7 +18,6 @@ es decisión de Fernando (dueño del catálogo): confírmenlo antes de cargar en
 from __future__ import annotations
 
 import argparse
-import json
 import os
 import sys
 from collections import Counter
@@ -26,11 +25,11 @@ from pathlib import Path
 
 from sqlalchemy import create_engine, text
 
-from semillas.entrada import archivo_de_datos, conexion_postgres
+from semillas.entrada import archivo_de_datos, conexion_postgres, leer_json
 
 
 def leer(ruta: Path) -> list[dict]:
-    datos = json.loads(ruta.read_text(encoding="utf-8"))
+    datos = leer_json(ruta)
     if not isinstance(datos, list):
         raise SystemExit("Se esperaba una lista de insumos.")
     return datos
