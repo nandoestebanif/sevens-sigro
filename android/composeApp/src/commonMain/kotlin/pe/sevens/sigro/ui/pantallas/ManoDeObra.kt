@@ -186,6 +186,7 @@ fun PantallaTrabajadores(obraId: Int, obraNombre: String, alVolver: () -> Unit, 
 
     PantallaVidrio(
         "Trabajadores", plano = { planoTrabajadores(it) }, alVolver = alVolver,
+        actualizando = e.actualizando, alActualizar = { vm.actualizar(obraId, hoy) },
         subtitulo = "$obraNombre · ${r.activos.size} ${if (r.activos.size == 1) "activo" else "activos"}",
         encima = { e.bajaDe?.let { t -> DialogoBaja(t, e, vm::fechaBaja, { vm.confirmarBaja(obraId, hoy) }, vm::cerrarBaja) } },
         acciones = {

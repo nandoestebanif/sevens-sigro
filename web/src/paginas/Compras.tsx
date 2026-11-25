@@ -16,7 +16,7 @@
    ───────────────────────────────────────────────────────────────────────── */
 import { useEffect, useMemo, useState } from 'react'
 import { useEnVivo } from '../formularios/enVivo'
-import { aNumero, cantidadPositiva, minimo } from '../formularios/reglas'
+import { aNumero, cantidadPositiva, filtrarNumero, LIMITE_CANTIDAD, MAX_MOTIVO, minimo } from '../formularios/reglas'
 import { useSearchParams } from 'react-router-dom'
 import { ErrorApi, api } from '../api/cliente'
 import type { Compra, ComprobanteCompra, EstadoCompra, InsumoCatalogo, LineaCompra, LineaRecepcion, Proveedor, TipoComprobante, VerificacionRecepcion } from '../api/tipos'
@@ -125,7 +125,8 @@ function RecepcionCompra({ compra, enCerrar, enListo }: {
                     <input
                       aria-label={`Cantidad a recibir de ${l.descripcion}`}
                       value={cantidades[l.insumoId] ?? ''}
-                      onChange={(e) => { setExceso(null); setCantidades((c) => ({ ...c, [l.insumoId]: e.target.value })) }}
+                      inputMode="decimal"
+                      onChange={(e) => { setExceso(null); setCantidades((c) => ({ ...c, [l.insumoId]: filtrarNumero(c[l.insumoId] ?? '', e.target.value) })) }}
                       className="form-control text-end"
                       style={{ width: 86, height: 40 }}
                     />
@@ -234,7 +235,7 @@ function AnularCompra({ compra, enCerrar, enListo }: { compra: Compra; enCerrar:
           </Aviso>
         )}
         <Campo id="motivo-anular-compra" etiqueta="Motivo (mínimo 5 caracteres)" valor={motivo} enCambio={(x) => { setMotivo(x); v.cambio('motivo') }}
-          marcador="p. ej. Compra de prueba registrada por error" {...v.campo('motivo')} />
+          marcador="p. ej. Compra de prueba registrada por error" maxLargo={MAX_MOTIVO} {...v.campo('motivo')} />
         {error && <div role="alert" className="small text-danger">{error}</div>}
         <div className="d-flex gap-2 justify-content-end">
           <Pildora tipo="secundario" enClic={enCerrar} deshabilitado={guardando}>Cancelar</Pildora>
@@ -243,6 +244,14 @@ function AnularCompra({ compra, enCerrar, enListo }: { compra: Compra; enCerrar:
       </div>
     </Modal>
   )
+}
+
+/** Cómo se muestra un comprobante: PDF en un visor, JPG/PNG como imagen; si el tipo no vino, por la extensión. */
+export function tipoVista(mime: string, nombre: string): 'pdf' | 'imagen' | 'otro' {
+  const ext = nombre.toLowerCase().split('.').pop() ?? ''
+  if (mime === 'application/pdf' || ext === 'pdf') return 'pdf'
+  if (mime.startsWith('image/') || ['jpg', 'jpeg', 'png'].includes(ext)) return 'imagen'
+  return 'otro'
 }
 
 function ComprobantesCompra({ compra, enCerrar, enCambio }: {
@@ -279,6 +288,19 @@ function ComprobantesCompra({ compra, enCerrar, enCambio }: {
     }
   }
 
+  // Ver el comprobante aquí mismo (PDF o imagen), sin descargarlo
+  const [viendo, setViendo] = useState<{ nombre: string; url: string; tipo: 'pdf' | 'imagen' | 'otro' } | null>(null)
+  const ver = async (c: ComprobanteCompra) => {
+    setError('')
+    try {
+      const blob = await api.descargarComprobante(compra.id, c.id)
+      if (!blob) { avisar('En modo demostración solo se ven archivos subidos en esta sesión.', 'info'); return }
+      setViendo({ nombre: c.nombre, url: URL.createObjectURL(blob), tipo: tipoVista(blob.type, c.nombre) })
+    } catch (e) {
+      setError(e instanceof ErrorApi ? e.message : 'No se pudo abrir el comprobante.')
+    }
+  }
+  const cerrarVista = () => { if (viendo) URL.revokeObjectURL(viendo.url); setViendo(null) }
   const descargar = async (c: ComprobanteCompra) => {
     setError('')
     try {
@@ -315,6 +337,22 @@ function ComprobantesCompra({ compra, enCerrar, enCambio }: {
     ? `${(bytes / (1024 * 1024)).toFixed(2)} MB`
     : `${Math.max(1, Math.round(bytes / 1024))} KB`
 
+  if (viendo) {
+    return (
+      <Modal titulo={`${viendo.nombre} · ${compra.numeroComprobante}`} enCerrar={() => { cerrarVista(); enCerrar() }} ancho={960}>
+        <div className="d-flex flex-column gap-2">
+          <div className="d-flex justify-content-between align-items-center gap-2 flex-wrap">
+            <Pildora tipo="secundario" chica enClic={cerrarVista}>← Volver a los comprobantes</Pildora>
+            <a className="small fw-semibold" href={viendo.url} download={viendo.nombre}>Descargar</a>
+          </div>
+          {viendo.tipo === 'imagen' && <img src={viendo.url} alt={`Comprobante ${viendo.nombre}`} className="img-fluid rounded-3 mx-auto d-block" style={{ maxHeight: '75vh' }} />}
+          {viendo.tipo === 'pdf' && <iframe src={viendo.url} title={`Comprobante ${viendo.nombre}`} className="w-100 rounded-3 border-0" style={{ height: '75vh' }} />}
+          {viendo.tipo === 'otro' && <p className="mb-0">Este tipo de archivo no se puede mostrar aquí: descárgalo para abrirlo.</p>}
+        </div>
+      </Modal>
+    )
+  }
+
   return (
     <Modal titulo={`Comprobantes · ${compra.numeroComprobante}`} enCerrar={enCerrar}>
       <div className="d-flex flex-column gap-3">
@@ -349,6 +387,7 @@ function ComprobantesCompra({ compra, enCerrar, enCambio }: {
                   <div className="small text-danger">Motivo de anulación: {c.motivoAnulacion}</div>
                 )}
                 <div className="d-flex gap-2 flex-wrap justify-content-end">
+                  <Pildora chica enClic={() => void ver(c)} etiqueta={`Ver ${c.nombre}`}>Ver</Pildora>
                   <Pildora tipo="secundario" chica enClic={() => void descargar(c)}>Descargar</Pildora>
                   {c.estado === 'vigente' && anulandoId !== c.id && (
                     <Pildora tipo="secundario" chica enClic={() => { setAnulandoId(c.id); setMotivoAnulacion(''); setError('') }}>Anular</Pildora>
@@ -645,10 +684,10 @@ export function Compras() {
               </datalist>
             </div>
             <div style={celdaForm(1, 120)}>
-              <Campo id="c-cant" etiqueta={`Cantidad${insumoId ? ` (${insumos.find((i) => i.id === insumoId)?.unidadCompra})` : ''}`} valor={cantidad} enCambio={(x) => { setCantidad(x); vl.cambio('cantidad') }} marcador="0" modoTeclado="decimal" {...vl.campo('cantidad')} />
+              <Campo id="c-cant" etiqueta={`Cantidad${insumoId ? ` (${insumos.find((i) => i.id === insumoId)?.unidadCompra})` : ''}`} valor={cantidad} enCambio={(x) => { setCantidad(x); vl.cambio('cantidad') }} marcador="0" modoTeclado="decimal" limite={LIMITE_CANTIDAD} {...vl.campo('cantidad')} />
             </div>
             <div style={celdaForm(1, 150)}>
-              <Campo id="c-precio" etiqueta="Precio unit. S/ (con IGV)" valor={precio} enCambio={(x) => { setPrecio(x); vl.cambio('precio') }} marcador="0.00" modoTeclado="decimal" {...vl.campo('precio')} />
+              <Campo id="c-precio" etiqueta="Precio unit. S/ (con IGV)" valor={precio} enCambio={(x) => { setPrecio(x); vl.cambio('precio') }} marcador="0.00" modoTeclado="decimal" limite={LIMITE_CANTIDAD} {...vl.campo('precio')} />
             </div>
             <div className="flex-shrink-0" style={ALTURA_ETIQUETA}>
               <Pildora tipo="secundario" enClic={agregarLinea}>Agregar</Pildora>

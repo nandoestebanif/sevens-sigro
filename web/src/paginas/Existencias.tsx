@@ -1,5 +1,5 @@
 /* ─────────────────────────────────────────────────────────────────────────────
-   SIGRO · Insumos en almacén y Herramientas y equipos (HU-43, vista de oficina)
+   SIGRO · Materiales en almacén y Herramientas y equipos (HU-43, vista de oficina)
 
    Qué hay en cada almacén de la obra, cuánto y si toca reponer. Todo lo calcula el
    servidor a partir del libro de movimientos (regla 2): saldo por almacén, saldo de
@@ -7,7 +7,7 @@
    La misma pantalla, con `soloEquipos`, lista las herramientas y equipos (tipo «equipo»
    del catálogo), para controlar lo que se presta a las cuadrillas.
    ───────────────────────────────────────────────────────────────────────── */
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { ErrorApi } from '../api/cliente'
 import { usaApiReal } from '../api/http'
 import { existencias } from '../api/existencias'
@@ -18,6 +18,8 @@ import { EsqueletoKpis } from '../ui/Esqueleto'
 import { Aviso, Chips, Encabezado, Kpi, Segmentado, TituloSeccion, Vidrio } from '../ui/piezas'
 import { TablaDatos } from '../ui/TablaDatos'
 import { TEXTO_ESTADO, dondeEsta, filtrar, ordenarPorUrgencia, resumir, type EstadoExistencia, type Existencia, type FiltroEstado } from './existencias-reglas'
+import { EnVivo, useActualizacion } from '../ui/Actualizacion'
+import { PanelPrestamos } from './Prestamos'
 
 const cifra = (n: number) => n.toLocaleString('es-PE', { maximumFractionDigits: 2 })
 const soles = (n: number) => n.toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
@@ -32,23 +34,21 @@ export function Existencias({ soloEquipos = false }: { soloEquipos?: boolean }) 
   const [estado, setEstado] = useState<FiltroEstado>('todos')
   const [almacen, setAlmacen] = useState('')
   const veCosto = puedo('costo.consultar')         // el valor lo ven residente, administrador y gerente
-  const titulo = soloEquipos ? 'Herramientas y equipos' : 'Insumos en almacén'
+  const titulo = soloEquipos ? 'Herramientas y equipos' : 'Materiales en almacén'
 
-  useEffect(() => {
-    if (!usaApiReal) return
-    existencias().then(setDatos).catch((e) => setError(e instanceof ErrorApi ? e.message : 'No se pudo consultar el almacén.'))
-  }, [])
+  const vivo = useActualizacion(() => existencias().then((d) => { setDatos(d); setError('') })
+    .catch((e) => setError(e instanceof ErrorApi ? e.message : 'No se pudo consultar el almacén.')), { activo: usaApiReal })
 
-  const base = useMemo(() => (datos ? datos.filas.filter((x) => !soloEquipos || x.tipo === 'equipo') : []), [datos, soloEquipos])
+  const base = useMemo(() => (datos ? datos.filas.filter((x) => (soloEquipos ? x.tipo === 'equipo' : x.tipo !== 'equipo')) : []), [datos, soloEquipos])
   const filas = useMemo(() => ordenarPorUrgencia(filtrar(base, { estado, almacen, soloEquipos })), [base, estado, almacen, soloEquipos])
   const r = resumir(base)
 
   return (
     <div className="d-flex flex-column gap-3 pb-4">
-      <Encabezado titulo={titulo}
+      <Encabezado titulo={titulo} acciones={usaApiReal ? <EnVivo {...vivo} /> : undefined}
         sub={soloEquipos
           ? 'Las herramientas y equipos que hay en los almacenes de la obra: cuántos, dónde y cuáles faltan.'
-          : 'Lo que hay en cada almacén de la obra, cuánto y qué toca reponer.'} />
+          : 'Los materiales que hay en cada almacén de la obra, cuánto y qué toca reponer. Las herramientas y equipos van aparte.'} />
       <Chips>
         <Chip tono="neutro">El saldo lo calcula el servidor a partir del libro de movimientos</Chip>
         <Chip tono="neutro">Punto de reposición y stock de seguridad en unidad de compra</Chip>
@@ -65,7 +65,7 @@ export function Existencias({ soloEquipos = false }: { soloEquipos?: boolean }) 
       ) : (
         <>
           <div className="d-grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))' }}>
-            <Kpi rotulo={soloEquipos ? 'Herramientas y equipos con stock' : 'Insumos con stock'} valor={String(r.conStock)} pie={`de ${base.length} con movimientos`} />
+            <Kpi rotulo={soloEquipos ? 'Herramientas y equipos con stock' : 'Materiales con stock'} valor={String(r.conStock)} pie={`de ${base.length} con movimientos`} />
             <Kpi rotulo="Por reponer" valor={String(r.porReponer)} pie="bajo el punto de reposición o el de seguridad" />
             <Kpi rotulo="Sin stock" valor={String(r.sinStock)} pie="se movieron y hoy no queda nada" />
             {veCosto
@@ -82,7 +82,7 @@ export function Existencias({ soloEquipos = false }: { soloEquipos?: boolean }) 
                 filas={filas}
                 columnas={[
                   { titulo: 'Código', valor: (x) => x.codigo, ancho: 14 },
-                  { titulo: 'Insumo', valor: (x) => x.descripcion, ancho: 40 },
+                  { titulo: soloEquipos ? 'Herramienta o equipo' : 'Material', valor: (x) => x.descripcion, ancho: 40 },
                   { titulo: 'Unidad', valor: (x) => x.unidad },
                   { titulo: 'Cantidad', valor: (x) => x.cantidad, formato: 'decimal' },
                   { titulo: 'Dónde está', valor: (x) => dondeEsta(x, cifra), ancho: 30 },
@@ -114,7 +114,7 @@ export function Existencias({ soloEquipos = false }: { soloEquipos?: boolean }) 
                 </div>
               )}
               columnas={[
-                { clave: 'insumo', titulo: 'Insumo', valor: (x) => x.descripcion,
+                { clave: 'insumo', titulo: soloEquipos ? 'Herramienta o equipo' : 'Material', valor: (x) => x.descripcion,
                   celda: (x) => <><strong>{x.descripcion}</strong><div className="small text-body-secondary">{x.codigo}</div></> },
                 { clave: 'cantidad', titulo: 'Cantidad', numerica: true, valor: (x) => x.cantidad,
                   celda: (x) => <><strong className="n">{cifra(x.cantidad)}</strong> <span className="small text-body-secondary">{x.unidad}</span>
@@ -132,6 +132,7 @@ export function Existencias({ soloEquipos = false }: { soloEquipos?: boolean }) 
               ]}
             />
           </Vidrio>
+          {soloEquipos && <PanelPrestamos herramientas={base} />}
         </>
       )}
     </div>

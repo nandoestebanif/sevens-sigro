@@ -1,4 +1,4 @@
-/* SIGRO · reglas puras de «Insumos en almacén» y «Herramientas y equipos» (se prueban con Vitest).
+/* SIGRO · reglas puras de «Materiales en almacén» y «Herramientas y equipos» (se prueban con Vitest).
    El saldo, el punto de reposición y el stock de seguridad los calcula el servidor (regla 2); aquí solo se
    clasifica lo que él devolvió y se resume para los indicadores. */
 
@@ -12,7 +12,7 @@ export interface Existencia {
   unidad: string
   tipo: TipoInsumo
   cantidad: number
-  almacenes: { almacen: string; cantidad: number }[]
+  almacenes: { almacen: string; cantidad: number; almacenId?: number | null }[]
   unidadCompra: string | null
   cantidadCompra: number | null
   puntoReposicion: number | null
@@ -46,7 +46,8 @@ export function ordenarPorUrgencia(xs: readonly Existencia[]): Existencia[] {
 
 export type FiltroEstado = 'todos' | 'reponer' | 'sin_stock'
 export function filtrar(xs: readonly Existencia[], f: { estado: FiltroEstado; almacen: string; soloEquipos: boolean }): Existencia[] {
-  return xs.filter((x) => (!f.soloEquipos || x.tipo === 'equipo')
+  // Materiales y herramientas/equipos son vistas separadas: un taladro no se mezcla con el cemento
+  return xs.filter((x) => (f.soloEquipos ? x.tipo === 'equipo' : x.tipo !== 'equipo')
     && (f.almacen === '' || x.almacenes.some((a) => a.almacen === f.almacen))
     && (f.estado === 'todos'
       || (f.estado === 'sin_stock' ? x.estado === 'sin_stock' : x.estado === 'bajo_punto' || x.estado === 'bajo_seguridad')))

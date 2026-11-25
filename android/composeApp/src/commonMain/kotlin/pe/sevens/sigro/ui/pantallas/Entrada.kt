@@ -1,5 +1,6 @@
 package pe.sevens.sigro.ui.pantallas
 
+import pe.sevens.sigro.dominio.Limites
 import pe.sevens.sigro.dominio.ValidacionEnVivo
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -200,12 +201,12 @@ class EntradaViewModel(
 
     /** Cambiar una cantidad obliga a volver a preguntar al servidor (el aviso anterior ya no vale). */
     fun recibido(i: Int, v: String) {
-        _e.update { it.copy(recibido = it.recibido + (i to v), errores = it.errores - (-1)).sinExceso() }
+        _e.update { it.copy(recibido = it.recibido + (i to Limites.cantidad(it.recibido[i].orEmpty(), v)), errores = it.errores - (-1)).sinExceso() }
         enVivo.cambio(i)
     }
 
     fun motivo(m: MotivoExceso) = _e.update { it.copy(motivo = m, errores = it.errores - ERROR_MOTIVO) }
-    fun motivoDetalle(v: String) = _e.update { it.copy(motivoDetalle = v, errores = it.errores - ERROR_MOTIVO) }
+    fun motivoDetalle(v: String) = _e.update { it.copy(motivoDetalle = Limites.texto(v, Limites.MOTIVO), errores = it.errores - ERROR_MOTIVO) }
 
     /**
      * «No, recibir solo hasta lo requerido»: pasa a «llegó una parte» con lo recibido de cada línea que se pasa
@@ -355,7 +356,11 @@ fun PantallaEntrada(obraId: Int, alVolver: () -> Unit, vm: EntradaViewModel = ko
     val almacen by vm.almacen.estado.collectAsState()
     LaunchedEffect(obraId) { vm.cargar(obraId) }
 
-    PantallaVidrio("Entrada", plano = { planoEntrada(it) }, alVolver = alVolver, subtitulo = "Lo que llegó de una compra", modulo = Modulo.ENTRADA) {
+    PantallaVidrio(
+        "Entrada", plano = { planoEntrada(it) }, alVolver = alVolver, subtitulo = "Lo que llegó de una compra", modulo = Modulo.ENTRADA,
+        // solo la lista de compras: una vez elegida, deslizar no borra lo que se está recibiendo
+        actualizando = e.cargando, alActualizar = if (e.compra == null && !e.guardada) ({ vm.cargar(obraId) }) else null,
+    ) {
         if (e.guardada) {
             GuardadoEnCelular(
                 "Entrada guardada",

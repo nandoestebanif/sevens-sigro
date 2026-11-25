@@ -97,6 +97,7 @@ fun PantallaDispositivo(obraId: Int, alVolver: () -> Unit, obraNombre: String? =
 
     PantallaVidrio(
         "Mi celular", plano = { planoCelular(it) }, alVolver = alVolver,
+        actualizando = e.cargando, alActualizar = { vm.cargar(obraId) },
         subtitulo = obraNombre?.let { "Autorización en $it" } ?: "Autorización para registrar en esta obra",
     ) {
         TarjetaVidrio(Modifier.semantics(mergeDescendants = true) {}) {

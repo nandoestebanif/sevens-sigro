@@ -22,7 +22,7 @@
    normalizado exacto.
    ───────────────────────────────────────────────────────────────────────── */
 import { useEnVivo } from '../formularios/enVivo'
-import { aNumero, cantidadPositiva, minimo } from '../formularios/reglas'
+import { aNumero, cantidadPositiva, LIMITE_FACTOR, minimo } from '../formularios/reglas'
 import { puedo } from '../api/permisos'
 import { fechaHoraLima } from '../api/horaLima'
 import { useCallback, useEffect, useMemo, useState } from 'react'
@@ -120,7 +120,7 @@ function ModalFactor({ insumo, enCerrar, enGuardado }: {
   const valido = Number.isFinite(factorNum) && factorNum > 0
   // validación en vivo con las reglas del servidor (FactorIn: factor > 0 con hasta 6 decimales; motivo de 3 a 300)
   const v = useEnVivo({
-    factor: cantidadPositiva(factor, 'Escribe el factor.') ?? (factorNum === factorActual ? 'Ese ya es el factor vigente.' : null),
+    factor: cantidadPositiva(factor, 'Escribe el factor.', LIMITE_FACTOR) ?? (factorNum === factorActual ? 'Ese ya es el factor vigente.' : null),
     motivo: minimo(motivo, 3, 'Escribe el motivo del cambio (mínimo 3 letras).') ?? (motivo.trim().length > 300 ? 'Máximo 300 caracteres.' : null),
   })
 
@@ -156,6 +156,7 @@ function ModalFactor({ insumo, enCerrar, enGuardado }: {
           etiqueta={`Factor (${uS10} por cada ${uCompra})`}
           valor={factor}
           enCambio={(x) => { setFactor(x); v.cambio('factor') }}
+          limite={LIMITE_FACTOR}
           marcador="p. ej. 7.12"
           autoFoco
           modoTeclado="decimal"
