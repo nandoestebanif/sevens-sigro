@@ -84,3 +84,4 @@ class HorasOut(BaseModel):
     dias_permiso: int
     horas_normales: Decimal
     horas_extra: Decimal
+    ultima_jornada: date | None = Field(None, description="HU-64: fecha de la última jornada considerada en la suma")
