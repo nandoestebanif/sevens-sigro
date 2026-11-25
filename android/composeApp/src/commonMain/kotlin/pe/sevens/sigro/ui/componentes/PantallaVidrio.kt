@@ -70,17 +70,22 @@ fun PantallaVidrio(
     subtitulo: String? = null,
     acciones: @Composable RowScope.() -> Unit = {},
     encima: @Composable BoxScope.() -> Unit = {},
+    /** Rediseño v2: con un módulo, la barra superior es la cabecera de su color con su ilustración. */
+    modulo: Modulo? = null,
     contenido: @Composable ColumnScope.() -> Unit,
 ) {
     FondoPlano(plano = plano) {
         Scaffold(
-            topBar = { EncabezadoVidrio(titulo, subtitulo, alVolver, acciones, conInsets = true) },
-            containerColor = MaterialTheme.colorScheme.background,
+            topBar = {
+                if (modulo != null) CabeceraModulo(modulo, titulo, alVolver, subtitulo, acciones = acciones)
+                else EncabezadoVidrio(titulo, subtitulo, alVolver, acciones, conInsets = true)
+            },
+            containerColor = Color.Transparent, // deja ver la cuadrícula de plano de FondoPlano
         ) { margen ->
             // `margen` es el espacio que ocupan la barra superior y las del sistema: el contenido empieza debajo.
             Column(
                 Modifier.fillMaxSize().padding(margen).imePadding().verticalScroll(rememberScrollState())
-                    .padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 24.dp),
+                    .padding(start = 16.dp, end = 16.dp, top = if (modulo != null) 16.dp else 8.dp, bottom = 24.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 Column(

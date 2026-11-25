@@ -60,6 +60,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.Spacer
+import pe.sevens.sigro.ui.componentes.Modulo
 
 /*
  * 2.5 · Mis registros (lienzo Registros.dc.html, HU-37 / HU-38): todo lo registrado en esta obra desde
@@ -180,8 +181,7 @@ fun PantallaPendientes(
 
     PantallaVidrio(
         "Mis registros", plano = { planoRegistros(it) }, alVolver = alVolver,
-        subtitulo = if (porEnviar > 0) "$porEnviar por enviar" else "Todo enviado",
-    ) {
+        subtitulo = if (porEnviar > 0) "$porEnviar por enviar" else "Todo enviado", modulo = Modulo.REGISTROS) {
         // Rediseño: el resumen de la cola es un ticket menta con su botón negro, como en la web
         if (porEnviar > 0) {
             Ticket(Paleta.TicketMenta, Modifier.fillMaxWidth()) {

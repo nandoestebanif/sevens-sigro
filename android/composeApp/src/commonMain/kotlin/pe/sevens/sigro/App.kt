@@ -28,6 +28,9 @@ import pe.sevens.sigro.ui.tema.ModoTema
 import org.koin.compose.viewmodel.koinViewModel
 import pe.sevens.sigro.plataforma.ManejarAtras
 import pe.sevens.sigro.ui.pantallas.Destino
+import pe.sevens.sigro.ui.pantallas.CapaEntrando
+import pe.sevens.sigro.ui.pantallas.obrasDe
+import pe.sevens.sigro.dominio.ObraAsignada
 import pe.sevens.sigro.ui.pantallas.EstadoRaiz
 import pe.sevens.sigro.ui.pantallas.PantallaAsistencia
 import pe.sevens.sigro.ui.pantallas.PantallaHoras
@@ -69,6 +72,8 @@ fun App() {
         TemaSigro(oscuro = Apariencia.oscuro) {
             val raiz: RaizViewModel = koinViewModel()
             val estado by raiz.estado.collectAsState()
+            val entrando by raiz.entrando.collectAsState()
+            Box(Modifier.fillMaxSize()) {
             // Al entrar, la capa «el plano se dibuja» de PantallaEntrar se desvanece y crece 6 % (0,6 s)
             // dejando ver la pantalla siguiente, que va debajo.
             AnimatedContent(
@@ -90,8 +95,10 @@ fun App() {
                     ) { CircularProgressIndicator() }
                     EstadoRaiz.SinSesion -> PantallaEntrar()
                     is EstadoRaiz.ElegirObra -> PantallaObras(e.sesion, alElegir = raiz::elegir, alSalir = raiz::salir)
-                    is EstadoRaiz.Dentro -> Navegacion(e)
+                    is EstadoRaiz.Dentro -> Navegacion(e, alElegirObra = raiz::elegir)
                 }
+            }
+            CapaEntrando(entrando, obrasDe(estado)) // «Entrando a …» tapa el cambio de obra
             }
         }
     }
@@ -102,7 +109,7 @@ fun App() {
  * otra y `volver` para cerrarse; el botón atrás del sistema hace lo mismo.
  */
 @Composable
-private fun Navegacion(e: EstadoRaiz.Dentro) {
+private fun Navegacion(e: EstadoRaiz.Dentro, alElegirObra: (ObraAsignada) -> Unit) {
     val pila = remember(e.obra.id) { mutableStateListOf<Destino>(Destino.Inicio) }
     val actual = pila.last()
     val volver: () -> Unit = { if (pila.size > 1) pila.removeAt(pila.lastIndex) }
@@ -111,7 +118,7 @@ private fun Navegacion(e: EstadoRaiz.Dentro) {
     val irA: (Destino) -> Unit = { pila.add(it) }
     AnimatedContent(actual, transitionSpec = { fadeIn() togetherWith fadeOut() }) { d ->
         when (d) {
-            Destino.Inicio -> PantallaInicio(e.sesion, e.obra, irA = irA)
+            Destino.Inicio -> PantallaInicio(e.sesion, e.obra, irA = irA, alElegirObra = alElegirObra)
             Destino.Salida -> PantallaSalida(e.obra.id, alVolver = volver)
             is Destino.SalidaDe -> PantallaSalida(e.obra.id, alVolver = volver, base = d.base)
             Destino.Pendientes -> PantallaPendientes(e.obra.id, alVolver = volver, alCorregir = { irA(Destino.SalidaDe(it)) })
