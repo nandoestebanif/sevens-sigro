@@ -128,7 +128,7 @@ export function Segmentado<T extends string | number | boolean>({ opciones, valo
     )
   }
   return (
-    <ButtonGroup aria-label={etiqueta} className="flex-wrap align-self-start">
+    <ButtonGroup aria-label={etiqueta} className="sigro-seg flex-wrap align-self-start">
       {opciones.map((o) => (
         <Button
           key={String(o.valor)}

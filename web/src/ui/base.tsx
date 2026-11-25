@@ -40,14 +40,11 @@ export function Boton({ children, tipo = 'primario', deshabilitado, enClic, anch
 
 export type TonoChip = 'bien' | 'aviso' | 'grave' | 'neutro' | 'info' | 'marca'
 
-/** Estado con etiqueta (Badge): el color nunca va solo, siempre con su texto. */
+/** Estado con etiqueta (Badge): píldora con borde y texto del color del tono.
+    El color nunca va solo, siempre con su texto. */
 export function Chip({ tono, children }: { tono: TonoChip; children: ReactNode }) {
-  const color: Record<TonoChip, string> = {
-    bien: 'success', aviso: 'warning', grave: 'danger', neutro: 'secondary', info: 'info', marca: 'primary',
-  }
-  // «-subtle» y «-emphasis»: fondo claro con texto oscuro del mismo color (pasa contraste)
   return (
-    <Badge pill bg="" className={`n bg-${color[tono]}-subtle text-${color[tono]}-emphasis border border-${color[tono]}-subtle`}>
+    <Badge pill bg="" className={`n sigro-chip tono-${tono}`}>
       {children}
     </Badge>
   )
