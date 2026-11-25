@@ -23,6 +23,7 @@ import { GraficoReparto } from '../ui/GraficosPerezosos'
 import { EsqueletoKpis } from '../ui/Esqueleto'
 import { BotonExportar } from '../ui/BotonExportar'
 import { TablaDatos } from '../ui/TablaDatos'
+import { Fecha } from '../ui/Fecha'
 
 const soles = (v: number, dec = 2) => v.toLocaleString('es-PE', { minimumFractionDigits: dec, maximumFractionDigits: dec })
 const cant = (v: number) => v.toLocaleString('es-PE', { maximumFractionDigits: 4 })
@@ -71,11 +72,10 @@ export function Inventario() {
                   {almacenes.map((a) => <option key={a.id} value={String(a.id)}>{a.nombre}</option>)}
                 </select>
               </label>
-              <label className="d-flex flex-column gap-2 small fw-semibold text-body-secondary" style={{ flex: '1 1 180px' }}>
-                Fecha de corte
-                <input type="date" className="form-control" aria-label="Fecha de corte" value={fecha} max={hoyLima()}
-                  onChange={(e) => setFecha(e.target.value)}  style={{ height: 44 }} />
-              </label>
+              <div className="d-flex flex-column gap-2 small fw-semibold text-body-secondary" style={{ flex: '1 1 180px' }}>
+                <span>Fecha de corte</span>
+                <Fecha id="inv-corte" etiqueta="Fecha de corte" valor={fecha} max={hoyLima()} alCambiar={setFecha} />
+              </div>
               {fecha && (
                 <button type="button" onClick={() => setFecha('')}
                   className="btn btn-outline-secondary">
