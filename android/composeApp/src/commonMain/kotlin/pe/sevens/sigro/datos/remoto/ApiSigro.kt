@@ -80,6 +80,47 @@ import pe.sevens.sigro.dominio.ErrorSigro
     @SerialName("ultima_jornada") val ultimaJornada: String? = null,
 )
 
+/* ── préstamo de herramientas (migración 0023) ── */
+@Serializable data class PrestamoDto(
+    val id: Int,
+    val almacen: String,
+    @SerialName("insumo_codigo") val insumoCodigo: String,
+    val descripcion: String,
+    val unidad: String,
+    val cantidad: String,
+    val responsable: String,
+    @SerialName("devolver_el") val devolverEl: String? = null,
+    @SerialName("prestado_en") val prestadoEn: String,
+    @SerialName("devuelto_en") val devueltoEn: String? = null,
+    @SerialName("estado_devolucion") val estadoDevolucion: String? = null,
+    @SerialName("nota_devolucion") val notaDevolucion: String? = null,
+    val atrasado: Boolean = false,
+)
+@Serializable data class HerramientaDisponibleDto(
+    @SerialName("almacen_id") val almacenId: Int,
+    val almacen: String,
+    @SerialName("insumo_id") val insumoId: Int,
+    @SerialName("insumo_codigo") val insumoCodigo: String,
+    val descripcion: String,
+    val unidad: String,
+    @SerialName("en_almacen") val enAlmacen: String,
+    val prestado: String,
+    val disponible: String,
+)
+@Serializable data class PanelPrestamosDto(val prestamos: List<PrestamoDto>, val herramientas: List<HerramientaDisponibleDto> = emptyList())
+@Serializable data class PrestamoIn(
+    @SerialName("uuid_cliente") val uuidCliente: String,
+    @SerialName("almacen_id") val almacenId: Int,
+    @SerialName("insumo_id") val insumoId: Int,
+    val cantidad: String,
+    val responsable: String,
+    @SerialName("devolver_el") val devolverEl: String? = null,
+    val nota: String? = null,
+    val dispositivo: String? = null,
+)
+@Serializable data class DevolucionIn(val estado: String, val nota: String? = null)
+@Serializable data class DevolucionDto(val advertencias: List<String> = emptyList())
+
 @Serializable data class TrabajadorDto(
     val id: Int,
     val nombre: String,
@@ -333,6 +374,15 @@ class ApiSigro(
         llamar<JsonObject?>(permitirVacio = true) {
             http.post(url(servidor, "/obras/$obraId/almacen/salidas")) { cuerpo(salida) }
         }
+
+    suspend fun prestamos(servidor: String, obraId: Int): PanelPrestamosDto =
+        llamar { http.get(url(servidor, "/obras/$obraId/almacen/prestamos")) { parameter("estado", "todos") } }
+
+    suspend fun prestar(servidor: String, obraId: Int, p: PrestamoIn): PrestamoDto =
+        llamar { http.post(url(servidor, "/obras/$obraId/almacen/prestamos")) { cuerpo(p) } }
+
+    suspend fun devolver(servidor: String, obraId: Int, prestamoId: Int, d: DevolucionIn): DevolucionDto =
+        llamar { http.post(url(servidor, "/obras/$obraId/almacen/prestamos/$prestamoId/devolucion")) { cuerpo(d) } }
 
     private inline fun <reified T> HttpRequestBuilder.cuerpo(v: T) {
         contentType(ContentType.Application.Json)
