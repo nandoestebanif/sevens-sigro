@@ -18,8 +18,8 @@ import { puedo } from '../api/permisos'
 import { useEffect, useState } from 'react'
 import { ErrorApi, api } from '../api/cliente'
 import type { Obra, Semana } from '../api/tipos'
-import { Boton, Campo, Chip, Tarjeta, Titulo } from '../ui/base'
-import { usaApiReal } from '../api/http'
+import { Boton, Campo, Chip, Modal, Tarjeta, Titulo } from '../ui/base'
+import { obrasHttp, usaApiReal } from '../api/http'
 import { plazo, type CambioPlazo } from '../api/oficina'
 import { EsqueletoTabla } from '../ui/Esqueleto'
 import { useForm } from 'react-hook-form'
@@ -117,6 +117,50 @@ function AmpliarPlazo({ obra, enListo }: { obra: Obra; enListo: () => void }) {
   )
 }
 
+/** Fase 2 (25/11): en vez de «eliminar», la obra se CIERRA (regla 10: nada se borra). Es definitivo: la base no
+    deja reabrirla, así que se confirma escribiendo su nombre. */
+function CerrarObra({ obra, enListo }: { obra: Obra; enListo: () => void }) {
+  const [abierto, setAbierto] = useState(false)
+  const [nombre, setNombre] = useState('')
+  const [error, setError] = useState('')
+  const [guardando, setGuardando] = useState(false)
+  const avisar = useAvisos()
+  const coincide = nombre.trim().toLowerCase() === obra.nombre.trim().toLowerCase()
+  const cerrar = async () => {
+    setGuardando(true); setError('')
+    try {
+      await obrasHttp.cerrar(obra.id)
+      setAbierto(false)
+      avisar(`La obra «${obra.nombre}» quedó cerrada: sus datos se conservan y se siguen consultando.`)
+      window.dispatchEvent(new Event('sigro-obras'))
+      enListo()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'No se pudo cerrar la obra.')
+    } finally { setGuardando(false) }
+  }
+  return (
+    <>
+      <Boton tipo="peligroSuave" enClic={() => { setNombre(''); setError(''); setAbierto(true) }}>Cerrar obra</Boton>
+      {abierto && (
+        <Modal titulo="Cerrar la obra" enCerrar={() => setAbierto(false)}>
+          <div className="d-flex flex-column gap-3">
+            <p className="small mb-0">
+              <strong>{obra.nombre}</strong> pasará a <strong>cerrada</strong>. No se borra nada: compras, movimientos,
+              tareo y reportes se conservan y se siguen consultando. Pero <strong>no se puede reabrir</strong> ni ampliarle el plazo.
+            </p>
+            <Campo id="cerrar-nombre" etiqueta="Escribe el nombre de la obra para confirmar" valor={nombre} enCambio={setNombre}
+              marcador={obra.nombre} error={error || undefined} valido={coincide} />
+            <div className="d-flex gap-2 justify-content-end">
+              <Boton tipo="secundario" enClic={() => setAbierto(false)}>Cancelar</Boton>
+              <Boton tipo="peligro" enClic={cerrar} deshabilitado={!coincide || guardando}>{guardando ? 'Cerrando…' : 'Cerrar definitivamente'}</Boton>
+            </div>
+          </div>
+        </Modal>
+      )}
+    </>
+  )
+}
+
 function FichaObra({ obra, enCambio }: { obra: Obra; enCambio: () => void }) {
   const cerradas = obra.semanas.filter((s) => s.estado === 'cerrada').length
   const enCurso = obra.semanas.find((s) => s.estado === 'en_curso')
@@ -130,9 +174,10 @@ function FichaObra({ obra, enCambio }: { obra: Obra; enCambio: () => void }) {
             {obra.presupuesto ? `presupuesto ${obra.presupuesto} · ` : ''}{f(obra.inicio)} – {f(obra.fin)}
           </span>
         </div>
-        <div className="d-flex gap-2">
-          <Chip tono="bien">en ejecución</Chip>
+        <div className="d-flex gap-2 align-items-center flex-wrap">
+          {obra.estado === 'cerrada' ? <Chip tono="neutro">cerrada · solo consulta</Chip> : <Chip tono="bien">en ejecución</Chip>}
           {enCurso && <Chip tono="neutro">semana {enCurso.numero} de {obra.semanas.length}</Chip>}
+          {usaApiReal && obra.estado !== 'cerrada' && puedo('proyecto.cerrar') && <CerrarObra obra={obra} enListo={enCambio} />}
         </div>
       </div>
       <div className="mt-3">
@@ -144,7 +189,7 @@ function FichaObra({ obra, enCambio }: { obra: Obra; enCambio: () => void }) {
         <span>□ por venir</span>
         {ultima && ultima.dias < 7 && <span>la última dura {ultima.dias} día{ultima.dias === 1 ? '' : 's'}: el plazo no calza en semanas exactas y el sistema no lo redondea</span>}
       </div>
-      {usaApiReal && <AmpliarPlazo obra={obra} enListo={enCambio} />}
+      {usaApiReal && obra.estado !== 'cerrada' && <AmpliarPlazo obra={obra} enListo={enCambio} />}
     </Tarjeta>
   )
 }

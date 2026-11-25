@@ -26,12 +26,12 @@ export function Tarjeta({ children, relleno = true, estilo }: {
 /** Botón de Bootstrap: primario (naranja de la marca), secundario (con borde) o fantasma (link). */
 export function Boton({ children, tipo = 'primario', deshabilitado, enClic, anchoCompleto }: {
   children: ReactNode
-  tipo?: 'primario' | 'secundario' | 'fantasma'
+  tipo?: 'primario' | 'secundario' | 'fantasma' | 'peligro' | 'peligroSuave'
   deshabilitado?: boolean
   enClic?: () => void
   anchoCompleto?: boolean
 }) {
-  const variante = { primario: 'primary', secundario: 'outline-secondary', fantasma: 'link' }[tipo]
+  const variante = { primario: 'primary', secundario: 'outline-secondary', fantasma: 'link', peligro: 'danger', peligroSuave: 'outline-danger' }[tipo]
   return (
     <Button variant={variante} onClick={enClic} disabled={deshabilitado} className={anchoCompleto ? 'w-100' : undefined}>
       {children}

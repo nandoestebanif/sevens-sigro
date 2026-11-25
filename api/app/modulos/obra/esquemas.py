@@ -35,6 +35,7 @@ class ObraRol(BaseModel):
     id: int
     nombre: str
     rol: Rol
+    estado: str = "en_ejecucion"
 
 
 class SesionOut(BaseModel):

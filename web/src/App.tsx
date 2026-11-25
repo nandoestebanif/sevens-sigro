@@ -305,7 +305,7 @@ function Entrada() {
     return (
       <ElegirObra
         nombre={sesion.usuario.nombre.trim().split(/\s+/)[0]}
-        obras={sesion.obras.map((o) => ({ id: String(o.id), nombre: o.nombre, rol: ROLES[o.rol] ?? o.rol }))}
+        obras={sesion.obras.map((o) => ({ id: String(o.id), nombre: o.nombre, rol: ROLES[o.rol] ?? o.rol, cerrada: o.estado === 'cerrado' }))}
         alElegir={async (o) => { await api.elegirObra(o.id); setNombreObra(o.nombre); setPaso('preparando') }}
       />
     )
@@ -505,7 +505,7 @@ function Sistema({ preparando = false, nombreObra = '', alTerminar }: {
           <Modal.Header closeButton><Modal.Title as="h2" className="h5">Cambiar de obra</Modal.Title></Modal.Header>
           <Modal.Body>
             <SelectorObra
-              obras={obras.map((o) => ({ id: o.id, nombre: o.nombre, rol: ROLES[sesion?.obras.find((x) => String(x.id) === o.id)?.rol ?? ''] }))}
+              obras={obras.map((o) => ({ id: o.id, nombre: o.nombre, rol: ROLES[sesion?.obras.find((x) => String(x.id) === o.id)?.rol ?? ''], cerrada: o.estado === 'cerrada' }))}
               actual={obra?.id} ocupada={abriendo} autoFoco
               alElegir={async (o) => {
                 if (o.id === obra?.id) { setEligiendoObra(false); return }

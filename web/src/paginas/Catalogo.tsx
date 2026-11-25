@@ -25,18 +25,20 @@ import { useEnVivo } from '../formularios/enVivo'
 import { aNumero, cantidadPositiva, minimo } from '../formularios/reglas'
 import { puedo } from '../api/permisos'
 import { fechaHoraLima } from '../api/horaLima'
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { ErrorApi, api } from '../api/cliente'
 import type { HistorialFactor, InsumoMaestro } from '../api/tipos'
 import { Campo, Chip, Modal, Vacio } from '../ui/base'
-import { Aviso, Chips, Encabezado, Pildora, TituloSeccion, Vidrio, Buscador } from '../ui/piezas'
-import { FilasVirtuales, type MedirFila } from '../ui/FilasVirtuales'
+import { Aviso, Chips, Encabezado, Pildora, Segmentado, TituloSeccion, Vidrio, Buscador } from '../ui/piezas'
 import { UNIDADES_COMPRA } from '../api/unidades'
 import { useAvisos } from '../ui/Avisos'
 import { Ayuda } from '../ui/Glosario'
-import { alternarOrden, ordenar, type Orden } from '../ui/tablas'
-import { ThOrden } from '../ui/Tabla'
+import { TAMANOS, alternarOrden, ordenar, paginar, type Orden } from '../ui/tablas'
+import { Paginador, ThOrden } from '../ui/Tabla'
 import { EsqueletoTabla } from '../ui/Esqueleto'
+import { PanelDetalle } from '../ui/PanelDetalle'
+import { Kardex } from '../ui/Kardex'
+import { AccionesFila } from '../ui/TablaDatos'
 import { BotonExportar } from '../ui/BotonExportar'
 
 const CORTAS = new Set(['DE', 'LA', 'EL', 'Y', 'A', 'EN', 'SIN', 'CON', 'POR', 'DEL', 'LOS', 'LAS'])
@@ -58,15 +60,6 @@ function precio(v: number): string {
   return v > 0 ? `S/ ${v.toLocaleString('es-PE', { minimumFractionDigits: 2 })}` : '—'
 }
 
-function FilaDetalle({ rot, children }: { rot: string; children: ReactNode }) {
-  return (
-    <div className="d-flex justify-content-between gap-3 py-2 px-0 border-bottom" >
-      <span className="small text-body-secondary fw-semibold">{rot}</span>
-      <span className="fw-semibold text-end">{children}</span>
-    </div>
-  )
-}
-
 function VerInsumo({ insumo, enCerrar, enEditar, enFactor }: {
   insumo: InsumoMaestro
   enCerrar: () => void
@@ -76,32 +69,27 @@ function VerInsumo({ insumo, enCerrar, enEditar, enFactor }: {
   const uCompra = insumo.um.toLowerCase()
   const uS10 = (insumo.unidadS10 ?? insumo.um).toLowerCase()
   const factor = insumo.factorConversion ?? 1
+  // fase 2 (25/11): detalle a la derecha, con el kárdex del insumo en la obra activa
   return (
-    <Modal titulo={`Insumo · código ${insumo.codigo}`} enCerrar={enCerrar}>
-      <div className="d-flex flex-column gap-1">
-        <FilaDetalle rot="Nombre normalizado">{insumo.nombre}{insumo.medida ? ` ${insumo.medida}` : ''}</FilaDetalle>
-        <FilaDetalle rot="Unidad de compra">{uCompra}</FilaDetalle>
-        <FilaDetalle rot="Unidad S10">{uS10}</FilaDetalle>
-        <FilaDetalle rot="Factor de conversión">1 {uCompra} = {factor.toLocaleString('es-PE', { maximumFractionDigits: 6 })} {uS10}</FilaDetalle>
-        <FilaDetalle rot="Norma técnica">{insumo.norma || '—'}</FilaDetalle>
-        <FilaDetalle rot="Marcas registradas">{insumo.marca || '—'}</FilaDetalle>
-        <FilaDetalle rot="Precio promedio">{precio(insumo.precioPromedio)}</FilaDetalle>
-        <FilaDetalle rot="Estado">
-          <Chip tono={insumo.estado === 'activo' ? 'bien' : 'aviso'}>
-            {insumo.estado === 'activo' ? 'activo' : 'por verificar'}
-          </Chip>
-        </FilaDetalle>
-        <p className="small text-body-secondary mt-3">
-          Las compras y el kárdex de este insumo se consultan en sus pantallas
-          (HU-32 y HU-43); el precio promedio lo recalcula cada ingreso (NIC 2).
-        </p>
-        <div className="d-flex flex-wrap gap-2 justify-content-end mt-2">
-          <Pildora tipo="secundario" enClic={enCerrar}>Cerrar</Pildora>
-          {puedo('insumo.factor') && <Pildora tipo="secundario" enClic={enFactor}>Factor de conversión</Pildora>}
-          {puedo('insumo.registrar') && <Pildora enClic={enEditar}>Editar</Pildora>}
-        </div>
-      </div>
-    </Modal>
+    <PanelDetalle
+      titulo={`${insumo.nombre}${insumo.medida ? ` ${insumo.medida}` : ''}`} subtitulo={`Código ${insumo.codigo}`}
+      chips={<Chip tono={insumo.estado === 'activo' ? 'bien' : 'aviso'}>{insumo.estado === 'activo' ? 'activo' : 'por verificar'}</Chip>}
+      secciones={[
+        { titulo: 'Cómo se compra', datos: [
+          ['Unidad de compra', uCompra], ['Unidad del S10', uS10],
+          ['Factor de conversión', `1 ${uCompra} = ${factor.toLocaleString('es-PE', { maximumFractionDigits: 6 })} ${uS10}`],
+          ['Precio promedio', precio(insumo.precioPromedio)],
+        ] },
+        { titulo: 'Ficha', datos: [['Norma técnica', insumo.norma || '—'], ['Marcas registradas', insumo.marca || '—'], ['En el catálogo desde', insumo.creadoEl ? fechaHoraLima(insumo.creadoEl) : '—']] },
+      ]}
+      enCerrar={enCerrar}
+      pie={<>
+        {puedo('insumo.factor') && <Pildora tipo="secundario" enClic={enFactor}>Factor de conversión</Pildora>}
+        {puedo('insumo.registrar') && <Pildora enClic={enEditar}>Editar</Pildora>}
+      </>}
+    >
+      <Kardex codigo={insumo.codigo} />
+    </PanelDetalle>
   )
 }
 
@@ -355,6 +343,9 @@ export function Catalogo() {
   const [maestro, setMaestro] = useState<InsumoMaestro[] | null>(null)
   const [busqueda, setBusqueda] = useState('')
   const [um, setUm] = useState('todas')
+  const [estado, setEstado] = useState<'todos' | 'activo' | 'por_verificar'>('todos')
+  const [pagina, setPagina] = useState(1)
+  const [tam, setTam] = useState(TAMANOS[0])
   const [editando, setEditando] = useState<InsumoMaestro | null>(null)
   const [viendo, setViendo] = useState<InsumoMaestro | null>(null)
   const [factorDe, setFactorDe] = useState<InsumoMaestro | null>(null)
@@ -372,17 +363,20 @@ export function Catalogo() {
     return Array.from(cuenta.entries()).sort((a, b) => b[1] - a[1])
   }, [maestro])
 
-  // orden por columna (encabezados con ▲▼): se filtra y luego se ordena; la tabla sigue virtualizada
+  // orden por columna (encabezados con ▲▼): se filtra, se ordena y se pagina
   const [orden, setOrden] = useState<Orden<ColCatalogo> | null>(null)
   const enOrdenar = (k: ColCatalogo) => setOrden((o) => alternarOrden(o, k))
 
   const visibles = useMemo(() => {
     const q = busqueda.trim().toLowerCase()
     const filtrados = (maestro ?? []).filter((i) =>
-      (um === 'todas' || i.um === um) &&
+      (um === 'todas' || i.um === um) && (estado === 'todos' || i.estado === estado) &&
       (!q || i.nombre.toLowerCase().includes(q) || i.medida.toLowerCase().includes(q) || i.codigo.includes(q)))
     return ordenar(filtrados, orden, valorCol)
-  }, [maestro, busqueda, um, orden])
+  }, [maestro, busqueda, um, estado, orden])
+  const pag = paginar(visibles, pagina, tam)
+  // al cambiar el filtro se vuelve a la primera página
+  useEffect(() => { setPagina(1) }, [busqueda, um, estado, orden])
 
   // seguridad: un texto que empieza con = + - @ se neutraliza con apóstrofo,
   // para que Excel no lo ejecute como fórmula al abrir el CSV
@@ -474,6 +468,8 @@ export function Catalogo() {
               <option value="todas">Todas las unidades</option>
               {unidades.map(([u, n]) => <option key={u} value={u}>{u} · {n}</option>)}
             </select>
+            <Segmentado etiqueta="Estado del insumo" valor={estado} enCambio={setEstado}
+              opciones={[{ valor: 'todos', texto: 'Todos' }, { valor: 'activo', texto: 'Activos' }, { valor: 'por_verificar', texto: `Por verificar · ${(maestro ?? []).filter((i) => i.estado === 'por_verificar').length}` }]} />
           </div>
 
           {maestro === null ? (
@@ -485,7 +481,7 @@ export function Catalogo() {
               <table className="table table-hover align-middle mb-0" style={{ tableLayout: 'fixed', minWidth: 860 }}>
                 {/* anchos fijos: con la lista virtual las filas entran y salen, y sin esto las columnas bailarían */}
                 <colgroup>
-                  <col style={{ width: 100 }} /><col /><col style={{ width: 130 }} /><col style={{ width: 120 }} /><col style={{ width: 135 }} /><col style={{ width: 235 }} />
+                  <col style={{ width: 100 }} /><col /><col style={{ width: 130 }} /><col style={{ width: 120 }} /><col style={{ width: 135 }} /><col style={{ width: 150 }} />
                 </colgroup>
                 <thead>
                   <tr>
@@ -496,20 +492,17 @@ export function Catalogo() {
                     <ThOrden clave="precio" orden={orden} enOrdenar={enOrdenar} className="n">Precio promedio</ThOrden><th className="text-end">Acciones</th>
                   </tr>
                 </thead>
-                {/* las 2 243 filas, pero en el DOM solo las que se ven (antes: de 60 en 60 con «Mostrar 60 más») */}
-                <FilasVirtuales items={visibles} columnas={6} fila={(ins, _i, medir) => (
-                  <FilaInsumo
-                    key={ins.codigo}
-                    insumo={ins}
-                    medir={medir}
-                    enVer={() => setViendo(ins)}
-                    enFactor={() => setFactorDe(ins)}
-                    enEditar={() => { setEditando(ins); setAltaAbierta(true) }}
-                  />
-                )} />
+                {/* fase 2 (25/11): de 10 en 10 con paginador, como todas las listas (antes: lista virtual de 2 243 filas) */}
+                <tbody>
+                  {pag.items.map((ins) => (
+                    <FilaInsumo key={ins.codigo} insumo={ins} enVer={() => setViendo(ins)} enFactor={() => setFactorDe(ins)}
+                      enEditar={() => { setEditando(ins); setAltaAbierta(true) }} />
+                  ))}
+                </tbody>
               </table>
             </div>
           )}
+          {visibles.length > TAMANOS[0] && <Paginador p={pag} enPagina={setPagina} tam={tam} tamanos={TAMANOS} enTam={(x) => { setTam(x); setPagina(1) }} />}
         </Vidrio>
 
       </div>
@@ -549,16 +542,17 @@ export function Catalogo() {
 
 /** Una fila del catálogo. Va aparte para que la lista pueda virtualizarse
     (envolver las filas) sin tocar cómo se dibuja cada una. */
-function FilaInsumo({ insumo: ins, medir, enVer, enFactor, enEditar }: {
-  insumo: InsumoMaestro; medir: MedirFila; enVer: () => void; enFactor: () => void; enEditar: () => void
+function FilaInsumo({ insumo: ins, enVer, enFactor, enEditar }: {
+  insumo: InsumoMaestro; enVer: () => void; enFactor: () => void; enEditar: () => void
 }) {
   const tieneFactor = ins.factorConversion !== undefined && ins.factorConversion !== 1
+  const nombre = ins.medida ? `${ins.nombre} ${ins.medida}` : ins.nombre
   return (
-    <tr {...medir}>
+    <tr>
       <td className="n fw-bold text-start" style={{ color: 'var(--marca-tinte-tinta)', width: 70 }}>{ins.codigo}</td>
       <td className="fw-semibold" style={{ minWidth: 240 }}>
         <span className="d-inline-flex align-items-center gap-2 flex-wrap">
-          {amable(ins.medida ? `${ins.nombre} ${ins.medida}` : ins.nombre)}
+          {amable(nombre)}
           {ins.estado === 'por_verificar' && <Chip tono="aviso">por verificar</Chip>}
         </span>
       </td>
@@ -572,14 +566,13 @@ function FilaInsumo({ insumo: ins, medir, enVer, enFactor, enEditar }: {
       </td>
       <td className="text-body-secondary">{ins.marca || '—'}</td>
       <td className="n text-nowrap">{precio(ins.precioPromedio)}</td>
-      <td className="text-end text-nowrap" style={{ width: 235 }}>
-        <span className="d-inline-flex gap-2">
-          <Pildora tipo="secundario" chica enClic={enVer}>Ver</Pildora>
-          {puedo('insumo.factor') && <Pildora tipo="secundario" chica enClic={enFactor}>Factor</Pildora>}
-          {puedo(ins.estado === 'por_verificar' ? 'insumo.verificar' : 'insumo.registrar') && <Pildora tipo="secundario" chica enClic={enEditar}>{ins.estado === 'por_verificar' ? 'Verificar' : 'Editar'}</Pildora>}
-        </span>
+      <td className="text-end text-nowrap">
+        <AccionesFila de={nombre} acciones={[
+          { texto: 'Ver detalle y kárdex', icono: 'ver', enClic: enVer },
+          puedo(ins.estado === 'por_verificar' ? 'insumo.verificar' : 'insumo.registrar') && { texto: ins.estado === 'por_verificar' ? 'Verificar' : 'Editar', icono: 'editar', enClic: enEditar },
+          puedo('insumo.factor') && { texto: 'Factor de conversión', icono: 'factor', enClic: enFactor },
+        ]} />
       </td>
     </tr>
   )
 }
-

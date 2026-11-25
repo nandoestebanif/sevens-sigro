@@ -285,6 +285,8 @@ export interface Movimiento {
   importe?: number
   /** número de semana/periodo del movimiento (HT-11 D2) */
   semana?: number | null
+  /** kárdex: saldo del insumo en ese almacén después del movimiento */
+  saldoDespues?: number
 }
 
 export interface SaldoAlmacen {

@@ -193,7 +193,7 @@ def test_login_correcto_devuelve_token_y_las_obras_con_su_rol(mundo):
     assert r.status_code == 200
     cuerpo = r.json()
     assert cuerpo["usuario"]["id"] == uid and cuerpo["obras"] == [
-        {"id": eq["proyecto"], "nombre": cuerpo["obras"][0]["nombre"], "rol": "almacenero"}
+        {"id": eq["proyecto"], "nombre": cuerpo["obras"][0]["nombre"], "rol": "almacenero", "estado": "en_ejecucion"}
     ]
     assert mundo.http.get("/api/v1/auth/yo", headers={"Authorization": f"Bearer {cuerpo['token']}"}).status_code == 200
     assert "hash" not in r.text and "clave" not in r.text

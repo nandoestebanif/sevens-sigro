@@ -121,37 +121,85 @@ export function TablaDatos<T>({
   )
 }
 
+export type IconoAccion = 'ver' | 'editar' | 'baja' | 'anular' | 'recibir' | 'historial' | 'clave' | 'autorizar' | 'estrella' | 'factor' | 'archivo'
+
 export interface Accion {
   texto: string
   enClic: () => void
   /** las que no se deshacen solas (baja, anular, retirar): van en rojo y al final */
   peligro?: boolean
   deshabilitado?: boolean
+  /** ícono del botón; si no se da, se deduce del texto («Ver…», «Editar…», «Dar de baja»…) */
+  icono?: IconoAccion
 }
 
+const TRAZOS: Record<IconoAccion, string> = {
+  ver: 'M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z|M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z',
+  editar: 'M12 20h9|M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z',
+  baja: 'M3 6h18|M8 6V4h8v2|M19 6l-1 14H6L5 6|M10 11v6|M14 11v6',
+  anular: 'M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20Z|M4.9 4.9l14.2 14.2',
+  recibir: 'M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4|M7 10l5 5 5-5|M12 15V3',
+  historial: 'M3 12a9 9 0 1 0 3-6.7L3 8|M3 3v5h5|M12 7v5l3 3',
+  clave: 'M15.5 7.5a3.5 3.5 0 1 1-4.95 4.95 3.5 3.5 0 0 1 4.95-4.95|M10.5 12.5L3 20|M6 17l2 2|M8 15l2 2',
+  autorizar: 'M20 6 9 17l-5-5',
+  archivo: 'M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9Z|M14 3v6h6|M8 13h8|M8 17h5',
+  factor: 'M7 3v18|M3 7l4-4 4 4|M17 21V3|M13 17l4 4 4-4',
+  estrella: 'M12 2l3.1 6.3 6.9 1-5 4.9 1.2 6.8L12 17.8 5.8 21l1.2-6.8-5-4.9 6.9-1Z',
+}
+
+/** El ícono que corresponde a una acción por su texto, para no tener que declararlo en cada lista. */
+export function iconoDe(a: Accion): IconoAccion | null {
+  if (a.icono) return a.icono
+  const t = a.texto.toLowerCase()
+  if (/^ver\b|detalle|kardex/.test(t)) return 'ver'
+  if (/editar|corregir|ajustar|contacto/.test(t)) return 'editar'
+  if (/anular|revocar/.test(t)) return 'anular'
+  if (/baja|retirar|quitar|cerrar/.test(t) || a.peligro) return 'baja'
+  if (/recibir|recepci/.test(t)) return 'recibir'
+  if (/historial/.test(t)) return 'historial'
+  if (/comprobante|archivo|documento/.test(t)) return 'archivo'
+  if (/clave|contraseña/.test(t)) return 'clave'
+  if (/autorizar/.test(t)) return 'autorizar'
+  if (/crítico/.test(t)) return 'estrella'
+  return null
+}
+
+const MAX_A_LA_VISTA = 3
+
 /**
- * Acciones de una fila. Una sola → un botón. Varias → menú «⋯» (Dropdown de Bootstrap) para que la tabla no se
- * ensanche; las de peligro van al final, separadas y en rojo. Las que el rol no puede ni siquiera llegan aquí.
+ * Acciones de una fila, juntas y a la vista: botones redondos con ícono y color (ver en azul, editar en amarillo,
+ * dar de baja o anular en rojo), con su nombre como tooltip y para el lector de pantalla. Si son más de tres, o
+ * alguna no tiene ícono, lo que sobra va en «⋯». Las que el rol no puede ni siquiera llegan aquí.
  */
 export function AccionesFila({ acciones, de }: { acciones: (Accion | false | null | undefined)[]; de: string }) {
-  const xs = acciones.filter(Boolean) as Accion[]
+  const xs = (acciones.filter(Boolean) as Accion[]).sort((a, b) => Number(!!a.peligro) - Number(!!b.peligro))
   if (!xs.length) return null
-  if (xs.length === 1) {
-    const a = xs[0]
-    return (
-      <button type="button" disabled={a.deshabilitado} onClick={a.enClic} aria-label={`${a.texto}: ${de}`}
-        className={`btn btn-sm text-nowrap ${a.peligro ? 'btn-outline-danger' : 'btn-outline-secondary'}`}>{a.texto}</button>
-    )
-  }
-  const normales = xs.filter((a) => !a.peligro), peligro = xs.filter((a) => a.peligro)
+  const conIcono = xs.filter((a) => iconoDe(a))
+  const vista = conIcono.slice(0, MAX_A_LA_VISTA)
+  const resto = xs.filter((a) => !vista.includes(a))
   return (
-    <Dropdown align="end">
-      <Dropdown.Toggle variant="outline-secondary" size="sm" className="sin-flecha" aria-label={`Acciones de ${de}`}>⋯</Dropdown.Toggle>
-      <Dropdown.Menu popperConfig={{ strategy: 'fixed' }} renderOnMount>
-        {normales.map((a) => <Dropdown.Item key={a.texto} as="button" disabled={a.deshabilitado} onClick={a.enClic}>{a.texto}</Dropdown.Item>)}
-        {normales.length > 0 && peligro.length > 0 && <Dropdown.Divider />}
-        {peligro.map((a) => <Dropdown.Item key={a.texto} as="button" className="text-danger" disabled={a.deshabilitado} onClick={a.enClic}>{a.texto}</Dropdown.Item>)}
-      </Dropdown.Menu>
-    </Dropdown>
+    <div className="sigro-acciones" role="group" aria-label={`Acciones de ${de}`}>
+      {vista.map((a) => {
+        const ic = iconoDe(a)!
+        return (
+          <button key={a.texto} type="button" disabled={a.deshabilitado} onClick={a.enClic}
+            className={`sigro-accion accion-${ic}${a.peligro ? ' peligro' : ''}`} aria-label={`${a.texto}: ${de}`} title={a.texto}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              {TRAZOS[ic].split('|').map((d, i) => <path key={i} d={d} />)}
+            </svg>
+          </button>
+        )
+      })}
+      {resto.length > 0 && (
+        <Dropdown align="end">
+          <Dropdown.Toggle variant="outline-secondary" size="sm" className="sin-flecha sigro-accion" aria-label={`Más acciones de ${de}`}>⋯</Dropdown.Toggle>
+          <Dropdown.Menu popperConfig={{ strategy: 'fixed' }} renderOnMount>
+            {resto.map((a) => (
+              <Dropdown.Item key={a.texto} as="button" className={a.peligro ? 'text-danger' : undefined} disabled={a.deshabilitado} onClick={a.enClic}>{a.texto}</Dropdown.Item>
+            ))}
+          </Dropdown.Menu>
+        </Dropdown>
+      )}
+    </div>
   )
 }

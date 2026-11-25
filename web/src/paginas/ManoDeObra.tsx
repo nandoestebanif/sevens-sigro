@@ -12,7 +12,7 @@
    celular del almacenero o del SSOMA. Las horas las calcula el servidor con la
    versión vigente de cada jornada (si se corrigió, vale la corrección).
    ───────────────────────────────────────────────────────────────────────── */
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { ErrorApi } from '../api/cliente'
 import { usaApiReal } from '../api/http'
 import { manoDeObra, type HorasFila, type Trabajador } from '../api/manoDeObra'
@@ -21,7 +21,10 @@ import { Aviso, Chips, Encabezado, Kpi, TituloSeccion, Vidrio } from '../ui/piez
 import { EsqueletoKpis } from '../ui/Esqueleto'
 import { BotonExportar } from '../ui/BotonExportar'
 import { activoEl, categoria, horas, resumirHoras, type FilaHoras } from './mano-de-obra-reglas'
-import { TablaDatos } from '../ui/TablaDatos'
+import { AccionesFila, TablaDatos } from '../ui/TablaDatos'
+import { puedo } from '../api/permisos'
+import { BajaTrabajador, DetalleTrabajador, FormTrabajador } from './TrabajadorFormularios'
+import { Boton } from '../ui/base'
 
 const hoyLima = () => new Date().toLocaleDateString('en-CA', { timeZone: 'America/Lima' })   // AAAA-MM-DD
 const dia = (iso: string | null) => (iso ? `${iso.slice(8, 10)}/${iso.slice(5, 7)}/${iso.slice(0, 4)}` : '—')
@@ -39,6 +42,17 @@ export function ManoDeObra() {
   const hoy = hoyLima()
   // en la obra = activo hoy o con ingreso programado; si no, de baja
   const enObra = (x: Trabajador) => activoEl(x, hoy) || x.fechaIngreso > hoy
+
+  // fase 2 (25/11): ver, corregir, dar de baja y registrar desde la web
+  const [viendo, setViendo] = useState<Trabajador | null>(null)
+  const [editando, setEditando] = useState<Trabajador | 'nuevo' | null>(null)
+  const [bajando, setBajando] = useState<Trabajador | null>(null)
+  const [hecho, setHecho] = useState<string | null>(null)
+  const puedeRegistrar = puedo('trabajador.registrar')
+  const reemplazar = useCallback((t: Trabajador) => setTrabajadores((xs) => {
+    const l = xs ?? []
+    return l.some((x) => x.id === t.id) ? l.map((x) => (x.id === t.id ? t : x)) : [t, ...l]
+  }), [])
 
   useEffect(() => {
     if (!usaApiReal) return
@@ -62,7 +76,7 @@ export function ManoDeObra() {
       <Encabezado titulo="Mano de obra"
         sub="Quiénes trabajan en la obra y cuántas horas lleva consumidas cada trabajador y cada cuadrilla." />
       <Chips>
-        <Chip tono="neutro">Lo registra el celular del almacenero o del SSOMA</Chip>
+        <Chip tono="neutro">Lo registran el almacenero o el SSOMA en el celular, y el administrador también desde aquí</Chip>
         <Chip tono="neutro">Horas de la versión vigente de cada jornada</Chip>
         <Chip tono="neutro">Nadie se borra: la baja es una fecha</Chip>
         <Chip tono="neutro">Son horas, no costo: la valorización por categoría (HU-65) espera la tarifa por hora del S10</Chip>
@@ -139,7 +153,8 @@ export function ManoDeObra() {
           <Vidrio estilo={{ display: 'flex', flexDirection: 'column', gap: 12 }} etiqueta="Trabajadores">
             <div className="d-flex flex-wrap justify-content-between align-items-center gap-2">
               <TituloSeccion>Trabajadores</TituloSeccion>
-              <div className="btn-group" role="group" aria-label="Mostrar">
+              {puedeRegistrar && <Boton enClic={() => { setHecho(null); setEditando('nuevo') }}>+ Registrar trabajador</Boton>}
+              <div className="btn-group ms-auto" role="group" aria-label="Mostrar">
                 {([['activos', 'Activos'], ['baja', 'De baja'], ['todos', 'Todos']] as [Filtro, string][]).map(([f, t]) => (
                   <button key={f} type="button" aria-pressed={filtro === f}
                     className={`btn btn-sm ${filtro === f ? 'btn-primary' : 'btn-outline-primary'}`} onClick={() => setFiltro(f)}>
@@ -154,7 +169,14 @@ export function ManoDeObra() {
               clave={(t) => t.id}
               buscar={(t) => `${t.nombre} ${t.documento} ${t.cuadrilla} ${categoria(t.categoria)}`}
               marcadorBusqueda="Buscar por nombre, DNI o cuadrilla…"
-              vacio={{ titulo: 'Sin trabajadores para mostrar', detalle: 'Se registran desde el celular, en «Personal», con su categoría y cuadrilla.' }}
+              vacio={{ titulo: 'Sin trabajadores para mostrar', detalle: puedeRegistrar ? 'Regístralos con «+ Registrar trabajador» o desde el celular, en «Personal».' : 'Se registran desde el celular, en «Personal», con su categoría y cuadrilla.' }}
+              acciones={(t) => (
+                <AccionesFila de={t.nombre} acciones={[
+                  { texto: 'Ver detalle', enClic: () => setViendo(t) },
+                  puedeRegistrar && { texto: 'Corregir datos', enClic: () => { setHecho(null); setEditando(t) } },
+                  puedeRegistrar && !t.fechaSalida && { texto: 'Dar de baja', peligro: true, enClic: () => { setHecho(null); setBajando(t) } },
+                ]} />
+              )}
               columnas={[
                 { clave: 'nombre', titulo: 'Trabajador', valor: (t) => t.nombre, celda: (t) => <><strong className={enObra(t) ? '' : 'text-body-secondary'}>{t.nombre}</strong><div className="small text-body-secondary">{t.tipoDocumento} {t.documento}</div></> },
                 { clave: 'categoria', titulo: 'Categoría', valor: (t) => categoria(t.categoria), celda: (t) => categoria(t.categoria) },
@@ -164,8 +186,18 @@ export function ManoDeObra() {
                   ? <Chip tono="bien">Activo</Chip> : <Chip tono="neutro">De baja desde {dia(t.fechaSalida)}</Chip> },
               ]}
             />
+            {hecho && <span role="status" className="small text-success">{hecho}</span>}
           </Vidrio>
         </>
+      )}
+      {viendo && <DetalleTrabajador trabajador={viendo} horasDe={filas ?? []} activo={enObra(viendo)} enCerrar={() => setViendo(null)} />}
+      {editando && (
+        <FormTrabajador trabajador={editando === 'nuevo' ? undefined : editando} enCerrar={() => setEditando(null)}
+          enGuardado={(t) => { reemplazar(t); setHecho(editando === 'nuevo' ? `Se registró a ${t.nombre}.` : `Se corrigieron los datos de ${t.nombre}.`); setEditando(null) }} />
+      )}
+      {bajando && (
+        <BajaTrabajador trabajador={bajando} enCerrar={() => setBajando(null)}
+          enGuardado={(t) => { reemplazar(t); setHecho(`${t.nombre} quedó de baja desde el ${t.fechaSalida?.split('-').reverse().join('/')}.`); setBajando(null) }} />
       )}
     </div>
   )
