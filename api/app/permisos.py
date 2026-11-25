@@ -13,6 +13,7 @@ ACCIONES: dict[str, frozenset[str]] = {
     # --- preparar la obra
     "proyecto.crear": frozenset({RESIDENTE, ADMIN}),
     "proyecto.ampliar_plazo": frozenset({RESIDENTE, ADMIN}),          # gerente "A": pendiente D-A2
+    "proyecto.cerrar": frozenset({ADMIN}),                           # 25/11: cerrar la obra (nada se borra, R10; no se reabre)
     "proyecto.consultar": TODOS,
     "periodo.consultar": TODOS,
     "periodo.cerrar": frozenset({RESIDENTE, ADMIN}),
@@ -27,7 +28,7 @@ ACCIONES: dict[str, frozenset[str]] = {
     "dispositivo.autorizar": frozenset({ADMIN}),
     "dispositivo.consultar": frozenset({ADMIN, RESIDENTE}),
     # --- mano de obra
-    "trabajador.registrar": frozenset({ALMACENERO, SSOMA}),
+    "trabajador.registrar": frozenset({ALMACENERO, SSOMA, ADMIN}),   # 25/11: el administrador también, desde la oficina
     "trabajador.consultar": frozenset({ALMACENERO, SSOMA, RESIDENTE, ADMIN}),
     "jornada.registrar": frozenset({ALMACENERO, SSOMA}),
     "horas.consultar": TODOS,

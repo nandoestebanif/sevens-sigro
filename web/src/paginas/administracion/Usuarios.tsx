@@ -9,6 +9,7 @@ import { claveAceptable } from '../../formularios/reglas'
 import { ErrorApi } from '../../api/error'
 import { administracion, type Usuario } from '../../api/administracion'
 import { Boton, Campo, Chip, Modal, Tarjeta } from '../../ui/base'
+import { PanelDetalle } from '../../ui/PanelDetalle'
 import { AvisoBien, AvisoError, Confirmar, Estado, useCarga } from './comun'
 import {
   campoDelError, estaDeBaja, fechaLima, mensajeParaPersona, ordenarUsuarios, validarAltaUsuario, validarContacto,
@@ -25,6 +26,7 @@ export function Usuarios({ usuarioSesionId }: { usuarioSesionId: number | null }
   const [contacto, setContacto] = useState<Usuario | null>(null)
   const [clave, setClave] = useState<Usuario | null>(null)
   const [hecho, setHecho] = useState<string | null>(null)
+  const [viendo, setViendo] = useState<Usuario | null>(null)
 
   return (
     <div className="d-flex flex-column gap-3">
@@ -67,10 +69,11 @@ export function Usuarios({ usuarioSesionId }: { usuarioSesionId: number | null }
                   : <Chip tono="bien">Activo</Chip> },
                 { clave: 'alta', titulo: 'Alta', numerica: true, valor: (u) => u.creadoEn, celda: (u) => <span className="text-nowrap">{fechaLima(u.creadoEn)}</span> },
               ]}
-              acciones={(u) => estaDeBaja(u) ? null : (
+              acciones={(u) => (
                 <AccionesFila de={u.nombre} acciones={[
-                  { texto: 'Editar contacto', enClic: () => { setHecho(null); setContacto(u) } },
-                  ...(u.id !== usuarioSesionId ? [
+                  { texto: 'Ver detalle', enClic: () => setViendo(u) },
+                  ...(estaDeBaja(u) ? [] : [{ texto: 'Editar contacto', enClic: () => { setHecho(null); setContacto(u) } }]),
+                  ...(u.id !== usuarioSesionId && !estaDeBaja(u) ? [
                     { texto: 'Nueva clave temporal', enClic: () => { setHecho(null); setClave(u) } },
                     { texto: 'Dar de baja', peligro: true, enClic: () => { setHecho(null); setBaja(u) } },
                   ] : []),
@@ -81,6 +84,23 @@ export function Usuarios({ usuarioSesionId }: { usuarioSesionId: number | null }
         </Estado>
       </Tarjeta>
 
+      {viendo && (
+        <PanelDetalle enCerrar={() => setViendo(null)} titulo={viendo.nombre} subtitulo={`Usuario ${viendo.usuario}`}
+          chips={estaDeBaja(viendo) ? <Chip tono="neutro">{viendo.fechaBaja ? `De baja desde ${fechaLima(viendo.fechaBaja)}` : 'De baja'}</Chip> : <Chip tono="bien">Activo</Chip>}
+          secciones={[
+            { titulo: 'Identidad', datos: [['DNI', viendo.dni || '—'], ['Usuario para entrar', viendo.usuario], ['Alta en SIGRO', fechaLima(viendo.creadoEn)]] },
+            { titulo: 'Contacto', datos: [['Correo', viendo.correo || '—'], ['Celular', viendo.celular || '—']] },
+          ]}
+          pie={estaDeBaja(viendo) ? undefined : <>
+            <Boton tipo="secundario" enClic={() => { setHecho(null); setContacto(viendo); setViendo(null) }}>Editar contacto</Boton>
+            {viendo.id !== usuarioSesionId && <Boton tipo="peligro" enClic={() => { setHecho(null); setBaja(viendo); setViendo(null) }}>Dar de baja</Boton>}
+          </>}
+        >
+          <p className="small text-body-secondary mb-0">
+            El rol no vive en el usuario: se da por obra en «Asignaciones». Una baja corta el acceso y conserva todo lo que registró.
+          </p>
+        </PanelDetalle>
+      )}
       {alta && (
         <AltaUsuario
           enCerrar={() => setAlta(false)}

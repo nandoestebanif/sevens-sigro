@@ -68,6 +68,25 @@ def listar_trabajadores(
     ), respuesta)
 
 
+@router.post("/trabajadores/{trabajador_id}/datos", response_model=e.TrabajadorOut)
+def corregir_trabajador(trabajador_id: int, datos: e.TrabajadorEditarIn, a: Actor = Depends(exigir("trabajador.registrar"))):
+    """Corrige nombres y apellidos, categoría o cuadrilla. Lo que no se envía no cambia."""
+    r = fila(
+        a.sesion,
+        "UPDATE tareo.trabajador SET "
+        "nombre = coalesce(CAST(:n AS text), nombre), nombres = CASE WHEN :cn THEN CAST(:no AS text) ELSE nombres END, "
+        "apellido_paterno = CASE WHEN :cn THEN CAST(:ap AS text) ELSE apellido_paterno END, "
+        "apellido_materno = CASE WHEN :cn THEN CAST(:am AS text) ELSE apellido_materno END, "
+        "categoria = coalesce(CAST(:c AS text), categoria), cuadrilla = coalesce(CAST(:q AS text), cuadrilla) "
+        "WHERE id = :i AND proyecto_id = :p RETURNING " + _COLS_TRABAJADOR,
+        n=datos.nombre, cn=datos.nombres is not None, no=datos.nombres, ap=datos.apellido_paterno,
+        am=datos.apellido_materno, c=datos.categoria, q=datos.cuadrilla, i=trabajador_id, p=a.obra_id,
+    )
+    if r is None:
+        raise ErrorSigro(404, "no_existe", "Ese trabajador no existe en esta obra.")
+    return r
+
+
 @router.post("/trabajadores/{trabajador_id}/baja", response_model=e.TrabajadorOut)
 def dar_de_baja(trabajador_id: int, datos: e.BajaIn, a: Actor = Depends(exigir("trabajador.registrar"))):
     """R10: la baja es una fecha de salida; sus jornadas se conservan."""

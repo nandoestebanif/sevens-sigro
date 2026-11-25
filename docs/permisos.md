@@ -26,6 +26,7 @@ persona está asignada.
 | **Preparar la obra** | | | | | |
 | Crear el proyecto y su plazo | — | — | R | R | C |
 | Ampliar el plazo del proyecto | — | — | R | R | A |
+| Cerrar la obra sin borrar nada (25/11; queda «cerrada», al final de la lista, y no se reabre) | — | — | C | R | C |
 | Definir periodos semanales y día de corte | — | — | R | R | C |
 | Registrar los almacenes de la obra | R | — | R | R | C |
 | Consultar el estado de los proyectos | C | C | C | C | C |
@@ -66,8 +67,9 @@ persona está asignada.
 | Consultar quién tiene cada herramienta | C | C | C | C | C |
 | Dar de baja una herramienta | R | C | A | C | C |
 | **Mano de obra** | | | | | |
-| Registrar un trabajador | R | R | C | C | — |
-| Dar de baja a un trabajador | R | R | C | C | — |
+| Registrar un trabajador | R | R | C | R | — |
+| Dar de baja a un trabajador | R | R | C | R | — |
+| Corregir nombres, apellidos, categoría o cuadrilla de un trabajador (25/11) | R | R | C | R | — |
 | Registrar asistencia y horas de la jornada | R | R | C | C | — |
 | Consultar las horas acumuladas | C | C | C | C | C |
 | **Costo** | | | | | |

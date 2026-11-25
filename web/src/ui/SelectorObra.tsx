@@ -11,7 +11,7 @@ import { Form, InputGroup } from 'react-bootstrap'
 import { DibujoObra } from './Ilustraciones'
 import { filtrarTexto, paginar } from './tablas'
 
-export interface OpcionObra { id: string; nombre: string; rol?: string }
+export interface OpcionObra { id: string; nombre: string; rol?: string; cerrada?: boolean }
 
 const POR_PAGINA = 5
 const COLORES = ['#2ee6c5', '#fad85d', '#f2a6ff', '#ffb3c1', '#ffc58f']
@@ -61,6 +61,7 @@ export function SelectorObra({ obras, actual, ocupada, alElegir, autoFoco, etiqu
                   <span className="d-block fw-semibold text-truncate" title={o.nombre}>{o.nombre}</span>
                   <small className="text-body-secondary">
                     {ocupada === o.id ? 'Abriendo…' : o.id === actual ? `${o.rol ? `${o.rol} · ` : ''}obra actual` : o.rol}
+                    {o.cerrada && <span className="badge rounded-pill text-bg-secondary ms-2">cerrada · solo consulta</span>}
                   </small>
                 </span>
                 <span className="flecha" aria-hidden="true">{o.id === actual ? '✓' : '→'}</span>

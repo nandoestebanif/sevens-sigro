@@ -9,6 +9,7 @@
      existir en el catálogo; si ya está planificado, se ajusta (no se duplica).
      La línea queda marcada «Agregado a mano» para siempre.
    ───────────────────────────────────────────────────────────────────────── */
+import { BuscarOpcion } from '../ui/BuscarOpcion'
 import { useEnVivo } from '../formularios/enVivo'
 import { aNumero, cantidadPositiva, importeNoNegativo, minimo } from '../formularios/reglas'
 import { fechaHoraLima } from '../api/horaLima'
@@ -66,18 +67,21 @@ function AjustarLinea({ l, enCerrar, enListo }: { l: LineaRequerimiento; enCerra
           <Pildora tipo="secundario" enClic={enCerrar}>Cancelar</Pildora>
           <Pildora enClic={guardar} deshabilitado={guardando}>{guardando ? 'Guardando…' : 'Guardar ajuste'}</Pildora>
         </div>
-        <div>
-          <span className="small fw-bold text-uppercase text-body-secondary">Ajustes anteriores{ajustes && ajustes.length > 0 ? ` · ${ajustes.length} (el más reciente primero)` : ''}</span>
+        {/* fase 2 (25/11): el historial se abre solo si se pide; el modal queda corto */}
+        <details className="sigro-plegable">
+          <summary>
+            Ajustes anteriores{ajustes === null ? '' : ajustes.length > 0 ? ` · ${ajustes.length}` : ' · ninguno'}
+          </summary>
           {ajustes === null ? <EsqueletoTabla filas={3} />
-            : ajustes.length === 0 ? <p className="small text-body-secondary">Es la cantidad original del S10.</p>
+            : ajustes.length === 0 ? <p className="small text-body-secondary mb-0 mt-2">Es la cantidad original del S10.</p>
               : (
-                <ul className="small text-body-secondary ps-3 pe-1"  style={{ margin: '6px 0 0', maxHeight: 168, overflowY: 'auto' }}>
+                <ul className="small text-body-secondary ps-3 pe-1" style={{ margin: '8px 0 0', maxHeight: 168, overflowY: 'auto' }}>
                   {ajustes.slice().reverse().map((a, k) => (
                     <li key={k}>{n(a.cantidadAnterior)} → <strong>{n(a.cantidadNueva)}</strong> · {a.motivo} · {a.ajustadoPorNombre} · {fechaHoraLima(a.ajustadoEn)}</li>
                   ))}
                 </ul>
               )}
-        </div>
+        </details>
       </div>
     </Modal>
   )
@@ -93,7 +97,7 @@ function AgregarInsumo({ yaPlanificados, enCerrar, enListo }: { yaPlanificados: 
   const [error, setError] = useState('')
   const [guardando, setGuardando] = useState(false)
   useEffect(() => { cliente.listarInsumos().then(setInsumos).catch(() => setInsumos([])) }, [])
-  const codigo = texto.split(' · ')[0].trim()
+  const codigo = texto.trim()
   const elegido = insumos.find((i) => i.codigo === codigo)
   const disponibles = useMemo(() => insumos.filter((i) => !yaPlanificados.has(i.codigo)), [insumos, yaPlanificados])
   const cant = aNumero(cantidad)
@@ -122,17 +126,11 @@ function AgregarInsumo({ yaPlanificados, enCerrar, enListo }: { yaPlanificados: 
         <p className="small text-body-secondary">
           Para lo que el S10 no trae. Queda marcado como agregado a mano, con tu nombre, la fecha y el motivo. Cantidad y precio van en la unidad del S10.
         </p>
-        <div>
-          <label htmlFor="r-ins" className="small fw-semibold text-body-secondary">Insumo del catálogo</label>
-          <input id="r-ins" list="r-catalogo" value={texto} onChange={(e) => { setTexto(e.target.value); v.cambio('insumo') }} onBlur={() => v.salir('insumo')}
-            className={`form-control w-100 mt-2${v.errores.insumo ? ' is-invalid' : v.campo('insumo').valido ? ' is-valid' : ''}`}
-            aria-invalid={!!v.errores.insumo} aria-describedby={v.errores.insumo ? 'r-ins-error' : undefined}
-            placeholder="Escribe código o nombre…"  style={{ height: 44 }} />
-          {v.errores.insumo && <div id="r-ins-error" className="invalid-feedback d-block" aria-live="polite">{v.errores.insumo}</div>}
-          <datalist id="r-catalogo">
-            {disponibles.map((i) => <option key={i.id} value={`${i.codigo} · ${i.descripcion}`} />)}
-          </datalist>
-        </div>
+        {/* fase 2 (25/11): se busca en el catálogo y se elige; ya no se escribe texto libre */}
+        <BuscarOpcion id="r-ins" etiqueta="Insumo del catálogo" valor={elegido ? String(elegido.codigo) : ''}
+          opciones={disponibles.map((i) => ({ valor: i.codigo, texto: i.descripcion, detalle: `${i.codigo} · ${i.unidadCompra}` }))}
+          enCambio={(c) => { setTexto(c); v.salir('insumo') }} marcador="Escribe código o nombre…"
+          error={v.errores.insumo} ayuda={`${disponibles.length.toLocaleString('es-PE')} insumos del catálogo que aún no están planificados`} />
         <div className="d-flex flex-wrap gap-3 align-items-end">
           <div style={{ flex: '1 1 140px' }}><Campo id="r-acant" etiqueta="Cantidad (unidad del S10)" valor={cantidad} enCambio={(x) => { setCantidad(x); v.cambio('cantidad') }} marcador="0" modoTeclado="decimal" {...v.campo('cantidad')} /></div>
           <div style={{ flex: '1 1 140px' }}><Campo id="r-apre" etiqueta="Precio unitario (S/)" valor={precio} enCambio={(x) => { setPrecio(x); v.cambio('precio') }} marcador="0.00" modoTeclado="decimal" {...v.campo('precio')} /></div>
@@ -153,17 +151,23 @@ function AgregarInsumo({ yaPlanificados, enCerrar, enListo }: { yaPlanificados: 
   )
 }
 
+const FAMILIAS: Record<string, string> = { mano: 'Mano de obra', material: 'Materiales', equipo: 'Equipos y herramientas', otro: 'Otros' }
+const familiaDe = (codigo: string) => (codigo.startsWith('01') ? 'mano' : codigo.startsWith('02') ? 'material' : codigo.startsWith('03') ? 'equipo' : 'otro')
+
 export function Requerimiento() {
   const [xs, setXs] = useState<LineaRequerimiento[] | null>(null)
   const [error, setError] = useState('')
   const [origen, setOrigen] = useState<'todos' | 's10' | 'manual'>('todos')
+  const [familia, setFamilia] = useState('')
   const [editando, setEditando] = useState<LineaRequerimiento | null>(null)
   const [agregando, setAgregando] = useState(false)
   const cargar = () => api.listar().then(setXs).catch((e) => setError(e instanceof ErrorApi ? e.message : 'No se pudo cargar el requerimiento.'))
   useEffect(() => { if (usaApiReal) cargar() }, [])
   const puedeAjustar = puedo('requerimiento.ajustar')
   const puedeAgregar = puedo('requerimiento.agregar')
-  const filas = useMemo(() => (xs ?? []).filter((l) => origen === 'todos' || (origen === 'manual') === l.manual), [xs, origen])
+  // fase 2 (25/11): también por familia del S10 (el código empieza en 01 mano de obra, 02 materiales, 03 equipos)
+  const filas = useMemo(() => (xs ?? []).filter((l) => (origen === 'todos' || (origen === 'manual') === l.manual)
+    && (!familia || familiaDe(l.codigo) === familia)), [xs, origen, familia])
   const soles = (v: number) => v.toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 
   return (
@@ -189,8 +193,14 @@ export function Requerimiento() {
                 clave={(l) => l.id}
                 buscar={(l) => `${l.descripcion} ${l.codigo}`}
                 marcadorBusqueda="Buscar por nombre o código…"
-                filtros={xs?.some((l) => l.manual) ? <Segmentado etiqueta="Origen" valor={origen} enCambio={setOrigen}
-                  opciones={[{ valor: 'todos', texto: 'Todos' }, { valor: 's10', texto: 'Del S10' }, { valor: 'manual', texto: 'Agregados a mano' }]} /> : undefined}
+                filtros={<>
+                  <select className="form-select" aria-label="Familia del insumo" value={familia} onChange={(e) => setFamilia(e.target.value)} style={{ width: 'auto' }}>
+                    <option value="">Todas las familias</option>
+                    {Object.entries(FAMILIAS).map(([k, t]) => <option key={k} value={k}>{t}</option>)}
+                  </select>
+                  {xs?.some((l) => l.manual) && <Segmentado etiqueta="Origen" valor={origen} enCambio={setOrigen}
+                    opciones={[{ valor: 'todos', texto: 'Todos' }, { valor: 's10', texto: 'Del S10' }, { valor: 'manual', texto: 'Agregados a mano' }]} />}
+                </>}
                 vacio={{ titulo: 'Sin requerimiento', detalle: 'Importa la Relación de insumos del S10 en «Importar del S10».' }}
                 columnas={[
                   { clave: 'insumo', titulo: 'Insumo', valor: (l) => l.descripcion, celda: (l) => (

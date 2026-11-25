@@ -30,6 +30,7 @@ import { desvioPct, precios, type PrecioReferencia } from '../api/oficina'
 import { AltaProveedor } from './Proveedores'
 import { useAvisos } from '../ui/Avisos'
 import { EsqueletoTabla } from '../ui/Esqueleto'
+import { PanelDetalle } from '../ui/PanelDetalle'
 
 /* HU-35: el estado lo deriva el servidor de las recepciones; aquí solo se pinta */
 const ESTADO_COMPRA: Record<EstadoCompra, { texto: string; tono: TonoChip }> = {
@@ -389,12 +390,57 @@ function ComprobantesCompra({ compra, enCerrar, enCambio }: {
   )
 }
 
+/** Fase 2 del rediseño (25/11): el detalle de una compra a la derecha, con sus líneas y totales. */
+function DetalleCompra({ compra: c, enCerrar, acciones }: { compra: Compra; enCerrar: () => void; acciones: React.ReactNode }) {
+  const vigentes = c.comprobantesVigentes ?? (c.adjunto ? 1 : 0)
+  return (
+    <PanelDetalle ancho={600} enCerrar={enCerrar}
+      titulo={`${c.tipoComprobante === 'factura' ? 'Factura' : 'Boleta'} ${c.numeroComprobante}`}
+      subtitulo={c.proveedorRazonSocial}
+      chips={<>
+        <Chip tono={ESTADO_COMPRA[c.estado].tono}>{ESTADO_COMPRA[c.estado].texto}</Chip>
+        <Chip tono={vigentes ? 'neutro' : 'aviso'}>{vigentes ? `${vigentes} comprobante${vigentes > 1 ? 's' : ''}` : 'Sin comprobante'}</Chip>
+        {c.proveedorEstado === 'con_alerta_sunat' && <Chip tono="aviso">{c.proveedorAlertaSunat ? `SUNAT: ${c.proveedorAlertaSunat}` : 'Alerta SUNAT'}</Chip>}
+      </>}
+      secciones={[
+        { titulo: 'Comprobante', datos: [
+          ['Fecha de emisión', c.fecha], ['Proveedor', c.proveedorRazonSocial],
+          ['Base imponible', `S/ ${soles(c.totales.base)}`], ['IGV', `S/ ${soles(c.totales.igv)}`],
+          ['Total', <strong key="t">S/ {soles(c.totales.total)}</strong>],
+          ...(c.estado === 'anulada' ? [['Motivo de anulación', c.motivoAnulacion || '—'] as [string, React.ReactNode]] : []),
+        ] },
+      ]}
+      pie={acciones}
+    >
+      <section>
+        <h3 className="sigro-detalle-seccion">Insumos comprados · {c.lineas.length}</h3>
+        <div className="overflow-x-auto position-relative">
+          <table className="table table-sm align-middle mb-0 small">
+            <thead><tr><th>Insumo</th><th className="n">Cantidad</th><th className="n">P. unit.</th><th className="n">Importe</th></tr></thead>
+            <tbody>
+              {c.lineas.map((l, i) => (
+                <tr key={`${l.insumoId}-${i}`}>
+                  <td>{l.descripcion}<div className="text-body-secondary n">{l.insumoId}{l.notaPrecio ? ` · ${l.notaPrecio}` : ''}</div></td>
+                  <td className="n text-nowrap">{l.cantidad.toLocaleString('es-PE', { maximumFractionDigits: 3 })} {l.unidadCompra}</td>
+                  <td className="n text-nowrap">S/ {soles(l.precioUnitario)}</td>
+                  <td className="n text-nowrap fw-semibold">S/ {soles(l.cantidad * l.precioUnitario)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </PanelDetalle>
+  )
+}
+
 export function Compras() {
   const puedeRegistrar = puedo('compra.registrar')
   // «/compras?nueva=1» (atajo del menú) abre directo el formulario
   const [params, setParams] = useSearchParams()
   const vista: 'lista' | 'nueva' = params.get('nueva') && puedeRegistrar ? 'nueva' : 'lista'
   const irA = (v: 'lista' | 'nueva') => setParams(v === 'nueva' ? { nueva: '1' } : {})
+  const [viendo, setViendo] = useState<Compra | null>(null)
   const [filtro, setFiltro] = useState<'vigentes' | 'por_recibir' | 'anuladas' | 'todas'>('vigentes')
   const [proveedores, setProveedores] = useState<Proveedor[]>([])
   const [insumos, setInsumos] = useState<InsumoCatalogo[]>([])
@@ -742,15 +788,22 @@ export function Compras() {
             ]}
             acciones={(c) => (
               <AccionesFila de={`la compra ${c.numeroComprobante}`} acciones={[
-                { texto: 'Comprobantes', enClic: () => setComprobantesDe(c) },
+                { texto: 'Ver detalle', enClic: () => setViendo(c) },
                 c.estado !== 'recibida' && c.estado !== 'anulada' && { texto: 'Recibir', enClic: () => setRecibiendo(c) },
                 puedeRegistrar && c.estado !== 'anulada' && { texto: 'Anular', peligro: true, enClic: () => setAnulando(c) },
+                { texto: 'Comprobantes', icono: 'archivo', enClic: () => setComprobantesDe(c) },
               ]} />
             )}
           />
         </Vidrio>
       )}
 
+      {viendo && (
+        <DetalleCompra compra={viendo} enCerrar={() => setViendo(null)} acciones={<>
+          <Pildora tipo="secundario" enClic={() => { setComprobantesDe(viendo); setViendo(null) }}>Comprobantes</Pildora>
+          {viendo.estado !== 'recibida' && viendo.estado !== 'anulada' && <Pildora enClic={() => { setRecibiendo(viendo); setViendo(null) }}>Recibir</Pildora>}
+        </>} />
+      )}
       {recibiendo && (
         <RecepcionCompra
           compra={recibiendo}

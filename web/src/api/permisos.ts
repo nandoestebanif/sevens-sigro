@@ -13,6 +13,7 @@ export const ROLES: Rol[] = ['almacenero', 'ssoma', 'residente', 'administrador'
 export const ACCIONES: Record<string, Rol[]> = {
   'proyecto.crear': ['residente', 'administrador'],
   'proyecto.ampliar_plazo': ['residente', 'administrador'],
+  'proyecto.cerrar': ['administrador'],
   'proyecto.consultar': ['almacenero', 'ssoma', 'residente', 'administrador', 'gerente'],
   'periodo.consultar': ['almacenero', 'ssoma', 'residente', 'administrador', 'gerente'],
   'periodo.cerrar': ['residente', 'administrador'],
@@ -25,7 +26,7 @@ export const ACCIONES: Record<string, Rol[]> = {
   'dispositivo.solicitar': ['almacenero', 'ssoma'],
   'dispositivo.autorizar': ['administrador'],
   'dispositivo.consultar': ['residente', 'administrador'],
-  'trabajador.registrar': ['almacenero', 'ssoma'],
+  'trabajador.registrar': ['almacenero', 'ssoma', 'administrador'],
   'trabajador.consultar': ['almacenero', 'ssoma', 'residente', 'administrador'],
   'jornada.registrar': ['almacenero', 'ssoma'],
   'horas.consultar': ['almacenero', 'ssoma', 'residente', 'administrador', 'gerente'],
@@ -64,6 +65,7 @@ export const ACCIONES: Record<string, Rol[]> = {
 export const DESCRIPCION: Record<string, string> = {
   'proyecto.crear': 'Crear una obra',
   'proyecto.ampliar_plazo': 'Ampliar el plazo',
+  'proyecto.cerrar': 'Cerrar la obra (no se reabre)',
   'proyecto.consultar': 'Ver la obra',
   'periodo.consultar': 'Ver las semanas',
   'periodo.cerrar': 'Cerrar una semana',
@@ -76,7 +78,7 @@ export const DESCRIPCION: Record<string, string> = {
   'dispositivo.solicitar': 'Pedir autorización del celular',
   'dispositivo.autorizar': 'Autorizar o revocar celulares',
   'dispositivo.consultar': 'Ver celulares',
-  'trabajador.registrar': 'Registrar y dar de baja trabajadores',
+  'trabajador.registrar': 'Registrar, editar y dar de baja trabajadores',
   'trabajador.consultar': 'Ver trabajadores',
   'jornada.registrar': 'Tomar asistencia',
   'horas.consultar': 'Ver horas acumuladas',
@@ -112,7 +114,7 @@ export const DESCRIPCION: Record<string, string> = {
 }
 
 export const GRUPOS_PERMISOS: { grupo: string; acciones: string[] }[] = [
-  { grupo: 'Obra', acciones: ['proyecto.crear', 'proyecto.ampliar_plazo', 'proyecto.consultar', 'periodo.consultar', 'periodo.cerrar', 'almacen.registrar', 'almacen.consultar'] },
+  { grupo: 'Obra', acciones: ['proyecto.crear', 'proyecto.ampliar_plazo', 'proyecto.cerrar', 'proyecto.consultar', 'periodo.consultar', 'periodo.cerrar', 'almacen.registrar', 'almacen.consultar'] },
   { grupo: 'Accesos', acciones: ['usuario.crear', 'usuario.consultar', 'asignacion.escribir', 'asignacion.consultar', 'dispositivo.solicitar', 'dispositivo.autorizar', 'dispositivo.consultar'] },
   { grupo: 'Mano de obra', acciones: ['trabajador.registrar', 'trabajador.consultar', 'jornada.registrar', 'horas.consultar'] },
   { grupo: 'Compras', acciones: ['proveedor.registrar', 'proveedor.consultar', 'compra.registrar', 'compra.consultar', 'solicitud.emitir', 'solicitud.consultar', 'requerimiento.importar', 'requerimiento.ajustar', 'requerimiento.agregar', 'requerimiento.consultar', 'partida.importar', 'partida.consultar', 'reposicion.registrar', 'reposicion.consultar', 'critico.marcar', 'avance.consultar'] },
