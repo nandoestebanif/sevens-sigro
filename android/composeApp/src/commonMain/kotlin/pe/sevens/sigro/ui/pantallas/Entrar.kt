@@ -55,11 +55,25 @@ import org.koin.compose.viewmodel.koinViewModel
 import pe.sevens.sigro.dominio.ErrorSigro
 import pe.sevens.sigro.dominio.RepositorioSesion
 import pe.sevens.sigro.recursos.Res
-import pe.sevens.sigro.recursos.sevens_logo
 import pe.sevens.sigro.ui.componentes.BotonNegro
 import pe.sevens.sigro.ui.componentes.CampoVidrio
 import pe.sevens.sigro.ui.tema.Apariencia
 import pe.sevens.sigro.ui.tema.TemaSigro
+import pe.sevens.sigro.recursos.sevens_logo_blanco
+import pe.sevens.sigro.ui.tema.Paleta
+import pe.sevens.sigro.ui.componentes.Ilustracion
+import pe.sevens.sigro.ui.componentes.DibujoObra
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.background
 
 /* HU-12 · Iniciar sesión. */
 
@@ -120,25 +134,42 @@ fun PantallaEntrar(vm: EntrarViewModel = koinViewModel()) {
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
-                Image(
-                    painterResource(Res.drawable.sevens_logo), contentDescription = "SEVEN'S Ingenieros SAC",
-                    modifier = Modifier.padding(top = 32.dp).height(96.dp).widthIn(max = 260.dp),
-                )
-                Text(
-                    "Almacén de obra", style = MaterialTheme.typography.headlineSmall,
-                    modifier = Modifier.semantics { heading() },
-                )
+                // Portada negra de la marca (como la web): logo blanco, título con remate amarillo y el camión
+                Box(
+                    Modifier.widthIn(max = 480.dp).fillMaxWidth().heightIn(min = 300.dp)
+                        .clip(RoundedCornerShape(30.dp)).background(Paleta.Noche),
+                ) {
+                    DibujoObra(Ilustracion.CAMION, Modifier.align(Alignment.BottomEnd).padding(end = 4.dp), ancho = 170.dp)
+                    Column(Modifier.padding(24.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Image(
+                            painterResource(Res.drawable.sevens_logo_blanco), contentDescription = "SEVEN'S Ingenieros SAC",
+                            modifier = Modifier.height(58.dp),
+                        )
+                        Text(
+                            buildAnnotatedString {
+                                append("Almacén ")
+                                withStyle(SpanStyle(color = Paleta.TicketAmarillo)) { append("de obra") }
+                            },
+                            fontSize = 30.sp, fontWeight = FontWeight.SemiBold, color = Color.White,
+                            modifier = Modifier.padding(top = 14.dp).semantics { heading() },
+                        )
+                        Text(
+                            "Ingresa para registrar las entradas y salidas de material de tu obra",
+                            fontSize = 14.sp, lineHeight = 21.sp, color = Color(0xFFD2D3D3), modifier = Modifier.widthIn(max = 260.dp),
+                        )
+                        Text(
+                            "Funciona sin señal", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = Paleta.SobreTicket,
+                            modifier = Modifier.padding(top = 36.dp).background(Paleta.TicketAmarillo, RoundedCornerShape(12.dp)).padding(horizontal = 12.dp, vertical = 6.dp),
+                        )
+                    }
+                }
                 Card(
                     Modifier.widthIn(max = 480.dp).fillMaxWidth(),
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+                    shape = RoundedCornerShape(24.dp),
                 ) {
                     Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Text(
-                            "Ingresa para registrar las entradas y salidas de material de tu obra",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
                         CampoVidrio(
                             e.usuario, vm::usuario, "Usuario", marcador = "Tu usuario",
                             finalIcono = { Icon(Icons.Filled.Person, contentDescription = null) },
