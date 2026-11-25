@@ -53,6 +53,8 @@ export const ACCIONES: Record<string, Rol[]> = {
   'conteo.registrar': ['almacenero'],
   'movimiento.revertir': ['almacenero', 'residente'],
   'stock.consultar': ['almacenero', 'ssoma', 'residente', 'administrador', 'gerente'],
+  'herramienta.prestar': ['almacenero'],
+  'herramienta.consultar': ['almacenero', 'ssoma', 'residente', 'administrador', 'gerente'],
   'costo.consultar': ['residente', 'administrador', 'gerente'],
   'insumo.consultar': ['almacenero', 'ssoma', 'residente', 'administrador', 'gerente'],
   'insumo.registrar': ['almacenero', 'residente', 'administrador'],
@@ -105,6 +107,8 @@ export const DESCRIPCION: Record<string, string> = {
   'conteo.registrar': 'Contar el almacén',
   'movimiento.revertir': 'Revertir un movimiento',
   'stock.consultar': 'Ver stock y kárdex',
+  'herramienta.prestar': 'Prestar herramientas y registrar su devolución',
+  'herramienta.consultar': 'Ver quién tiene cada herramienta',
   'costo.consultar': 'Ver gasto e inventario valorizado',
   'insumo.consultar': 'Ver el catálogo',
   'insumo.registrar': 'Agregar un insumo al catálogo',
@@ -118,7 +122,7 @@ export const GRUPOS_PERMISOS: { grupo: string; acciones: string[] }[] = [
   { grupo: 'Accesos', acciones: ['usuario.crear', 'usuario.consultar', 'asignacion.escribir', 'asignacion.consultar', 'dispositivo.solicitar', 'dispositivo.autorizar', 'dispositivo.consultar'] },
   { grupo: 'Mano de obra', acciones: ['trabajador.registrar', 'trabajador.consultar', 'jornada.registrar', 'horas.consultar'] },
   { grupo: 'Compras', acciones: ['proveedor.registrar', 'proveedor.consultar', 'compra.registrar', 'compra.consultar', 'solicitud.emitir', 'solicitud.consultar', 'requerimiento.importar', 'requerimiento.ajustar', 'requerimiento.agregar', 'requerimiento.consultar', 'partida.importar', 'partida.consultar', 'reposicion.registrar', 'reposicion.consultar', 'critico.marcar', 'avance.consultar'] },
-  { grupo: 'Almacén', acciones: ['salida.registrar', 'ingreso.registrar', 'recepcion.registrar', 'traslado.registrar', 'conteo.registrar', 'movimiento.revertir', 'stock.consultar', 'costo.consultar'] },
+  { grupo: 'Almacén', acciones: ['salida.registrar', 'ingreso.registrar', 'recepcion.registrar', 'traslado.registrar', 'conteo.registrar', 'movimiento.revertir', 'stock.consultar', 'herramienta.prestar', 'herramienta.consultar', 'costo.consultar'] },
   { grupo: 'Catálogo', acciones: ['insumo.consultar', 'insumo.registrar', 'insumo.verificar', 'insumo.factor', 'insumo.importar'] },
 ]
 
