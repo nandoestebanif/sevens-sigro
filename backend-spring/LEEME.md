@@ -14,7 +14,9 @@ El esquema es el mismo (las 23 migraciones de `api/migraciones`); este backend n
 | `SIGRO_JWT_SECRET` | el mismo secreto del servicio actual (los tokens siguen valiendo) |
 | `SIGRO_ENTORNO` | `produccion` fuera de la PC (exige secreto y token de servicio) |
 | `SIGRO_SERVICIO_TOKEN` | token del relevo para `/interno/eventos` |
-| `SIGRO_INTEGRACIONES_URL`, `SIGRO_NOTIFICACIONES_URL` | servicios externos (opcionales) |
+| `PADRON_PROVEEDOR`, `FACTILIZA_TOKEN`, `APISPERU_TOKEN` | consulta de RUC (SUNAT) y DNI (RENIEC) desde este backend |
+| `SIGRO_INTEGRACIONES_URL` | opcional: si se define, RUC, DNI y S10 se piden a ese servicio en vez de resolverse aquí |
+| `SIGRO_NOTIFICACIONES_URL` | servicio de notificaciones (opcional) |
 | `SIGRO_CORS` | orígenes de la web, separados por coma |
 | `PORT` | puerto (Render lo pone) |
 
