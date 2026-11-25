@@ -622,10 +622,12 @@ private fun HojaMas(irA: (Destino) -> Unit, alCerrar: () -> Unit) {
             OpcionMas(Icons.Filled.ViewInAr, "Stock", centrada = true) { irA(Destino.Stock) }
             OpcionMas(Icons.Filled.Build, "Herramientas", centrada = true) { irA(Destino.Herramientas) }
         }
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            OpcionMas(Icons.Filled.FactCheck, "Conteo e incidencias", centrada = true) { irA(Destino.Conteo) }
+        }
         Text("PRÓXIMAMENTE", fontSize = 12.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.04.em, color = Paleta.Texto3)
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             OpcionMas(Icons.Filled.SwapHoriz, "Traslado", centrada = true, alPulsar = null)
-            OpcionMas(Icons.Filled.FactCheck, "Conteo", centrada = true, alPulsar = null)
             OpcionMas(Icons.Filled.Lock, "Cierre", centrada = true, alPulsar = null)
         }
     }
