@@ -29,6 +29,13 @@ fun obrasDe(estado: EstadoRaiz): List<ObraAsignada> = when (estado) {
     EstadoRaiz.Cargando, EstadoRaiz.SinSesion -> emptyList()
 }
 
+/** La sesión abierta, en cualquier estado (null sin sesión): para el candado de la huella. */
+fun sesionDe(estado: EstadoRaiz): Sesion? = when (estado) {
+    is EstadoRaiz.Dentro -> estado.sesion
+    is EstadoRaiz.ElegirObra -> estado.sesion
+    EstadoRaiz.Cargando, EstadoRaiz.SinSesion -> null
+}
+
 /** Lugar de [obra] en la lista (0 si no está): decide su color y su dibujo. */
 fun indiceDeObra(obras: List<ObraAsignada>, obra: ObraAsignada): Int = obras.indexOfFirst { it.id == obra.id }.coerceAtLeast(0)
 
