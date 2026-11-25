@@ -15,6 +15,8 @@ import pe.sevens.sigro.datos.repositorio.RepositorioObraImpl
 import pe.sevens.sigro.datos.repositorio.RepositorioPreferenciasImpl
 import pe.sevens.sigro.datos.repositorio.RepositorioCandadoImpl
 import pe.sevens.sigro.dominio.RepositorioCandado
+import pe.sevens.sigro.dominio.ClaveReciente
+import pe.sevens.sigro.plataforma.Plataforma
 import pe.sevens.sigro.ui.pantallas.CandadoViewModel
 import pe.sevens.sigro.ui.pantallas.pendientesDe
 import pe.sevens.sigro.dominio.RepositorioPreferencias
@@ -92,14 +94,15 @@ val moduloDatos = module {
     single<RepositorioObra> { RepositorioObraImpl(get(), get()) }
     single<RepositorioPreferencias> { RepositorioPreferenciasImpl(get()) }
     single<RepositorioCandado> { RepositorioCandadoImpl(get()) }
+    single { ClaveReciente({ Plataforma.ahoraMs() }) } // la contraseña recién escrita, solo en memoria
     single { get<BaseDatosSigro>().stock() }
     single<RepositorioStock> { RepositorioStockImpl(get(), get(), get()) }
 }
 
 val moduloPresentacion = module {
     viewModel { RaizViewModel(get()) }
-    viewModel { CandadoViewModel(get(), get(), pendientesDe(get(), get())) }
-    viewModel { EntrarViewModel(get()) }
+    viewModel { CandadoViewModel(get(), get(), pendientesDe(get(), get()), clave = get()) }
+    viewModel { EntrarViewModel(get(), get(), get()) }
     viewModel { InicioViewModel(get(), get(), get(), get(), get()) }
     viewModel { SalidaViewModel(get(), get(), get(), get(), get(), get()) }
     viewModel { PerfilViewModel(get(), get(), get(), get()) }

@@ -87,6 +87,9 @@ import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
 import pe.sevens.sigro.dominio.AjusteHuella
 import pe.sevens.sigro.dominio.Biometria
+import pe.sevens.sigro.dominio.ClaveReciente
+import pe.sevens.sigro.dominio.CuentaConHuella
+import pe.sevens.sigro.dominio.ResultadoSecreto
 import pe.sevens.sigro.dominio.DisponibilidadHuella
 import pe.sevens.sigro.dominio.MINUTOS_BLOQUEO
 import pe.sevens.sigro.dominio.ObraAsignada
@@ -116,6 +119,8 @@ data class EstadoCandado(
     /** Ya se leyó el ajuste guardado (antes no se decide nada, para no mostrar el inicio un instante). */
     val listo: Boolean = false,
     val mensaje: String? = null,
+    /** Esta cuenta puede entrar con la huella aunque cierre sesión (su contraseña está cifrada con la huella). */
+    val entraConHuella: Boolean = false,
 )
 
 class CandadoViewModel(
@@ -124,6 +129,8 @@ class CandadoViewModel(
     /** Lo que espera envío (salidas + cola general); en Koin: [pendientesDe]. */
     pendientes: Flow<Int> = flowOf(0),
     private val reloj: () -> Long = { Plataforma.ahoraMs() },
+    /** La contraseña recién escrita (solo en memoria): se cifra con la huella si la activa al entrar. */
+    private val clave: ClaveReciente = ClaveReciente(reloj),
 ) : ViewModel() {
     private val _e = MutableStateFlow(EstadoCandado())
     val estado = _e.asStateFlow()
@@ -133,11 +140,14 @@ class CandadoViewModel(
 
     /** Último toque en la pantalla (en memoria; se guarda al salir de la app). */
     private var ultimoUso: Long? = null
+    private var sesion: Sesion? = null
 
     init {
         viewModelScope.launch {
             var primera = true
-            sesiones.sesion.map { it?.usuarioId }.distinctUntilChanged().collect { id ->
+            sesiones.sesion.distinctUntilChanged { a, b -> a?.usuarioId == b?.usuarioId }.collect { s ->
+                sesion = s
+                val id = s?.usuarioId
                 if (id == null) {
                     _e.value = EstadoCandado(listo = true)
                 } else {
@@ -149,7 +159,8 @@ class CandadoViewModel(
                     } else {
                         ultimoUso = reloj(); false // acaba de entrar con su contraseña: no se le vuelve a pedir
                     }
-                    _e.value = EstadoCandado(id, ajuste, bloqueada = bloquear, listo = true)
+                    val conCuenta = runCatching { repo.cuenta()?.usuarioId == id }.getOrDefault(false)
+                    _e.value = EstadoCandado(id, ajuste, bloqueada = bloquear, listo = true, entraConHuella = conCuenta)
                 }
                 primera = false
             }
@@ -181,6 +192,7 @@ class CandadoViewModel(
         ResultadoHuella.HuellaNueva -> {
             // alguien agregó una huella al celular: ya no se confía; se apaga y se pide la contraseña
             guardarAjuste { it.copy(activa = false, ofrecida = false) }
+            olvidarCuentaPropia()
             _e.update { it.copy(bloqueada = false, mensaje = MENSAJE_HUELLA_NUEVA) }
             cerrarSesion()
         }
@@ -194,16 +206,56 @@ class CandadoViewModel(
         ResultadoHuella.HuellaNueva -> _e.update { it.copy(mensaje = "La huella del celular cambió. Vuelve a activarla.") }
     }
 
-    fun ahoraNo() = guardarAjuste { it.copy(ofrecida = true) }
-    fun desactivar() = guardarAjuste { it.copy(activa = false, ofrecida = true) }
+    /**
+     * Activa la huella. Si la contraseña recién escrita sigue en memoria y el celular puede (Android 11+), en el mismo
+     * diálogo se cifra con la huella: así podrá entrar con ella aunque cierre sesión. Si no, queda solo el candado.
+     */
+    suspend fun activar(bio: Biometria) {
+        val s = sesion ?: return
+        val reciente = clave.tomar(s.usuario)
+        if (reciente == null || !bio.guardaClaves()) return alActivar(bio.verificar("Activa tu huella en SIGRO", s.nombre))
+        when (val r = bio.cifrar("Activa tu huella en SIGRO", s.nombre, reciente)) {
+            is ResultadoSecreto.Ok -> {
+                runCatching { repo.guardarCuenta(CuentaConHuella(s.usuarioId, s.usuario, s.nombre, s.servidor, r.valor)) }
+                _e.update { it.copy(entraConHuella = true) }
+                alActivar(ResultadoHuella.Ok)
+            }
+            ResultadoSecreto.Cancelada -> clave.guardar(s.usuario, reciente) // la devuelve: puede intentarlo otra vez
+            is ResultadoSecreto.Fallo -> alActivar(ResultadoHuella.Fallo(r.mensaje))
+            ResultadoSecreto.HuellaNueva -> alActivar(ResultadoHuella.HuellaNueva)
+            ResultadoSecreto.NoSoportado -> alActivar(bio.verificar("Activa tu huella en SIGRO", s.nombre))
+        }
+    }
+
+    /** ¿Tiene la contraseña recién escrita? Si no, Perfil la pide una vez para poder entrar con huella después. */
+    fun hayClaveReciente(): Boolean = sesion?.let { clave.hay(it.usuario) } ?: false
+    fun recordarClave(c: String) { sesion?.let { if (c.isNotEmpty()) clave.guardar(it.usuario, c) } }
+
+    fun ahoraNo() { clave.olvidar(); guardarAjuste { it.copy(ofrecida = true) } }
+    fun desactivar() {
+        guardarAjuste { it.copy(activa = false, ofrecida = true) }
+        olvidarCuentaPropia()
+    }
     fun minutos(m: Int) = guardarAjuste { it.copy(minutos = ReglaCandado.minutosValidos(m)) }
     fun bloquearAhora() { if (_e.value.ajuste.activa) _e.update { it.copy(bloqueada = true) } }
     fun mensajeVisto() = _e.update { it.copy(mensaje = null) }
 
-    /** «No soy yo»: la sesión se cierra (la cola NO se borra: se envía cuando vuelva a entrar su dueño). */
-    fun cerrarSesion() {
+    /**
+     * Cierra la sesión (la cola NO se borra: se envía cuando vuelva a entrar su dueño). Con [olvidarHuella] («no soy
+     * yo») también se apaga la huella y se borra la contraseña cifrada: quien tenga el celular no puede entrar como él.
+     */
+    fun cerrarSesion(olvidarHuella: Boolean = false) {
+        if (olvidarHuella) { guardarAjuste { it.copy(activa = false, ofrecida = false) }; olvidarCuentaPropia() }
+        clave.olvidar()
         _e.update { it.copy(bloqueada = false) }
         viewModelScope.launch { sesiones.cerrarSesion() }
+    }
+
+    /** Borra la contraseña cifrada si es de esta persona (la de otra cuenta en el mismo celular no se toca). */
+    private fun olvidarCuentaPropia() {
+        val id = _e.value.usuarioId ?: return
+        _e.update { it.copy(entraConHuella = false) }
+        viewModelScope.launch { runCatching { if (repo.cuenta()?.usuarioId == id) repo.olvidarCuenta() } }
     }
 
     private fun guardarAjuste(cambio: (AjusteHuella) -> AjusteHuella) {
@@ -252,7 +304,7 @@ fun BoxScope.CapaCandado(vm: CandadoViewModel, sesion: Sesion?, obra: ObraAsigna
     }
     AnimatedVisibility(ofrecer, Modifier.align(Alignment.BottomCenter), enter = slideInVertically { it }, exit = slideOutVertically { it }) {
         HojaActivarHuella(
-            alActivar = { alcance.launch { vm.alActivar(biometria.verificar("Activa tu huella en SIGRO", sesion?.nombre.orEmpty())) } },
+            alActivar = { alcance.launch { vm.activar(biometria) } },
             alAhoraNo = vm::ahoraNo,
         )
     }
@@ -264,7 +316,7 @@ fun BoxScope.CapaCandado(vm: CandadoViewModel, sesion: Sesion?, obra: ObraAsigna
             nombre = sesion.nombre, rol = obra?.rolLegible, obraNombre = obra?.nombre, porEnviar = porEnviar,
             minutos = e.ajuste.minutos, disponible = disponible, mensaje = e.mensaje,
             alDesbloquear = { alcance.launch { vm.alDesbloquear(biometria.verificar("Entra a SIGRO", listOfNotNull(sesion.nombre, obra?.nombre).joinToString(" · "))) } },
-            alCerrarSesion = { biometria.olvidar(); vm.cerrarSesion() },
+            alCerrarSesion = { biometria.olvidar(); biometria.olvidarClave(); vm.cerrarSesion(olvidarHuella = true) },
         )
     }
 }
@@ -412,6 +464,16 @@ fun SeccionSeguridad(vm: CandadoViewModel, biometria: Biometria) {
     val alcance = rememberCoroutineScope()
     val disponible = remember { biometria.disponibilidad() }
     var activando by remember { mutableStateOf(false) }
+    // desde Perfil la contraseña ya no está en memoria: se pide una vez para poder entrar con huella tras cerrar sesión
+    var pidiendoClave by remember { mutableStateOf(false) }
+    val activar = { activando = true; alcance.launch { vm.activar(biometria); activando = false }; Unit }
+    if (pidiendoClave) {
+        DialogoClave(
+            alConfirmar = { c -> pidiendoClave = false; vm.recordarClave(c); activar() },
+            alOmitir = { pidiendoClave = false; activar() },
+            alCerrar = { pidiendoClave = false },
+        )
+    }
     TarjetaVidrio {
         Text("Seguridad", fontSize = 13.sp, color = Paleta.Texto3)
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -434,14 +496,18 @@ fun SeccionSeguridad(vm: CandadoViewModel, biometria: Biometria) {
                 enabled = disponible == DisponibilidadHuella.DISPONIBLE && !activando,
                 onCheckedChange = { si ->
                     if (si) {
-                        activando = true
-                        alcance.launch { vm.alActivar(biometria.verificar("Activa tu huella en SIGRO", "Confirma que eres tú")); activando = false }
-                    } else { biometria.olvidar(); vm.desactivar() }
+                        if (biometria.guardaClaves() && !vm.hayClaveReciente()) pidiendoClave = true else activar()
+                    } else { biometria.olvidar(); biometria.olvidarClave(); vm.desactivar() }
                 },
                 colors = SwitchDefaults.colors(checkedTrackColor = Paleta.TicketAmarillo, checkedThumbColor = Paleta.SobreTicket),
             )
         }
         if (e.ajuste.activa) {
+            Text(
+                if (e.entraConHuella) "✓ También entras con tu huella aunque cierres sesión."
+                else "Desbloquea la app. Para entrar con huella tras cerrar sesión, apágala y vuelve a activarla con tu contraseña.",
+                fontSize = 12.sp, lineHeight = 17.sp, color = if (e.entraConHuella) Paleta.EnviadoTexto else Paleta.Texto3,
+            )
             Text("Bloquear tras este tiempo sin usarla", fontSize = 13.sp, color = Paleta.Texto2, modifier = Modifier.padding(top = 4.dp))
             Opciones(MINUTOS_BLOQUEO, e.ajuste.minutos, { "$it min" }, vm::minutos, colorActivo = Paleta.Naranja)
             Row(
@@ -465,4 +531,35 @@ fun SeccionSeguridad(vm: CandadoViewModel, biometria: Biometria) {
         }
         e.mensaje?.let { Text(it, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = Paleta.Texto2, modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite }) }
     }
+}
+
+/** Perfil › activar huella: la contraseña, una sola vez, para cifrarla con la huella. Se puede omitir (solo candado). */
+@Composable
+private fun DialogoClave(alConfirmar: (String) -> Unit, alOmitir: () -> Unit, alCerrar: () -> Unit) {
+    var clave by remember { mutableStateOf("") }
+    androidx.compose.material3.AlertDialog(
+        onDismissRequest = alCerrar,
+        icon = { Icon(Icons.Filled.Fingerprint, contentDescription = null, tint = Paleta.Naranja) },
+        title = { Text("Escribe tu contraseña una vez") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text(
+                    "Se guarda cifrada con tu huella: así entras con la huella aunque cierres sesión. SIGRO no puede leerla sin tu huella.",
+                    fontSize = 13.sp, lineHeight = 19.sp, color = Paleta.Texto2,
+                )
+                pe.sevens.sigro.ui.componentes.CampoVidrio(
+                    clave, { clave = it }, "Contraseña", teclado = androidx.compose.ui.text.input.KeyboardType.Password,
+                    transformacion = androidx.compose.ui.text.input.PasswordVisualTransformation(),
+                )
+            }
+        },
+        confirmButton = {
+            androidx.compose.material3.TextButton(onClick = { alConfirmar(clave) }, enabled = clave.isNotEmpty()) {
+                Text("Seguir con la huella", fontWeight = FontWeight.Bold, color = Paleta.Naranja)
+            }
+        },
+        dismissButton = {
+            androidx.compose.material3.TextButton(onClick = alOmitir) { Text("Solo desbloquear", color = Paleta.Texto2) }
+        },
+    )
 }
