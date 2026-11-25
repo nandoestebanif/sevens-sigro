@@ -20,9 +20,17 @@ export interface Usuario {
   usuario: string
   estado: 'activo' | 'baja' | string
   creadoEn: string
-  /** La base la guarda al dar de baja; la API todavía no la devuelve (pedido a Adiel). */
+  /** Desde la 0021 la API la devuelve. */
   fechaBaja?: string | null
+  dni?: string | null
+  correo?: string | null
+  celular?: string | null
 }
+
+export interface DniReniec { dni: string; nombres: string; apellidoPaterno: string; apellidoMaterno: string; nombreCompleto: string }
+
+/** Vacío = «no lo tiene» (la API lo guarda como nulo). */
+const limpio = (v?: string) => (v ?? '').replace(/\s/g, '')
 
 export interface Asignacion {
   id: number
@@ -59,8 +67,18 @@ export const administracion = {
   /* ── usuarios (HU-13): son de la empresa, no de una obra ── */
   usuarios: () => pedir<Usuario[]>('GET', '/usuarios'),
   /** La clave temporal la valida el servidor (clave_debil) y nunca se guarda en la web. */
-  crearUsuario: (d: { nombre: string; usuario: string; clave: string }) =>
-    pedir<Usuario>('POST', '/usuarios', { nombre: d.nombre.trim(), usuario: d.usuario.trim(), clave: d.clave }),
+  crearUsuario: (d: { nombre: string; usuario: string; clave: string; dni?: string; correo?: string; celular?: string }) =>
+    pedir<Usuario>('POST', '/usuarios', {
+      nombre: d.nombre.trim(), usuario: d.usuario.trim(), clave: d.clave,
+      dni: limpio(d.dni), correo: (d.correo ?? '').trim(), celular: limpio(d.celular),
+    }),
+  /** Nombre de la persona en RENIEC (404 si no respondió: se escribe a mano). */
+  consultarDni: (dni: string) => pedir<DniReniec>('GET', `/usuarios/consulta-dni/${encodeURIComponent(limpio(dni))}`),
+  /** Completa o corrige el contacto; un campo vacío lo quita. */
+  actualizarContacto: (usuarioId: number, d: { dni: string; correo: string; celular: string }) =>
+    pedir<Usuario>('POST', `/usuarios/${usuarioId}/contacto`, { dni: limpio(d.dni), correo: d.correo.trim(), celular: limpio(d.celular) }),
+  /** Para quien olvidó su clave: la temporal se entrega en persona y la persona la cambia al entrar. */
+  claveTemporal: (usuarioId: number, clave: string) => pedir<Usuario>('POST', `/usuarios/${usuarioId}/clave-temporal`, { clave }),
   /** Nada se borra (regla 10): queda «de baja» con fecha y pierde sus asignaciones vigentes. */
   darDeBaja: (usuarioId: number) => pedir<Usuario>('POST', `/usuarios/${usuarioId}/baja`),
 
