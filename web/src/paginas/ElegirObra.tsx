@@ -24,7 +24,7 @@ export function ElegirObra({ nombre, obras, alElegir }: {
   }
   return (
     <Container className="min-vh-100 d-flex align-items-center justify-content-center py-5">
-      <Card className="shadow" style={{ maxWidth: 480, width: '100%' }}>
+      <Card className="shadow w-100"  style={{ maxWidth: 480 }}>
         <Card.Body className="p-4">
           <h1 id="elegir-obra-titulo" className="h4">Elige la obra</h1>
           <p className="text-body-secondary small">

@@ -4,9 +4,11 @@
    Reemplaza los <select> de cientos de opciones (284 insumos del S10, 600 y tantos
    proveedores): se escribe parte del código o del nombre, sin importar tildes ni
    mayúsculas, y se elige con el ratón o con ↑ ↓ y Enter. Esc cierra la lista sin
-   cerrar el modal que la contiene. Patrón ARIA «combobox con listbox».
+   cerrar el modal que la contiene. Patrón ARIA «combobox con listbox», con el
+   aspecto de Bootstrap: Form.Control para el campo y «dropdown-menu» para la lista.
    ───────────────────────────────────────────────────────────────────────── */
 import { type KeyboardEvent, useEffect, useId, useMemo, useRef, useState } from 'react'
+import { Form } from 'react-bootstrap'
 
 export interface Opcion { valor: string; texto: string; detalle?: string }
 
@@ -57,74 +59,56 @@ export function BuscarOpcion({ id, etiqueta, opciones, valor, enCambio, marcador
 
   const idActiva = abierta && visibles[activa] ? `${id}-op-${activa}` : undefined
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 6, minWidth: 0 }}>
-      <label htmlFor={id} style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--tinta-2)' }}>{etiqueta}</label>
-      <div style={{ position: 'relative' }}>
-      <input
-        id={id}
-        role="combobox"
-        aria-expanded={abierta}
-        aria-controls={idLista}
-        aria-autocomplete="list"
-        aria-activedescendant={idActiva}
-        aria-invalid={error ? true : undefined}
-        aria-describedby={ayuda || error ? `${id}-ayuda` : undefined}
-        autoComplete="off"
-        value={texto}
-        placeholder={marcador}
-        onChange={(e) => { cancelarCierre(); setTexto(e.target.value); setAbierta(true); setActiva(0); if (valor) enCambio('') }}
-        onFocus={cancelarCierre}
-        onClick={() => setAbierta(true)}
-        onBlur={() => { cancelarCierre(); cierre.current = setTimeout(() => setAbierta(false), 120) }}
-        onKeyDown={teclas}
-        style={{
-          width: '100%', minWidth: 0, height: 42, border: `1px solid ${error ? 'var(--grave)' : 'var(--borde)'}`, borderRadius: 'var(--radio-chico)',
-          padding: '0 13px', fontSize: 14, fontFamily: 'inherit', color: 'var(--tinta)', background: 'var(--tarjeta)', outlineColor: 'var(--accion)',
-        }}
-      />
-      {abierta && (
-        <ul
-          id={idLista}
-          role="listbox"
-          aria-label={etiqueta}
-          style={{
-            position: 'absolute', top: 'calc(100% + 4px)', left: 0, right: 0, zIndex: 30,
-            listStyle: 'none', margin: 0, padding: 4, maxHeight: 240, overflowY: 'auto', overscrollBehavior: 'contain',
-            border: '1px solid var(--borde)', borderRadius: 'var(--radio-chico)', background: 'var(--tarjeta)',
-            boxShadow: '0 12px 30px rgba(20,20,20,0.18)',
-          }}
-        >
-          {visibles.length === 0 && <li style={{ padding: '10px 12px', fontSize: 13, color: 'var(--tinta-3)' }}>{sinResultados} «{texto}».</li>}
-          {visibles.map((o, i) => (
-            <li
-              key={o.valor}
-              id={`${id}-op-${i}`}
-              role="option"
-              aria-selected={o.valor === valor}
-              onMouseDown={(e) => { e.preventDefault(); elegir(o) }}
-              onMouseEnter={() => setActiva(i)}
-              style={{
-                padding: '8px 12px', borderRadius: 8, cursor: 'pointer',
-                background: i === activa ? 'var(--marca-tinte)' : 'transparent',
-              }}
-            >
-              <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--tinta)' }}>{o.texto}</div>
-              {o.detalle && <div className="n" style={{ fontSize: 12, color: 'var(--tinta-3)' }}>{o.detalle}</div>}
-            </li>
-          ))}
-          {total > visibles.length && (
-            <li style={{ padding: '8px 12px', fontSize: 12, color: 'var(--tinta-3)' }}>
-              Se muestran {visibles.length} de {total.toLocaleString('es-PE')}: escribe más para acotar.
-            </li>
-          )}
-        </ul>
-      )}
+    <Form.Group controlId={id} className="min-w-0">
+      <Form.Label className="small fw-semibold mb-1">{etiqueta}</Form.Label>
+      {/* position-relative: la lista se ubica debajo del campo, como un Dropdown.Menu de Bootstrap */}
+      <div className="position-relative">
+        <Form.Control
+          role="combobox"
+          aria-expanded={abierta}
+          aria-controls={idLista}
+          aria-autocomplete="list"
+          aria-activedescendant={idActiva}
+          aria-describedby={ayuda || error ? `${id}-ayuda` : undefined}
+          isInvalid={!!error}
+          autoComplete="off"
+          value={texto}
+          placeholder={marcador}
+          onChange={(e) => { cancelarCierre(); setTexto(e.target.value); setAbierta(true); setActiva(0); if (valor) enCambio('') }}
+          onFocus={cancelarCierre}
+          onClick={() => setAbierta(true)}
+          onBlur={() => { cancelarCierre(); cierre.current = setTimeout(() => setAbierta(false), 120) }}
+          onKeyDown={teclas}
+        />
+        {abierta && (
+          // «dropdown-menu show»: el estilo del menú desplegable de Bootstrap; cada opción es un «dropdown-item»
+          <ul id={idLista} role="listbox" aria-label={etiqueta}
+              className="dropdown-menu show w-100 shadow overflow-auto" style={{ maxHeight: 260 }}>
+            {visibles.length === 0 && <li className="dropdown-item-text small text-body-secondary">{sinResultados} «{texto}».</li>}
+            {visibles.map((o, i) => (
+              <li
+                key={o.valor}
+                id={`${id}-op-${i}`}
+                role="option"
+                aria-selected={o.valor === valor}
+                className={`dropdown-item text-wrap${i === activa ? ' active' : ''}`}
+                onMouseDown={(e) => { e.preventDefault(); elegir(o) }}
+                onMouseEnter={() => setActiva(i)}
+              >
+                <div className="fw-semibold small">{o.texto}</div>
+                {o.detalle && <div className={`n small ${i === activa ? '' : 'text-body-secondary'}`}>{o.detalle}</div>}
+              </li>
+            ))}
+            {total > visibles.length && (
+              <li className="dropdown-item-text small text-body-secondary">
+                Se muestran {visibles.length} de {total.toLocaleString('es-PE')}: escribe más para acotar.
+              </li>
+            )}
+          </ul>
+        )}
       </div>
-      {(error || ayuda) && (
-        <span id={`${id}-ayuda`} role={error ? 'alert' : undefined} style={{ fontSize: 12, color: error ? 'var(--grave)' : 'var(--tinta-3)' }}>
-          {error || ayuda}
-        </span>
-      )}
-    </div>
+      {error && <Form.Control.Feedback type="invalid" id={`${id}-ayuda`} className="d-block" role="alert">{error}</Form.Control.Feedback>}
+      {!error && ayuda && <Form.Text id={`${id}-ayuda`} muted>{ayuda}</Form.Text>}
+    </Form.Group>
   )
 }

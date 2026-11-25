@@ -96,6 +96,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
@@ -107,7 +108,9 @@ import pe.sevens.sigro.dominio.EstadoEnvio
 import pe.sevens.sigro.dominio.ObraAsignada
 import pe.sevens.sigro.dominio.ProgramadorSincronizacion
 import pe.sevens.sigro.dominio.RepositorioCatalogo
+import pe.sevens.sigro.dominio.RepositorioRegistros
 import pe.sevens.sigro.dominio.RepositorioSalidas
+import pe.sevens.sigro.dominio.ResultadoSincronizacion
 import pe.sevens.sigro.dominio.RepositorioSesion
 import pe.sevens.sigro.dominio.SalidaRegistrada
 import pe.sevens.sigro.dominio.Sesion
@@ -135,33 +138,40 @@ data class ResumenObra(
     val salidasHoy: Int,
     val porEnviar: Int,
     val rechazadas: Int,
-    val ultimas: List<SalidaRegistrada>,
+    /** Los 3 más recientes de cualquier tipo: salida, entrada, ingreso, asistencia… (los mismos de «Mis registros»). */
+    val ultimas: List<FilaRegistro>,
 )
 
-/** `dia` da la fecha local de una hora; dos horas con el mismo `dia` son del mismo día. */
+/**
+ * Resume la lista unida de registros (salidas + cola general, ver [unirRegistros]).
+ * «Por enviar» y «rechazadas» cuentan todos los tipos, igual que «Mis registros»; «salidas hoy» solo las salidas.
+ * `dia` da la fecha local de una hora; dos horas con el mismo `dia` son del mismo día.
+ */
 fun resumirObra(
-    salidas: List<SalidaRegistrada>,
+    registros: List<FilaRegistro>,
     ahoraMs: Long,
     dia: (Long) -> String = { Plataforma.formatearHora(it).substringBefore(' ') },
 ): ResumenObra {
     val hoy = dia(ahoraMs)
     return ResumenObra(
-        salidasHoy = salidas.count { dia(it.horaDispositivoMs) == hoy },
-        porEnviar = salidas.count { it.estado == EstadoEnvio.PENDIENTE },
-        rechazadas = salidas.count { it.estado == EstadoEnvio.RECHAZADO },
-        ultimas = salidas.sortedByDescending { it.horaDispositivoMs }.take(3),
+        salidasHoy = registros.count { it.salida != null && dia(it.horaMs) == hoy },
+        porEnviar = registros.count { it.estado == EstadoEnvio.PENDIENTE },
+        rechazadas = registros.count { it.estado == EstadoEnvio.RECHAZADO },
+        ultimas = registros.sortedByDescending { it.horaMs }.take(3),
     )
 }
 
 class InicioViewModel(
     private val sesiones: RepositorioSesion,
     private val salidas: RepositorioSalidas,
+    private val registros: RepositorioRegistros,
     private val catalogo: RepositorioCatalogo,
     private val programador: ProgramadorSincronizacion,
 ) : ViewModel() {
     private val _estado = MutableStateFlow(EstadoInicio())
     val estado = _estado.asStateFlow()
-    val pendientes = salidas.pendientes.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0)
+    /** Por enviar de las dos colas (salidas y la general), para el botón «Enviar ahora» y la insignia. */
+    val pendientes = combine(salidas.pendientes, registros.pendientes) { a, b -> a + b }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0)
 
     init {
         programador.programar() // al abrir la app se intenta enviar lo que quedó en cola
@@ -172,8 +182,8 @@ class InicioViewModel(
         }
     }
 
-    /** Las salidas de la obra guardadas en el celular, para el resumen y los últimos registros. */
-    fun salidasDe(obraId: Int) = salidas.salidasDeObra(obraId)
+    /** Todo lo registrado en el celular para la obra (salidas, entradas, ingresos, asistencia…), lo más reciente primero. */
+    fun registrosDe(obraId: Int) = combine(salidas.salidasDeObra(obraId), registros.deObra(obraId), ::unirRegistros)
 
     fun actualizarCatalogo(silencioso: Boolean = false) {
         _estado.update { it.copy(actualizandoCatalogo = true) }
@@ -190,7 +200,10 @@ class InicioViewModel(
     fun enviarAhora() {
         _estado.update { it.copy(enviando = true) }
         viewModelScope.launch {
-            val r = salidas.sincronizar()
+            // Las dos colas, como en «Mis registros». Si una falla (sin señal), la otra igual se intenta.
+            val a = runCatching { salidas.sincronizar() }.getOrElse { ResultadoSincronizacion(0, 0, 0) }
+            val b = runCatching { registros.sincronizar() }.getOrElse { ResultadoSincronizacion(0, 0, 0) }
+            val r = ResultadoSincronizacion(a.enviados + b.enviados, a.rechazados + b.rechazados, a.siguenPendientes + b.siguenPendientes)
             val texto = when {
                 r.enviados == 0 && r.rechazados == 0 && r.siguenPendientes == 0 -> "Todo está enviado"
                 r.siguenPendientes > 0 && r.enviados == 0 -> "Sin señal: ${registros(r.siguenPendientes)} ${if (r.siguenPendientes == 1) "espera" else "esperan"} y se ${if (r.siguenPendientes == 1) "enviará" else "enviarán"} solos"
@@ -220,7 +233,7 @@ fun PantallaInicio(
 ) {
     val e by vm.estado.collectAsState()
     val pendientes by vm.pendientes.collectAsState()
-    val flujo = remember(obra.id) { vm.salidasDe(obra.id) }
+    val flujo = remember(obra.id) { vm.registrosDe(obra.id) }
     val lista by flujo.collectAsState(initial = emptyList())
     val resumen = remember(lista) { resumirObra(lista, Plataforma.ahoraMs()) }
     var conMas by remember { mutableStateOf(false) }
@@ -287,13 +300,13 @@ fun PantallaInicio(
             Column(Modifier.fillMaxWidth().vidrio(RoundedCornerShape(26.dp))) {
                 if (resumen.ultimas.isEmpty()) {
                     Text(
-                        "Todavía no hay salidas en esta obra.",
+                        "Todavía no hay registros en esta obra.",
                         fontSize = 15.sp, lineHeight = 21.sp, color = Paleta.Texto2, modifier = Modifier.padding(16.dp),
                     )
                 }
                 resumen.ultimas.forEachIndexed { i, s ->
                     if (i > 0) Box(Modifier.fillMaxWidth().height(1.dp).background(Paleta.Separador))
-                    FilaRegistro(s) { irA(Destino.Pendientes) }
+                    FilaUltimo(s) { irA(Destino.Pendientes) }
                 }
             }
         }
@@ -388,11 +401,11 @@ private fun RowScope.Acceso(icono: ImageVector, texto: String, principal: Boolea
 }
 
 @Composable
-private fun FilaRegistro(s: SalidaRegistrada, alPulsar: () -> Unit) {
+private fun FilaUltimo(s: FilaRegistro, alPulsar: () -> Unit) {
     val (icono, color, fondo, palabra) = when (s.estado) {
         EstadoEnvio.PENDIENTE -> Cuatro(Icons.Filled.Schedule, Paleta.PendienteTexto, Paleta.PendienteFondo, "por enviar")
-        EstadoEnvio.ENVIADO -> Cuatro(Icons.Filled.Check, Paleta.EnviadoTexto, Paleta.EnviadoFondo, "enviada")
-        EstadoEnvio.RECHAZADO -> Cuatro(Icons.Filled.ErrorOutline, Paleta.RechazadoTexto, Paleta.RechazadoFondo, "rechazada")
+        EstadoEnvio.ENVIADO -> Cuatro(Icons.Filled.Check, Paleta.EnviadoTexto, Paleta.EnviadoFondo, "enviado")
+        EstadoEnvio.RECHAZADO -> Cuatro(Icons.Filled.ErrorOutline, Paleta.RechazadoTexto, Paleta.RechazadoFondo, "rechazado")
     }
     Row(
         Modifier.fillMaxWidth().clickable(onClick = alPulsar).heightIn(min = 64.dp).padding(horizontal = 16.dp, vertical = 12.dp)
@@ -404,10 +417,12 @@ private fun FilaRegistro(s: SalidaRegistrada, alPulsar: () -> Unit) {
             Icon(icono, contentDescription = null, tint = color, modifier = Modifier.size(18.dp))
         }
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(Texto.nombre(s.insumo.descripcion), fontSize = 15.sp, fontWeight = FontWeight.Bold, color = Paleta.Tinta, maxLines = 2, overflow = TextOverflow.Ellipsis)
-            Text("${Texto.cantidadConUnidad(s.cantidad, s.insumo.unidad)} · $palabra", fontSize = 13.sp, color = Paleta.Texto2, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            // Tipo arriba (Salida, Entrada de compra, Asistencia…): así se distingue de un vistazo.
+            Text(s.tipo.uppercase(), fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Paleta.Naranja)
+            Text(Texto.nombre(s.titulo), fontSize = 15.sp, fontWeight = FontWeight.Bold, color = Paleta.Tinta, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            Text(listOf(s.salida?.let { Texto.cantidadConUnidad(it.cantidad, it.insumo.unidad) } ?: s.detalle, palabra).joinToString(" · "), fontSize = 13.sp, color = Paleta.Texto2, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
-        Text(Plataforma.formatearHora(s.horaDispositivoMs).substringAfter(' '), fontSize = 13.sp, color = Paleta.Texto2)
+        Text(Plataforma.formatearHora(s.horaMs).substringAfter(' '), fontSize = 13.sp, color = Paleta.Texto2)
     }
 }
 

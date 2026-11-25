@@ -16,6 +16,7 @@ export interface RucSunat {
 }
 
 import { pedir } from './http'
+import { esquemaProveedor, primerError } from '../formularios/esquemas'
 
 /** Valida el dígito verificador oficial SUNAT (módulo 11) de un RUC de 11 dígitos. */
 export function rucValido(ruc: string): boolean {
@@ -47,11 +48,9 @@ export async function consultarRucEnSunat(ruc: string): Promise<RucSunat | null>
 
 /** Mensaje en palabras del usuario antes de ir al servidor (antes salía el texto técnico de la API). */
 export function errorAltaProveedor(ruc: string, razon: string): { campo: 'ruc' | 'razon'; texto: string } | null {
-  const r = ruc.trim()
-  if (!/^\d{11}$/.test(r) && !/^\d{8}$/.test(r)) return { campo: 'ruc', texto: 'Escribe el RUC (11 dígitos) o el DNI (8 dígitos), solo números.' }
-  if (r.length === 11 && !rucValido(r)) return { campo: 'ruc', texto: 'El dígito verificador de este RUC no coincide con la fórmula SUNAT.' }
-  if (razon.trim().length < 3) return { campo: 'razon', texto: 'Escribe la razón social (o el nombre, si es un DNI). Si SUNAT no responde, va a mano.' }
-  return null
+  // La regla vive en el esquema de Zod (formularios/esquemas.ts); aquí solo se traduce el nombre del campo.
+  const e = primerError(esquemaProveedor, { ruc, razonSocial: razon })
+  return e ? { campo: e.campo === 'razonSocial' ? 'razon' : 'ruc', texto: e.texto } : null
 }
 
 /** Respuesta del servidor (camelCase, tras `pedir`) → RucSunat. Sin razón social no se autocompleta nada. */

@@ -46,7 +46,7 @@ export function Asignaciones({ obraId, obraNombre }: { obraId: string; obraNombr
         <div className="d-flex flex-column gap-3">
           <div className="fw-bold">Asignar a {obraNombre}</div>
           {usuarios.error && <AvisoError texto={usuarios.error} />}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12, alignItems: 'start' }}>
+          <div className="gap-2 align-items-start" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))' }}>
             <Selector
               id="asignar-usuario" etiqueta="Persona" valor={usuarioId}
               opciones={candidatos.map((u) => ({ valor: u.id, texto: `${u.nombre} (${u.usuario})` }))}
@@ -72,7 +72,7 @@ export function Asignaciones({ obraId, obraNombre }: { obraId: string; obraNombr
       {aviso && <AvisoError texto={aviso} />}
 
       <label className="d-flex align-items-center gap-2 small text-body-secondary">
-        <input type="checkbox" checked={verRetiradas} onChange={(e) => setVerRetiradas(e.target.checked)} />
+        <input className="form-check-input mt-0" type="checkbox" checked={verRetiradas} onChange={(e) => setVerRetiradas(e.target.checked)} />
         Mostrar también las asignaciones retiradas
       </label>
 

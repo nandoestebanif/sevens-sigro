@@ -18,11 +18,16 @@
 import { usaApiReal } from '../api/http'
 import { useEffect, useMemo, useState } from 'react'
 import { ErrorApi, api } from '../api/cliente'
-import { consultarRucEnSunat, errorAltaProveedor, rucValido, type RucSunat } from '../api/sunat'
+import { consultarRucEnSunat, rucValido, type RucSunat } from '../api/sunat'
 import { proveedores as proveedoresOficina } from '../api/oficina'
 import type { EstadoProveedor, Proveedor } from '../api/tipos'
-import { Campo, Chip, Modal, Vacio, type TonoChip } from '../ui/base'
+import { Chip, Modal, Vacio, type TonoChip } from '../ui/base'
 import { Aviso, Chips, Encabezado, Pildora, Vidrio, Buscador } from '../ui/piezas'
+import { EsqueletoTabla } from '../ui/Esqueleto'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { Form } from 'react-bootstrap'
+import { esquemaProveedor, type DatosProveedor } from '../formularios/esquemas'
 
 const ESTADO: Record<EstadoProveedor, { texto: string; tono: TonoChip }> = {
   validado: { texto: 'Validado en SUNAT', tono: 'bien' },
@@ -35,76 +40,58 @@ export function AltaProveedor({ enCerrar, enCreado }: {
   enCerrar: () => void
   enCreado: (p: Proveedor) => void
 }) {
-  const [ruc, setRuc] = useState('')
-  const [razon, setRazon] = useState('')
-  const [error, setError] = useState<{ campo: string; texto: string } | null>(null)
-  const [guardando, setGuardando] = useState(false)
+  // React Hook Form + Zod: el esquema (formularios/esquemas.ts) valida; el formulario guarda los valores y errores.
+  const { register, handleSubmit, setValue, setError, watch, formState: { errors, isSubmitting } } = useForm<DatosProveedor>({
+    resolver: zodResolver(esquemaProveedor),
+    defaultValues: { ruc: '', razonSocial: '' },
+  })
   const [sunat, setSunat] = useState<RucSunat | null>(null)
   const [consultando, setConsultando] = useState(false)
   const [avisoRuc, setAvisoRuc] = useState('')
+  const ruc = watch('ruc')
 
   // HU-31: con los 11 dígitos puestos y dígito verificador válido, se consulta SUNAT
   // y la razón social se llena sola. Si el micro está apagado, queda «sin validar».
-  const alCambiarRuc = async (v: string) => {
-    setRuc(v)
-    setSunat(null)
-    setAvisoRuc('')
-    const limpio = v.trim()
-    if (/^\d{11}$/.test(limpio)) {
-      if (!rucValido(limpio)) {
-        setAvisoRuc('El dígito verificador de este RUC no coincide con la fórmula SUNAT.')
-        return
-      }
-      setConsultando(true)
-      const r = await consultarRucEnSunat(limpio)
+  useEffect(() => {
+    setSunat(null); setAvisoRuc('')
+    const limpio = ruc.trim()
+    if (!/^\d{11}$/.test(limpio)) return
+    if (!rucValido(limpio)) { setAvisoRuc('El dígito verificador de este RUC no coincide con la fórmula SUNAT.'); return }
+    let vigente = true
+    setConsultando(true)
+    consultarRucEnSunat(limpio).then((r) => {
+      if (!vigente) return
       setConsultando(false)
-      if (r) {
-        setSunat(r)
-        setRazon(r.razon_social ?? '')
-      }
-    }
-  }
+      if (r) { setSunat(r); setValue('razonSocial', r.razon_social ?? '', { shouldValidate: true }) }
+    })
+    return () => { vigente = false }
+  }, [ruc, setValue])
 
-  const guardar = async () => {
-    const previo = errorAltaProveedor(ruc, razon)
-    if (previo) { setError(previo); return }
-    setGuardando(true)
-    setError(null)
+  // handleSubmit solo llama a esto si el esquema pasó: aquí los datos ya están validados
+  const guardar = async (d: DatosProveedor) => {
     try {
-      const creado = await api.crearProveedor({
-        ruc, razonSocial: razon, validadoEnSunat: sunat?.apto_para_comprar ?? false,
-      })
+      const creado = await api.crearProveedor({ ruc: d.ruc, razonSocial: d.razonSocial, validadoEnSunat: sunat?.apto_para_comprar ?? false })
       enCreado(creado)
     } catch (e) {
       if (e instanceof ErrorApi) {
-        const campo = e.codigo === 'razon_social' ? 'razon' : 'ruc'
         // Un 422 de validación trae el texto de Pydantic («String should…»): nunca se muestra tal cual.
         const tecnico = /should|pattern|String|field required/i.test(e.message)
-        setError({ campo, texto: tecnico ? (errorAltaProveedor(ruc, razon)?.texto ?? 'Revisa el RUC y la razón social.') : e.message })
+        setError(e.codigo === 'razon_social' ? 'razonSocial' : 'ruc', { message: tecnico ? 'Revisa el RUC y la razón social.' : e.message })
       }
-    } finally {
-      setGuardando(false)
     }
   }
 
   return (
     <Modal titulo="Registrar proveedor" enCerrar={enCerrar}>
-      <div className="d-flex flex-column gap-3">
-        <Campo
-          id="alta-ruc"
-          etiqueta="RUC o DNI"
-          valor={ruc}
-          enCambio={alCambiarRuc}
-          marcador="RUC de 11 dígitos o DNI de 8"
-          autoFoco
-          error={error?.campo === 'ruc' ? error.texto : undefined}
-        />
-        {consultando && (
-          <span className="small text-body-secondary">Consultando en SUNAT…</span>
-        )}
-        {avisoRuc && (
-          <Aviso tono="aviso" rol="status">{avisoRuc}</Aviso>
-        )}
+      <Form noValidate onSubmit={handleSubmit(guardar)} className="d-flex flex-column gap-3">
+        <Form.Group controlId="alta-ruc">
+          <Form.Label className="small fw-semibold">RUC o DNI</Form.Label>
+          {/* register conecta el campo con el formulario: valor, cambios y validación */}
+          <Form.Control {...register('ruc')} inputMode="numeric" autoFocus placeholder="RUC de 11 dígitos o DNI de 8" isInvalid={!!errors.ruc} />
+          <Form.Control.Feedback type="invalid">{errors.ruc?.message}</Form.Control.Feedback>
+        </Form.Group>
+        {consultando && <span className="small text-body-secondary">Consultando en SUNAT…</span>}
+        {avisoRuc && !errors.ruc && <Aviso tono="aviso" rol="status">{avisoRuc}</Aviso>}
         {sunat && (
           <div className="d-flex align-items-center gap-2 flex-wrap">
             <Chip tono={sunat.apto_para_comprar ? 'bien' : 'aviso'}>
@@ -113,13 +100,11 @@ export function AltaProveedor({ enCerrar, enCreado }: {
             <span className="small text-body-secondary">razón social traída del padrón</span>
           </div>
         )}
-        <Campo
-          id="alta-razon"
-          etiqueta="Razón social"
-          valor={razon}
-          enCambio={setRazon}
-          error={error?.campo === 'razon' ? error.texto : undefined}
-        />
+        <Form.Group controlId="alta-razon">
+          <Form.Label className="small fw-semibold">Razón social</Form.Label>
+          <Form.Control {...register('razonSocial')} isInvalid={!!errors.razonSocial} />
+          <Form.Control.Feedback type="invalid">{errors.razonSocial?.message}</Form.Control.Feedback>
+        </Form.Group>
         <p className="small text-body-secondary">
           Con los 11 dígitos del RUC, la razón social se trae sola del padrón de
           SUNAT (vía el servicio de integraciones). Si el servicio no responde,
@@ -128,11 +113,11 @@ export function AltaProveedor({ enCerrar, enCreado }: {
         </p>
         <div className="d-flex flex-wrap gap-2 justify-content-end">
           <Pildora tipo="secundario" enClic={enCerrar}>Cancelar</Pildora>
-          <Pildora enClic={guardar} deshabilitado={guardando}>
-            {guardando ? 'Guardando…' : 'Guardar proveedor'}
+          <Pildora enviar deshabilitado={isSubmitting}>
+            {isSubmitting ? 'Guardando…' : 'Guardar proveedor'}
           </Pildora>
         </div>
-      </div>
+      </Form>
     </Modal>
   )
 }
@@ -236,7 +221,7 @@ export function Proveedores() {
         <Buscador valor={busqueda} enCambio={(v) => { setBusqueda(v); setTope(60) }} marcador="Buscar por razón social o RUC…" etiqueta="Buscar proveedor por razón social o RUC" />
 
         {visibles === null ? (
-          <Vacio titulo="Cargando…" detalle="Consultando los proveedores de la empresa." />
+          <EsqueletoTabla />
         ) : visibles.length === 0 ? (
           <Vacio
             titulo="Ningún proveedor coincide"

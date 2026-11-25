@@ -144,12 +144,12 @@ export function Importar() {
               type="file"
               accept="application/pdf"
               aria-label="PDF de la Relación de insumos del S10"
-              className="d-none"
+              className="d-none form-control"
               onChange={(e) => { setArchivo(e.target.files?.[0] ?? null); setResultado(null); setError('') }}
             />
-            <div style={{ border: '2px dashed var(--accion)', borderRadius: 22, background: 'var(--marca-tinte)', padding: 'clamp(14px, calc(3vw / var(--escala, 1)), 22px)', display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 14 }}>
-              <span aria-hidden className="d-flex align-items-center justify-content-center small fw-bold text-danger flex-shrink-0" style={{ width: 52, height: 60, borderRadius: 10, background: 'var(--tarjeta)', border: '1px solid var(--campo-borde)' }}>PDF</span>
-              <span className="d-flex flex-column gap-1" style={{ flex: '1 1 160px', minWidth: 0 }}>
+            <div className="rounded-pill bg-primary-subtle d-flex flex-wrap align-items-center gap-3" style={{ border: '2px dashed var(--accion)', padding: 'clamp(14px, calc(3vw / var(--escala, 1)), 22px)' }}>
+              <span aria-hidden className="d-flex align-items-center justify-content-center small fw-bold text-danger flex-shrink-0 rounded-3 bg-body border"  style={{ width: 52, height: 60 }}>PDF</span>
+              <span className="d-flex flex-column gap-1 min-w-0"  style={{ flex: '1 1 160px' }}>
                 <span className="fw-bold" style={{ overflowWrap: 'anywhere' }}>{archivo ? archivo.name : 'Elige la Relación de insumos'}</span>
                 <span className="small text-body-secondary">
                   {r
@@ -161,7 +161,7 @@ export function Importar() {
             </div>
             {!usaApiReal && (
               <label className="d-flex align-items-center gap-2 text-body-secondary" style={{ minHeight: 44 }}>
-                <input type="checkbox" checked={conCatalogo} onChange={(e) => setConCatalogo(e.target.checked)} style={{ width: 20, height: 20, accentColor: 'var(--accion)' }} />
+                <input className="form-check-input mt-0" type="checkbox" checked={conCatalogo} onChange={(e) => setConCatalogo(e.target.checked)} />
                 la obra ya tiene catálogo (los repetidos se actualizan)
               </label>
             )}
@@ -187,11 +187,11 @@ export function Importar() {
                 <span className="small fw-semibold text-body-secondary">Total del reporte</span>
                 <span className="d-flex align-items-baseline gap-2">
                   <span className="fs-6 fw-bold text-body-secondary">S/</span>
-                  <span className="n" style={{ fontSize: 'clamp(28px, calc(4vw / var(--escala, 1)), 38px)', fontWeight: 800 }}>{n(r.resumen.parcial_total, 2)}</span>
+                  <span className="n fw-bold"  style={{ fontSize: 'clamp(28px, calc(4vw / var(--escala, 1)), 38px)' }}>{n(r.resumen.parcial_total, 2)}</span>
                 </span>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 10 }}>
+                <div className="gap-2" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))' }}>
                   {tipos.map((t) => (
-                    <div key={t} className="d-flex flex-column" style={{ background: 'var(--vidrio-celda)', borderRadius: 16, padding: '10px 12px' }}>
+                    <div key={t} className="d-flex flex-column bg-body-tertiary rounded-4 py-2 px-2" >
                       <span className="small text-body-secondary">{TIPO[t] ?? t}</span>
                       <span className="n fs-5 fw-bold">{r.resumen.por_tipo[t]}</span>
                       <span className="n small text-body-secondary">S/ {n(parcialDelTipo(t), 2)}</span>
@@ -218,7 +218,7 @@ export function Importar() {
             <TituloSeccion>Filas que no se entendieron</TituloSeccion>
             <p className="small text-body-secondary" style={{ margin: '4px 0 8px' }}>Se informan, no se descartan en silencio.</p>
             {r.fallidos.map((f, i) => (
-              <div key={i} className="small text-body-secondary" style={{ padding: '4px 0' }}>
+              <div key={i} className="small text-body-secondary py-1 px-0" >
                 <span className="n">{f.texto}</span> — {f.error}
               </div>
             ))}
@@ -233,14 +233,10 @@ export function Importar() {
                 {tipos.map((t) => {
                   const activo = t === tipoVisto
                   return (
-                    <button
+                    <button className={`btn btn-sm rounded-pill ${activo ? 'btn-primary' : 'btn-outline-secondary'}`}
                       key={t} type="button" role="tab" aria-selected={activo}
                       onClick={() => setPestana(t)}
-                      style={{
-                        minHeight: 40, padding: '0 14px', borderRadius: 20, fontFamily: 'inherit', fontSize: 13, fontWeight: 700, cursor: 'pointer',
-                        border: activo ? '1px solid var(--pildora)' : '1px solid var(--pildora-2-borde)',
-                        background: activo ? 'var(--pildora)' : 'var(--pildora-2)', color: activo ? 'var(--pildora-tinta)' : 'var(--pildora-2-tinta)',
-                      }}
+
                     >
                       {TIPO[t] ?? t} · {r.resumen.por_tipo[t]}
                     </button>
@@ -301,7 +297,7 @@ export function Importar() {
             )}
 
             {aplicado && (requerimiento ? (
-              <div role="status" className="pt-3" style={{ borderTop: '1px solid var(--separador)' }}>
+              <div role="status" className="pt-3 border-top" >
                 <strong>Requerimiento de la obra cargado.</strong> {requerimiento.creados} insumos nuevos · {requerimiento.sinCambios} ya estaban
                 {requerimiento.fallidos.length > 0 && ` · ${requerimiento.fallidos.length} no se cargaron`}.
                 {(requerimiento.advertencias.length > 0 || requerimiento.fallidos.length > 0) && (
@@ -312,7 +308,7 @@ export function Importar() {
                 )}
               </div>
             ) : (
-              <div className="d-flex align-items-center gap-3 flex-wrap justify-content-end pt-3" style={{ borderTop: '1px solid var(--separador)' }}>
+              <div className="d-flex align-items-center gap-3 flex-wrap justify-content-end pt-3 border-top" >
                 <span className="text-body-secondary" style={{ flex: '1 1 300px' }}>
                   Siguiente: cargar lo planificado (cantidad y precio del S10) como requerimiento de la obra activa. Es el cien por ciento contra el que se controla todo; lo ya cargado no se pisa.
                 </span>

@@ -27,6 +27,8 @@ import { GastoRecursos } from './GastoRecursos'
 import type { AvanceInsumo, ResumenTablero } from '../api/tipos'
 import { Chip, Medidor, Vacio, type TonoChip } from '../ui/base'
 import { Aviso, Chips, Encabezado, Kpi, Segmentado, TituloSeccion, Vidrio } from '../ui/piezas'
+import { GraficoCurva, GraficoDesvios, GraficoFamilias } from '../ui/GraficosPerezosos'
+import { EsqueletoPagina } from '../ui/Esqueleto'
 
 const soles = (v: number) => v.toLocaleString('es-PE', { maximumFractionDigits: 0 })
 const FAM_COLOR: Record<string, string> = {
@@ -51,7 +53,7 @@ export function Tablero() {
   if (!r) {
     return (
       <>
-        <Vidrio><Vacio titulo="Cargando…" detalle="Consultando el gasto en recursos de la obra." /></Vidrio>
+        <EsqueletoPagina />
       </>
     )
   }
@@ -101,6 +103,24 @@ export function Tablero() {
                 <strong>{r.avisoPlanificado}</strong>{r.supuesto ? ` ${r.supuesto}` : ''}
               </Aviso>
             )}
+            {/* Gráficos con las cifras reales del servidor (HU-57): sin desviación real, no se dibuja nada */}
+            {conDesviacionReal && planificado > 0 && (
+              <div className="row g-3">
+                <div className="col-12 col-xxl-6">
+                  <Vidrio etiqueta="Gasto esperado y real">
+                    <TituloSeccion>Gasto esperado en el plazo y dónde estamos</TituloSeccion>
+                    <GraficoCurva planificado={planificado} gastado={r.gastoTotal} semana={r.semana} semanasTotales={r.semanasTotales} />
+                  </Vidrio>
+                </div>
+                <div className="col-12 col-xxl-6">
+                  <Vidrio etiqueta="Insumos con mayor desviación">
+                    <TituloSeccion>Insumos con mayor desviación</TituloSeccion>
+                    <span className="small text-body-secondary">rojo: se consumió más de lo esperado a la fecha · verde: menos</span>
+                    <GraficoDesvios insumos={r.insumos.map((i) => ({ etiqueta: i.descripcion, importe: i.desviacionImporte ?? 0 }))} />
+                  </Vidrio>
+                </div>
+              </div>
+            )}
           </>
         ) : (
           <>
@@ -119,19 +139,20 @@ export function Tablero() {
           </Vidrio>
   
           <div className="d-flex flex-wrap gap-3">
-            <Kpi rotulo="Planificado en recursos" prefijo="S/" valor={soles(planificado)} pie="Materiales, herramientas y horas hombre del S10" />
+            <Kpi ayuda="planificado" rotulo="Planificado en recursos" prefijo="S/" valor={soles(planificado)} pie="Materiales, herramientas y horas hombre del S10" />
             <Kpi rotulo="Gastado a la fecha" prefijo="S/" valor={soles(r.gastoTotal)} pie={`${pct1(gastoPct)} % de lo planificado`} />
             <Kpi
+              ayuda="desviación"
               rotulo="Desviación del gasto" valor={pts(desvioGlobal)} color={colorDesvio(desvioGlobal)}
               pie={`Gasto ${pct1(gastoPct)} % frente a ${pct1(r.avancePlazoPct)} % del plazo`}
             />
-            <Kpi rotulo="Avance del plazo" valor={`${pct1(r.avancePlazoPct)} %`} pie={`semana ${r.semana} de ${r.semanasTotales}`} />
+            <Kpi ayuda="avance del plazo" rotulo="Avance del plazo" valor={`${pct1(r.avancePlazoPct)} %`} pie={`semana ${r.semana} de ${r.semanasTotales}`} />
           </div>
           </>
         )}
 
         <div className="d-flex flex-wrap gap-3 align-items-start">
-          {!usaApiReal && <div className="d-flex flex-column gap-3" style={{ flex: '999 1 520px', minWidth: 0 }}>
+          {!usaApiReal && <div className="d-flex flex-column gap-3 min-w-0"  style={{ flex: '999 1 520px' }}>
             <Vidrio estilo={{ display: 'flex', flexDirection: 'column', gap: 18 }} etiqueta="Por familia de recurso">
               <div className="d-flex flex-wrap justify-content-between gap-2 align-items-baseline">
                 <TituloSeccion>Por familia de recurso</TituloSeccion>
@@ -141,7 +162,7 @@ export function Tablero() {
                 <div key={fam.familia} className="d-flex flex-column gap-2">
                   <div className="d-flex flex-wrap justify-content-between gap-2">
                     <span className="d-flex align-items-center gap-2 fw-bold">
-                      <span aria-hidden style={{ width: 10, height: 10, borderRadius: 5, background: FAM_COLOR[fam.familia] }} />
+                      <span aria-hidden className="rounded-2" style={{ width: 10, height: 10, background: FAM_COLOR[fam.familia] }} />
                       {fam.etiqueta}
                     </span>
                     <span className="n text-body-secondary">
@@ -156,14 +177,30 @@ export function Tablero() {
               </p>
             </Vidrio>
 
+            {/* Gráficos (Chart.js): las mismas cifras de arriba, para leerlas de un vistazo */}
+            <div className="row g-3">
+              <div className="col-12">
+                <Vidrio etiqueta="Planificado contra gastado">
+                  <TituloSeccion>Planificado contra gastado</TituloSeccion>
+                  <GraficoFamilias familias={r.familias.map((f) => ({ etiqueta: f.etiqueta, color: FAM_COLOR[f.familia], planificado: f.planificado, gastado: f.gastado }))} />
+                </Vidrio>
+              </div>
+              <div className="col-12">
+                <Vidrio etiqueta="Gasto esperado y real">
+                  <TituloSeccion>Gasto esperado en el plazo y dónde estamos</TituloSeccion>
+                  <GraficoCurva planificado={planificado} gastado={r.gastoTotal} semana={r.semana} semanasTotales={r.semanasTotales} />
+                </Vidrio>
+              </div>
+            </div>
+
           </div>}
 
-          <aside className="d-flex flex-column gap-3" style={{ flex: '1 1 280px', minWidth: 0 }}>
+          <aside className="d-flex flex-column gap-3 min-w-0"  style={{ flex: '1 1 280px' }}>
             {!usaApiReal && <Vidrio estilo={{ display: 'flex', flexDirection: 'column', gap: 10 }} etiqueta="Plazo de la obra">
               <TituloSeccion>Plazo de la obra</TituloSeccion>
               <div
                 role="img" aria-label={`Avance del plazo: ${r.avancePlazoPct} por ciento`}
-                className="overflow-hidden" style={{ height: 12, borderRadius: 6, background: 'var(--separador)' }}
+                className="overflow-hidden rounded-2"  style={{ height: 12, background: 'var(--separador)' }}
               >
                 <span className="medidor-barra" style={{ display: 'block', width: `${Math.min(r.avancePlazoPct, 100)}%`, height: 12, background: 'var(--pildora)', borderRadius: 6 }} />
               </div>
@@ -176,8 +213,8 @@ export function Tablero() {
               <TituloSeccion>No planificados · aparte</TituloSeccion>
               {r.noPlanificados.length === 0 && <span className="small text-body-secondary">Ninguno por ahora.</span>}
               {r.noPlanificados.map((np) => (
-                <div key={np.descripcion} className="d-flex flex-wrap justify-content-between" style={{ background: 'var(--vidrio-celda)', borderRadius: 16, padding: '12px 14px', gap: '4px 10px' }}>
-                  <span className="d-flex flex-column gap-1" style={{ flex: '1 1 160px', minWidth: 0 }}>
+                <div key={np.descripcion} className="d-flex flex-wrap justify-content-between bg-body-tertiary rounded-4 py-2 px-3"  style={{ gap: '4px 10px' }}>
+                  <span className="d-flex flex-column gap-1 min-w-0"  style={{ flex: '1 1 160px' }}>
                     <span className="fw-bold">{np.descripcion}</span>
                     <span className="small text-body-secondary">{np.motivo}</span>
                   </span>
@@ -200,10 +237,10 @@ export function Tablero() {
                   Ordenar
                   <select
                     aria-label="Ordenar desviación por"
-                    className="form-select px-3 small"
+                    className="form-select small"
                     value={orden}
                     onChange={(e) => setOrden(e.target.value as OrdenDesviacion)}
-                    style={{ height: 36, borderRadius: 12 }}
+                     style={{ height: 36 }}
                   >
                     <option value="importe">Mayor desviación S/</option>
                     <option value="porcentaje">Mayor desviación %</option>
@@ -301,7 +338,7 @@ function BarraPlazo({ pct, plazo, color }: { pct: number; plazo: number; color: 
   return (
     <div
       role="img" aria-label={`${pct} por ciento de lo planificado; plazo al ${plazo} por ciento`}
-      style={{ height: 14, borderRadius: 7, background: 'var(--separador)', position: 'relative' }}
+      className="rounded-3" style={{ height: 14, background: 'var(--separador)', position: 'relative' }}
     >
       <span className="medidor-barra" style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: `${Math.min(pct, 100)}%`, background: color, borderRadius: 7 }} />
       <span title="Avance del plazo" style={{ position: 'absolute', left: `${Math.min(plazo, 100)}%`, top: -3, bottom: -3, width: 2, background: 'var(--tinta)' }} />

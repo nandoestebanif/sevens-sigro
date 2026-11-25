@@ -20,10 +20,22 @@ $body-bg: #f5f6f8;
 $enable-shadows: false;
 $link-decoration: none;
 
-// 3. Bootstrap completo (componentes, utilidades y modo oscuro con data-bs-theme)
+// 3. Una utilidad más con la API de utilidades de Bootstrap (no es CSS a mano):
+//    «min-w-0» deja que un hijo de un flex se encoja y corte su texto en vez de desbordar.
+@import "bootstrap/scss/functions";
+@import "bootstrap/scss/variables";
+@import "bootstrap/scss/variables-dark";
+@import "bootstrap/scss/maps";
+@import "bootstrap/scss/mixins";
+@import "bootstrap/scss/utilities";
+$utilities: map-merge($utilities, (
+  "min-width": (property: min-width, class: min-w, values: (0: 0)),
+));
+
+// 4. Bootstrap completo (componentes, utilidades y modo oscuro con data-bs-theme)
 @import "bootstrap/scss/bootstrap";
 
-// 4. Lo poco propio de SIGRO
+// 5. Lo poco propio de SIGRO
 // cifras alineadas en tablas y tarjetas (montos, cantidades)
 .n {
   font-variant-numeric: tabular-nums;

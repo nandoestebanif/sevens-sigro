@@ -156,7 +156,7 @@ function Revocar({ obraId, d, luegoAutorizar, enCerrar, enHecho }: {
           <label htmlFor="motivo-revocacion" className="small fw-semibold text-body-secondary">
             Motivo (obligatorio)
           </label>
-          <textarea
+          <textarea className="form-control"
             id="motivo-revocacion"
             value={motivo}
             autoFocus
@@ -165,10 +165,7 @@ function Revocar({ obraId, d, luegoAutorizar, enCerrar, enHecho }: {
             onChange={(e) => { setMotivo(e.target.value); setError(null) }}
             placeholder="Ej.: cambió de celular, se perdió el equipo"
             aria-invalid={error ? true : undefined}
-            style={{
-              border: `1px solid ${error ? 'var(--grave)' : 'var(--borde)'}`, borderRadius: 'var(--radio-chico)',
-              padding: '10px 13px', fontSize: 14, fontFamily: 'inherit', color: 'var(--tinta)', background: 'var(--tarjeta)', resize: 'vertical',
-            }}
+
           />
         </div>
         {error && <AvisoError texto={error} />}

@@ -19,6 +19,10 @@ import { almacenesDeLaObra, fechaCorte, inventario, type Inventario as Inv } fro
 import { usaApiReal } from '../api/http'
 import { Chip, Vacio } from '../ui/base'
 import { Aviso, Chips, Encabezado, Kpi, TituloSeccion, Vidrio } from '../ui/piezas'
+import { GraficoReparto } from '../ui/GraficosPerezosos'
+import { Termino } from '../ui/Glosario'
+import { EsqueletoKpis } from '../ui/Esqueleto'
+import { BotonExportar } from '../ui/BotonExportar'
 
 const soles = (v: number, dec = 2) => v.toLocaleString('es-PE', { minimumFractionDigits: dec, maximumFractionDigits: dec })
 const cant = (v: number) => v.toLocaleString('es-PE', { maximumFractionDigits: 4 })
@@ -65,33 +69,33 @@ export function Inventario() {
             <Vidrio estilo={{ display: 'flex', flexWrap: 'wrap', gap: 14, alignItems: 'flex-end' }} etiqueta="Qué consultar">
               <label className="d-flex flex-column gap-2 small fw-semibold text-body-secondary" style={{ flex: '2 1 260px' }}>
                 Almacén
-                <select className="form-select px-3" aria-label="Almacén" value={almacen} onChange={(e) => setAlmacen(e.target.value)}
-                  style={{ height: 44, borderRadius: 14 }}>
+                <select className="form-select" aria-label="Almacén" value={almacen} onChange={(e) => setAlmacen(e.target.value)}
+                   style={{ height: 44 }}>
                   <option value="todos">Todos los almacenes (consolidado)</option>
                   {almacenes.map((a) => <option key={a.id} value={String(a.id)}>{a.nombre}</option>)}
                 </select>
               </label>
               <label className="d-flex flex-column gap-2 small fw-semibold text-body-secondary" style={{ flex: '1 1 180px' }}>
                 Fecha de corte
-                <input type="date" className="form-control px-3" aria-label="Fecha de corte" value={fecha} max={hoyLima()}
-                  onChange={(e) => setFecha(e.target.value)} style={{ height: 44, borderRadius: 14 }} />
+                <input type="date" className="form-control" aria-label="Fecha de corte" value={fecha} max={hoyLima()}
+                  onChange={(e) => setFecha(e.target.value)}  style={{ height: 44 }} />
               </label>
               {fecha && (
                 <button type="button" onClick={() => setFecha('')}
-                  className="px-3 fw-semibold" style={{ height: 44, borderRadius: 22, border: '1px solid var(--separador)', background: 'transparent' }}>
+                  className="btn btn-outline-secondary">
                   Volver a «ahora»
                 </button>
               )}
             </Vidrio>
 
             {error && <Aviso tono="grave" rol="alert">{error}</Aviso>}
-            {!v && !error && <Vidrio><Vacio titulo="Calculando…" detalle="Valorizando el stock al costo promedio de cada insumo." /></Vidrio>}
+            {!v && !error && <EsqueletoKpis cuantas={3} />}
 
             {v && (
               <>
                 {v.corteAjustado && <Aviso tono="info" rol="status">Pediste una fecha futura: se usó el stock de ahora.</Aviso>}
                 <div className="d-flex flex-wrap gap-3">
-                  <Kpi rotulo="Capital detenido en almacén" prefijo="S/" valor={soles(v.valorTotal, 0)} pie={nombreAlmacen} />
+                  <Kpi ayuda="capital detenido" rotulo="Capital detenido en almacén" prefijo="S/" valor={soles(v.valorTotal, 0)} pie={nombreAlmacen} />
                   <Kpi rotulo="Insumos con stock" valor={String(v.porInsumo.length)} pie="con saldo distinto de cero" />
                   <Kpi rotulo="Fecha de corte" valor={fechaCorte(v.corte).split(',')[0]} pie={`hasta las ${fechaCorte(v.corte).split(', ')[1] ?? ''} (hora de Lima)`} />
                 </div>
@@ -99,16 +103,17 @@ export function Inventario() {
                 {almacen === 'todos' && v.porAlmacen.length > 1 && (
                   <Vidrio estilo={{ display: 'flex', flexDirection: 'column', gap: 10 }} etiqueta="Por almacén">
                     <TituloSeccion>Por almacén</TituloSeccion>
+                    <GraficoReparto partes={v.porAlmacen.map((a) => ({ etiqueta: a.nombre, valor: a.valor }))} />
                     {v.porAlmacen.map((a) => (
                       <div key={a.id} className="d-flex flex-column gap-2">
                         <div className="d-flex flex-wrap justify-content-between gap-2">
                           <button type="button" onClick={() => setAlmacen(String(a.id))}
-                            className="p-0 fw-bold text-start" style={{ background: 'none', border: 0 }}>
+                            className="btn btn-link p-0 fw-bold text-start text-decoration-none">
                             {a.nombre}
                           </button>
                           <span className="n text-body-secondary"><b>S/ {soles(a.valor, 0)}</b> · {a.insumos} insumos · {a.porcentaje.toLocaleString('es-PE')} %</span>
                         </div>
-                        <div aria-hidden style={{ height: 8, borderRadius: 4, background: 'var(--separador)' }}>
+                        <div aria-hidden className="rounded-1" style={{ height: 8, background: 'var(--separador)' }}>
                           <div style={{ width: `${Math.min(100, a.porcentaje)}%`, height: '100%', borderRadius: 4, background: 'var(--accion)' }} />
                         </div>
                       </div>
@@ -117,7 +122,23 @@ export function Inventario() {
                 )}
 
                 <Vidrio estilo={{ display: 'flex', flexDirection: 'column', gap: 12 }} etiqueta="Por insumo">
-                  <TituloSeccion>Por insumo · de mayor a menor valor</TituloSeccion>
+                  <div className="d-flex flex-wrap justify-content-between align-items-center gap-2">
+                    <TituloSeccion>Por insumo · de mayor a menor valor</TituloSeccion>
+                    <BotonExportar
+                      titulo="Inventario valorizado"
+                      subtitulo={`${nombreAlmacen} · corte ${fechaCorte(v.corte)} (hora de Lima)`}
+                      filas={filas}
+                      columnas={[
+                        { titulo: 'SKU', valor: (i) => i.codigo, ancho: 12 },
+                        { titulo: 'Insumo', valor: (i) => i.descripcion, ancho: 45 },
+                        { titulo: 'Unidad', valor: (i) => i.unidad, ancho: 9 },
+                        { titulo: 'Cantidad', valor: (i) => i.cantidad, formato: 'decimal' },
+                        { titulo: 'Costo promedio (S/)', valor: (i) => i.costoPromedio, formato: 'soles' },
+                        { titulo: 'Valor (S/)', valor: (i) => i.valor, formato: 'soles' },
+                        { titulo: '% del total', valor: (i) => i.porcentaje, formato: 'decimal' },
+                      ]}
+                    />
+                  </div>
                   <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Buscar por nombre o código…" aria-label="Buscar insumo"
                     className="form-control" />
                   {v.porInsumo.length === 0 ? (
@@ -127,7 +148,7 @@ export function Inventario() {
                       <table className="table table-hover align-middle mb-0">
                         <thead>
                           <tr>
-                            <th className="text-start">Insumo</th><th className="n">Cantidad</th><th className="n">Costo promedio</th>
+                            <th className="text-start">Insumo</th><th className="n">Cantidad</th><th className="n"><Termino clave="costo promedio">Costo promedio</Termino></th>
                             <th className="n">Valor</th><th className="n">% del total</th><th className="n">Último movimiento</th>
                           </tr>
                         </thead>
