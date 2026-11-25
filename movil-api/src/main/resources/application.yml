@@ -1,0 +1,18 @@
+# Todo lo sensible llega por variables de entorno (Render o la terminal); nada se escribe aquí.
+server:
+  port: ${PORT:8080}
+  forward-headers-strategy: framework
+spring:
+  application:
+    name: movil-api
+  jackson:
+    default-property-inclusion: non_null
+sigro:
+  api-url: ${SIGRO_API_URL:https://sigro-api.onrender.com}
+  jwt-secret: ${SIGRO_JWT_SECRET:}
+  tiempo-espera-segundos: ${SIGRO_TIEMPO_ESPERA:70}
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
