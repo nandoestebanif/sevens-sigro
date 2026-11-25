@@ -21,13 +21,16 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.EventAvailable
+import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.filled.Sync
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -64,6 +67,7 @@ import pe.sevens.sigro.dominio.RepositorioJornadas
 import pe.sevens.sigro.dominio.RepositorioRegistros
 import pe.sevens.sigro.dominio.RepositorioTrabajadores
 import pe.sevens.sigro.dominio.Trabajador
+import pe.sevens.sigro.dominio.ValidarBaja
 import pe.sevens.sigro.dominio.ValidarTrabajador
 import pe.sevens.sigro.plataforma.Plataforma
 import pe.sevens.sigro.ui.componentes.AvisoNaranja
@@ -113,7 +117,17 @@ fun resumirTrabajadores(lista: List<Trabajador>, hoy: String): ResumenTrabajador
 fun iniciales(nombre: String): String =
     nombre.trim().split(Regex("\\s+")).filter { it.isNotEmpty() }.take(2).joinToString("") { it.first().uppercase() }.ifEmpty { "?" }
 
-data class EstadoTrabajadores(val actualizando: Boolean = false, val aviso: String? = null, val marcadosHoy: Set<Int> = emptySet())
+data class EstadoTrabajadores(
+    val actualizando: Boolean = false,
+    val aviso: String? = null,
+    val marcadosHoy: Set<Int> = emptySet(),
+    // HU-62 c2 · diálogo de baja
+    val bajaDe: Trabajador? = null,
+    val fechaBaja: String = "",
+    val errorBaja: String? = null,
+    val dandoDeBaja: Boolean = false,
+    val confirmacion: String? = null,
+)
 
 class TrabajadoresViewModel(
     private val trabajadores: RepositorioTrabajadores,
@@ -136,6 +150,26 @@ class TrabajadoresViewModel(
             _e.update { it.copy(actualizando = false, aviso = aviso, marcadosHoy = marcados) }
         }
     }
+
+    // ── HU-62 c2 · dar de baja: no se borra; queda su fecha de salida y sus jornadas se conservan (regla 10) ──
+    fun abrirBaja(t: Trabajador, hoy: String) = _e.update { it.copy(bajaDe = t, fechaBaja = hoy, errorBaja = null, confirmacion = null) }
+    fun fechaBaja(v: String) = _e.update { it.copy(fechaBaja = v.filter { c -> c.isDigit() || c == '-' }.take(10), errorBaja = null) }
+    fun cerrarBaja() = _e.update { it.copy(bajaDe = null, errorBaja = null) }
+
+    fun confirmarBaja(obraId: Int, hoy: String) {
+        val t = _e.value.bajaDe ?: return
+        ValidarBaja.error(t, _e.value.fechaBaja, hoy)?.let { m -> _e.update { it.copy(errorBaja = m) }; return }
+        _e.update { it.copy(dandoDeBaja = true, errorBaja = null) }
+        viewModelScope.launch {
+            try {
+                val hecho = trabajadores.darDeBaja(obraId, t.id, _e.value.fechaBaja)
+                _e.update { it.copy(dandoDeBaja = false, bajaDe = null, confirmacion = "${hecho.nombre} quedó de baja desde el ${hecho.fechaSalida}. Sus jornadas se conservan.") }
+            } catch (x: ErrorSigro) {
+                val m = if (x.esTransitorio) "Sin señal: la baja necesita conexión. Inténtalo cuando vuelva." else x.message
+                _e.update { it.copy(dandoDeBaja = false, errorBaja = m) }
+            }
+        }
+    }
 }
 
 @Composable
@@ -151,6 +185,7 @@ fun PantallaTrabajadores(obraId: Int, obraNombre: String, alVolver: () -> Unit, 
     PantallaVidrio(
         "Trabajadores", plano = { planoTrabajadores(it) }, alVolver = alVolver,
         subtitulo = "$obraNombre · ${r.activos.size} ${if (r.activos.size == 1) "activo" else "activos"}",
+        encima = { e.bajaDe?.let { t -> DialogoBaja(t, e, vm::fechaBaja, { vm.confirmarBaja(obraId, hoy) }, vm::cerrarBaja) } },
         acciones = {
             IconButton(onClick = { vm.actualizar(obraId, hoy) }, enabled = !e.actualizando, modifier = Modifier.size(48.dp).vidrio(CircleShape, sombra = 4.dp)) {
                 if (e.actualizando) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp, color = Paleta.Naranja)
@@ -176,6 +211,7 @@ fun PantallaTrabajadores(obraId: Int, obraNombre: String, alVolver: () -> Unit, 
             Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null, tint = Paleta.SobrePrincipal)
         }
         e.aviso?.let { AvisoNaranja(it) }
+        e.confirmacion?.let { AvisoNaranja(it) }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Categoria.entries.forEach { c ->
                 Cifra(r.porCategoria[c] ?: 0, when (c) { Categoria.OPERARIO -> "Operarios"; Categoria.OFICIAL -> "Oficiales"; Categoria.PEON -> "Peones" })
@@ -190,7 +226,7 @@ fun PantallaTrabajadores(obraId: Int, obraNombre: String, alVolver: () -> Unit, 
         r.porCuadrilla.forEach { (cuadrilla, gente) ->
             TituloSeccion(cuadrilla, Modifier.padding(start = 4.dp, top = 4.dp))
             Column(Modifier.fillMaxWidth().vidrio(RoundedCornerShape(24.dp))) {
-                gente.forEachIndexed { i, t -> if (i > 0) Separador(); FilaTrabajador(t, deBaja = false) }
+                gente.forEachIndexed { i, t -> if (i > 0) Separador(); FilaTrabajador(t, deBaja = false) { vm.abrirBaja(t, hoy) } }
             }
         }
         if (r.deBaja.isNotEmpty()) {
@@ -200,7 +236,38 @@ fun PantallaTrabajadores(obraId: Int, obraNombre: String, alVolver: () -> Unit, 
             }
         }
         BotonNegro("Registrar trabajador", { irA(Destino.TrabajadorNuevo) }, icono = Icons.Filled.PersonAdd, colorIcono = Paleta.NaranjaVivo)
+        BotonNegro("Horas acumuladas", { irA(Destino.Horas) }, icono = Icons.Filled.Schedule, contorno = true)
+        if (r.activos.isNotEmpty()) {
+            Text("Toca a un trabajador para darlo de baja cuando deje la obra.", fontSize = 13.sp, color = Paleta.Texto3)
+        }
     }
+}
+
+/** HU-62 c2 · confirmar la baja con su fecha de salida. Dice claro que no se borra nada (regla 10). */
+@Composable
+private fun DialogoBaja(t: Trabajador, e: EstadoTrabajadores, alCambiar: (String) -> Unit, alConfirmar: () -> Unit, alCerrar: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = { if (!e.dandoDeBaja) alCerrar() },
+        title = { Text("Dar de baja a ${t.nombre}") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text(
+                    "Deja de aparecer en la asistencia desde el día siguiente. No se borra: sus jornadas ya registradas se conservan.",
+                    fontSize = 15.sp, lineHeight = 21.sp,
+                )
+                CampoVidrio(
+                    e.fechaBaja, alCambiar, "Fecha de salida", marcador = "AAAA-MM-DD", error = e.errorBaja,
+                    ayuda = "Ingresó el ${t.fechaIngreso}", teclado = KeyboardType.Number,
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = alConfirmar, enabled = !e.dandoDeBaja) {
+                if (e.dandoDeBaja) CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp) else Text("Dar de baja")
+            }
+        },
+        dismissButton = { TextButton(onClick = alCerrar, enabled = !e.dandoDeBaja) { Text("Cancelar") } },
+    )
 }
 
 @Composable
@@ -212,9 +279,11 @@ private fun RowScope.Cifra(valor: Int, etiqueta: String) {
 }
 
 @Composable
-private fun FilaTrabajador(t: Trabajador, deBaja: Boolean) {
+private fun FilaTrabajador(t: Trabajador, deBaja: Boolean, alTocar: (() -> Unit)? = null) {
+    val base = Modifier.fillMaxWidth().heightIn(min = 64.dp)
     Row(
-        Modifier.fillMaxWidth().heightIn(min = 64.dp).padding(horizontal = 14.dp, vertical = 10.dp).semantics(mergeDescendants = true) {},
+        (if (alTocar != null) base.clickable(onClickLabel = "Dar de baja", onClick = alTocar) else base)
+            .padding(horizontal = 14.dp, vertical = 10.dp).semantics(mergeDescendants = true) {},
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {

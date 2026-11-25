@@ -40,6 +40,7 @@ import pe.sevens.sigro.ui.pantallas.StockViewModel
 import pe.sevens.sigro.ui.pantallas.TrasladoViewModel
 import pe.sevens.sigro.ui.pantallas.TrabajadorNuevoViewModel
 import pe.sevens.sigro.ui.pantallas.TrabajadoresViewModel
+import pe.sevens.sigro.ui.pantallas.HorasViewModel
 import pe.sevens.sigro.ui.pantallas.DispositivoViewModel
 import pe.sevens.sigro.ui.pantallas.InsumoNuevoViewModel
 import pe.sevens.sigro.ui.pantallas.EntrarViewModel
@@ -97,6 +98,7 @@ val moduloPresentacion = module {
     viewModel { SalidaViewModel(get(), get(), get(), get(), get(), get()) }
     viewModel { PerfilViewModel(get(), get(), get(), get()) }
     viewModel { PendientesViewModel(get(), get()) }
+    viewModel { HorasViewModel(get()) }
     viewModel { DispositivoViewModel(get()) }
     viewModel { ObrasViewModel(get(), get(), get()) }
     viewModel { CatalogoViewModel(get()) }
