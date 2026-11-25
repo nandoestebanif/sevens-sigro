@@ -72,12 +72,11 @@ export function GastoRecursos() {
 
   return (
     <div className="d-flex flex-column gap-3">
-      <Vidrio estilo={{ borderLeft: '4px solid var(--accion)', padding: '14px 20px' }} etiqueta="Alcance del reporte">
-        <p className="text-body-secondary">
-          <strong>Esto es el gasto en recursos, no el costo total de la obra.</strong>{' '}
-          {g?.declaracion ?? 'Quedan fuera los gastos generales, los subcontratos, los servicios y la planilla.'}
-        </p>
-      </Vidrio>
+      {/* el propio tablero declara su alcance (CLAUDE.md): a la vista, pero en una línea */}
+      <p className="small text-body-secondary mb-0" role="note">
+        <strong className="text-body">Gasto en recursos, no costo total de la obra:</strong>{' '}
+        {g?.declaracion ?? 'quedan fuera gastos generales, subcontratos, servicios y planilla.'}
+      </p>
 
       <Vidrio estilo={{ display: 'flex', flexDirection: 'column', gap: 14 }} etiqueta="Gasto en recursos">
         <div className="d-flex flex-wrap justify-content-between align-items-end gap-3">
