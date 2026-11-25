@@ -23,11 +23,13 @@ public class Integraciones {
     public record Respuesta(int estado, String cuerpo) {}
 
     private final String integraciones, notificaciones, token;
+    private final pe.sevens.sigro.integraciones.Padron padron;
     private final HttpClient http = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(2)).build();
 
     public Integraciones(@Value("${SIGRO_INTEGRACIONES_URL:}") String integraciones,
                          @Value("${SIGRO_NOTIFICACIONES_URL:}") String notificaciones,
-                         @Value("${SIGRO_SERVICIO_TOKEN:}") String token) {
+                         @Value("${SIGRO_SERVICIO_TOKEN:}") String token, pe.sevens.sigro.integraciones.Padron padron) {
+        this.padron = padron;
         this.integraciones = vacio(integraciones) ? null : integraciones.replaceAll("/+$", "");
         this.notificaciones = vacio(notificaciones) ? null : notificaciones.replaceAll("/+$", "");
         this.token = vacio(token) ? null : token;
@@ -42,7 +44,10 @@ public class Integraciones {
     }
 
     public RucSunat consultarRuc(String ruc) {
-        if (integraciones == null) return null;
+        if (integraciones == null) {          // sin servicio aparte: el padrón se consulta desde aquí (FACTILIZA_TOKEN / APISPERU_TOKEN)
+            var r = padron.ruc(ruc);
+            return r == null ? null : new RucSunat(r.ruc(), r.razonSocial(), r.estadoSunat(), r.condicion(), r.aptoParaComprar());
+        }
         try {
             var r = http.send(base(integraciones + "/ruc/" + ruc, 4).GET().build(), HttpResponse.BodyHandlers.ofString());
             if (r.statusCode() != 200) return null;
@@ -54,7 +59,11 @@ public class Integraciones {
     }
 
     public DniReniec consultarDni(String dni) {
-        if (integraciones == null) return null;
+        if (integraciones == null) {
+            var r = padron.dni(dni);
+            if (r == null || r.nombres().isEmpty() || r.apellidoPaterno().isEmpty()) return null;
+            return new DniReniec(r.dni(), r.nombres(), r.apellidoPaterno(), r.apellidoMaterno());
+        }
         try {
             var r = http.send(base(integraciones + "/dni/" + dni, 4).GET().build(), HttpResponse.BodyHandlers.ofString());
             if (r.statusCode() != 200) return null;
@@ -75,7 +84,7 @@ public class Integraciones {
 
     /** HU-07: Integraciones lee el PDF del S10. Sin modo degradado: si no responde, se dice por qué. */
     public JsonNode leerRelacionS10(String nombre, byte[] contenido, List<String> codigosExistentes) {
-        if (integraciones == null) throw new ErrorSigro(503, "integraciones_no_configurado", "El servicio no conoce la dirección de Integraciones.");
+        if (integraciones == null) return leerLocal(nombre, contenido, codigosExistentes);
         String limite = "----sigro" + UUID.randomUUID();
         var partes = new java.io.ByteArrayOutputStream();
         try {
@@ -103,6 +112,39 @@ public class Integraciones {
             throw new ErrorSigro(422, "archivo_s10_invalido", detalle != null ? detalle : "No se pudo leer el archivo como una Relación de insumos del S10.");
         }
         throw new ErrorSigro(503, "integraciones_con_error", "Integraciones respondió con un error (" + r.statusCode() + ").");
+    }
+
+    /** HU-07 sin servicio aparte: el mismo lector del S10 (PDFBox), con las mismas respuestas que Integraciones. */
+    JsonNode leerLocal(String nombre, byte[] contenido, List<String> codigosExistentes) {
+        if (!nombre.toLowerCase(java.util.Locale.ROOT).endsWith(".pdf")) throw new ErrorSigro(422, "archivo_s10_invalido", "Se espera el PDF exportado del S10.");
+        pe.sevens.sigro.integraciones.LectorS10.Lectura l;
+        try {
+            l = pe.sevens.sigro.integraciones.LectorS10.leer(contenido);
+        } catch (Exception e) {
+            throw new ErrorSigro(422, "archivo_s10_invalido", "El archivo no se pudo leer como un PDF del S10.");
+        }
+        if (l.insumos.isEmpty())
+            throw new ErrorSigro(422, "archivo_s10_invalido", "El PDF no trae filas de insumos reconocibles: ¿es la «Relación de insumos» "
+                    + "(precios y cantidades de recursos requeridos por tipo)?");
+        var existentes = new HashSet<String>();
+        for (String c : codigosExistentes) if (!c.strip().isEmpty()) existentes.add(c.strip());
+        var insumos = new ArrayList<Map<String, Object>>();
+        var porTipo = new LinkedHashMap<String, Object>();
+        int aCrear = 0, aAct = 0;
+        double total = 0;
+        for (var i : l.insumos) {
+            String accion = existentes.contains(i.codigo()) ? "actualizar" : "crear";
+            if (accion.equals("crear")) aCrear++; else aAct++;
+            porTipo.merge(i.tipo(), 1L, (a, b) -> (Long) a + (Long) b);
+            total += i.parcial();
+            insumos.add(P.mapa("codigo", i.codigo(), "descripcion", i.descripcion(), "unidad", i.unidad(), "tipo", i.tipo(), "cantidad", i.cantidad(),
+                    "precio", i.precio(), "parcial", i.parcial(), "accion", accion, "advertencia", i.advertencia()));
+        }
+        var r = P.mapa("obra", l.obra, "subpresupuesto", l.subpresupuesto, "fecha", l.fecha,
+                "resumen", P.mapa("leidos", insumos.size(), "a_crear", aCrear, "a_actualizar", aAct, "fallidos", l.fallidos.size(), "por_tipo", porTipo,
+                        "parcial_total", new java.math.BigDecimal(total).setScale(2, java.math.RoundingMode.HALF_EVEN).doubleValue()),
+                "insumos", insumos, "fallidos", l.fallidos);
+        return Json.leer(Json.texto(r));
     }
 
     /** Llamada al servicio de notificaciones con el token de servicio. */
