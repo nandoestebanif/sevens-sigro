@@ -61,6 +61,7 @@ import pe.sevens.sigro.ui.componentes.PantallaVidrio
 import pe.sevens.sigro.ui.componentes.TarjetaVidrio
 import pe.sevens.sigro.ui.componentes.planoEntrada
 import pe.sevens.sigro.ui.tema.Paleta
+import pe.sevens.sigro.ui.componentes.Modulo
 
 /*
  * 2.3 · Entrada de compra (lienzo Entrada.dc.html, HU-35 / HU-36), conectada (M5):
@@ -335,7 +336,7 @@ fun PantallaEntrada(obraId: Int, alVolver: () -> Unit, vm: EntradaViewModel = ko
     val almacen by vm.almacen.estado.collectAsState()
     LaunchedEffect(obraId) { vm.cargar(obraId) }
 
-    PantallaVidrio("Entrada", plano = { planoEntrada(it) }, alVolver = alVolver, subtitulo = "Lo que llegó de una compra") {
+    PantallaVidrio("Entrada", plano = { planoEntrada(it) }, alVolver = alVolver, subtitulo = "Lo que llegó de una compra", modulo = Modulo.ENTRADA) {
         if (e.guardada) {
             GuardadoEnCelular(
                 "Entrada guardada",
