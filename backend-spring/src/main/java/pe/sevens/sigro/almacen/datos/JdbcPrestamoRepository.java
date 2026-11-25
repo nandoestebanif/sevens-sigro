@@ -73,6 +73,16 @@ public class JdbcPrestamoRepository implements PrestamoRepository {
     }
 
     @Override
+    public List<Map<String, Object>> disponibles(long obraId) {
+        return db.filas("SELECT s.almacen_id, r.nombre AS almacen, s.insumo_id, i.codigo AS insumo_codigo, i.descripcion, i.unidad, "
+                + "s.cantidad AS en_almacen, coalesce(p.prestado, 0) AS prestado, greatest(s.cantidad - coalesce(p.prestado, 0), 0) AS disponible "
+                + "FROM almacen.saldo s JOIN almacen.insumo_ref i ON i.id = s.insumo_id JOIN almacen.almacen_ref r ON r.id = s.almacen_id "
+                + "LEFT JOIN (SELECT almacen_id, insumo_id, sum(cantidad) AS prestado FROM almacen.prestamo WHERE devuelto_en IS NULL "
+                + "GROUP BY almacen_id, insumo_id) p ON p.almacen_id = s.almacen_id AND p.insumo_id = s.insumo_id "
+                + "WHERE s.proyecto_id = :p AND i.tipo = 'equipo' AND s.cantidad > 0 ORDER BY i.descripcion, r.nombre", P.de("p", obraId));
+    }
+
+    @Override
     public List<Map<String, Object>> deLaObra(long obraId, boolean soloSinDevolver) {
         return db.filas(VISTA + "WHERE p.proyecto_id = :p" + (soloSinDevolver ? " AND p.devuelto_en IS NULL" : "")
                 + " ORDER BY (p.devuelto_en IS NULL) DESC, p.devolver_el NULLS LAST, p.id DESC LIMIT 1000", P.de("p", obraId));

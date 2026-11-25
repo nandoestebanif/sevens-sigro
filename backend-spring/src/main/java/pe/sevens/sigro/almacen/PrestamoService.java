@@ -97,7 +97,7 @@ public class PrestamoService {
             var filas = R.todos(prestamos.deLaObra(obraId, soloSinDevolver), PRESTAMO_OUT);
             long atrasados = filas.stream().filter(f -> Boolean.TRUE.equals(f.get("atrasado"))).count();
             long sinDevolver = filas.stream().filter(f -> f.get("devuelto_en") == null).count();
-            return R.mapa("sin_devolver", sinDevolver, "atrasados", atrasados, "prestamos", filas);
+            return R.mapa("sin_devolver", sinDevolver, "atrasados", atrasados, "prestamos", filas, "herramientas", prestamos.disponibles(obraId));
         });
     }
 }
