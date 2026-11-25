@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 from datetime import date
 
 import psycopg
@@ -60,7 +61,15 @@ def test_cargar_es_idempotente_y_no_toca_la_validacion(base):
     assert p["20606456892"]["estado_validacion"] == "validado" and p["12345678"]["estado_validacion"] == "sin_validar"
 
 
-def test_el_comando_en_seco_no_escribe(base, tmp_path, capsys):
+@pytest.fixture
+def carpeta_semillas(tmp_path, monkeypatch):
+    """Las semillas solo leen dentro de SIGRO_SEMILLAS_DIR: en las pruebas, la carpeta temporal."""
+    monkeypatch.setenv("SIGRO_SEMILLAS_DIR", str(tmp_path))
+    return tmp_path
+
+
+def test_el_comando_en_seco_no_escribe(base, carpeta_semillas, capsys):
+    tmp_path = carpeta_semillas
     f = tmp_path / "p.json"
     f.write_text(json.dumps(CLIENTE), encoding="utf-8")
     assert semilla.main([str(f), "--dry-run", "--url", url_sqlalchemy(base)]) == 0
@@ -70,7 +79,8 @@ def test_el_comando_en_seco_no_escribe(base, tmp_path, capsys):
     assert "insertados" in capsys.readouterr().out
 
 
-def test_sin_conexion_el_comando_avisa(tmp_path, monkeypatch):
+def test_sin_conexion_el_comando_avisa(carpeta_semillas, monkeypatch):
+    tmp_path = carpeta_semillas
     f = tmp_path / "p.json"
     f.write_text("[]", encoding="utf-8")
     monkeypatch.delenv("SIGRO_APP_DATABASE_URL", raising=False)
@@ -111,6 +121,7 @@ def test_el_archivo_real_del_cliente_si_esta_disponible():
     ruta = os.environ.get("SIGRO_PROVEEDORES_JSON")
     if not ruta:
         pytest.skip("define SIGRO_PROVEEDORES_JSON para probar con el archivo real del cliente")
+    os.environ.setdefault("SIGRO_SEMILLAS_DIR", os.path.dirname(os.path.realpath(ruta)))
     lista, r = semilla.preparar(semilla.leer(__import__("pathlib").Path(ruta)))
     assert len(lista) == r["ruc_correcto"] + r["documento_sucio"] and len(lista) > 0
 
@@ -153,7 +164,8 @@ def test_catalogo_es_idempotente_y_no_pisa_factor_ni_unidad(base):
     assert i["verificado"] is True and i["tipo"] == "material"
 
 
-def test_catalogo_en_seco_no_escribe(base, tmp_path):
+def test_catalogo_en_seco_no_escribe(base, carpeta_semillas):
+    tmp_path = carpeta_semillas
     f = tmp_path / "c.json"
     f.write_text(json.dumps(CATALOGO), encoding="utf-8")
     assert catalogo.main([str(f), "--dry-run", "--url", url_sqlalchemy(base)]) == 0
@@ -237,3 +249,25 @@ def test_las_semillas_solo_se_conectan_a_postgresql():
     for mala in ("sqlite:///tmp/x.db", "mysql://u@h/b", "postgresql+psycopg://u@/b", "no es url"):
         with pytest.raises(ValueError):
             conexion_postgres(mala)
+
+
+def test_las_semillas_no_leen_fuera_de_su_carpeta(tmp_path, monkeypatch):
+    from semillas.entrada import leer_json
+
+    dentro = tmp_path / "permitida"
+    dentro.mkdir()
+    (dentro / "ok.json").write_text("[1]", encoding="utf-8")
+    (tmp_path / "fuera.json").write_text("[2]", encoding="utf-8")
+    monkeypatch.setenv("SIGRO_SEMILLAS_DIR", str(dentro))
+    assert leer_json(dentro / "ok.json") == [1]
+    for ruta in (tmp_path / "fuera.json", dentro / ".." / "fuera.json"):
+        with pytest.raises(SystemExit):
+            leer_json(ruta)
+
+
+def test_por_defecto_las_semillas_leen_su_propia_carpeta(monkeypatch):
+    from semillas import cargar_catalogo
+    from semillas.entrada import carpeta_permitida
+
+    monkeypatch.delenv("SIGRO_SEMILLAS_DIR", raising=False)
+    assert carpeta_permitida() == os.path.realpath(os.path.dirname(cargar_catalogo.__file__))
