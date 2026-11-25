@@ -32,6 +32,7 @@ import pe.sevens.sigro.ui.componentes.Opciones
 import pe.sevens.sigro.ui.componentes.PantallaVidrio
 import pe.sevens.sigro.ui.componentes.planoIngreso
 import pe.sevens.sigro.ui.tema.Paleta
+import pe.sevens.sigro.ui.componentes.Modulo
 
 /*
  * 2.4 · Ingreso sin compra (lienzo IngresoSinCompra.dc.html, HU-41): material que llega sin compra
@@ -118,7 +119,7 @@ fun PantallaIngresoSinCompra(obraId: Int, alVolver: () -> Unit, vm: IngresoSinCo
     val almacen by vm.almacen.estado.collectAsState()
     LaunchedEffect(obraId) { vm.cargar(obraId) }
 
-    PantallaVidrio("Ingreso sin compra", plano = { planoIngreso(it) }, alVolver = alVolver, subtitulo = "Devoluciones, préstamos y sobrantes") {
+    PantallaVidrio("Ingreso sin compra", plano = { planoIngreso(it) }, alVolver = alVolver, subtitulo = "Devoluciones, préstamos y sobrantes", modulo = Modulo.INGRESO) {
         if (e.guardado) {
             GuardadoEnCelular(
                 "Ingreso guardado", "${e.insumo?.let { Texto.cantidadConUnidad(e.cantidad, it.unidad) + " de " + Texto.nombre(it.descripcion) } ?: "El ingreso"}. Se envía solo en cuanto haya señal.",
