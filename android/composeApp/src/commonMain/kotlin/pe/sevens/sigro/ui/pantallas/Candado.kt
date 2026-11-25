@@ -575,6 +575,14 @@ fun SeccionSeguridad(vm: CandadoViewModel, biometria: Biometria) {
             )
         }
         // el resultado de activar se ve en el aviso de arriba (CapaCandado), no aquí: un solo mensaje
+        // para soporte: qué Android es y qué huella acepta (si algo falla, una captura de esto lo explica)
+        val diag = remember { biometria.diagnostico() }
+        if (diag.isNotEmpty()) {
+            Text(
+                "$diag · acceso tras cerrar sesión: ${if (e.entraConHuella) "guardado" else "no"}",
+                fontSize = 11.sp, lineHeight = 15.sp, color = Paleta.Texto3, modifier = Modifier.padding(top = 4.dp),
+            )
+        }
     }
 }
 

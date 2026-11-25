@@ -84,6 +84,21 @@ private class BiometriaAndroid(private val actividad: FragmentActivity?) : Biome
         return BiometricManager.from(a).canAuthenticate(BIOMETRIC_STRONG) == BiometricManager.BIOMETRIC_SUCCESS
     }
 
+    override fun diagnostico(): String {
+        val a = actividad ?: return "sin actividad"
+        val bm = BiometricManager.from(a)
+        fun t(c: Int) = when (c) {
+            BiometricManager.BIOMETRIC_SUCCESS -> "sí"
+            BiometricManager.BIOMETRIC_ERROR_NONE_ENROLLED -> "sin registrar"
+            BiometricManager.BIOMETRIC_ERROR_NO_HARDWARE -> "sin sensor"
+            BiometricManager.BIOMETRIC_ERROR_HW_UNAVAILABLE -> "no disponible"
+            BiometricManager.BIOMETRIC_ERROR_SECURITY_UPDATE_REQUIRED -> "falta actualización"
+            else -> "código $c"
+        }
+        return "Android ${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT}) · ${Build.MANUFACTURER} ${Build.MODEL} · " +
+            "huella fuerte: ${t(bm.canAuthenticate(BIOMETRIC_STRONG))} · candado: ${t(bm.canAuthenticate(autenticadores))}"
+    }
+
     // ── candado ──────────────────────────────────────────────────────────────────────────────
     override suspend fun verificar(titulo: String, detalle: String): ResultadoHuella {
         val cifrador = if (conLlave) {

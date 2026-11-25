@@ -59,6 +59,9 @@ interface Biometria {
     suspend fun descifrar(titulo: String, detalle: String, sobre: String): ResultadoSecreto = ResultadoSecreto.NoSoportado
     /** Borra la llave de la contraseña guardada («no soy yo», huella apagada o contraseña cambiada). */
     fun olvidarClave() {}
+
+    /** Una línea para soporte: versión de Android y qué huella acepta el celular (sin datos personales). */
+    fun diagnostico(): String = ""
 }
 
 /**
