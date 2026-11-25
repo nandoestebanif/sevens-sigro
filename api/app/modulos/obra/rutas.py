@@ -186,6 +186,9 @@ def ver_obra(a: Actor = Depends(exigir("proyecto.consultar"))):
 @obras.post("/{obra_id}/ampliar-plazo", response_model=e.ObraOut)
 def ampliar_plazo(datos: e.AmpliarPlazoIn, a: Actor = Depends(exigir("proyecto.ampliar_plazo"))):
     """HU-02: el plazo no se pisa; la ampliación deja rastro y genera los periodos que faltan."""
+    inicio = a.sesion.execute(text("SELECT fecha_inicio FROM obra.proyecto WHERE id = :p"), {"p": a.obra_id}).scalar()
+    if inicio is not None and (datos.nueva_fecha_fin - inicio).days > e.PLAZO_MAXIMO_DIAS:
+        raise ErrorSigro(422, "plazo_excesivo", "El plazo de una obra no puede pasar de 10 años.")
     a.sesion.execute(
         text("SELECT obra.ampliar_plazo(:p, :f, :m, :a)"),
         {"p": a.obra_id, "f": datos.nueva_fecha_fin, "m": datos.motivo.strip(), "a": a.usuario_id},

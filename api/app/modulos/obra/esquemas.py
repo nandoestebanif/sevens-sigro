@@ -4,9 +4,15 @@ from __future__ import annotations
 from datetime import date, datetime
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 Rol = Literal["almacenero", "ssoma", "residente", "administrador", "gerente"]
+
+# Límites del plazo de una obra. Cada semana del plazo es una fila de obra.periodo: sin tope, una obra del año 645 al
+# 5902 pedía ~275 000 periodos en una sola petición y tumbaba el servicio (fuzzing con Schemathesis, 24/11/2026).
+FECHA_MINIMA = date(2000, 1, 1)
+FECHA_MAXIMA = date(2100, 12, 31)
+PLAZO_MAXIMO_DIAS = 3653          # 10 años: ninguna obra de edificación dura más
 
 
 class Estricto(BaseModel):
@@ -67,9 +73,15 @@ class UsuarioOut(BaseModel):
 # --- proyecto
 class ObraIn(Estricto):
     nombre: str = Field(min_length=1, max_length=120)
-    fecha_inicio: date
-    fecha_fin: date
+    fecha_inicio: date = Field(ge=FECHA_MINIMA, le=FECHA_MAXIMA)
+    fecha_fin: date = Field(ge=FECHA_MINIMA, le=FECHA_MAXIMA)
     dia_corte: int = Field(default=7, ge=1, le=7, description="ISO: 1 lunes … 7 domingo. No se edita después (D-P2).")
+
+    @model_validator(mode="after")
+    def _plazo_razonable(self):
+        if (self.fecha_fin - self.fecha_inicio).days > PLAZO_MAXIMO_DIAS:
+            raise ValueError("el plazo de una obra no puede pasar de 10 años")
+        return self
 
 
 class ObraOut(BaseModel):
@@ -85,7 +97,7 @@ class ObraOut(BaseModel):
 
 
 class AmpliarPlazoIn(Estricto):
-    nueva_fecha_fin: date
+    nueva_fecha_fin: date = Field(ge=FECHA_MINIMA, le=FECHA_MAXIMA)
     motivo: str = Field(min_length=3, max_length=500)
 
 
