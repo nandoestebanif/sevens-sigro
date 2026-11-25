@@ -63,9 +63,22 @@ export function validarMotivo(motivo: string): string | null {
 /* ── usuarios ── */
 const PATRON_USUARIO = /^[A-Za-z0-9._-]{3,40}$/
 
-/** Lo que se puede revisar antes de enviar. La clave NO: su regla la aplica y explica el servidor. */
-export function validarAltaUsuario(d: { nombre: string; usuario: string; clave: string }): Record<string, string> {
+export interface Contacto { dni: string; correo: string; celular: string }
+
+/** DNI, correo y celular (migración 0021): opcionales, pero si se escriben deben tener buen formato. */
+export function validarContacto(d: Contacto): Record<string, string> {
   const e: Record<string, string> = {}
+  const dni = d.dni.replace(/\s/g, '')
+  const cel = d.celular.replace(/\s/g, '')
+  if (dni && !/^\d{8}$/.test(dni)) e.dni = 'El DNI tiene 8 dígitos.'
+  if (d.correo.trim() && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(d.correo.trim())) e.correo = 'Escribe un correo como nombre@empresa.com.'
+  if (cel && !/^9\d{8}$/.test(cel)) e.celular = 'El celular tiene 9 dígitos y empieza en 9.'
+  return e
+}
+
+/** Lo que se puede revisar antes de enviar. La clave NO: su regla la aplica y explica el servidor. */
+export function validarAltaUsuario(d: { nombre: string; usuario: string; clave: string } & Partial<Contacto>): Record<string, string> {
+  const e: Record<string, string> = validarContacto({ dni: d.dni ?? '', correo: d.correo ?? '', celular: d.celular ?? '' })
   if (!d.nombre.trim()) e.nombre = 'Escribe nombres y apellidos.'
   else if (d.nombre.trim().length > 120) e.nombre = 'El nombre admite como máximo 120 caracteres.'
   if (!PATRON_USUARIO.test(d.usuario.trim())) e.usuario = 'El usuario lleva de 3 a 40 letras, números, punto, guion o guion bajo, sin espacios.'
@@ -75,9 +88,12 @@ export function validarAltaUsuario(d: { nombre: string; usuario: string; clave: 
 }
 
 /** En qué campo del alta va un error del servidor. */
-export function campoDelError(codigo: string): 'nombre' | 'usuario' | 'clave' | null {
+export function campoDelError(codigo: string): 'nombre' | 'usuario' | 'clave' | 'dni' | 'correo' | 'celular' | null {
   if (codigo === 'clave_debil') return 'clave'
   if (codigo === 'uq_usuario_usuario' || codigo === 'ck_usuario_usuario') return 'usuario'
+  if (codigo === 'uq_usuario_dni' || codigo === 'ck_usuario_dni' || codigo === 'dni_invalido') return 'dni'
+  if (codigo === 'uq_usuario_correo' || codigo === 'ck_usuario_correo') return 'correo'
+  if (codigo === 'ck_usuario_celular') return 'celular'
   return null
 }
 

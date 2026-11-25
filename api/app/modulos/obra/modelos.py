@@ -9,7 +9,7 @@ from __future__ import annotations
 from datetime import date, datetime
 
 from sqlalchemy import (
-    BigInteger, Date, DateTime, ForeignKey, ForeignKeyConstraint, Identity, Index, Integer,
+    BigInteger, CheckConstraint, Date, DateTime, ForeignKey, ForeignKeyConstraint, Identity, Index, Integer,
     SmallInteger, Text, UniqueConstraint, func, text,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -27,6 +27,11 @@ class Usuario(Base):
     __tablename__ = "usuario"
     __table_args__ = (
         Index("uq_usuario_usuario", text("lower(usuario)"), unique=True),
+        Index("uq_usuario_dni", "dni", unique=True, postgresql_where=text("dni IS NOT NULL")),
+        Index("uq_usuario_correo", text("lower(correo)"), unique=True, postgresql_where=text("correo IS NOT NULL")),
+        CheckConstraint(r"dni IS NULL OR dni ~ '^\d{8}$'", name="ck_usuario_dni"),
+        CheckConstraint(r"correo IS NULL OR correo ~ '^[^@\s]+@[^@\s]+\.[^@\s]+$'", name="ck_usuario_correo"),
+        CheckConstraint(r"celular IS NULL OR celular ~ '^9\d{8}$'", name="ck_usuario_celular"),
         {"schema": "obra"},
     )
 
@@ -34,6 +39,9 @@ class Usuario(Base):
     nombre: Mapped[str] = mapped_column(Text)
     usuario: Mapped[str] = mapped_column(Text)
     hash_clave: Mapped[str] = mapped_column(Text)
+    dni: Mapped[str | None] = mapped_column(Text)           # 0021
+    correo: Mapped[str | None] = mapped_column(Text)
+    celular: Mapped[str | None] = mapped_column(Text)
     estado: Mapped[str] = mapped_column(Text, server_default="activo")
     fecha_baja: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     intentos_fallidos: Mapped[int] = mapped_column(SmallInteger, server_default="0")

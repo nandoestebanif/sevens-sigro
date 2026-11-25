@@ -256,3 +256,58 @@ def test_los_errores_del_motor_no_filtran_detalles_internos(mundo, eq):
     assert r2.json() == {"codigo": "uq_usuario_usuario", "mensaje": "Ese nombre de usuario ya existe."}
     cuerpo = r2.text.lower()
     assert "select" not in cuerpo and "psycopg" not in cuerpo and "traceback" not in cuerpo and "sigro_app" not in cuerpo
+
+
+# ──────────────────────────────── DNI, correo y celular del usuario y clave temporal (HU-13, migración 0021)
+def test_el_usuario_se_registra_con_dni_correo_y_celular_y_no_se_repiten(mundo, eq):
+    r = post(mundo, "/usuarios", eq["admin"], nombre="Luis Condori", usuario="lcondori", clave="Clave-Segura-2026",
+             dni="45678912", correo="  LCondori@Sevens.pe ", celular="987 654 321")
+    assert r.status_code == 201, r.text
+    assert (r.json()["dni"], r.json()["correo"], r.json()["celular"]) == ("45678912", "lcondori@sevens.pe", "987654321")
+    otro = dict(nombre="Otro", clave="Clave-Segura-2026")
+    assert post(mundo, "/usuarios", eq["admin"], usuario="otro1", dni="45678912", **otro).json()["codigo"] == "uq_usuario_dni"
+    assert post(mundo, "/usuarios", eq["admin"], usuario="otro2", correo="LCONDORI@sevens.pe", **otro).json()["codigo"] == "uq_usuario_correo"
+
+
+def test_los_datos_de_contacto_son_opcionales_y_se_validan(mundo, eq):
+    sin = post(mundo, "/usuarios", eq["admin"], nombre="Ana", usuario="ana.r", clave="Clave-Segura-2026", dni="", correo="")
+    assert sin.status_code == 201 and sin.json()["dni"] is None and sin.json()["correo"] is None
+    base = dict(nombre="X", usuario="xx.yy", clave="Clave-Segura-2026")
+    for malo in ({"dni": "1234567"}, {"correo": "no-es-correo"}, {"celular": "812345678"}, {"celular": "98765432"}):
+        assert post(mundo, "/usuarios", eq["admin"], **base, **malo).status_code == 422, malo
+
+
+def test_el_administrador_completa_o_quita_el_contacto_sin_tocar_lo_demas(mundo, eq):
+    uid = post(mundo, "/usuarios", eq["admin"], nombre="Rosa", usuario="rosa.m", clave="Clave-Segura-2026", dni="11223344").json()["id"]
+    r = post(mundo, f"/usuarios/{uid}/contacto", eq["admin"], celular="912345678")
+    assert r.status_code == 200 and r.json()["celular"] == "912345678" and r.json()["dni"] == "11223344"
+    r = post(mundo, f"/usuarios/{uid}/contacto", eq["admin"], dni="")
+    assert r.json()["dni"] is None and r.json()["celular"] == "912345678"
+    assert post(mundo, f"/usuarios/{uid}/contacto", eq["admin"]).status_code == 422
+    assert post(mundo, "/usuarios/999999/contacto", eq["admin"], celular="912345678").status_code == 404
+    assert post(mundo, f"/usuarios/{uid}/contacto", eq["residente"], celular="912345678").status_code == 403
+
+
+def test_la_clave_temporal_reemplaza_la_olvidada_y_quita_el_bloqueo(mundo, eq):
+    uid = post(mundo, "/usuarios", eq["admin"], nombre="Pepe", usuario="pepe.q", clave="Clave-Segura-2026").json()["id"]
+    mundo.f.c.execute("UPDATE obra.usuario SET intentos_fallidos = 5, bloqueado_hasta = now() + interval '1 hour' WHERE id=%s", (uid,))
+    assert post(mundo, f"/usuarios/{uid}/clave-temporal", eq["admin"], clave="corta").json()["codigo"] == "clave_debil"
+    assert post(mundo, f"/usuarios/{uid}/clave-temporal", eq["admin"], clave="Otra-Clave-2026").status_code == 200
+    fila = mundo.f.c.execute("SELECT intentos_fallidos, bloqueado_hasta FROM obra.usuario WHERE id=%s", (uid,)).fetchone()
+    assert fila["intentos_fallidos"] == 0 and fila["bloqueado_hasta"] is None
+    assert mundo.http.post(f"{U}/auth/login", json={"usuario": "pepe.q", "clave": "Otra-Clave-2026"}).status_code == 200
+    assert post(mundo, f"/usuarios/{eq['admin']}/clave-temporal", eq["admin"], clave="Otra-Clave-2026").json()["codigo"] == "clave_propia"
+    assert post(mundo, f"/usuarios/{uid}/clave-temporal", eq["residente"], clave="Otra-Clave-2026").status_code == 403
+
+
+def test_la_consulta_de_dni_del_usuario_arma_el_nombre(mundo, eq, monkeypatch):
+    from app import integraciones
+
+    monkeypatch.setattr(integraciones, "consultar_dni", lambda dni, cliente=None: integraciones.DniReniec(
+        dni=dni, nombres="LUIS ALBERTO", apellido_paterno="CONDORI", apellido_materno="QUISPE"))
+    r = get(mundo, "/usuarios/consulta-dni/45678912", eq["admin"])
+    assert r.status_code == 200 and r.json()["nombre_completo"] == "LUIS ALBERTO CONDORI QUISPE"
+    assert get(mundo, "/usuarios/consulta-dni/123", eq["admin"]).status_code == 422
+    assert get(mundo, "/usuarios/consulta-dni/45678912", eq["residente"]).status_code == 403
+    monkeypatch.setattr(integraciones, "consultar_dni", lambda dni, cliente=None: None)
+    assert get(mundo, "/usuarios/consulta-dni/45678912", eq["admin"]).json()["codigo"] == "reniec_sin_respuesta"
