@@ -164,7 +164,7 @@ const GRUPOS: { rotulo: string; items: { ruta: string; nombre: string; icono: ke
   {
     rotulo: 'Almacén',
     items: [
-      { ruta: '/stock', nombre: 'Insumos en almacén', icono: 'stock', permiso: 'stock.consultar' },
+      { ruta: '/stock', nombre: 'Materiales en almacén', icono: 'stock', permiso: 'stock.consultar' },
       { ruta: '/herramientas', nombre: 'Herramientas y equipos', icono: 'herramienta', permiso: 'stock.consultar' },
       { ruta: '/movimientos', nombre: 'Ingresos y salidas', icono: 'movimientos', permiso: 'stock.consultar' },
       { ruta: '/semana', nombre: 'Movimiento semanal', icono: 'movimientos', permiso: 'stock.consultar' },
