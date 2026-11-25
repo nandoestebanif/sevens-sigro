@@ -14,7 +14,8 @@
      los saldos viven en los movimientos; repetir es volver a leer.
    El PDF lo procesa el micro de integraciones; la web solo lo sube y muestra.
    ───────────────────────────────────────────────────────────────────────── */
-import { useRef, useState, type ReactNode } from 'react'
+import { useState, type ReactNode } from 'react'
+import { REGLA_S10, SoltarArchivo } from '../ui/SoltarArchivo'
 import { api } from '../api/cliente'
 import { ErrorImportacion, importarRelacionS10, type ResultadoImportacion } from '../api/s10'
 import { usaApiReal } from '../api/http'
@@ -41,7 +42,6 @@ export function Importar() {
   const [requerimiento, setRequerimiento] = useState<ResultadoRequerimiento | null>(null)
   const [cargandoReq, setCargandoReq] = useState(false)
   const [pestana, setPestana] = useState<string | null>(null)
-  const entrada = useRef<HTMLInputElement>(null)
 
   const importar = async () => {
     if (!archivo) return
@@ -139,26 +139,11 @@ export function Importar() {
 
         <div className="d-flex flex-wrap gap-3 align-items-stretch">
           <Vidrio estilo={{ flex: '1 1 340px', display: 'flex', flexDirection: 'column', gap: 14 }}>
-            <input
-              ref={entrada}
-              type="file"
-              accept="application/pdf"
-              aria-label="PDF de la Relación de insumos del S10"
-              className="d-none form-control"
-              onChange={(e) => { setArchivo(e.target.files?.[0] ?? null); setResultado(null); setError('') }}
-            />
-            <div className="rounded-pill bg-primary-subtle d-flex flex-wrap align-items-center gap-3" style={{ border: '2px dashed var(--accion)', padding: 'clamp(14px, calc(3vw / var(--escala, 1)), 22px)' }}>
-              <span aria-hidden className="d-flex align-items-center justify-content-center small fw-bold text-danger flex-shrink-0 rounded-3 bg-body border"  style={{ width: 52, height: 60 }}>PDF</span>
-              <span className="d-flex flex-column gap-1 min-w-0"  style={{ flex: '1 1 160px' }}>
-                <span className="fw-bold" style={{ overflowWrap: 'anywhere' }}>{archivo ? archivo.name : 'Elige la Relación de insumos'}</span>
-                <span className="small text-body-secondary">
-                  {r
-                    ? `${r.obra ?? 'Obra sin identificar'}${r.subpresupuesto ? ` · subpresupuesto ${r.subpresupuesto}` : ''}${r.fecha ? ` · ${r.fecha}` : ''}`
-                    : 'El PDF exportado del S10: precios y cantidades de recursos requeridos por tipo'}
-                </span>
-              </span>
-              <Pildora tipo="secundario" enClic={() => entrada.current?.click()}>{archivo ? 'Cambiar' : 'Elegir el PDF'}</Pildora>
-            </div>
+            {/* fase 3 (25/11): se arrastra el PDF encima o se hace clic; revisa tipo y tamaño antes de leerlo */}
+            <SoltarArchivo regla={REGLA_S10} archivo={archivo} etiqueta="PDF de la Relación de insumos del S10"
+              titulo="Suelta aquí la Relación de insumos del S10"
+              detalle={r ? `${r.obra ?? 'Obra sin identificar'}${r.subpresupuesto ? ` · subpresupuesto ${r.subpresupuesto}` : ''}${r.fecha ? ` · ${r.fecha}` : ''}` : 'El PDF que exporta el S10 · hasta 20 MB · o haz clic para buscarlo'}
+              alElegir={(a) => { setArchivo(a); setResultado(null); setError('') }} />
             {!usaApiReal && (
               <label className="d-flex align-items-center gap-2 text-body-secondary" style={{ minHeight: 44 }}>
                 <input className="form-check-input mt-0" type="checkbox" checked={conCatalogo} onChange={(e) => setConCatalogo(e.target.checked)} />

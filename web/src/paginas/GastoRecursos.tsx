@@ -27,6 +27,7 @@ import type { Ilustracion } from '../ui/Ilustraciones'
 import { GraficoFlujo } from '../ui/GraficosPerezosos'
 import { Termino } from '../ui/Glosario'
 import { EsqueletoKpis } from '../ui/Esqueleto'
+import { Fecha } from '../ui/Fecha'
 
 const soles = (v: number) => v.toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 const horas = (v: number | null) => (v === null ? '—' : v.toLocaleString('es-PE', { maximumFractionDigits: 1 }))
@@ -86,13 +87,12 @@ export function GastoRecursos() {
               Las cinco cifras se cortan en el mismo instante: {g ? <strong>{fechaCorte(g.corte)}</strong> : '…'} (hora de Lima)
             </span>
           </div>
-          <label className="d-flex align-items-center gap-2 small fw-semibold text-body-secondary">
-            Fecha de corte
-            <input type="date" className="form-control" aria-label="Fecha de corte del gasto" value={fecha} max={hoyLima()}
-              onChange={(e) => setFecha(e.target.value)}  style={{ height: 40 }} />
+          <div className="d-flex align-items-center gap-2 small fw-semibold text-body-secondary">
+            <span className="text-nowrap">Fecha de corte</span>
+            <div style={{ width: 190 }}><Fecha id="gasto-corte" etiqueta="Fecha de corte del gasto" valor={fecha} max={hoyLima()} alCambiar={setFecha} /></div>
             {fecha && <button type="button" onClick={() => setFecha('')}
               className="btn btn-outline-secondary btn-sm">Ahora</button>}
-          </label>
+          </div>
         </div>
 
         {error && <Aviso tono="grave" rol="alert">{error}</Aviso>}

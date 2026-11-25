@@ -29,6 +29,8 @@ import { alternarOrden, ordenar, paginar, type Orden } from '../ui/tablas'
 import { Paginador, ThOrden } from '../ui/Tabla'
 import { EsqueletoTabla } from '../ui/Esqueleto'
 import { BotonExportar } from '../ui/BotonExportar'
+import { TablaDatos } from '../ui/TablaDatos'
+import { Form } from 'react-bootstrap'
 
 const n = (v: number) => v.toLocaleString('es-PE')
 const hora = (iso: string) => diaHoraLima(iso) // en hora de Lima, no en la UTC del servidor
@@ -126,6 +128,9 @@ export function Movimientos() {
   }, [])
 
   const corte = kardex?.[0]?.fechaServidor
+  const [soloBajos, setSoloBajos] = useState(false)
+  const bajos = (stock ?? []).filter((s) => s.bajoPunto).length
+  const ultimo = (stock ?? []).reduce<string | null>((m, s) => (!m || s.ultimoMovimiento > m ? s.ultimoMovimiento : m), null)
 
   // Orden y paginación del kárdex: se ordena la lista completa y luego se corta la página.
   const [orden, setOrden] = useState<Orden<ColKardex> | null>(null)
@@ -159,38 +164,42 @@ export function Movimientos() {
         {stock === null ? (
           <EsqueletoTabla />
         ) : (
-          <div className="overflow-x-auto">
-            <table className="table table-hover align-middle mb-0">
-              <thead>
-                <tr>
-                  <th>Insumo</th><th>Por almacén</th><th className="n">Consolidado</th><th className="n"><Termino clave="punto de reposición">Punto de reposición</Termino></th><th className="n">Último movimiento</th>
-                </tr>
-              </thead>
-              <tbody>
-                {stock.map((s) => (
-                  <tr key={s.insumoId}>
-                    <td style={{ minWidth: 240 }}>
-                      <span className="d-inline-flex align-items-center gap-2 flex-wrap fw-semibold">
-                        {s.descripcion}
-                        {s.bajoPunto && <Chip tono="grave">bajo el punto</Chip>}
-                      </span>
-                      <div className="n small text-body-secondary mt-1 text-start">SKU {s.insumoId}</div>
-                    </td>
-                    <td className="text-body-secondary">
-                      {s.porAlmacen.map((a) => (
-                        <div key={a.almacen} className="n text-start text-nowrap">{a.almacen}: <strong>{n(a.saldo)}</strong> {s.unidad}</div>
-                      ))}
-                    </td>
-                    <td className="n fw-bold text-nowrap">{n(s.saldoTotal)} {s.unidad}</td>
-                    <td className="n" style={{ color: s.bajoPunto ? 'var(--grave)' : 'var(--tinta-2)', fontWeight: s.bajoPunto ? 700 : 400, whiteSpace: 'nowrap' }}>
-                      {s.puntoReposicion === null ? '—' : `${n(s.puntoReposicion)} ${s.unidad}`}
-                    </td>
-                    <td className="n text-body-secondary text-nowrap">{hora(s.ultimoMovimiento)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <>
+            {/* fase 3 (25/11): de un vistazo, antes de la tabla */}
+            <div className="sigro-cifras">
+              <div><strong className="n">{stock.filter((s) => s.saldoTotal > 0).length}</strong><span>insumos con saldo</span></div>
+              <div className={bajos ? 'text-danger' : undefined}><strong className="n">{bajos}</strong><span>bajo el punto de reposición</span></div>
+              <div><strong className="n">{new Set(stock.flatMap((s) => s.porAlmacen.map((a) => a.almacen))).size}</strong><span>almacenes con movimiento</span></div>
+              <div><strong className="n">{ultimo ? hora(ultimo) : '—'}</strong><span>último movimiento</span></div>
+            </div>
+            <TablaDatos
+              etiqueta="Stock al momento"
+              filas={soloBajos ? stock.filter((s) => s.bajoPunto) : stock}
+              clave={(s) => s.insumoId}
+              buscar={(s) => `${s.descripcion} ${s.insumoId} ${s.porAlmacen.map((a) => a.almacen).join(' ')}`}
+              marcadorBusqueda="Buscar por insumo, SKU o almacén…"
+              ordenInicial={{ clave: 'insumo', dir: 'asc' }}
+              filtros={<Form.Check type="switch" id="stock-bajos" label={`Solo bajo el punto · ${bajos}`} checked={soloBajos} onChange={(e) => setSoloBajos(e.target.checked)} />}
+              vacio={{ titulo: soloBajos ? 'Nada bajo el punto' : 'Todavía no hay stock', detalle: soloBajos ? 'Ningún insumo está por debajo de su punto de reposición.' : 'El stock aparece con el primer ingreso al almacén.' }}
+              columnas={[
+                { clave: 'insumo', titulo: 'Insumo', valor: (s) => s.descripcion, celda: (s) => (
+                  <>
+                    <span className="d-inline-flex align-items-center gap-2 flex-wrap fw-semibold">{s.descripcion}{s.bajoPunto && <Chip tono="grave">bajo el punto</Chip>}</span>
+                    <div className="n small text-body-secondary mt-1 text-start">SKU {s.insumoId}</div>
+                  </>
+                ) },
+                { clave: 'almacenes', titulo: 'Por almacén', soloEscritorio: true, valor: (s) => s.porAlmacen.length, celda: (s) => (
+                  <div className="text-body-secondary">{s.porAlmacen.map((a) => <div key={a.almacen} className="n text-start text-nowrap">{a.almacen}: <strong>{n(a.saldo)}</strong> {s.unidad}</div>)}</div>
+                ) },
+                { clave: 'saldo', titulo: 'Consolidado', numerica: true, valor: (s) => s.saldoTotal, celda: (s) => (
+                  <><strong className="text-nowrap">{n(s.saldoTotal)} {s.unidad}</strong><div className="small text-body-secondary text-nowrap">mov. {hora(s.ultimoMovimiento)}</div></>
+                ) },
+                { clave: 'punto', titulo: 'Punto de reposición', numerica: true, valor: (s) => s.puntoReposicion ?? -1, celda: (s) => (
+                  <span className="text-nowrap" style={{ color: s.bajoPunto ? 'var(--grave)' : 'var(--tinta-2)', fontWeight: s.bajoPunto ? 700 : 400 }}>{s.puntoReposicion === null ? '—' : `${n(s.puntoReposicion)} ${s.unidad}`}</span>
+                ) },
+              ]}
+            />
+          </>
         )}
       </Vidrio>
 
