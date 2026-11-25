@@ -134,6 +134,21 @@ import pe.sevens.sigro.ui.componentes.vidrio
 import pe.sevens.sigro.ui.tema.Apariencia
 import pe.sevens.sigro.ui.tema.Paleta
 import pe.sevens.sigro.dominio.casosdeuso.SincronizarCola
+import pe.sevens.sigro.ui.componentes.rememberFuente
+import pe.sevens.sigro.ui.componentes.hundirAlTocar
+import pe.sevens.sigro.ui.componentes.Modulo
+import pe.sevens.sigro.ui.componentes.DibujoObra
+import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.material.icons.filled.Inventory2
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.animateIntAsState
 
 data class EstadoInicio(
     val insumosEnCelular: Int = 0,
@@ -241,6 +256,7 @@ fun PantallaInicio(
     obra: ObraAsignada,
     irA: (Destino) -> Unit,
     vm: InicioViewModel = koinViewModel(),
+    alElegirObra: (ObraAsignada) -> Unit = {},
 ) {
     val e by vm.estado.collectAsState()
     val pendientes by vm.pendientes.collectAsState()
@@ -248,11 +264,12 @@ fun PantallaInicio(
     val lista by flujo.collectAsState(initial = emptyList())
     val resumen = remember(lista) { resumirObra(lista, Plataforma.ahoraMs()) }
     var conMas by remember { mutableStateOf(false) }
+    var cambiandoObra by remember { mutableStateOf(false) }
     val avisos = remember { SnackbarHostState() }
     LaunchedEffect(e.mensaje) {
         e.mensaje?.let { avisos.showSnackbar(it); vm.mensajeVisto() }
     }
-    ManejarAtras(activo = conMas, alVolver = { conMas = false })
+    ManejarAtras(activo = conMas || cambiandoObra, alVolver = { conMas = false; cambiandoObra = false })
 
     FondoPlano(plano = { planoInicio(it) }) {
         Column(
@@ -260,55 +277,30 @@ fun PantallaInicio(
                 .padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 120.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Image(
-                    painterResource(if (Apariencia.oscuro) Res.drawable.sevens_logo_blanco else Res.drawable.sevens_logo), contentDescription = "SEVEN'S Ingenieros SAC",
-                    modifier = Modifier.height(64.dp).offset(x = (-4).dp),
-                )
-                Spacer(Modifier.weight(1f))
-                // La obra elegida; tocarla lleva a «Elegir obra», que también muestra el perfil.
-                Row(
-                    Modifier.heightIn(min = 44.dp).vidrio(RoundedCornerShape(22.dp), sombra = 6.dp)
-                        .clickable(onClickLabel = "Cambiar de obra", onClick = { vm.cambiarDeObra() })
-                        .padding(horizontal = 12.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                ) {
-                    Text(
-                        obra.nombre, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Paleta.Tinta,
-                        maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.widthIn(max = 190.dp),
-                    )
-                    Icon(Icons.Filled.KeyboardArrowDown, contentDescription = null, tint = Paleta.Texto3, modifier = Modifier.size(16.dp))
+            // Rediseño v2: cabecera grande con la obra, el estado de la cola y la grúa
+            CabeceraInicio(sesion, obra, resumen, pendientes, alCambiarObra = { cambiandoObra = true })
+            CifrasDeHoy(resumen, alVerRegistros = { irA(Destino.Pendientes) }, alVerRechazados = { irA(Destino.Rechazados) })
+            AvisosCola(resumen, pendientes, e.enviando, alEnviar = vm::enviarAhora, alVerRegistros = { irA(Destino.Pendientes) })
+            // Accesos en mosaico: Salida (lo que más se usa) grande; Entrada e Ingreso al lado; Personal abajo
+            Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                Acceso(Icons.Filled.ArrowUpward, "Salida", "Registrar lo que sale", Modulo.SALIDA, grande = true,
+                    modifier = Modifier.weight(1.15f).fillMaxHeight()) { irA(Destino.Salida) }
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Acceso(Icons.Filled.ArrowDownward, "Entrada", "Lo que llegó de una compra", Modulo.ENTRADA) { irA(Destino.Entrada) }
+                    Acceso(Icons.Filled.MoveDown, "Ingreso", "Devoluciones y préstamos", Modulo.INGRESO) { irA(Destino.IngresoSinCompra) }
                 }
             }
-
-            Column(Modifier.padding(horizontal = 4.dp)) {
-                Text(
-                    "Almacén", fontSize = 36.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = (-0.035).em, color = Paleta.Tinta,
-                    modifier = Modifier.semantics { heading() },
-                )
-                Text("${sesion.nombre} · ${obra.rolLegible}", fontSize = 14.sp, color = Paleta.Texto3, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            }
-
-            TarjetaResumen(resumen, pendientes, e.enviando, alEnviar = vm::enviarAhora, alVerRegistros = { irA(Destino.Pendientes) }, alVerRechazados = { irA(Destino.Rechazados) })
-
-            // Accesos como tickets de color con su ilustración (rediseño, igual que la web)
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                Acceso(Icons.Filled.ArrowUpward, "Salida", Paleta.TicketAmarillo, Ilustracion.CEMENTO) { irA(Destino.Salida) }
-                Acceso(Icons.Filled.ArrowDownward, "Entrada", Paleta.TicketMenta, Ilustracion.FACTURA) { irA(Destino.Entrada) }
-                Acceso(Icons.Filled.MoveDown, "Ingreso", Paleta.TicketLila, Ilustracion.CAMION) { irA(Destino.IngresoSinCompra) }
-            }
+            Acceso(Icons.Filled.Groups, "Personal", "Trabajadores y asistencia de hoy", Modulo.PERSONAL, ancho = true) { irA(Destino.Trabajadores) }
             OutlinedButton(
                 onClick = { conMas = true }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp), shape = RoundedCornerShape(16.dp),
             ) {
                 Icon(Icons.Filled.MoreHoriz, contentDescription = null, tint = Paleta.Tinta, modifier = Modifier.size(20.dp))
                 Spacer(Modifier.width(8.dp))
-                Text("Más · Catálogo, Personal, Stock", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Paleta.Tinta)
+                Text("Más · Catálogo, Stock y lo que viene", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Paleta.Tinta)
             }
-
             Row(Modifier.fillMaxWidth().padding(start = 4.dp, top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    "Últimos registros", fontSize = 18.sp, fontWeight = FontWeight.ExtraBold, color = Paleta.Tinta,
+                    "Hoy en la obra", fontSize = 18.sp, fontWeight = FontWeight.ExtraBold, color = Paleta.Tinta,
                     modifier = Modifier.weight(1f).semantics { heading() },
                 )
                 TextButton(onClick = { irA(Destino.Pendientes) }) {
@@ -352,73 +344,164 @@ fun PantallaInicio(
         ) {
             HojaMas(irA = { conMas = false; irA(it) }, alCerrar = { conMas = false })
         }
-    }
-}
 
-@Composable
-private fun TarjetaResumen(r: ResumenObra, pendientesTotales: Int, enviando: Boolean, alEnviar: () -> Unit, alVerRegistros: () -> Unit, alVerRechazados: () -> Unit) {
-    Column(Modifier.fillMaxWidth().vidrio(RoundedCornerShape(26.dp))) {
-        Row(Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 16.dp)) {
-            Cifra(r.salidasHoy, if (r.salidasHoy == 1) "Salida hoy" else "Salidas hoy", Paleta.Tinta, null)
-            Cifra(r.porEnviar, "Por enviar", Paleta.Ambar, alVerRegistros, conBorde = true)
-            Cifra(r.rechazadas, if (r.rechazadas == 1) "Rechazada" else "Rechazadas", if (r.rechazadas > 0) Paleta.Rojo else Paleta.Texto3, if (r.rechazadas > 0) alVerRechazados else null, conBorde = true)
-        }
-        // Estado visible de la cola (rúbrica offline): filas que no se pudieron enviar tras los reintentos.
-        if (r.noSePudieronEnviar > 0) {
-            Box(Modifier.fillMaxWidth().height(1.dp).background(Paleta.Separador))
-            Text(
-                "${r.noSePudieronEnviar} sin enviar tras ${MAX_INTENTOS_AUTOMATICOS} intentos: revisa la señal o la dirección del servidor y toca «Enviar ahora».",
-                fontSize = 13.sp, lineHeight = 18.sp, color = Paleta.RechazadoTexto,
-                modifier = Modifier.fillMaxWidth().clickable(onClick = alVerRegistros).padding(horizontal = 18.dp, vertical = 10.dp),
+        // Rediseño v3: «cambiar obra» abre una hoja sobre el inicio (ya no saca a la pantalla de entrada)
+        AnimatedVisibility(cambiandoObra, enter = fadeIn(), exit = fadeOut()) {
+            Box(
+                Modifier.fillMaxSize().background(Color(0x8C0A0A0A))
+                    .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClickLabel = "Cerrar") { cambiandoObra = false },
             )
         }
-        // La cola se envía sola; el botón es para no esperar al reintento (HU-38).
-        if (pendientesTotales > 0) {
-            Box(Modifier.fillMaxWidth().height(1.dp).background(Paleta.Separador))
-            TextButton(onClick = alEnviar, enabled = !enviando, modifier = Modifier.fillMaxWidth().padding(horizontal = 6.dp)) {
-                if (enviando) CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp, color = Paleta.Naranja)
-                else Icon(Icons.Filled.CloudUpload, contentDescription = null, tint = Paleta.Naranja, modifier = Modifier.size(20.dp))
-                Spacer(Modifier.width(8.dp))
-                Text(
-                    if (enviando) "Enviando…" else "Enviar ahora · $pendientesTotales ${if (pendientesTotales == 1) "registro" else "registros"}",
-                    fontSize = 15.sp, fontWeight = FontWeight.Bold, color = Paleta.Naranja,
-                )
+        AnimatedVisibility(
+            cambiandoObra,
+            enter = slideInVertically { it }, exit = slideOutVertically { it },
+            modifier = Modifier.align(Alignment.BottomCenter),
+        ) {
+            HojaCambiarObra(sesion, obra, alElegir = { cambiandoObra = false; alElegirObra(it) }, alCerrar = { cambiandoObra = false })
+        }
+    }
+}
+
+/** Cabecera negra de la marca: logo, estado de la cola, saludo, la obra en amarillo, el rol y la grúa. */
+@Composable
+private fun CabeceraInicio(sesion: Sesion, obra: ObraAsignada, r: ResumenObra, pendientes: Int, alCambiarObra: () -> Unit) {
+    val hora = Plataforma.formatearHora(Plataforma.ahoraMs()).substringAfter(' ').substringBefore(':').toIntOrNull() ?: 12
+    val saludo = when (hora) { in 5..11 -> "Buenos días"; in 12..18 -> "Buenas tardes"; else -> "Buenas noches" }
+    Box(Modifier.fillMaxWidth().clip(RoundedCornerShape(30.dp)).background(Paleta.Noche)) {
+        // brillo amarillo y grúa (decorativos)
+        Box(
+            Modifier.align(Alignment.TopEnd).offset(x = 60.dp, y = (-40).dp).size(240.dp)
+                .background(Brush.radialGradient(listOf(Paleta.TicketAmarillo.copy(alpha = 0.32f), Color.Transparent)), CircleShape),
+        )
+        DibujoObra(Ilustracion.GRUA, Modifier.align(Alignment.TopEnd).padding(top = 58.dp), ancho = 150.dp)
+        Column(Modifier.fillMaxWidth().padding(18.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Image(painterResource(Res.drawable.sevens_logo_blanco), contentDescription = "SEVEN'S Ingenieros SAC", modifier = Modifier.height(40.dp))
+                Spacer(Modifier.weight(1f))
+                EstadoCola(pendientes, r.noSePudieronEnviar)
+            }
+            Text("$saludo, ${sesion.nombre.substringBefore(' ')}", fontSize = 14.sp, color = Color(0xFFB4B5B5), modifier = Modifier.padding(top = 10.dp))
+            Text(
+                buildAnnotatedString {
+                    append("Almacén de ")
+                    withStyle(SpanStyle(color = Paleta.TicketAmarillo)) { append(obra.nombre) }
+                },
+                fontSize = 28.sp, lineHeight = 32.sp, fontWeight = FontWeight.Bold, letterSpacing = (-0.03).em, color = Color.White,
+                modifier = Modifier.padding(end = 120.dp).semantics { heading() },
+            )
+            Row(
+                Modifier.padding(top = 8.dp).heightIn(min = 44.dp).clip(RoundedCornerShape(22.dp))
+                    .background(Color.White.copy(alpha = 0.08f))
+                    .clickable(onClickLabel = "Cambiar de obra", onClick = alCambiarObra).padding(horizontal = 14.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                Text("${obra.rolLegible} · cambiar obra", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFFD2D3D3))
+                Icon(Icons.Filled.KeyboardArrowDown, contentDescription = null, tint = Color(0xFFA9AAAA), modifier = Modifier.size(16.dp))
             }
         }
     }
 }
 
+/** Píldora con el estado de la cola: lo primero que el almacenero quiere saber. Siempre con palabra, no solo color. */
 @Composable
-private fun RowScope.Cifra(valor: Int, etiqueta: String, color: Color, alPulsar: (() -> Unit)?, conBorde: Boolean = false) {
-    Row(Modifier.weight(1f)) {
-        if (conBorde) Box(Modifier.width(1.dp).height(52.dp).background(Paleta.Tinta.copy(alpha = 0.10f)))
-        Column(
-            Modifier.weight(1f)
-                .then(if (alPulsar != null) Modifier.clickable(onClickLabel = "Ver registros", onClick = alPulsar) else Modifier)
-                .padding(start = if (conBorde) 14.dp else 0.dp)
-                .semantics(mergeDescendants = true) {},
-            verticalArrangement = Arrangement.spacedBy(2.dp),
-        ) {
-            Text("$valor", fontSize = 28.sp, fontWeight = FontWeight.ExtraBold, color = color)
-            Text(etiqueta, fontSize = 13.sp, color = Paleta.Texto2)
-        }
+private fun EstadoCola(pendientes: Int, atascados: Int) {
+    val (texto, color) = when {
+        atascados > 0 -> "$atascados sin enviar" to Color(0xFFFF9A9A)
+        pendientes > 0 -> "$pendientes por enviar" to Color(0xFFF5C451)
+        else -> "Todo enviado" to Paleta.TicketMenta
+    }
+    Row(
+        Modifier.clip(RoundedCornerShape(50)).background(color.copy(alpha = 0.14f)).padding(horizontal = 12.dp, vertical = 6.dp)
+            .semantics(mergeDescendants = true) { liveRegion = LiveRegionMode.Polite },
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        Box(Modifier.size(8.dp).background(color, CircleShape))
+        Text(texto, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = color)
+    }
+}
+
+/** Las tres cifras del día en mini tickets de color; la cifra cuenta hasta su valor al aparecer. */
+@Composable
+private fun CifrasDeHoy(r: ResumenObra, alVerRegistros: () -> Unit, alVerRechazados: () -> Unit) {
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        MiniCifra(r.salidasHoy, if (r.salidasHoy == 1) "Salida hoy" else "Salidas hoy", Paleta.TicketAmarillo, Icons.Filled.ArrowUpward, null)
+        MiniCifra(r.porEnviar, "Por enviar", Paleta.TicketMenta, Icons.Filled.CloudUpload, alVerRegistros)
+        MiniCifra(r.rechazadas, if (r.rechazadas == 1) "Rechazada" else "Rechazadas", Paleta.TicketRosa, Icons.Filled.ErrorOutline,
+            if (r.rechazadas > 0) alVerRechazados else null)
     }
 }
 
 @Composable
-private fun RowScope.Acceso(icono: ImageVector, texto: String, color: Color, dibujo: Ilustracion, alPulsar: () -> Unit) {
+private fun RowScope.MiniCifra(valor: Int, etiqueta: String, color: Color, icono: ImageVector, alPulsar: (() -> Unit)?) {
+    val animado by animateIntAsState(valor, tween(600), label = etiqueta)
+    val fuente = rememberFuente()
     Ticket(
         color,
-        Modifier.weight(1f).heightIn(min = 118.dp)
-            .clickable(role = Role.Button, onClickLabel = texto, onClick = alPulsar)
-            .semantics(mergeDescendants = true) {},
-        ilustracion = dibujo, anchoIlustracion = 60.dp,
+        Modifier.weight(1f).hundirAlTocar(fuente)
+            .then(if (alPulsar != null) Modifier.clickable(fuente, indication = null, onClickLabel = "Ver $etiqueta", onClick = alPulsar) else Modifier)
+            .semantics(mergeDescendants = true) { contentDescription = "$valor $etiqueta" },
+        radio = 20.dp,
     ) {
-        Column(Modifier.align(Alignment.BottomStart).padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Box(Modifier.size(30.dp).background(Paleta.SobreTicket, RoundedCornerShape(10.dp)), contentAlignment = Alignment.Center) {
-                Icon(icono, contentDescription = null, tint = color, modifier = Modifier.size(18.dp))
+        Column(Modifier.fillMaxWidth().padding(12.dp)) {
+            Row(verticalAlignment = Alignment.Top) {
+                Text("$animado", fontSize = 28.sp, lineHeight = 30.sp, fontWeight = FontWeight.Bold, color = Paleta.SobreTicket, modifier = Modifier.weight(1f))
+                Box(Modifier.size(26.dp).background(Paleta.SobreTicket, RoundedCornerShape(9.dp)), contentAlignment = Alignment.Center) {
+                    Icon(icono, contentDescription = null, tint = color, modifier = Modifier.size(15.dp))
+                }
             }
-            Text(texto, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Paleta.SobreTicket)
+            Text(etiqueta, fontSize = 12.sp, fontWeight = FontWeight.Medium, color = Paleta.SobreTicket, modifier = Modifier.padding(top = 4.dp))
+        }
+    }
+}
+
+/** Lo que pide acción de la cola: los atascados tras los reintentos y «Enviar ahora» (HU-38). */
+@Composable
+private fun AvisosCola(r: ResumenObra, pendientesTotales: Int, enviando: Boolean, alEnviar: () -> Unit, alVerRegistros: () -> Unit) {
+    if (r.noSePudieronEnviar > 0) {
+        Text(
+            "${r.noSePudieronEnviar} sin enviar tras ${MAX_INTENTOS_AUTOMATICOS} intentos: revisa la señal o la dirección del servidor y toca «Enviar ahora».",
+            fontSize = 13.sp, lineHeight = 18.sp, color = Paleta.RechazadoTexto,
+            modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(Paleta.RechazadoFondo)
+                .clickable(onClick = alVerRegistros).padding(horizontal = 14.dp, vertical = 10.dp),
+        )
+    }
+    if (pendientesTotales > 0) {
+        OutlinedButton(
+            onClick = alEnviar, enabled = !enviando, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp), shape = RoundedCornerShape(16.dp),
+        ) {
+            if (enviando) CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp, color = Paleta.Naranja)
+            else Icon(Icons.Filled.CloudUpload, contentDescription = null, tint = Paleta.Naranja, modifier = Modifier.size(20.dp))
+            Spacer(Modifier.width(8.dp))
+            Text(
+                if (enviando) "Enviando…" else "Enviar ahora · $pendientesTotales ${if (pendientesTotales == 1) "registro" else "registros"}",
+                fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = Paleta.Tinta,
+            )
+        }
+    }
+}
+
+/** Acceso del inicio: ticket del color de su módulo, con ilustración, ícono, nombre y una línea de qué hace. */
+@Composable
+private fun Acceso(
+    icono: ImageVector, texto: String, detalle: String, modulo: Modulo,
+    modifier: Modifier = Modifier, grande: Boolean = false, ancho: Boolean = false, alPulsar: () -> Unit,
+) {
+    val fuente = rememberFuente()
+    Ticket(
+        modulo.color,
+        modifier.fillMaxWidth().heightIn(min = if (ancho) 96.dp else 120.dp).hundirAlTocar(fuente)
+            .clickable(fuente, indication = null, role = Role.Button, onClickLabel = texto, onClick = alPulsar)
+            .semantics(mergeDescendants = true) {},
+        ilustracion = modulo.dibujo, anchoIlustracion = if (grande) 100.dp else 66.dp,
+    ) {
+        Column(Modifier.align(Alignment.BottomStart).padding(14.dp).padding(end = if (ancho) 80.dp else 0.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Box(Modifier.size(34.dp).background(Paleta.SobreTicket, RoundedCornerShape(11.dp)), contentAlignment = Alignment.Center) {
+                Icon(icono, contentDescription = null, tint = modulo.color, modifier = Modifier.size(18.dp))
+            }
+            Text(texto, fontSize = if (grande) 22.sp else 15.sp, fontWeight = FontWeight.Bold, color = Paleta.SobreTicket, modifier = Modifier.padding(top = 4.dp))
+            Text(detalle, fontSize = 11.sp, lineHeight = 14.sp, color = Paleta.SobreTicket.copy(alpha = 0.78f))
         }
     }
 }
@@ -436,8 +519,10 @@ private fun FilaUltimo(s: FilaRegistro, alPulsar: () -> Unit) {
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Box(Modifier.size(40.dp).background(fondo, RoundedCornerShape(13.dp)), contentAlignment = Alignment.Center) {
-            Icon(icono, contentDescription = null, tint = color, modifier = Modifier.size(18.dp))
+        // el cuadro lleva el color del módulo (salida, entrada, ingreso, asistencia); el estado va en palabra abajo
+        val (iconoTipo, colorTipo) = tipoVisual(s.tipo)
+        Box(Modifier.size(42.dp).background(colorTipo, RoundedCornerShape(14.dp)), contentAlignment = Alignment.Center) {
+            Icon(iconoTipo, contentDescription = null, tint = Paleta.SobreTicket, modifier = Modifier.size(19.dp))
         }
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             // Tipo arriba (Salida, Entrada de compra, Asistencia…): así se distingue de un vistazo.
@@ -446,6 +531,18 @@ private fun FilaUltimo(s: FilaRegistro, alPulsar: () -> Unit) {
             Text(listOf(s.salida?.let { Texto.cantidadConUnidad(it.cantidad, it.insumo.unidad) } ?: s.detalle, palabra).joinToString(" · "), fontSize = 13.sp, color = Paleta.Texto2, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
         Text(Plataforma.formatearHora(s.horaMs).substringAfter(' '), fontSize = 13.sp, color = Paleta.Texto2)
+    }
+}
+
+/** Ícono y color del módulo de cada tipo de registro. */
+private fun tipoVisual(tipo: String): Pair<ImageVector, Color> {
+    val t = tipo.lowercase()
+    return when {
+        t.startsWith("salida") -> Icons.Filled.ArrowUpward to Modulo.SALIDA.color
+        t.startsWith("entrada") -> Icons.Filled.ArrowDownward to Modulo.ENTRADA.color
+        t.startsWith("ingreso") -> Icons.Filled.MoveDown to Modulo.INGRESO.color
+        t.startsWith("asistencia") || t.startsWith("trabajador") -> Icons.Filled.Groups to Modulo.PERSONAL.color
+        else -> Icons.Filled.Inventory2 to Modulo.STOCK.color
     }
 }
 

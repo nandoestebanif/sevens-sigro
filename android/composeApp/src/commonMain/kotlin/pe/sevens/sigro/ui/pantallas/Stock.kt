@@ -56,6 +56,7 @@ import pe.sevens.sigro.ui.componentes.Ilustracion
 import pe.sevens.sigro.ui.componentes.DibujoObra
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.background
+import pe.sevens.sigro.ui.componentes.Modulo
 
 /*
  * 2.7 · Stock del almacén (lienzo Stock.dc.html, HU-43), conectado (A2) a GET /obras/{id}/almacen/stock.
@@ -136,7 +137,7 @@ fun PantallaStock(obraId: Int, alVolver: () -> Unit, vm: StockViewModel = koinVi
     val e by vm.estado.collectAsState()
     LaunchedEffect(obraId) { vm.cargar(obraId) }
 
-    PantallaVidrio("Stock", plano = { planoStock(it) }, alVolver = alVolver, subtitulo = "Por almacén y de toda la obra") {
+    PantallaVidrio("Stock", plano = { planoStock(it) }, alVolver = alVolver, subtitulo = "Por almacén y de toda la obra", modulo = Modulo.STOCK) {
         val s = e.stock
         TarjetaVidrio(Modifier.semantics(mergeDescendants = true) {}) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {

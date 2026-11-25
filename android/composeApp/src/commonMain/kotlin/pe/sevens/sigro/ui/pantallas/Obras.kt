@@ -94,11 +94,16 @@ import pe.sevens.sigro.ui.tema.Paleta
 import pe.sevens.sigro.ui.componentes.Ilustracion
 import pe.sevens.sigro.ui.componentes.DibujoObra
 import androidx.compose.foundation.layout.offset
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.withStyle
+import pe.sevens.sigro.plataforma.Plataforma
 
 /*
- * 1.2 · Elegir obra (lienzo Obras.dc.html). Solo las obras donde la persona está asignada (regla 9),
- * su perfil antes de entrar, un buscador al centro y, en cada obra, el estado de ESTE celular:
- * la autorización es por celular y por obra (regla 5, HU-15).
+ * 1.2 · Elegir obra (rediseño v3, 25/11). Solo las obras donde la persona está asignada (regla 9): portada
+ * negra con quién entró y cuánto falta enviar, y cada obra como ticket de color con su rol y el estado de ESTE
+ * celular ahí (la autorización es por celular y por obra: regla 5, HU-15). El buscador sale con más de tres.
  */
 
 /** Cómo se ve el celular en una obra. */
@@ -154,6 +159,9 @@ class ObrasViewModel(
     }
 }
 
+/** Saludo según la hora del celular (0–23). */
+fun saludoPorHora(hora: Int): String = when (hora) { in 5..11 -> "Buenos días"; in 12..18 -> "Buenas tardes"; else -> "Buenas noches" }
+
 @Composable
 fun PantallaObras(sesion: Sesion, alElegir: (ObraAsignada) -> Unit, alSalir: () -> Unit, vm: ObrasViewModel = koinViewModel()) {
     val celular by vm.celular.collectAsState()
@@ -161,37 +169,25 @@ fun PantallaObras(sesion: Sesion, alElegir: (ObraAsignada) -> Unit, alSalir: () 
     val porEnviar by vm.porEnviar.collectAsState()
     LaunchedEffect(sesion.obras) { vm.consultar(sesion.obras) }
     val obras = remember(sesion.obras, q) { filtrarObras(sesion.obras, q) }
+    var eligiendo by remember { mutableStateOf(false) }
 
     FondoPlano(plano = { planoObras(it) }) {
-        Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).imePadding().navigationBarsPadding().padding(bottom = 24.dp)) {
-            Box(Modifier.fillMaxWidth()) {
-                FranjaObra(Modifier.fillMaxWidth().height(340.dp))
-                Row(
-                    Modifier.fillMaxWidth().statusBarsPadding().padding(start = 16.dp, end = 12.dp, top = 12.dp),
-                    verticalAlignment = Alignment.Top,
-                ) {
-                    Image(painterResource(Res.drawable.sevens_logo_blanco), contentDescription = "SEVEN'S Ingenieros SAC", modifier = Modifier.height(64.dp))
-                    Spacer(Modifier.weight(1f))
-                    IconButton(onClick = alSalir, modifier = Modifier.size(44.dp).background(Color.White.copy(alpha = 0.16f), CircleShape)) {
-                        Icon(Icons.AutoMirrored.Filled.Logout, contentDescription = "Cerrar sesión", tint = Color.White, modifier = Modifier.size(20.dp))
-                    }
+        Column(
+            Modifier.fillMaxSize().verticalScroll(rememberScrollState()).imePadding().navigationBarsPadding()
+                .statusBarsPadding().padding(start = 12.dp, end = 12.dp, top = 10.dp, bottom = 24.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Column(Modifier.widthIn(max = 560.dp).fillMaxWidth().align(Alignment.CenterHorizontally), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                PortadaObras(sesion, porEnviar, alSalir)
+                if (conBuscador(sesion.obras.size)) BuscadorObra(q, vm::buscar)
+                obras.forEach { o ->
+                    val i = sesion.obras.indexOfFirst { it.id == o.id }
+                    TicketObra(o, i, celular[o.id] ?: CelularEnObra.SIN_CONSULTAR, habilitado = !eligiendo) { eligiendo = true; alElegir(o) }
                 }
-                Perfil(sesion, porEnviar, Modifier.statusBarsPadding().padding(start = 16.dp, end = 16.dp, top = 100.dp))
-            }
-            Column(
-                Modifier.padding(horizontal = 16.dp).padding(top = 20.dp).widthIn(max = 560.dp).fillMaxWidth().align(Alignment.CenterHorizontally),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                Text(
-                    "¿En qué obra trabajas hoy?", fontSize = 22.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = (-0.02).em,
-                    color = Paleta.Tinta, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth().semantics { heading() },
-                )
-                BuscadorObra(q, vm::buscar)
-                obras.forEachIndexed { i, o -> TarjetaObra(o, celular[o.id] ?: CelularEnObra.SIN_CONSULTAR, primera = i == 0) { alElegir(o) } }
                 Text(
                     if (obras.isEmpty()) "No tienes una obra con ese nombre.\nEl administrador te asigna desde la web."
                     else "¿Falta una obra? El administrador te asigna desde la web.",
-                    fontSize = 14.sp, lineHeight = 20.sp, color = Paleta.Texto3, textAlign = TextAlign.Center,
+                    fontSize = 13.sp, lineHeight = 19.sp, color = Paleta.Texto3, textAlign = TextAlign.Center,
                     modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
                 )
             }
@@ -199,109 +195,89 @@ fun PantallaObras(sesion: Sesion, alElegir: (ObraAsignada) -> Unit, alSalir: () 
     }
 }
 
-
-/** Franja superior: la portada negra de la marca con la grúa sobre un círculo amarillo (como la web). */
+/** Portada negra: logo, salir, quién entró (iniciales, nombre, usuario), la pregunta y las dos cifras. */
 @Composable
-private fun FranjaObra(modifier: Modifier) {
-    Box(modifier.clipToBounds().background(Paleta.Noche).semantics { contentDescription = "Ilustración: edificio en construcción" }) {
+private fun PortadaObras(sesion: Sesion, porEnviar: Int, alSalir: () -> Unit) {
+    val hora = Plataforma.formatearHora(Plataforma.ahoraMs()).substringAfter(' ').substringBefore(':').toIntOrNull() ?: 12
+    val amarillo = Paleta.TicketAmarillo
+    Box(Modifier.fillMaxWidth().clip(RoundedCornerShape(30.dp)).background(Paleta.Noche)) {
         Box(
-            Modifier.align(Alignment.BottomEnd).offset(x = 40.dp, y = 40.dp).size(240.dp)
-                .background(Paleta.TicketAmarillo.copy(alpha = 0.16f), CircleShape),
+            Modifier.align(Alignment.TopEnd).offset(x = 60.dp, y = (-30).dp).size(250.dp)
+                .background(Brush.radialGradient(listOf(amarillo.copy(alpha = 0.33f), Color.Transparent)), CircleShape),
         )
-        DibujoObra(Ilustracion.GRUA, Modifier.align(Alignment.BottomEnd).padding(end = 8.dp, bottom = 6.dp), ancho = 150.dp)
+        DibujoObra(Ilustracion.GRUA, Modifier.align(Alignment.TopEnd).padding(top = 70.dp), ancho = 150.dp)
+        Column(Modifier.fillMaxWidth().padding(18.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Image(painterResource(Res.drawable.sevens_logo_blanco), contentDescription = "SEVEN'S Ingenieros SAC", modifier = Modifier.height(40.dp))
+                Spacer(Modifier.weight(1f))
+                IconButton(onClick = alSalir, modifier = Modifier.size(44.dp).background(Color.White.copy(alpha = 0.10f), CircleShape)) {
+                    Icon(Icons.AutoMirrored.Filled.Logout, contentDescription = "Cerrar sesión", tint = Color.White, modifier = Modifier.size(19.dp))
+                }
+            }
+            Row(
+                Modifier.padding(top = 18.dp).semantics(mergeDescendants = true) {},
+                verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                Box(Modifier.size(52.dp).background(amarillo, CircleShape), contentAlignment = Alignment.Center) {
+                    Text(iniciales(sesion.nombre), fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Paleta.SobreTicket)
+                }
+                Column(Modifier.padding(end = 110.dp)) {
+                    Text("${saludoPorHora(hora)},", fontSize = 13.sp, color = Color(0xFFB4B5B5))
+                    Text(sesion.nombre, fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color.White, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text("@${sesion.usuario}", fontSize = 12.sp, color = Color(0xFF8F9090), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
+            }
+            Text(
+                buildAnnotatedString {
+                    append("¿En qué ")
+                    withStyle(SpanStyle(color = amarillo)) { append("obra") }
+                    append(" trabajas hoy?")
+                },
+                fontSize = 28.sp, lineHeight = 32.sp, fontWeight = FontWeight.Bold, letterSpacing = (-0.03).em, color = Color.White,
+                modifier = Modifier.padding(top = 16.dp, end = 110.dp).semantics { heading() },
+            )
+            Row(Modifier.padding(top = 14.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Cifra("${sesion.obras.size}", if (sesion.obras.size == 1) "obra asignada" else "obras asignadas", Color.White)
+                Cifra("$porEnviar", "por enviar", if (porEnviar > 0) Color(0xFFF5C451) else Color.White)
+            }
+        }
     }
 }
 
 @Composable
-private fun Perfil(sesion: Sesion, porEnviar: Int, modifier: Modifier) {
-    val rol = sesion.obras.firstOrNull()?.rolLegible
-    Column(
-        modifier.fillMaxWidth().vidrio(RoundedCornerShape(28.dp), fuerte = true, sombra = 16.dp).padding(20.dp)
+private fun Cifra(valor: String, etiqueta: String, color: Color) {
+    Row(
+        Modifier.clip(RoundedCornerShape(14.dp)).background(Color(0xFF2B2C2C)).padding(horizontal = 12.dp, vertical = 8.dp)
             .semantics(mergeDescendants = true) {},
-        verticalArrangement = Arrangement.spacedBy(16.dp),
+        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-            Box(Modifier.size(64.dp).background(Paleta.NaranjaClaro, CircleShape), contentAlignment = Alignment.Center) {
-                Icon(Icons.Filled.Engineering, contentDescription = null, tint = Paleta.Naranja, modifier = Modifier.size(32.dp))
-            }
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                Text(sesion.nombre, fontSize = 20.sp, fontWeight = FontWeight.ExtraBold, color = Paleta.Tinta, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Text("@${sesion.usuario}" + (rol?.let { " · $it" } ?: ""), fontSize = 14.sp, color = Paleta.Texto3, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            }
-        }
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Dato("${sesion.obras.size}", if (sesion.obras.size == 1) "obra asignada" else "obras asignadas", Paleta.Tinta)
-            Dato("$porEnviar", if (porEnviar == 1) "registro por enviar" else "registros por enviar", if (porEnviar > 0) Paleta.Ambar else Paleta.Tinta)
-        }
+        Text(valor, fontSize = 17.sp, fontWeight = FontWeight.Bold, color = color)
+        Text(etiqueta, fontSize = 12.sp, color = Color(0xFFB4B5B5))
     }
 }
 
 @Composable
-private fun RowScope.Dato(valor: String, etiqueta: String, color: Color) {
-    Column(
-        Modifier.weight(1f).background(Paleta.Superficie.copy(alpha = 0.7f), RoundedCornerShape(16.dp)).padding(horizontal = 12.dp, vertical = 10.dp),
-        verticalArrangement = Arrangement.spacedBy(2.dp),
-    ) {
-        Text(valor, fontSize = 18.sp, fontWeight = FontWeight.ExtraBold, color = color)
-        Text(etiqueta, fontSize = 12.sp, color = Paleta.Texto3)
-    }
-}
-
-@Composable
-private fun BuscadorObra(q: String, alCambiar: (String) -> Unit) {
+internal fun BuscadorObra(q: String, alCambiar: (String) -> Unit, ayuda: String = "Buscar obra por nombre") {
     var enfocado by remember { mutableStateOf(false) }
     BasicTextField(
         value = q, onValueChange = alCambiar, singleLine = true,
         textStyle = MaterialTheme.typography.bodyLarge.copy(color = Paleta.Tinta),
         cursorBrush = SolidColor(Paleta.Naranja),
-        modifier = Modifier.fillMaxWidth().onFocusChanged { enfocado = it.isFocused }.semantics { contentDescription = "Buscar obra" },
+        modifier = Modifier.fillMaxWidth().onFocusChanged { enfocado = it.isFocused }.semantics { contentDescription = ayuda },
         decorationBox = { campo ->
             Row(
-                Modifier.fillMaxWidth().height(56.dp).vidrio(RoundedCornerShape(28.dp), fuerte = true, sombra = 4.dp)
-                    .border(1.5.dp, if (enfocado) Paleta.Naranja else Color.Transparent, RoundedCornerShape(28.dp))
+                Modifier.fillMaxWidth().height(52.dp).vidrio(RoundedCornerShape(26.dp), fuerte = true, sombra = 2.dp)
+                    .border(1.5.dp, if (enfocado) Paleta.Naranja else Color.Transparent, RoundedCornerShape(26.dp))
                     .padding(horizontal = 18.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
             ) {
                 Icon(Icons.Filled.Search, contentDescription = null, tint = Paleta.Texto3, modifier = Modifier.size(20.dp))
                 Box(Modifier.weight(1f)) {
-                    if (q.isEmpty()) Text("Buscar obra por nombre", style = MaterialTheme.typography.bodyLarge, color = Paleta.Texto3)
+                    if (q.isEmpty()) Text(ayuda, style = MaterialTheme.typography.bodyLarge, color = Paleta.Texto3)
                     campo()
                 }
             }
         },
     )
-}
-
-@Composable
-private fun TarjetaObra(o: ObraAsignada, celular: CelularEnObra, primera: Boolean, alPulsar: () -> Unit) {
-    val colorCel = when (celular) {
-        CelularEnObra.AUTORIZADO -> Paleta.EnviadoTexto
-        CelularEnObra.PENDIENTE -> Paleta.PendienteTexto
-        CelularEnObra.REVOCADO -> Paleta.RechazadoTexto
-        else -> Paleta.Texto3
-    }
-    Row(
-        Modifier.fillMaxWidth().heightIn(min = 76.dp).vidrio(RoundedCornerShape(22.dp))
-            .clickable(onClickLabel = "Entrar a ${o.nombre}", onClick = alPulsar).padding(horizontal = 16.dp, vertical = 14.dp)
-            .semantics(mergeDescendants = true) {},
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(14.dp),
-    ) {
-        Box(
-            Modifier.size(48.dp).background(if (primera) Paleta.NaranjaClaro else Paleta.SuperficieSuave, RoundedCornerShape(16.dp)),
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(Icons.Filled.Apartment, contentDescription = null, tint = if (primera) Paleta.Naranja else Paleta.Texto3, modifier = Modifier.size(24.dp))
-        }
-        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(o.nombre, fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Paleta.Tinta)
-            Text(o.rolLegible, fontSize = 13.sp, color = Paleta.Texto3)
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
-                Icon(Icons.Filled.PhoneAndroid, contentDescription = null, tint = colorCel, modifier = Modifier.size(13.dp))
-                Text(celular.texto, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = colorCel)
-            }
-        }
-        Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null, tint = Paleta.Gris, modifier = Modifier.size(20.dp))
-    }
 }

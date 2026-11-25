@@ -69,6 +69,7 @@ import pe.sevens.sigro.ui.componentes.planoCatFicha
 import pe.sevens.sigro.ui.componentes.planoCatNuevo
 import pe.sevens.sigro.ui.componentes.vidrio
 import pe.sevens.sigro.ui.tema.Paleta
+import pe.sevens.sigro.ui.componentes.Modulo
 
 /*
  * 3 · Catálogo de insumos (lienzos CatBuscar, CatFicha y CatNuevo): código único en todas las obras
@@ -125,7 +126,7 @@ class CatalogoViewModel(private val insumos: RepositorioInsumos) : ViewModel() {
 @Composable
 fun PantallaCatalogo(alVolver: () -> Unit, alAbrir: (FichaInsumo) -> Unit, alNuevo: () -> Unit, vm: CatalogoViewModel = koinViewModel()) {
     val e by vm.estado.collectAsState()
-    PantallaVidrio("Catálogo", plano = { planoCatBuscar(it) }, alVolver = alVolver, subtitulo = "Busca por nombre o código") {
+    PantallaVidrio("Catálogo", plano = { planoCatBuscar(it) }, alVolver = alVolver, subtitulo = "Busca por nombre o código", modulo = Modulo.CATALOGO) {
         CampoVidrio(
             e.q, vm::buscar, "Buscar insumo", marcador = "Nombre o código",
             finalIcono = { Icon(Icons.Filled.Search, contentDescription = null, tint = Paleta.Texto3, modifier = Modifier.padding(end = 10.dp)) },
@@ -189,7 +190,7 @@ fun sinCerosDeMas(decimal: String): String = if ('.' in decimal) decimal.trimEnd
 
 @Composable
 fun PantallaFichaInsumo(insumo: FichaInsumo, alVolver: () -> Unit, alVerStock: () -> Unit) {
-    PantallaVidrio("Insumo", plano = { planoCatFicha(it) }, alVolver = alVolver, subtitulo = "Código ${insumo.codigo}") {
+    PantallaVidrio("Insumo", plano = { planoCatFicha(it) }, alVolver = alVolver, subtitulo = "Código ${insumo.codigo}", modulo = Modulo.CATALOGO) {
         Row(
             Modifier.fillMaxWidth().height(150.dp).vidrio(RoundedCornerShape(26.dp)),
             verticalAlignment = Alignment.CenterVertically,
@@ -312,7 +313,7 @@ class InsumoNuevoViewModel(private val insumos: RepositorioInsumos) : ViewModel(
 @Composable
 fun PantallaInsumoNuevo(alVolver: () -> Unit, alAbrir: (FichaInsumo) -> Unit, vm: InsumoNuevoViewModel = koinViewModel()) {
     val e by vm.estado.collectAsState()
-    PantallaVidrio("Insumo nuevo", plano = { planoCatNuevo(it) }, alVolver = alVolver, subtitulo = "Solo si no existe en el catálogo") {
+    PantallaVidrio("Insumo nuevo", plano = { planoCatNuevo(it) }, alVolver = alVolver, subtitulo = "Solo si no existe en el catálogo", modulo = Modulo.CATALOGO) {
         val creado = e.creado
         if (creado != null) {
             TarjetaVidrio(fuerte = true) {

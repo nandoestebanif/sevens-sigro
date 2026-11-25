@@ -99,6 +99,17 @@ import pe.sevens.sigro.ui.componentes.Ticket
 import androidx.compose.ui.unit.em
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.TextButton
+import pe.sevens.sigro.ui.componentes.rememberFuente
+import pe.sevens.sigro.ui.componentes.hundirAlTocar
+import pe.sevens.sigro.ui.componentes.DibujoObra
+import pe.sevens.sigro.ui.componentes.Modulo
+import pe.sevens.sigro.ui.componentes.CabeceraModulo
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.foundation.layout.PaddingValues
 
 /* HU-40 · Registrar salida de material + HU-37 · sin conexión. */
 
@@ -230,7 +241,17 @@ fun PantallaSalida(obraId: Int, alVolver: () -> Unit, base: SalidaRegistrada? = 
             Modifier.fillMaxSize().verticalScroll(rememberScrollState()).statusBarsPadding().imePadding()
                 .navigationBarsPadding().padding(bottom = 16.dp),
         ) {
-            EncabezadoVidrio(if (base != null && !e.guardada) "Registrar de nuevo" else "Registrar salida", null, alVolver)
+            // Rediseño v2: cabecera amarilla del módulo Salida con el avance del formulario (insumo, cantidad, motivo y quién)
+            val hechos = listOf(
+                e.insumo != null,
+                (e.cantidad.replace(',', '.').toDoubleOrNull() ?: 0.0) > 0.0,
+                e.motivo.isNotBlank() && e.quienRetira.isNotBlank(),
+            ).count { it }
+            CabeceraModulo(
+                Modulo.SALIDA, if (base != null && !e.guardada) "Registrar de nuevo" else if (e.guardada) "Salida guardada" else "Registrar salida",
+                alVolver, pasos = if (e.guardada) null else hechos to 3, conInsets = false,
+            )
+            Spacer(Modifier.height(16.dp))
             if (e.guardada) {
                 Confirmacion(e, alOtra = vm::otra, alVolver = alVolver)
                 return@Column
@@ -283,6 +304,8 @@ fun PantallaSalida(obraId: Int, alVolver: () -> Unit, base: SalidaRegistrada? = 
                         teclado = KeyboardType.Decimal, sufijo = e.insumo?.let { Texto.unidad(it.unidad, e.cantidad) } ?: "", error = e.errores["cantidad"],
                         ayuda = stockConocido(e.stock, e.insumo, almacen.elegido?.id),
                     )
+                    // Atajos de cantidad: con guantes es más rápido tocar +5 que escribir
+                    AtajosCantidad(e.cantidad, vm::cantidad)
                 }
 
                 Column(
@@ -404,23 +427,54 @@ private fun CheckGuardado() {
 
 @Composable
 private fun Confirmacion(e: EstadoSalida, alOtra: () -> Unit, alVolver: () -> Unit) {
+    // Rediseño v2: la bolsa en un círculo amarillo con el check que se dibuja, y los dos botones abajo
+    val haptico = LocalHapticFeedback.current
+    LaunchedEffect(Unit) { haptico.performHapticFeedback(HapticFeedbackType.LongPress) }
     Column(
-        Modifier.padding(16.dp).widthIn(max = 560.dp).fillMaxWidth()
-            .vidrio(RoundedCornerShape(28.dp), fuerte = true, sombra = 16.dp).padding(24.dp),
+        Modifier.padding(horizontal = 16.dp).widthIn(max = 560.dp).fillMaxWidth(),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(16.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
-        CheckGuardado()
-        Text("Salida guardada", fontSize = 26.sp, fontWeight = FontWeight.Bold, color = Paleta.Tinta, modifier = Modifier.semantics { heading() })
+        Box(Modifier.padding(top = 8.dp).size(180.dp)) {
+            Box(Modifier.fillMaxSize().background(Paleta.TicketAmarillo, CircleShape), contentAlignment = Alignment.Center) {
+                DibujoObra(Ilustracion.CEMENTO, ancho = 128.dp)
+            }
+            Box(
+                Modifier.align(Alignment.BottomEnd).size(60.dp).background(Paleta.FondoBase, CircleShape).padding(5.dp)
+                    .background(Paleta.TicketMenta, CircleShape),
+                contentAlignment = Alignment.Center,
+            ) { Icon(Icons.Filled.Check, contentDescription = null, tint = Paleta.SobreTicket, modifier = Modifier.size(28.dp)) }
+        }
+        Text("¡Salida guardada!", fontSize = 28.sp, fontWeight = FontWeight.Bold, color = Paleta.Tinta, modifier = Modifier.semantics { heading() })
         val que = e.insumo?.let { "${Texto.cantidadConUnidad(e.cantidad, it.unidad)} de ${Texto.nombre(it.descripcion)}" } ?: "La salida"
         Text(
             "$que. Se envía sola en cuanto haya señal.",
-            fontSize = 17.sp, lineHeight = 25.sp, color = Paleta.Texto3, textAlign = TextAlign.Center,
+            fontSize = 16.sp, lineHeight = 23.sp, color = Paleta.Texto3, textAlign = TextAlign.Center,
         )
         ChipEstado(EstadoEnvio.PENDIENTE)
-        Column(Modifier.fillMaxWidth().padding(top = 12.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            BotonNegro("Registrar otra salida", alOtra)
+        Column(Modifier.fillMaxWidth().padding(top = 16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            BotonNegro("Registrar otra salida", alOtra, icono = Icons.Filled.Add)
             BotonNegro("Volver al inicio", alVolver, contorno = true)
+        }
+    }
+}
+
+/** +1, +5, +10 y +25 sobre lo escrito (y −1): suman en el mismo campo, que sigue validando igual. */
+@Composable
+private fun AtajosCantidad(actual: String, alCambiar: (String) -> Unit) {
+    val n = actual.replace(',', '.').toDoubleOrNull() ?: 0.0
+    fun texto(v: Double) = if (v % 1.0 == 0.0) v.toLong().toString() else v.toString()
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        listOf(-1, 1, 5, 10, 25).forEach { d ->
+            val fuente = rememberFuente()
+            OutlinedButton(
+                onClick = { alCambiar(texto(maxOf(0.0, n + d))) },
+                enabled = d > 0 || n >= 1.0,
+                modifier = Modifier.weight(1f).heightIn(min = 44.dp).hundirAlTocar(fuente),
+                interactionSource = fuente,
+                shape = RoundedCornerShape(14.dp),
+                contentPadding = PaddingValues(0.dp),
+            ) { Text(if (d > 0) "+$d" else "$d", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Paleta.Tinta) }
         }
     }
 }

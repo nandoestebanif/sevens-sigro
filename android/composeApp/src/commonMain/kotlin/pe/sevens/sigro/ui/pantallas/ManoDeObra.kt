@@ -87,6 +87,7 @@ import pe.sevens.sigro.ui.componentes.planoTrabajadorNuevo
 import pe.sevens.sigro.ui.componentes.planoTrabajadores
 import pe.sevens.sigro.ui.componentes.vidrio
 import pe.sevens.sigro.ui.tema.Paleta
+import pe.sevens.sigro.ui.componentes.Modulo
 
 /*
  * 5 · Mano de obra (lienzos MOTrabajadores, MONuevo y MOAsistencia; HU-62 y HU-63).
@@ -191,8 +192,7 @@ fun PantallaTrabajadores(obraId: Int, obraNombre: String, alVolver: () -> Unit, 
                 if (e.actualizando) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp, color = Paleta.Naranja)
                 else Icon(Icons.Filled.Sync, contentDescription = "Actualizar lista", tint = Paleta.Tinta)
             }
-        },
-    ) {
+        }, modulo = Modulo.PERSONAL) {
         Row(
             Modifier.fillMaxWidth().heightIn(min = 72.dp).background(Paleta.Principal, RoundedCornerShape(24.dp))
                 .clickable(onClickLabel = "Tomar asistencia") { irA(Destino.Asistencia) }.padding(16.dp)
@@ -358,7 +358,7 @@ fun PantallaTrabajadorNuevo(obraId: Int, alVolver: () -> Unit, vm: TrabajadorNue
     val gente by flujo.collectAsState(initial = emptyList())
     val cuadrillas = remember(gente) { gente.map { it.cuadrilla }.distinct().sorted() }
 
-    PantallaVidrio("Nuevo trabajador", plano = { planoTrabajadorNuevo(it) }, alVolver = alVolver, subtitulo = "Se incorpora a la obra con su fecha") {
+    PantallaVidrio("Nuevo trabajador", plano = { planoTrabajadorNuevo(it) }, alVolver = alVolver, subtitulo = "Se incorpora a la obra con su fecha", modulo = Modulo.PERSONAL) {
         val creado = e.creado
         if (creado != null) {
             TarjetaVidrio(fuerte = true) {
@@ -511,7 +511,7 @@ fun PantallaAsistencia(obraId: Int, alVolver: () -> Unit, alRegistros: () -> Uni
     val diaTxt = if (esHoy) "hoy" else "del ${Texto.fecha(e.fecha)}"
     val registrados = e.marcas.count { it.trabajador.id in e.yaMarcados }
 
-    PantallaVidrio("Asistencia", plano = { planoAsistencia(it) }, alVolver = alVolver, subtitulo = "Uno por trabajador y día") {
+    PantallaVidrio("Asistencia", plano = { planoAsistencia(it) }, alVolver = alVolver, subtitulo = "Uno por trabajador y día", modulo = Modulo.PERSONAL) {
         TarjetaVidrio {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
