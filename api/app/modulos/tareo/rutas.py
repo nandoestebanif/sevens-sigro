@@ -13,27 +13,44 @@ from sqlalchemy import text
 from app.dependencias import Actor, exigir
 from app.errores import ErrorSigro
 from app.paginacion import Pagina, paginacion
-from app import contexto, internos
+from app import contexto, integraciones, internos
 from app.sql import fila, filas
 from app.modulos.tareo import esquemas as e
 
 router = APIRouter(prefix="/obras/{obra_id}", tags=["tareo"])
 
+_COLS_TRABAJADOR = (
+    "id, nombre, nombres, apellido_paterno, apellido_materno, "
+    "tipo_documento, documento, categoria, cuadrilla, fecha_ingreso, fecha_salida"
+)
 _COLS_JORNADA = (
     "id, uuid_cliente, trabajador_id, fecha, estado, horas_normales, horas_extra, categoria, periodo_id, "
     "registrado_por, fecha_servidor, corrige_a_id, motivo_correccion"
 )
 
 
+@router.get("/trabajadores/consulta-dni/{dni}", response_model=e.DniReniecOut)
+def consultar_dni(dni: str, a: Actor = Depends(exigir("trabajador.registrar"))):
+    """HU-62: nombres y apellidos tal como están en RENIEC (el token del proveedor vive solo en integraciones).
+    404 si no se pudo consultar (servicio caído, sin token o DNI que RENIEC no conoce): la app deja escribirlos a mano."""
+    if not (len(dni) == 8 and dni.isdigit()):
+        raise ErrorSigro(422, "dni_invalido", "El DNI tiene 8 dígitos.")
+    r = integraciones.consultar_dni(dni)
+    if r is None:
+        raise ErrorSigro(404, "reniec_sin_respuesta", "RENIEC no respondió: escribe los nombres y apellidos a mano.")
+    return {"dni": r.dni, "nombres": r.nombres, "apellido_paterno": r.apellido_paterno, "apellido_materno": r.apellido_materno}
+
+
 @router.post("/trabajadores", response_model=e.TrabajadorOut, status_code=201)
 def registrar_trabajador(datos: e.TrabajadorIn, a: Actor = Depends(exigir("trabajador.registrar"))):
     return fila(
         a.sesion,
-        "INSERT INTO tareo.trabajador (proyecto_id, nombre, tipo_documento, documento, categoria, cuadrilla, "
-        "fecha_ingreso, registrado_por) VALUES (:p, :n, :td, :d, :c, :q, :fi, :u) "
-        "RETURNING id, nombre, tipo_documento, documento, categoria, cuadrilla, fecha_ingreso, fecha_salida",
-        p=a.obra_id, n=datos.nombre, td=datos.tipo_documento, d=datos.documento, c=datos.categoria,
-        q=datos.cuadrilla, fi=datos.fecha_ingreso, u=a.usuario_id,
+        "INSERT INTO tareo.trabajador (proyecto_id, nombre, nombres, apellido_paterno, apellido_materno, tipo_documento, "
+        "documento, categoria, cuadrilla, fecha_ingreso, registrado_por) "
+        "VALUES (:p, :n, :no, :ap, :am, :td, :d, :c, :q, :fi, :u) RETURNING " + _COLS_TRABAJADOR,
+        p=a.obra_id, n=datos.nombre, no=datos.nombres, ap=datos.apellido_paterno, am=datos.apellido_materno,
+        td=datos.tipo_documento, d=datos.documento, c=datos.categoria, q=datos.cuadrilla, fi=datos.fecha_ingreso,
+        u=a.usuario_id,
     )
 
 
@@ -44,7 +61,7 @@ def listar_trabajadores(
 ):
     return pagina.recortar(filas(
         a.sesion,
-        "SELECT id, nombre, tipo_documento, documento, categoria, cuadrilla, fecha_ingreso, fecha_salida "
+        f"SELECT {_COLS_TRABAJADOR} "
         "FROM tareo.trabajador WHERE proyecto_id = :p AND (NOT :s OR fecha_salida IS NULL OR fecha_salida >= current_date) "
         "ORDER BY cuadrilla, nombre, id" + pagina.sql,
         p=a.obra_id, s=solo_activos,
@@ -58,8 +75,7 @@ def dar_de_baja(trabajador_id: int, datos: e.BajaIn, a: Actor = Depends(exigir("
         raise ErrorSigro(404, "no_existe", "Ese trabajador no existe en esta obra.")
     return fila(
         a.sesion,
-        "UPDATE tareo.trabajador SET fecha_salida = :f WHERE id = :i AND proyecto_id = :p "
-        "RETURNING id, nombre, tipo_documento, documento, categoria, cuadrilla, fecha_ingreso, fecha_salida",
+        "UPDATE tareo.trabajador SET fecha_salida = :f WHERE id = :i AND proyecto_id = :p RETURNING " + _COLS_TRABAJADOR,
         f=datos.fecha_salida, i=trabajador_id, p=a.obra_id,
     )
 
