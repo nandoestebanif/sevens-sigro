@@ -103,7 +103,7 @@ export function TablaDatos<T>({
                 {p.items.map((f) => (
                   <tr key={clave(f)} className={claseFila?.(f)}>
                     {columnas.map((c) => (
-                      <td key={c.clave} data-label={rotulo(c)} className={[c.numerica ? 'n' : '', c.soloEscritorio ? 'solo-escritorio' : '', c === columnas[0] ? 'principal' : ''].join(' ').trim() || undefined}>
+                      <td key={c.clave} data-label={rotulo(c)} className={[c.numerica ? 'n' : '', c.soloEscritorio ? 'solo-escritorio' : '', c === columnas[0] && !c.numerica ? 'principal' : ''].join(' ').trim() || undefined}>
                         {c.celda(f)}
                       </td>
                     ))}
