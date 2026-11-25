@@ -370,6 +370,12 @@ export const reposicionHttp = {
   async marcarCritico(insumoCodigo: string, critico: boolean): Promise<void> {
     await pedir('POST', `/obras/${await obraId()}/criticos`, { insumoCodigo, critico })
   },
+  /** HU-28: el sistema PROPONE los insumos que concentran el valor presupuestado; marcar sigue siendo decisión del residente. */
+  async candidatosCriticos(limite = 10): Promise<{ codigo: string; descripcion: string; costo: number; pct: number; critico: boolean }[]> {
+    const xs = await pedir<{ insumoCodigo: string; descripcion: string; costoPlanificado: string; pctDelTotal: string; critico: boolean }[]>(
+      'GET', `/obras/${await obraId()}/criticos/candidatos?limite=${limite}`)
+    return xs.map((x) => ({ codigo: x.insumoCodigo, descripcion: x.descripcion, costo: num(x.costoPlanificado), pct: num(x.pctDelTotal), critico: x.critico }))
+  },
   async parametros(): Promise<ParametroReposicion[]> {
     return (await pedir<ParametroApi[]>('GET', `/obras/${await obraId()}/parametros-reposicion`)).map(aParametro)
   },

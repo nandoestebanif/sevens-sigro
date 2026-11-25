@@ -361,3 +361,11 @@ h1, .h1, h2, .h2, h3, .h3 { letter-spacing: -0.02em; }
 .sin-flecha { min-width: 2.25rem; font-weight: 700; letter-spacing: 0.05em; }
 .tabla-datos thead th { white-space: nowrap; font-size: 0.85rem; }
 .tabla-datos td.acciones, .tabla-datos th:last-child { width: 1%; }
+.matriz-permisos {
+  .grupo th { background: var(--bs-tertiary-bg); font-size: 0.75rem; letter-spacing: 0.08em; text-transform: uppercase; padding-top: 0.6rem; }
+  .si { color: var(--bs-success); font-weight: 700; font-size: 1.05rem; }
+  .no { color: var(--bs-tertiary-color); }
+  .mi-rol { background: rgba(250, 216, 93, 0.12); }
+  thead th { white-space: nowrap; }
+}
+.matriz-permisos code { color: var(--bs-secondary-color); font-size: 0.72rem; }

@@ -16,7 +16,9 @@ import { usaApiReal } from '../api/http'
 import { requerimiento as api, type Ajuste, type LineaRequerimiento } from '../api/oficina'
 import type { InsumoCatalogo } from '../api/tipos'
 import { Campo, Chip, Modal, Vacio } from '../ui/base'
-import { Chips, Encabezado, Pildora, TituloSeccion, Vidrio } from '../ui/piezas'
+import { Chips, Encabezado, Pildora, Segmentado, TituloSeccion, Vidrio } from '../ui/piezas'
+import { AccionesFila, TablaDatos } from '../ui/TablaDatos'
+import { puedo } from '../api/permisos'
 import { EsqueletoTabla } from '../ui/Esqueleto'
 
 const n = (x: number) => x.toLocaleString('es-PE', { maximumFractionDigits: 4 })
@@ -142,25 +144,24 @@ function AgregarInsumo({ yaPlanificados, enCerrar, enListo }: { yaPlanificados: 
 export function Requerimiento() {
   const [xs, setXs] = useState<LineaRequerimiento[] | null>(null)
   const [error, setError] = useState('')
-  const [q, setQ] = useState('')
+  const [origen, setOrigen] = useState<'todos' | 's10' | 'manual'>('todos')
   const [editando, setEditando] = useState<LineaRequerimiento | null>(null)
   const [agregando, setAgregando] = useState(false)
   const cargar = () => api.listar().then(setXs).catch((e) => setError(e instanceof ErrorApi ? e.message : 'No se pudo cargar el requerimiento.'))
   useEffect(() => { if (usaApiReal) cargar() }, [])
-
-  const visibles = useMemo(() => {
-    const t = q.trim().toLowerCase()
-    return (xs ?? []).filter((l) => !t || l.descripcion.toLowerCase().includes(t) || l.codigo.toLowerCase().includes(t))
-  }, [xs, q])
+  const puedeAjustar = puedo('requerimiento.ajustar')
+  const puedeAgregar = puedo('requerimiento.agregar')
+  const filas = useMemo(() => (xs ?? []).filter((l) => origen === 'todos' || (origen === 'manual') === l.manual), [xs, origen])
+  const soles = (v: number) => v.toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 
   return (
     <>
       <div className="d-flex flex-column gap-3 pb-4">
-        <Encabezado titulo="Requerimiento de la obra" sub="Lo planificado en el S10, insumo por insumo. Ajustar no borra: queda la cantidad anterior, la nueva, el motivo y quién."
-          acciones={usaApiReal ? <Pildora enClic={() => setAgregando(true)}>Agregar insumo no planificado</Pildora> : undefined} />
+        <Encabezado titulo="Requerimiento de la obra" sub="Lo planificado en el S10, insumo por insumo."
+          acciones={usaApiReal && puedeAgregar ? <Pildora enClic={() => setAgregando(true)}>Agregar insumo no planificado</Pildora> : undefined} />
         <Chips>
           <Chip tono="neutro">Viene del S10 (Importar)</Chip>
-          <Chip tono="neutro">Cada ajuste deja rastro</Chip>
+          <Chip tono="neutro">Ajustar no borra: queda la cantidad anterior, la nueva, el motivo y quién</Chip>
           {xs && xs.some((l) => l.manual) && <Chip tono="aviso">{xs.filter((l) => l.manual).length} agregado(s) a mano</Chip>}
         </Chips>
         {!usaApiReal ? (
@@ -168,34 +169,34 @@ export function Requerimiento() {
         ) : (
           <Vidrio estilo={{ display: 'flex', flexDirection: 'column', gap: 12 }} etiqueta="Líneas del requerimiento">
             <TituloSeccion>Insumos planificados{xs ? ` · ${xs.length}` : ''}</TituloSeccion>
-            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Buscar por nombre o código…" aria-label="Buscar en el requerimiento"
-              className="form-control" />
             {error && <p role="alert" className="small text-danger fw-semibold">{error}</p>}
-            {xs === null && !error ? <EsqueletoTabla />
-              : xs && xs.length === 0 ? <Vacio titulo="Sin requerimiento" detalle="Importa la Relación de insumos del S10 en «Importar del S10»." />
-                : (
-                  <div className="overflow-x-auto">
-                    <table className="table table-hover align-middle mb-0">
-                      <thead><tr><th>Insumo</th><th className="n">Cantidad planificada</th><th className="n">Precio (S10)</th><th aria-label="Acción" /></tr></thead>
-                      <tbody>
-                        {visibles.map((l) => (
-                          <tr key={l.id}>
-                            <td>
-                              <strong>{l.descripcion}</strong>
-                              <div className="small text-body-secondary">
-                                SKU {l.codigo}
-                                {l.manual && <> · <span title={l.motivoAlta ?? ''} className="text-warning-emphasis fw-semibold">Agregado a mano</span>: {l.motivoAlta}</>}
-                              </div>
-                            </td>
-                            <td className="n">{n(l.cantidad)} {l.unidad}</td>
-                            <td className="n">S/ {l.precio.toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                            <td className="text-end"><Pildora tipo="secundario" chica etiqueta={`Ajustar ${l.descripcion}`} enClic={() => setEditando(l)}>Ajustar</Pildora></td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
+            {xs === null && !error ? <EsqueletoTabla /> : (
+              <TablaDatos
+                etiqueta="Requerimiento"
+                filas={filas}
+                clave={(l) => l.id}
+                buscar={(l) => `${l.descripcion} ${l.codigo}`}
+                marcadorBusqueda="Buscar por nombre o código…"
+                filtros={xs?.some((l) => l.manual) ? <Segmentado etiqueta="Origen" valor={origen} enCambio={setOrigen}
+                  opciones={[{ valor: 'todos', texto: 'Todos' }, { valor: 's10', texto: 'Del S10' }, { valor: 'manual', texto: 'Agregados a mano' }]} /> : undefined}
+                vacio={{ titulo: 'Sin requerimiento', detalle: 'Importa la Relación de insumos del S10 en «Importar del S10».' }}
+                columnas={[
+                  { clave: 'insumo', titulo: 'Insumo', valor: (l) => l.descripcion, celda: (l) => (
+                    <>
+                      <strong>{l.descripcion}</strong>
+                      <div className="small text-body-secondary">
+                        SKU {l.codigo}
+                        {l.manual && <> · <span className="text-warning-emphasis fw-semibold">Agregado a mano</span>: {l.motivoAlta}</>}
+                      </div>
+                    </>
+                  ) },
+                  { clave: 'cantidad', titulo: 'Cantidad planificada', numerica: true, valor: (l) => l.cantidad, celda: (l) => <span className="text-nowrap">{n(l.cantidad)} {l.unidad}</span> },
+                  { clave: 'precio', titulo: 'Precio (S10)', numerica: true, valor: (l) => l.precio, celda: (l) => `S/ ${soles(l.precio)}` },
+                  { clave: 'parcial', titulo: 'Parcial', numerica: true, valor: (l) => l.cantidad * l.precio, celda: (l) => <strong className="text-nowrap">S/ {soles(l.cantidad * l.precio)}</strong> },
+                ]}
+                acciones={puedeAjustar ? (l) => <AccionesFila de={l.descripcion} acciones={[{ texto: 'Ajustar', enClic: () => setEditando(l) }]} /> : undefined}
+              />
+            )}
           </Vidrio>
         )}
         {agregando && <AgregarInsumo yaPlanificados={new Set((xs ?? []).map((l) => l.codigo))} enCerrar={() => setAgregando(false)}
