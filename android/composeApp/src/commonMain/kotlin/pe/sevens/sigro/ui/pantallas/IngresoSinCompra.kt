@@ -1,5 +1,6 @@
 package pe.sevens.sigro.ui.pantallas
 
+import pe.sevens.sigro.dominio.ValidacionEnVivo
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.runtime.Composable
@@ -64,6 +65,8 @@ data class EstadoIngreso(
     val costo: String = "",
     val detalle: String = "",
     val errores: Map<String, String> = emptyMap(),
+    /** Campos ya revisados que están bien (✓), de la validación en vivo. */
+    val correctos: Set<String> = emptySet(),
     val guardando: Boolean = false,
     val guardado: Boolean = false,
 )
@@ -79,25 +82,36 @@ class IngresoSinCompraViewModel(
     val estado = _e.asStateFlow()
     val almacen = SelectorAlmacen(obra, viewModelScope)
 
+    /** Validación mientras se escribe (las mismas reglas que al guardar). */
+    private val enVivo = ValidacionEnVivo(
+        viewModelScope,
+        validar = {
+            val s = _e.value
+            validarIngreso(s.insumo, s.cantidad, s.costo, s.origen, s.detalle) +
+                (if (almacen.estado.value.falta) mapOf("almacen" to "Elige a qué almacén entra") else emptyMap())
+        },
+        publicar = { r -> _e.update { it.copy(errores = r.errores, correctos = r.correctos) } },
+    )
+
     fun cargar(obraId: Int) = almacen.cargar(obraId)
     fun elegirAlmacen(obraId: Int, a: AlmacenObra) {
         almacen.elegir(obraId, a)
-        _e.update { it.copy(errores = it.errores - "almacen") }
+        enVivo.salir("almacen")
     }
 
-    fun origen(o: OrigenIngreso) = _e.update { it.copy(origen = o, errores = it.errores - "detalle") }
-    fun elegir(i: Insumo) { buscador.limpiar(); _e.update { it.copy(insumo = i, errores = it.errores - "insumo") } }
-    fun quitar() = _e.update { it.copy(insumo = null) }
-    fun cantidad(v: String) = _e.update { it.copy(cantidad = v, errores = it.errores - "cantidad") }
-    fun costo(v: String) = _e.update { it.copy(costo = v, errores = it.errores - "costo") }
-    fun detalle(v: String) = _e.update { it.copy(detalle = v, errores = it.errores - "detalle") }
+    /** El origen cambia si el detalle es obligatorio: se revisa ya lo que estaba tocado. */
+    fun origen(o: OrigenIngreso) { _e.update { it.copy(origen = o) }; enVivo.revisarYa() }
+    fun elegir(i: Insumo) { buscador.limpiar(); _e.update { it.copy(insumo = i) }; enVivo.salir("insumo") }
+    fun quitar() { _e.update { it.copy(insumo = null) }; enVivo.revisarYa() }
+    fun cantidad(v: String) { _e.update { it.copy(cantidad = v) }; enVivo.cambio("cantidad") }
+    fun costo(v: String) { _e.update { it.copy(costo = v) }; enVivo.cambio("costo") }
+    fun detalle(v: String) { _e.update { it.copy(detalle = v) }; enVivo.cambio("detalle") }
+    fun salirDe(campo: String) = enVivo.salir(campo)
 
     fun guardar(obraId: Int) {
         val s = _e.value
         val alm = almacen.estado.value
-        val errores = validarIngreso(s.insumo, s.cantidad, s.costo, s.origen, s.detalle) +
-            (if (alm.falta) mapOf("almacen" to "Elige a qué almacén entra") else emptyMap())
-        if (errores.isNotEmpty()) { _e.update { it.copy(errores = errores) }; return }
+        if (enVivo.alGuardar().isNotEmpty()) return
         _e.update { it.copy(guardando = true) }
         viewModelScope.launch {
             registros.registrarAlmacen(
@@ -109,7 +123,7 @@ class IngresoSinCompraViewModel(
         }
     }
 
-    fun otro() = _e.update { EstadoIngreso(origen = it.origen) }
+    fun otro() { _e.update { EstadoIngreso(origen = it.origen) }; enVivo.reiniciar() }
 }
 
 @Composable
@@ -137,20 +151,27 @@ fun PantallaIngresoSinCompra(obraId: Int, alVolver: () -> Unit, vm: IngresoSinCo
             if (e.origen.exigeDetalle) {
                 CampoVidrio(
                     e.detalle, vm::detalle, if (e.origen == OrigenIngreso.OTRA_OBRA) "Nombre de la obra" else "¿De dónde viene?",
-                    error = e.errores["detalle"],
+                    error = e.errores["detalle"], alSalir = { vm.salirDe("detalle") }, correcto = "detalle" in e.correctos,
                 )
             }
         }
         FormularioAlmacen {
             PasoAlmacen("2", "¿Qué y cuánto?")
             ElegirInsumo(b, e.insumo, vm.buscador::buscar, vm::elegir, vm::quitar, error = e.errores["insumo"])
-            CampoVidrio(e.cantidad, vm::cantidad, "Cantidad", teclado = KeyboardType.Decimal, sufijo = e.insumo?.let { Texto.unidad(it.unidad) } ?: "", error = e.errores["cantidad"])
+            CampoVidrio(
+                e.cantidad, vm::cantidad, "Cantidad", teclado = KeyboardType.Decimal, sufijo = e.insumo?.let { Texto.unidad(it.unidad) } ?: "",
+                error = e.errores["cantidad"], alSalir = { vm.salirDe("cantidad") }, correcto = "cantidad" in e.correctos,
+            )
             CampoVidrio(
                 e.costo, vm::costo, "Costo unitario sin IGV", teclado = KeyboardType.Decimal, sufijo = "S/", error = e.errores["costo"],
                 ayuda = "Obligatorio. Por unidad del S10 (para el acero, por kg).",
+                alSalir = { vm.salirDe("costo") }, correcto = "costo" in e.correctos,
             )
             if (!e.origen.exigeDetalle) {
-                CampoVidrio(e.detalle, vm::detalle, "Detalle (opcional)", marcador = "Ej.: devuelve la cuadrilla de acabados", error = e.errores["detalle"])
+                CampoVidrio(
+                    e.detalle, vm::detalle, "Detalle (opcional)", marcador = "Ej.: devuelve la cuadrilla de acabados", error = e.errores["detalle"],
+                    alSalir = { vm.salirDe("detalle") },
+                )
             }
         }
         BotonNegro("Guardar ingreso", { vm.guardar(obraId) }, icono = Icons.Filled.Save, colorIcono = Paleta.NaranjaVivo, cargando = e.guardando)
