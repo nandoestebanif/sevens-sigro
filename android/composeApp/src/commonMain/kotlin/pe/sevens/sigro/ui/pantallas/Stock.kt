@@ -47,11 +47,15 @@ import pe.sevens.sigro.ui.componentes.CampoVidrio
 import pe.sevens.sigro.ui.componentes.Etiqueta
 import pe.sevens.sigro.ui.componentes.Opciones
 import pe.sevens.sigro.ui.componentes.PantallaVidrio
-import pe.sevens.sigro.ui.componentes.Separador
 import pe.sevens.sigro.ui.componentes.TarjetaVidrio
 import pe.sevens.sigro.ui.componentes.planoStock
 import pe.sevens.sigro.ui.componentes.vidrio
 import pe.sevens.sigro.ui.tema.Paleta
+import pe.sevens.sigro.ui.componentes.colorTicket
+import pe.sevens.sigro.ui.componentes.Ilustracion
+import pe.sevens.sigro.ui.componentes.DibujoObra
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.background
 
 /*
  * 2.7 · Stock del almacén (lienzo Stock.dc.html, HU-43), conectado (A2) a GET /obras/{id}/almacen/stock.
@@ -171,23 +175,28 @@ fun PantallaStock(obraId: Int, alVolver: () -> Unit, vm: StockViewModel = koinVi
                     fontSize = 15.sp, color = Paleta.Texto2,
                 )
             } else {
-                Column(Modifier.fillMaxWidth().vidrio(RoundedCornerShape(26.dp))) {
-                    filas.forEachIndexed { i, f ->
-                        if (i > 0) Separador()
-                        FilaDeStock(f)
-                    }
+                // Rediseño: cada insumo es su propia tarjeta, con un cuadro de color e ilustración que se turnan
+                Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    filas.forEachIndexed { i, f -> FilaDeStock(f, i) }
                 }
             }
         }
     }
 }
 
+private val DIBUJOS_STOCK = listOf(Ilustracion.CEMENTO, Ilustracion.GRUA, Ilustracion.CAMION, Ilustracion.FACTURA)
+
 @Composable
-private fun FilaDeStock(f: FilaStock) {
+private fun FilaDeStock(f: FilaStock, i: Int) {
     Row(
-        Modifier.fillMaxWidth().heightIn(min = 60.dp).padding(horizontal = 16.dp, vertical = 10.dp).semantics(mergeDescendants = true) {},
+        Modifier.fillMaxWidth().vidrio(RoundedCornerShape(22.dp)).heightIn(min = 76.dp).padding(horizontal = 14.dp, vertical = 12.dp)
+            .semantics(mergeDescendants = true) {},
         verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
+        Box(Modifier.size(54.dp).background(colorTicket(i), RoundedCornerShape(16.dp)), contentAlignment = Alignment.Center) {
+            DibujoObra(DIBUJOS_STOCK[i % DIBUJOS_STOCK.size], ancho = 44.dp)
+        }
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(Texto.nombre(f.descripcion), fontSize = 15.sp, fontWeight = FontWeight.Bold, color = Paleta.Tinta, maxLines = 2, overflow = TextOverflow.Ellipsis)
             Text("Código ${f.codigo}" + (f.almacen?.let { " · $it" } ?: ""), fontSize = 13.sp, color = Paleta.Texto3)

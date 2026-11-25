@@ -119,6 +119,12 @@ import pe.sevens.sigro.dominio.Sesion
 import pe.sevens.sigro.dominio.Texto
 import pe.sevens.sigro.plataforma.ManejarAtras
 import pe.sevens.sigro.plataforma.Plataforma
+import androidx.compose.material3.NavigationBarItemDefaults
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.ui.draw.clip
+import pe.sevens.sigro.ui.componentes.Ilustracion
+import pe.sevens.sigro.ui.componentes.Ticket
 import pe.sevens.sigro.recursos.Res
 import pe.sevens.sigro.recursos.sevens_logo
 import pe.sevens.sigro.recursos.sevens_logo_blanco
@@ -286,11 +292,18 @@ fun PantallaInicio(
 
             TarjetaResumen(resumen, pendientes, e.enviando, alEnviar = vm::enviarAhora, alVerRegistros = { irA(Destino.Pendientes) }, alVerRechazados = { irA(Destino.Rechazados) })
 
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Acceso(Icons.Filled.ArrowUpward, "Salida", principal = true) { irA(Destino.Salida) }
-                Acceso(Icons.Filled.ArrowDownward, "Entrada") { irA(Destino.Entrada) }
-                Acceso(Icons.Filled.MoveDown, "Ingreso") { irA(Destino.IngresoSinCompra) }
-                Acceso(Icons.Filled.MoreHoriz, "Más") { conMas = true }
+            // Accesos como tickets de color con su ilustración (rediseño, igual que la web)
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                Acceso(Icons.Filled.ArrowUpward, "Salida", Paleta.TicketAmarillo, Ilustracion.CEMENTO) { irA(Destino.Salida) }
+                Acceso(Icons.Filled.ArrowDownward, "Entrada", Paleta.TicketMenta, Ilustracion.FACTURA) { irA(Destino.Entrada) }
+                Acceso(Icons.Filled.MoveDown, "Ingreso", Paleta.TicketLila, Ilustracion.CAMION) { irA(Destino.IngresoSinCompra) }
+            }
+            OutlinedButton(
+                onClick = { conMas = true }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp), shape = RoundedCornerShape(16.dp),
+            ) {
+                Icon(Icons.Filled.MoreHoriz, contentDescription = null, tint = Paleta.Tinta, modifier = Modifier.size(20.dp))
+                Spacer(Modifier.width(8.dp))
+                Text("Más · Catálogo, Personal, Stock", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Paleta.Tinta)
             }
 
             Row(Modifier.fillMaxWidth().padding(start = 4.dp, top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -393,24 +406,20 @@ private fun RowScope.Cifra(valor: Int, etiqueta: String, color: Color, alPulsar:
 }
 
 @Composable
-private fun RowScope.Acceso(icono: ImageVector, texto: String, principal: Boolean = false, habilitado: Boolean = true, alPulsar: () -> Unit) {
-    val forma = RoundedCornerShape(22.dp)
-    Column(
-        Modifier.weight(1f).alpha(if (habilitado) 1f else 0.5f)
-            .clickable(enabled = habilitado, role = Role.Button, onClick = alPulsar)
-            .semantics(mergeDescendants = true) { if (!habilitado) contentDescription = "$texto, próximamente" },
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(7.dp),
+private fun RowScope.Acceso(icono: ImageVector, texto: String, color: Color, dibujo: Ilustracion, alPulsar: () -> Unit) {
+    Ticket(
+        color,
+        Modifier.weight(1f).heightIn(min = 118.dp)
+            .clickable(role = Role.Button, onClickLabel = texto, onClick = alPulsar)
+            .semantics(mergeDescendants = true) {},
+        ilustracion = dibujo, anchoIlustracion = 60.dp,
     ) {
-        Box(
-            if (principal) Modifier.size(62.dp).shadow(10.dp, forma, spotColor = Paleta.Naranja.copy(alpha = 0.5f)).background(Paleta.Naranja, forma)
-            else Modifier.size(62.dp).vidrio(forma, sombra = 6.dp),
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(icono, contentDescription = null, tint = if (principal) Paleta.SobreAcento else Paleta.Naranja, modifier = Modifier.size(26.dp))
+        Column(Modifier.align(Alignment.BottomStart).padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Box(Modifier.size(30.dp).background(Paleta.SobreTicket, RoundedCornerShape(10.dp)), contentAlignment = Alignment.Center) {
+                Icon(icono, contentDescription = null, tint = color, modifier = Modifier.size(18.dp))
+            }
+            Text(texto, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Paleta.SobreTicket)
         }
-        Text(texto, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Paleta.Tinta)
-        if (!habilitado) Text("Pronto", fontSize = 11.sp, color = Paleta.Texto3, modifier = Modifier.offset(y = (-6).dp))
     }
 }
 
@@ -448,12 +457,22 @@ private data class Cuatro(val icono: ImageVector, val color: Color, val fondo: C
  */
 @Composable
 private fun BarraInferior(pendientes: Int, alRegistros: () -> Unit, alStock: () -> Unit, alPerfil: () -> Unit, modifier: Modifier) {
-    NavigationBar(modifier) {
+    // Rediseño: barra negra flotante con esquinas redondas y la pestaña elegida en amarillo
+    val colores = NavigationBarItemDefaults.colors(
+        selectedIconColor = Paleta.SobrePrincipal, selectedTextColor = Paleta.Principal, indicatorColor = Paleta.Principal,
+        unselectedIconColor = Color(0xFFA9AAAA), unselectedTextColor = Color(0xFFA9AAAA),
+    )
+    NavigationBar(
+        modifier.navigationBarsPadding().padding(horizontal = 12.dp, vertical = 10.dp).clip(RoundedCornerShape(24.dp)),
+        containerColor = Paleta.Noche, tonalElevation = 0.dp, windowInsets = WindowInsets(0, 0, 0, 0),
+    ) {
         NavigationBarItem(
+            colors = colores,
             selected = true, onClick = {},
             icon = { Icon(Icons.Filled.Home, contentDescription = null) }, label = { Text("Inicio") },
         )
         NavigationBarItem(
+            colors = colores,
             selected = false, onClick = alRegistros,
             icon = {
                 BadgedBox(badge = { if (pendientes > 0) Badge { Text(if (pendientes > 9) "9+" else "$pendientes") } }) {
@@ -464,10 +483,12 @@ private fun BarraInferior(pendientes: Int, alRegistros: () -> Unit, alStock: () 
             modifier = Modifier.semantics { if (pendientes > 0) contentDescription = "Registros, $pendientes por enviar" },
         )
         NavigationBarItem(
+            colors = colores,
             selected = false, onClick = alStock,
             icon = { Icon(Icons.Filled.ViewInAr, contentDescription = null) }, label = { Text("Stock") },
         )
         NavigationBarItem(
+            colors = colores,
             selected = false, onClick = alPerfil,
             icon = { Icon(Icons.Filled.Engineering, contentDescription = null) }, label = { Text("Perfil") },
         )

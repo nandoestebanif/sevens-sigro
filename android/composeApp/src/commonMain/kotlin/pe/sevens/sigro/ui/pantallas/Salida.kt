@@ -94,6 +94,11 @@ import pe.sevens.sigro.ui.componentes.svg
 import pe.sevens.sigro.ui.componentes.vidrio
 import pe.sevens.sigro.ui.tema.Paleta
 import pe.sevens.sigro.dominio.casosdeuso.RegistrarSalida
+import pe.sevens.sigro.ui.componentes.Ilustracion
+import pe.sevens.sigro.ui.componentes.Ticket
+import androidx.compose.ui.unit.em
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.TextButton
 
 /* HU-40 · Registrar salida de material + HU-37 · sin conexión. */
 
@@ -353,15 +358,21 @@ private fun Sugerencias(opciones: List<String>, actual: String, alElegir: (Strin
 
 @Composable
 private fun InsumoElegido(i: Insumo, alQuitar: () -> Unit) {
-    Row(
-        Modifier.fillMaxWidth().background(Paleta.NaranjaClaro, RoundedCornerShape(14.dp)).padding(start = 16.dp, top = 12.dp, bottom = 12.dp, end = 4.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(Texto.nombre(i.descripcion), fontSize = 17.sp, fontWeight = FontWeight.SemiBold, color = NaranjaTexto)
-            Text("${i.codigo} · en ${Texto.unidad(i.unidad)}", fontSize = 14.sp, color = NaranjaTexto)
+    // Rediseño: el insumo elegido es un ticket amarillo con la bolsa de cemento, como en el lienzo
+    Ticket(Paleta.TicketAmarillo, Modifier.fillMaxWidth(), ilustracion = Ilustracion.CEMENTO, anchoIlustracion = 66.dp) {
+        Column(Modifier.fillMaxWidth().padding(start = 16.dp, top = 14.dp, bottom = 14.dp, end = 16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text("INSUMO", fontSize = 11.sp, fontWeight = FontWeight.SemiBold, letterSpacing = 0.06.em, color = Paleta.SobreTicket)
+            Text(
+                Texto.nombre(i.descripcion), fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = Paleta.SobreTicket,
+                modifier = Modifier.padding(end = 70.dp),
+            )
+            Text("${i.codigo} · en ${Texto.unidad(i.unidad)}", fontSize = 13.sp, color = Paleta.SobreTicket.copy(alpha = 0.8f))
+            TextButton(
+                onClick = alQuitar,
+                modifier = Modifier.padding(top = 4.dp).heightIn(min = 40.dp),
+                colors = ButtonDefaults.textButtonColors(containerColor = Paleta.SobreTicket, contentColor = Paleta.TicketAmarillo),
+            ) { Text("Cambiar insumo", fontSize = 13.sp, fontWeight = FontWeight.SemiBold) }
         }
-        IconButton(onClick = alQuitar) { Icon(Icons.Filled.Close, contentDescription = "Cambiar insumo", tint = NaranjaTexto) }
     }
 }
 
