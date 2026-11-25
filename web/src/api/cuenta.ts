@@ -1,4 +1,5 @@
 /* SIGRO · lo de la propia cuenta: avisos (notificaciones) y cambiar la contraseña. */
+import { claveAceptable } from '../formularios/reglas'
 import { ErrorApi } from './error'
 import { pedir } from './http'
 
@@ -30,11 +31,16 @@ export function destinoDeAviso(a: Pick<Aviso, 'tipo' | 'datos'>): string | null 
   return null
 }
 
-/** Reglas del formulario de cambio de clave (el servidor decide si es segura; aquí solo lo evidente). */
+/** Reglas del cambio de clave, campo por campo (validación en vivo). La fuerza sigue la regla del servidor. */
+export function erroresCambioClave(actual: string, nueva: string, repetida: string) {
+  return {
+    actual: actual ? null : 'Escribe tu contraseña actual.',
+    nueva: claveAceptable(nueva) ?? (nueva === actual ? 'La nueva contraseña debe ser distinta de la actual.' : null),
+    repetida: !repetida ? 'Repite la nueva contraseña.' : repetida !== nueva ? 'Las dos contraseñas nuevas no coinciden.' : null,
+  }
+}
+
+/** El primer error del cambio de clave (o null): para quien necesita un solo mensaje. */
 export function errorCambioClave(actual: string, nueva: string, repetida: string): string | null {
-  if (!actual) return 'Escribe tu contraseña actual.'
-  if (nueva.length < 8) return 'La nueva contraseña debe tener al menos 8 caracteres.'
-  if (nueva === actual) return 'La nueva contraseña debe ser distinta de la actual.'
-  if (nueva !== repetida) return 'Las dos contraseñas nuevas no coinciden.'
-  return null
+  return Object.values(erroresCambioClave(actual, nueva, repetida)).find(Boolean) ?? null
 }
