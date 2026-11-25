@@ -31,3 +31,5 @@ jobs:
         run: npm test
       - name: TypeScript y build (tsc -b && vite build)
         run: npm run build
+      - name: Presupuesto de peso (JS de arranque, CSS y total)
+        run: npm run presupuesto
