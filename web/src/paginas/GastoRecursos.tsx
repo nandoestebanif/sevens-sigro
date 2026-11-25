@@ -22,7 +22,8 @@ import { Link } from 'react-router-dom'
 import { ErrorApi } from '../api/cliente'
 import { fechaCorte, gasto, type Cifra, type ClaveCifra, type Gasto } from '../api/costo'
 import { Chip } from '../ui/base'
-import { Aviso, TituloSeccion, Vidrio } from '../ui/piezas'
+import { Aviso, Ticket, TituloSeccion, Vidrio } from '../ui/piezas'
+import type { Ilustracion } from '../ui/Ilustraciones'
 import { GraficoFlujo } from '../ui/GraficosPerezosos'
 import { Termino } from '../ui/Glosario'
 import { EsqueletoKpis } from '../ui/Esqueleto'
@@ -35,22 +36,26 @@ const ROTULO: Record<ClaveCifra, string> = {
 }
 const FAMILIA: Record<string, string> = { material: 'Materiales', materiales: 'Materiales', equipo: 'Herramientas y equipos', herramienta: 'Herramientas y equipos', mano_obra: 'Horas hombre' }
 
+const DIBUJO: Record<ClaveCifra, Ilustracion> = {
+  comprado: 'factura', recibido: 'camion', consumido: 'cemento', en_stock: 'grua', horas_hombre: 'casco',
+}
+
 function Tarjeta({ c, g }: { c: Cifra; g: Gasto }) {
   const esHoras = c.clave === 'horas_hombre'
   return (
-    <div className="d-flex flex-column gap-2 min-w-0 bg-body-tertiary rounded-4 py-3 px-3"  style={{ flex: '1 1 200px' }}>
-      <span className="small fw-bold text-uppercase text-body-secondary">{ROTULO[c.clave]}</span>
+    <Ticket ilustracion={DIBUJO[c.clave]} etiqueta={ROTULO[c.clave]} estilo={{ flex: '1 1 190px', display: 'flex', flexDirection: 'column' }}>
+      <span className="rotulo">{ROTULO[c.clave]}</span>
       {esHoras && c.valor === null ? (
-        <span className="n fs-4 fw-bold">
-          {horas(g.horas.normales)} h <span className="fw-semibold text-body-secondary">+ {horas(g.horas.extra)} h extra</span>
+        <span className="valor n">
+          {horas(g.horas.normales)} h <span className="d-block fs-6 fw-semibold">+ {horas(g.horas.extra)} h extra</span>
         </span>
       ) : (
-        <span className="n fs-4 fw-bold">{c.valor === null ? 'Sin dato' : `S/ ${soles(c.valor)}`}</span>
+        <span className="valor n">{c.valor === null ? 'Sin dato' : `S/ ${soles(c.valor)}`}</span>
       )}
-      <span className="small text-body-secondary">{c.definicion}</span>
-      {c.nota && <span className="small text-warning-emphasis fw-semibold">{c.nota}</span>}
-      <span className="small text-body-secondary" style={{ marginTop: 'auto' }}>Corte: {fechaCorte(c.corte)}</span>
-    </div>
+      <span className="pie">{c.definicion}</span>
+      {c.nota && <span className="pie fw-semibold">{c.nota}</span>}
+      <span className="pie" style={{ marginTop: 'auto', paddingTop: 6, fontSize: '0.72rem' }}>Corte: {fechaCorte(c.corte)}</span>
+    </Ticket>
   )
 }
 
