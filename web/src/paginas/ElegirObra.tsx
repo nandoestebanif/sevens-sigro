@@ -5,10 +5,10 @@
    ───────────────────────────────────────────────────────────────────────── */
 import { useState } from 'react'
 import { Alert, Card } from 'react-bootstrap'
-import { DibujoObra } from '../ui/Ilustraciones'
+import { SelectorObra } from '../ui/SelectorObra'
 import { PantallaEntrada, Portada } from '../ui/Portada'
 
-export interface ObraParaElegir { id: string; nombre: string; rol: string }
+export interface ObraParaElegir { id: string; nombre: string; rol?: string }
 
 export function ElegirObra({ nombre, obras, alElegir }: {
   nombre: string
@@ -36,23 +36,10 @@ export function ElegirObra({ nombre, obras, alElegir }: {
         <Card.Body className="p-4">
           <h1 id="elegir-obra-titulo" className="h4">Elige la obra</h1>
           <p className="text-body-secondary small">
-            Hola, {nombre}. Tienes {obras.length} obras asignadas: verás solo lo de la que elijas y puedes cambiarla desde el menú.
+            Hola, {nombre}. Tienes {obras.length} obras asignadas: verás solo lo de la que elijas y puedes cambiarla después con «Cambiar de obra».
           </p>
-          {/* cada obra es un botón: tarjeta con su color, la grúa, el nombre y tu rol en ella */}
-          <div role="list" aria-labelledby="elegir-obra-titulo" className="d-flex flex-column gap-2">
-            {obras.map((o) => (
-              <div role="listitem" key={o.id} className="sigro-obra-opcion">
-                <button type="button" onClick={() => elegir(o)} disabled={eligiendo !== null} aria-busy={eligiendo === o.id}>
-                  <span className="icono" aria-hidden="true"><DibujoObra cual="grua" ancho={44} /></span>
-                  <span className="min-w-0 flex-grow-1 text-start">
-                    <span className="d-block fw-semibold text-truncate">{o.nombre}</span>
-                    <small className="text-body-secondary">{eligiendo === o.id ? 'Abriendo…' : o.rol}</small>
-                  </span>
-                  <span className="flecha" aria-hidden="true">→</span>
-                </button>
-              </div>
-            ))}
-          </div>
+          {/* cada obra es un botón con su color; con muchas obras, buscador y de 5 en 5 (sin lista infinita) */}
+          <SelectorObra obras={obras} ocupada={eligiendo} alElegir={elegir} autoFoco etiquetaId="elegir-obra-titulo" />
           {error && <Alert variant="danger" className="mt-3 mb-0 py-2">{error}</Alert>}
         </Card.Body>
       </Card>

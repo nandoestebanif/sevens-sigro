@@ -23,8 +23,9 @@ import { api } from '../api/cliente'
 import { fechaCorte, type OrdenDesviacion } from '../api/costo'
 import { usaApiReal } from '../api/http'
 import { GastoRecursos } from './GastoRecursos'
+import { TablaDesviacion } from './TablaDesviacion'
 import type { AvanceInsumo, ResumenTablero } from '../api/tipos'
-import { Chip, Medidor, Vacio, type TonoChip } from '../ui/base'
+import { Chip } from '../ui/base'
 import { Aviso, Chips, Encabezado, Kpi, Segmentado, TituloSeccion, Vidrio } from '../ui/piezas'
 import { GraficoCurva, GraficoDesvios, GraficoFamilias } from '../ui/GraficosPerezosos'
 import { EsqueletoPagina } from '../ui/Esqueleto'
@@ -35,7 +36,6 @@ const FAM_COLOR: Record<string, string> = {
   herramientas: 'var(--fam-herramientas)',
   horas_hombre: 'var(--fam-horas)',
 }
-const tonoDesvio = (p: number): TonoChip => (p <= 1 ? 'bien' : p <= 4 ? 'aviso' : 'grave')
 const colorDesvio = (p: number) => (p <= 1 ? 'var(--bien)' : p <= 4 ? 'var(--aviso)' : 'var(--grave)')
 const pts = (p: number) => `${p > 0 ? '+' : ''}${p.toLocaleString('es-PE', { maximumFractionDigits: 1 })} pt`
 const signoSoles = (v: number) => `${v > 0 ? '+' : v < 0 ? '−' : ''}S/ ${Math.abs(v).toLocaleString('es-PE', { maximumFractionDigits: 0 })}`
@@ -253,73 +253,7 @@ export function Tablero() {
               />
             </div>
           </div>
-          {r.insumos.length === 0 ? (
-            <Vacio titulo="Sin requerimiento todavía" detalle="Importa la Relación de insumos del S10 para comparar lo gastado contra lo planificado." />
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="table table-hover align-middle mb-0" style={{ minWidth: 1080 }}>
-                <thead>
-                  <tr>
-                    <th>Insumo</th>
-                    <th className="n">Planificado S/</th>
-                    {conDesviacionReal && <th className="n">Esperado S/</th>}
-                    <th className="n">Requerido</th>
-                    <th className="n">Comprado</th>
-                    <th className="n">Recibido</th>
-                    <th className="n">Consumido</th>
-                    <th className="n">Falta comprar</th>
-                    <th className="n">Gastado S/</th>
-                    <th className="n">Desviación</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filas.map((f) => (
-                    <tr key={f.insumoId}>
-                      <td style={{ minWidth: 220 }}>
-                        <div className="fw-semibold">{f.descripcion}</div>
-                        <div className="n small text-body-secondary mt-1 text-start">
-                          SKU {f.codigo}{conDesviacionReal && f.unidad ? ` · ${f.consumidoCantidad?.toLocaleString('es-PE', { maximumFractionDigits: 2 }) ?? 0} ${f.unidad} consumidos` : ''}
-                        </div>
-                      </td>
-                      <td className="n">{soles(f.planificadoImporte)}</td>
-                      {conDesviacionReal && <td className="n">{soles(f.esperadoImporte ?? 0)}</td>}
-                      <td className="n text-nowrap">
-                        {f.requeridoCompra !== undefined ? `${f.requeridoCompra.toLocaleString('es-PE', { maximumFractionDigits: 2 })} ${f.unidadCompra}` : '—'}
-                      </td>
-                      <td className="n text-nowrap">
-                        {f.compradoCantidad.toLocaleString('es-PE', { maximumFractionDigits: 2 })} {f.unidadCompra}
-                        <div className="small text-body-secondary">{f.compradoPct} %</div>
-                      </td>
-                      <td className="n">{f.sinDatoAlmacen ? '—' : `${f.recibidoPct} %`}</td>
-                      <td>
-                        {f.sinDatoAlmacen ? (
-                          <div className="n text-body-secondary">—</div>
-                        ) : (
-                          <div className="d-flex align-items-center gap-2 justify-content-end">
-                            <Medidor pct={f.consumidoPct} marcaPct={r.avancePlazoPct} color={colorDesvio(f.desviacionPuntos)} ancho={88} />
-                            <span className="n text-end" style={{ width: 52 }}>{f.consumidoPct} %</span>
-                          </div>
-                        )}
-                      </td>
-                      <td className="n text-nowrap">{f.saldoPorComprar.toLocaleString('es-PE')} {f.unidadCompra}</td>
-                      <td className="n fw-bold">{soles(f.gastado)}</td>
-                      <td className="n">
-                        <div className="d-flex flex-column align-items-end gap-1">
-                          <Chip tono={tonoDesvio(f.desviacionPuntos)}>{pts(f.desviacionPuntos)}</Chip>
-                          {f.desviacionImporte !== undefined && (
-                            <span className="small text-body-secondary text-nowrap">
-                              {signoSoles(f.desviacionImporte)}
-                              {f.efectoCantidad !== undefined ? ` (cant ${signoSoles(f.efectoCantidad)})` : ''}
-                            </span>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
+          <TablaDesviacion filas={filas} conDesviacionReal={conDesviacionReal} avancePlazoPct={r.avancePlazoPct} />
           <p className="small text-body-secondary">
             Comprado, recibido y consumido se expresan en porcentaje de lo requerido en el S10, en la unidad de compra (HU-23):
             se pueden cuadrar a mano con la columna «Requerido». La marca del medidor es el avance del plazo ({pct1(r.avancePlazoPct)} %): un consumo por encima se está adelantando a la obra.
