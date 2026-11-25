@@ -1,7 +1,7 @@
 /* SIGRO · armazón de la web de oficina con React-Bootstrap: Navbar arriba, menú lateral (Offcanvas + Accordion), obra activa y rutas. */
 import { Component, Suspense, lazy, useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { HashRouter, NavLink, Navigate, Route, Routes, useLocation } from 'react-router-dom'
-import { grupoDeRuta } from './menu'
+import { grupoDeRuta, iniciales } from './menu'
 import { api } from './api/cliente'
 import { cerrarSesion, sesionActual, usaApiReal } from './api/http'
 import { ElegirObra } from './paginas/ElegirObra'
@@ -95,7 +95,6 @@ const ICONO_GRUPO: Record<string, keyof typeof ICONOS> = {
   Almacén: 'inventario', Catálogo: 'catalogo', Administración: 'administracion',
 }
 
-const iniciales = (nombre: string) => nombre.trim().split(/\s+/).slice(0, 2).map((p) => p[0]?.toUpperCase() ?? '').join('')
 
 /* Solo para el administrador de la obra activa (HU-13, HU-14, HU-15). Esconderla es comodidad:
    la API verifica el rol en cada petición y responde 403 si no corresponde. */
