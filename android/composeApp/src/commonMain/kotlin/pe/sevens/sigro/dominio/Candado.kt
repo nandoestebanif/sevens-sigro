@@ -31,12 +31,66 @@ sealed interface ResultadoHuella {
     data object HuellaNueva : ResultadoHuella
 }
 
+/** Resultado de guardar o abrir un secreto con la huella (la contraseña cifrada para entrar después). */
+sealed interface ResultadoSecreto {
+    data class Ok(val valor: String) : ResultadoSecreto
+    data object Cancelada : ResultadoSecreto
+    data class Fallo(val mensaje: String) : ResultadoSecreto
+    /** La llave se invalidó porque se agregó una huella al celular: el secreto ya no se puede abrir. */
+    data object HuellaNueva : ResultadoSecreto
+    /** Este celular no puede atar un secreto a la huella (Android 10 o menos): solo desbloquea la app. */
+    data object NoSoportado : ResultadoSecreto
+}
+
 /** La huella del celular (expect/actual en plataforma: BiometricPrompt en Android). */
 interface Biometria {
     fun disponibilidad(): DisponibilidadHuella
     suspend fun verificar(titulo: String, detalle: String): ResultadoHuella
-    /** Borra la llave del Keystore (al desactivar o al cerrar sesión). */
+    /** Borra la llave del Keystore del candado (al desactivar o al cerrar sesión). */
     fun olvidar() {}
+
+    /** Si puede guardar la contraseña cifrada con una llave que solo abre la huella (Android 11+). */
+    fun guardaClaves(): Boolean = false
+    /** Cifra [secreto] tras la huella. En [ResultadoSecreto.Ok] viene el «sobre» cifrado (texto) para guardar. */
+    suspend fun cifrar(titulo: String, detalle: String, secreto: String): ResultadoSecreto = ResultadoSecreto.NoSoportado
+    /** Abre el [sobre] tras la huella. En [ResultadoSecreto.Ok] viene el secreto. */
+    suspend fun descifrar(titulo: String, detalle: String, sobre: String): ResultadoSecreto = ResultadoSecreto.NoSoportado
+    /** Borra la llave de la contraseña guardada («no soy yo», huella apagada o contraseña cambiada). */
+    fun olvidarClave() {}
+}
+
+/**
+ * La cuenta que entra con huella en ESTE celular (una sola: la última que la activó). [sobre] es la contraseña
+ * cifrada con una llave del Keystore que solo se abre con la huella: sin la huella no sirve, ni copiando la base.
+ * Cerrar sesión NO la borra (es justo para volver a entrar con la huella); «no soy yo» sí.
+ */
+data class CuentaConHuella(val usuarioId: Int, val usuario: String, val nombre: String, val servidor: String, val sobre: String) {
+    /** El primer nombre, para «Entrar como Adiel». */
+    val primerNombre: String get() = nombre.trim().substringBefore(' ').ifEmpty { usuario }
+}
+
+/**
+ * La contraseña recién escrita, solo en memoria y por poco tiempo: es lo que se cifra si la persona activa la huella
+ * justo al entrar. Se entrega una sola vez y vence a los [vigenciaMs] (no queda en disco ni en el estado de pantalla).
+ */
+class ClaveReciente(private val reloj: () -> Long, private val vigenciaMs: Long = 10 * 60_000L) {
+    private var guardada: Triple<String, String, Long>? = null
+
+    fun guardar(usuario: String, clave: String) { guardada = Triple(usuario.trim().lowercase(), clave, reloj()) }
+
+    /** ¿Hay una contraseña vigente de [usuario]? (sin entregarla) */
+    fun hay(usuario: String): Boolean = vigente(usuario) != null
+
+    /** La entrega y la olvida. `null` si no hay, si es de otro usuario o si ya venció. */
+    fun tomar(usuario: String): String? = vigente(usuario).also { guardada = null }
+
+    fun olvidar() { guardada = null }
+
+    private fun vigente(usuario: String): String? {
+        val (u, c, t) = guardada ?: return null
+        val ahora = reloj()
+        return c.takeIf { u == usuario.trim().lowercase() && ahora >= t && ahora - t <= vigenciaMs }
+    }
 }
 
 /** Sin huella (escritorio, iOS por ahora, o un celular sin sensor ni bloqueo). */
@@ -51,6 +105,10 @@ interface RepositorioCandado {
     suspend fun guardar(usuarioId: Int, ajuste: AjusteHuella)
     suspend fun ultimoUso(): Long?
     suspend fun guardarUltimoUso(ms: Long)
+    /** La cuenta que entra con huella en este celular (sobrevive a «cerrar sesión»). */
+    suspend fun cuenta(): CuentaConHuella?
+    suspend fun guardarCuenta(c: CuentaConHuella)
+    suspend fun olvidarCuenta()
 }
 
 object ReglaCandado {
@@ -71,6 +129,16 @@ object ReglaCandado {
 
     /** Minutos válidos: si llega otro valor (ajuste viejo o editado), se usa el de siempre. */
     fun minutosValidos(m: Int): Int = if (m in MINUTOS_BLOQUEO) m else MINUTOS_POR_DEFECTO
+
+    /** La cuenta con huella ↔ texto (una línea por dato; ningún dato lleva salto de línea). Dañado → null. */
+    fun codificarCuenta(c: CuentaConHuella): String =
+        listOf(c.usuarioId.toString(), c.usuario, c.nombre, c.servidor, c.sobre).joinToString("\n") { it.replace('\n', ' ') }
+
+    fun decodificarCuenta(texto: String?): CuentaConHuella? {
+        val p = texto?.split('\n') ?: return null
+        if (p.size != 5 || p.any { it.isBlank() }) return null
+        return CuentaConHuella(p[0].toIntOrNull() ?: return null, p[1], p[2], p[3], p[4])
+    }
 
     /** «activa=1;min=15;ofrecida=0» ↔ ajuste. Un texto dañado da el ajuste por defecto (huella apagada). */
     fun codificar(a: AjusteHuella): String = "activa=${if (a.activa) 1 else 0};min=${a.minutos};ofrecida=${if (a.ofrecida) 1 else 0}"

@@ -182,6 +182,9 @@ private val sesionAdmin = Sesion(
 private object HuellaLista : pe.sevens.sigro.dominio.Biometria {
     override fun disponibilidad() = DisponibilidadHuella.DISPONIBLE
     override suspend fun verificar(titulo: String, detalle: String) = pe.sevens.sigro.dominio.ResultadoHuella.Ok
+    override fun guardaClaves() = true
+    // en la captura el diálogo «se cierra»: la pantalla queda esperando la huella
+    override suspend fun descifrar(titulo: String, detalle: String, sobre: String) = pe.sevens.sigro.dominio.ResultadoSecreto.Cancelada
 }
 
 private object CandadoGuardado : pe.sevens.sigro.dominio.RepositorioCandado {
@@ -189,6 +192,9 @@ private object CandadoGuardado : pe.sevens.sigro.dominio.RepositorioCandado {
     override suspend fun guardar(usuarioId: Int, ajuste: pe.sevens.sigro.dominio.AjusteHuella) {}
     override suspend fun ultimoUso(): Long? = System.currentTimeMillis()
     override suspend fun guardarUltimoUso(ms: Long) {}
+    override suspend fun cuenta() = pe.sevens.sigro.dominio.CuentaConHuella(2, "adiel", "Adiel Luján", "https://sigro-api.onrender.com", "iv:cifrado")
+    override suspend fun guardarCuenta(c: pe.sevens.sigro.dominio.CuentaConHuella) {}
+    override suspend fun olvidarCuenta() {}
 }
 
 /** Cola general de ejemplo: una asistencia por enviar y un ingreso que espera al servicio almacén. */
@@ -363,6 +369,7 @@ fun main(args: Array<String>) {
             androidx.compose.foundation.layout.Box(androidx.compose.ui.Modifier.align(androidx.compose.ui.Alignment.BottomCenter)) { HojaActivarHuella({}, {}) }
         }
     }
+    capturar(dir, "42-oscuro-entrar-con-huella", oscuro = true) { PantallaEntrar(EntrarViewModel(SesionFalsa(), CandadoGuardado), HuellaLista) }
     val candadoActivo = CandadoViewModel(SesionFalsa(), CandadoGuardado)
     capturar(dir, "41-oscuro-perfil-seguridad", oscuro = true, alto = 1100) {
         PantallaPerfil(sesionEjemplo, obra, {}, {}, PerfilViewModel(SesionFalsa(), CatalogoFalso, DispositivoFalso), seguridad = { SeccionSeguridad(candadoActivo, HuellaLista) })
