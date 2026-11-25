@@ -157,9 +157,11 @@ def test_la_salida_solo_entra_desde_el_celular_autorizado_de_esa_persona_en_esa_
 # ═══════════════════════════════════ R9 control de acceso en el servidor
 def test_el_acceso_se_rechaza_desde_el_servidor(mundo, ob):
     ingreso(mundo, ob, 10, 20)
-    for quien in ("ssoma", "residente", "admin", "gerente"):
+    for quien in ("ssoma", "residente", "gerente"):
         r = salida(mundo, ob, 1, quien=ob[quien])
         assert r.status_code == 403 and r.json()["codigo"] == "sin_permiso", quien
+    # 25/11: el administrador tiene todos los permisos, pero una salida exige SU celular autorizado (R5) y no lo tiene
+    assert salida(mundo, ob, 1, quien=ob["admin"]).status_code == 403
     otra = mundo.f.obra_completa()
     r = post(mundo, f"/obras/{ob['proyecto']}/almacen/salidas", otra["almacenero"], uuid_cliente=str(uuid.uuid4()),
              insumo_id=ob["cem"], cantidad="1", motivo="x", quien_retira="y", dispositivo=ob["cel"])

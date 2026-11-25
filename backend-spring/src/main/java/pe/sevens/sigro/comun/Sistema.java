@@ -50,7 +50,7 @@ public class Sistema {
             @Override
             public void addCorsMappings(CorsRegistry r) {
                 r.addMapping("/**").allowedOrigins(java.util.Arrays.stream(origenes.split(",")).filter(s -> !s.isBlank()).toArray(String[]::new))
-                        .allowedMethods("GET", "POST").allowedHeaders("Authorization", "Content-Type")
+                        .allowedMethods("GET", "POST").allowedHeaders("Authorization", "Content-Type", "X-SIGRO-PIN")
                         .exposedHeaders(Pagina.CABECERA);
             }
         };
