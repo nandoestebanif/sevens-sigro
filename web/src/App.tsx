@@ -144,7 +144,7 @@ const ESCALAS = ['90', '100', '110', '125']
 
 function AjustesPantalla() {
   const [tema, setTema] = useState(() => {
-    try { return localStorage.getItem('sigro-tema') ?? 'claro' } catch { return 'claro' }
+    try { return localStorage.getItem('sigro-tema') ?? 'oscuro' } catch { return 'oscuro' }
   })
   const [escala, setEscala] = useState(() => {
     try { return localStorage.getItem('sigro-escala') ?? '100' } catch { return '100' }
