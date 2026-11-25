@@ -1,5 +1,5 @@
 /* ESLint de la web (flat config). Reglas de TypeScript recomendadas y las de los hooks de React,
-   que atrapan efectos con dependencias olvidadas. Los avisos no frenan el build; los errores sí. */
+   que atrapan efectos con dependencias olvidadas. Cero errores y cero avisos el 24/11: lo que aparezca de nuevo se ve en el PR. */
 import js from '@eslint/js'
 import globals from 'globals'
 import reactHooks from 'eslint-plugin-react-hooks'
