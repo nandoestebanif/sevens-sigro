@@ -95,9 +95,9 @@ export function Inventario() {
               <>
                 {v.corteAjustado && <Aviso tono="info" rol="status">Pediste una fecha futura: se usó el stock de ahora.</Aviso>}
                 <div className="d-flex flex-wrap gap-3">
-                  <Kpi ayuda="capital detenido" rotulo="Capital detenido en almacén" prefijo="S/" valor={soles(v.valorTotal, 0)} pie={nombreAlmacen} />
-                  <Kpi rotulo="Insumos con stock" valor={String(v.porInsumo.length)} pie="con saldo distinto de cero" />
-                  <Kpi rotulo="Fecha de corte" valor={fechaCorte(v.corte).split(',')[0]} pie={`hasta las ${fechaCorte(v.corte).split(', ')[1] ?? ''} (hora de Lima)`} />
+                  <Kpi ilustracion="grua" ayuda="capital detenido" rotulo="Capital detenido en almacén" prefijo="S/" valor={soles(v.valorTotal, 0)} pie={nombreAlmacen} />
+                  <Kpi ilustracion="cemento" rotulo="Insumos con stock" valor={String(v.porInsumo.length)} pie="con saldo distinto de cero" />
+                  <Kpi ilustracion="calendario" rotulo="Fecha de corte" valor={fechaCorte(v.corte).split(',')[0]} pie={`hasta las ${fechaCorte(v.corte).split(', ')[1] ?? ''} (hora de Lima)`} />
                 </div>
 
                 {almacen === 'todos' && v.porAlmacen.length > 1 && (

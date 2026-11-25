@@ -1,26 +1,78 @@
 // ─────────────────────────────────────────────────────────────────────────────
-// SIGRO · tema de Bootstrap 5
-// Así se personaliza Bootstrap: se cambian sus variables de Sass ANTES de
-// importarlo. No se escribe CSS a mano para botones, tablas o formularios:
-// todo eso lo da Bootstrap. Aquí solo van los colores de la marca SEVEN'S.
+// SIGRO · tema de Bootstrap 5 · rediseño negro y amarillo (24/11)
+// Se personaliza Bootstrap cambiando sus variables de Sass ANTES de importarlo:
+// botones, tablas, formularios, alertas y badges salen de aquí. Lo propio de
+// SIGRO (menú flotante y tarjetas «ticket») va al final, en pocas clases.
+// Modo oscuro (por defecto) = negro #161717/#242424/#2B2C2C con amarillo de
+// seguridad de obra #FAD85D. Modo claro = la misma estructura sobre blanco.
 // ─────────────────────────────────────────────────────────────────────────────
 
-// 1. Colores de la marca (el naranja oscuro pasa contraste AA con texto blanco)
-$primary: #c2410c;
-$secondary: #6c757d;
-$success: #198754;
-$warning: #ffc107;
-$danger: #dc3545;
-$info: #0d6efd;
+// 1. Colores. El amarillo es la acción principal; Bootstrap le pone texto negro
+//    solo (color-contrast), así el botón pasa AA en los dos modos.
+$primary: #fad85d;
+$secondary: #6d6e6e;
+$success: #12b897;   // menta: «bien», consumido, menos de lo esperado
+$warning: #f5b82e;   // ámbar: «aviso» (distinto del amarillo de acción)
+$danger: #e5484d;    // rojo: «grave», más de lo esperado
+$info: #7c6cf6;      // violeta: series y «info»
+$dark: #161717;
 
-// 2. Tipografía y forma
-$font-family-sans-serif: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+// 2. Tipografía (Poppins va en el paquete: funciona sin internet, también en la PWA)
+$font-family-sans-serif: "Poppins", system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
 $font-size-base: 0.9375rem;
-$body-bg: #f5f6f8;
+$headings-font-weight: 600;
+$font-weight-semibold: 600;
 $enable-shadows: false;
 $link-decoration: none;
 
-// 3. Una utilidad más con la API de utilidades de Bootstrap (no es CSS a mano):
+// 3. Superficies · modo claro
+$body-bg: #f1f1ee;
+$body-color: #161717;
+$body-secondary-color: #5c5d5d;
+$body-tertiary-bg: #f4f4f1;
+$border-color: #e2e2dd;
+$link-color: #7a5d00;          // amarillo oscuro: el amarillo puro no se lee sobre blanco
+$link-hover-color: #161717;
+
+// 3b. Superficies · modo oscuro
+$body-bg-dark: #242424;
+$body-color-dark: #ffffff;
+$body-secondary-color-dark: #b4b5b5;
+$body-secondary-bg-dark: #2f3030;
+$body-tertiary-bg-dark: #353636;
+$border-color-dark: #3d3e3e;
+$headings-color-dark: #ffffff;
+$link-color-dark: #fad85d;
+$link-hover-color-dark: #ffffff;
+
+// 4. Forma: tarjetas grandes y redondas, controles con radio 12 px, sin bordes de tarjeta
+$border-radius: 0.75rem;
+$border-radius-sm: 0.5rem;
+$border-radius-lg: 1.25rem;
+$border-radius-xl: 1.75rem;
+$card-bg: var(--sigro-tarjeta);
+$card-border-width: 0;
+$card-border-radius: 1.75rem;
+$card-spacer-y: 1.5rem;
+$card-spacer-x: 1.6rem;
+$card-cap-bg: transparent;
+$btn-font-weight: 600;
+$btn-padding-y: 0.55rem;
+$btn-padding-x: 1.1rem;
+$input-padding-y: 0.55rem;
+$table-bg: transparent;
+$table-th-font-weight: 500;
+$table-cell-padding-y: 0.8rem;
+$table-cell-padding-x: 0.9rem;
+$badge-font-weight: 500;
+$badge-padding-y: 0.45em;
+$badge-padding-x: 0.9em;
+$accordion-border-width: 0;
+$accordion-bg: transparent;
+$accordion-button-active-bg: transparent;
+$accordion-button-focus-box-shadow: none;
+
+// 5. Una utilidad más con la API de utilidades de Bootstrap:
 //    «min-w-0» deja que un hijo de un flex se encoja y corte su texto en vez de desbordar.
 @import "bootstrap/scss/functions";
 @import "bootstrap/scss/variables";
@@ -32,41 +84,207 @@ $utilities: map-merge($utilities, (
   "min-width": (property: min-width, class: min-w, values: (0: 0)),
 ));
 
-// 4. Bootstrap completo (componentes, utilidades y modo oscuro con data-bs-theme)
+// 6. Bootstrap completo (componentes, utilidades y modo oscuro con data-bs-theme)
 @import "bootstrap/scss/bootstrap";
 
-// 5. Lo poco propio de SIGRO
-// cifras alineadas en tablas y tarjetas (montos, cantidades)
-.n {
-  font-variant-numeric: tabular-nums;
+// ─────────────────────────────────────────────────────────────────────────────
+// 7. Variables propias por modo
+// ─────────────────────────────────────────────────────────────────────────────
+:root,
+[data-bs-theme="light"] {
+  --sigro-tarjeta: #ffffff;
+  --sigro-menu-bg: #161717;          // el menú es negro también en modo claro: es la marca
+  --sigro-menu-item: #2b2c2c;
+  --sigro-menu-linea: #424343;
+  --sigro-menu-texto: #d2d3d3;
+  --sigro-menu-tenue: #a9aaaa;
+  --sigro-muesca: var(--bs-body-bg);
 }
 
-// menú lateral fijo en pantallas grandes
+[data-bs-theme="dark"] {
+  --sigro-tarjeta: #2b2c2c;
+  --sigro-menu-bg: #161717;
+  --sigro-menu-item: #2b2c2c;
+  --sigro-menu-linea: #424343;
+  --sigro-menu-texto: #d2d3d3;
+  --sigro-menu-tenue: #a9aaaa;
+  --sigro-muesca: var(--bs-body-bg);
+  --bs-primary-text-emphasis: #fad85d;
+}
+
+// en claro, «text-primary» (amarillo) sobre blanco no se lee: se usa el amarillo oscuro
+[data-bs-theme="light"] .text-primary { color: #{$link-color} !important; }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 8. Lo propio de SIGRO
+// ─────────────────────────────────────────────────────────────────────────────
+.n { font-variant-numeric: tabular-nums; }
+
+h1, .h1, h2, .h2, h3, .h3 { letter-spacing: -0.02em; }
+.card { min-width: 0; }
+.card.shadow-sm, .card.shadow { box-shadow: none !important; }
+[data-bs-theme="light"] .card.shadow-sm, [data-bs-theme="light"] .card.shadow { box-shadow: 0 1px 2px rgba(22, 23, 23, 0.05) !important; }
+.table > thead th { color: var(--bs-secondary-color); white-space: nowrap; }
+.btn-outline-secondary { --bs-btn-color: var(--bs-body-color); --bs-btn-border-color: var(--bs-border-color); --bs-btn-hover-bg: var(--bs-tertiary-bg); --bs-btn-hover-color: var(--bs-body-color); --bs-btn-hover-border-color: var(--bs-secondary-color); }
+.btn-outline-primary { --bs-btn-color: var(--bs-body-color); --bs-btn-border-color: var(--bs-border-color); --bs-btn-hover-bg: #{$primary}; --bs-btn-hover-color: #{$dark}; --bs-btn-hover-border-color: #{$primary}; --bs-btn-active-color: #{$dark}; }
+.form-control, .form-select { border-radius: var(--bs-border-radius); }
+:focus-visible { outline: 2px solid #{$primary}; outline-offset: 2px; }
+[data-bs-theme="light"] :focus-visible { outline-color: #b38600; }
+
+// ── Armazón: menú flotante a la izquierda, contenido a la derecha ──
+.sigro-armazon { display: flex; min-height: 100vh; }
+.sigro-columna { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; }
+
+.sigro-barra {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 0.75rem;
+  padding: 1rem 1.5rem 0;
+  .form-select { min-width: 14rem; border-radius: 999px; background-color: var(--sigro-tarjeta); border-color: transparent; font-weight: 500; }
+  .badge { background: var(--sigro-tarjeta) !important; color: var(--bs-body-color) !important; border: 0; }
+  .nav-link { border-radius: 999px; background: var(--sigro-tarjeta); padding: 0.5rem 1rem !important; color: var(--bs-body-color); font-weight: 500; }
+}
+
+@include media-breakpoint-down(lg) {
+  .sigro-barra .sigro-obra { order: 3; width: 100%; }
+}
+
 @include media-breakpoint-up(lg) {
   .sigro-menu {
-    flex: 0 0 250px;
-    width: 250px;
-    min-height: calc(100vh - 56px);
+    flex: 0 0 19rem;
+    width: 19rem;
+    position: sticky; top: 0; height: 100vh;
+    padding: 1rem 0.25rem 1rem 1rem;
+    background: transparent !important;
+    border: 0 !important;
   }
 }
+.sigro-menu .offcanvas-body { height: 100%; }
+.sigro-panel {
+  position: relative;
+  height: 100%; box-sizing: border-box; overflow-y: auto;
+  display: flex; flex-direction: column;
+  border-radius: 1.75rem;
+  background: var(--sigro-menu-bg);
+  color: var(--sigro-menu-texto);
+  padding: 1.25rem 1rem;
+  scrollbar-width: thin;
+  scrollbar-color: #424343 transparent;
+}
+@include media-breakpoint-down(lg) { .sigro-panel { border-radius: 0; } }
 
-.sigro-menu .nav-link {
-  color: var(--bs-body-color);
+.sigro-perfil {
+  display: flex; align-items: center; gap: 0.85rem;
+  padding: 0.9rem 0.6rem; margin-top: 0.75rem;
+  border-top: 1px solid var(--sigro-menu-item); border-bottom: 1px solid var(--sigro-menu-item);
+  .avatar { width: 2.75rem; height: 2.75rem; flex: none; border-radius: 50%; background: $primary; color: $dark; display: flex; align-items: center; justify-content: center; font-weight: 600; }
+  .rol { font-size: 0.7rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--sigro-menu-tenue); }
+  .nombre { color: #fff; font-weight: 500; }
+}
+.sigro-rotulo { font-size: 0.7rem; font-weight: 500; letter-spacing: 0.1em; text-transform: uppercase; color: var(--sigro-menu-tenue); margin: 1.1rem 0.75rem 0.4rem; }
+
+.sigro-menu .accordion { --bs-accordion-color: var(--sigro-menu-texto); --bs-accordion-btn-color: var(--sigro-menu-texto); --bs-accordion-active-color: #fff; }
+.sigro-menu .accordion-item { background: transparent; border: 0; }
+.sigro-menu .accordion-button {
+  gap: 0.85rem; min-height: 3rem; padding: 0 0.85rem; border-radius: 0.9rem !important;
+  background: transparent; color: var(--sigro-menu-texto); font-size: 0.9rem; font-weight: 400; box-shadow: none;
+  &::after {
+    width: 1rem; height: 1rem; background-size: 1rem;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23a9aaaa' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpath d='M6 9l6 6 6-6'/%3e%3c/svg%3e") !important;
+  }
+  &:hover { background: #242424; color: #fff; }
+  &:not(.collapsed) { background: var(--sigro-menu-item); color: #fff; font-weight: 500; svg { color: $primary; } }
+}
+.sigro-menu .accordion-body { padding: 0.35rem 0 0.4rem 2.75rem; }
+
+// subpáginas colgando de una línea curva (árbol)
+.sigro-sub {
+  display: flex; flex-direction: column; gap: 0.25rem;
+  a {
+    position: relative; display: block; padding: 0.55rem 0.85rem; border-radius: 0.65rem;
+    font-size: 0.82rem; color: var(--sigro-menu-tenue);
+    &::before { content: ""; position: absolute; left: -1rem; top: -0.4rem; width: 0.75rem; height: calc(50% + 0.4rem);
+      border-left: 1px solid var(--sigro-menu-linea); border-bottom: 1px solid var(--sigro-menu-linea); border-bottom-left-radius: 0.5rem; }
+    &:not(:last-child)::after { content: ""; position: absolute; left: -1rem; top: 50%; bottom: 0; border-left: 1px solid var(--sigro-menu-linea); }
+    &:hover { color: #fff; }
+    &.active { background: var(--sigro-menu-item); color: #fff; font-weight: 500; }
+  }
+}
+.sigro-item {
+  display: flex; align-items: center; gap: 0.85rem; min-height: 3rem; padding: 0 0.85rem; border-radius: 0.9rem;
+  color: var(--sigro-menu-texto); font-size: 0.9rem;
+  &:hover { background: #242424; color: #fff; }
+  &.active { background: var(--sigro-menu-item); color: #fff; font-weight: 500; svg { color: $primary; } }
+}
+.sigro-llamado {
+  margin-top: 1.25rem; padding: 1.1rem 1rem 1rem; border-radius: 1.25rem; background: #242424; text-align: center;
+  .titulo { color: #fff; font-weight: 600; }
+  p { font-size: 0.8rem; color: var(--sigro-menu-tenue); margin: 0.3rem 0 0.8rem; }
+}
+.sigro-menu :focus-visible { outline-color: $primary; }
+
+// ── Tarjetas «ticket» de cifra: color de fondo, franja de luz, muescas e ilustración ──
+.sigro-ticket {
+  position: relative; overflow: hidden; min-width: 0;
+  border-radius: 1.6rem; padding: 1.3rem 1.3rem 1.2rem;
+  color: $dark;
+  --sigro-ticket: #2ee6c5;
+  background: var(--sigro-ticket);
+  .franja { position: absolute; left: -2.5rem; top: 3.4rem; width: 15rem; height: 1rem; border-radius: 999px; background: rgba(255, 255, 255, 0.3); transform: rotate(-14deg); pointer-events: none; }
+  .ilustracion { position: absolute; right: 0.5rem; top: 0.5rem; pointer-events: none; }
+  .muesca { position: absolute; width: 1.25rem; height: 1.25rem; margin-top: -0.625rem; border-radius: 50%; background: var(--sigro-muesca); }
+  .rotulo { position: relative; padding-right: 4.6rem; font-size: 0.75rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; }
+  .valor { position: relative; font-size: 1.6rem; font-weight: 600; letter-spacing: -0.02em; line-height: 1.1; margin-top: 3.2rem; }
+  .pie { position: relative; font-size: 0.78rem; line-height: 1.45; margin-top: 0.5rem; opacity: 0.85; }
+  button, .btn { color: $dark !important; }
+  .text-body-secondary { color: rgba(22, 23, 23, 0.75) !important; }
+  .text-warning-emphasis { color: #5c3d00 !important; }
+}
+// dentro de una tarjeta, la muesca toma el color de la tarjeta
+.card .sigro-ticket { --sigro-muesca: var(--sigro-tarjeta); }
+// los colores se turnan solos según el orden en su fila
+.sigro-ticket:nth-child(5n + 1) { --sigro-ticket: #2ee6c5; }
+.sigro-ticket:nth-child(5n + 2) { --sigro-ticket: #fad85d; }
+.sigro-ticket:nth-child(5n + 3) { --sigro-ticket: #f2a6ff; }
+.sigro-ticket:nth-child(5n + 4) { --sigro-ticket: #ffb3c1; }
+.sigro-ticket:nth-child(5n + 5) { --sigro-ticket: #ffc58f; }
+
+// ── Chips (estado con texto) y filtros segmentados ──
+.sigro-chip {
+  --tono: var(--bs-secondary-color);
+  --tono-borde: var(--bs-border-color);
+  background: transparent !important; color: var(--tono) !important; border: 1px solid var(--tono-borde);
+  font-weight: 500; white-space: normal; text-align: left;
+}
+[data-bs-theme="dark"] {
+  .sigro-chip.tono-bien { --tono: #2ee6c5; --tono-borde: #2ee6c5; }
+  .sigro-chip.tono-aviso { --tono: #f5c451; --tono-borde: #f5c451; }
+  .sigro-chip.tono-grave { --tono: #ff9a9a; --tono-borde: #ff8080; }
+  .sigro-chip.tono-info { --tono: #c9b8ff; --tono-borde: #a596ff; }
+  .sigro-chip.tono-marca { --tono: #fad85d; --tono-borde: #fad85d; }
+  .sigro-chip.tono-neutro { --tono: #d2d3d3; --tono-borde: #4a4b4b; }
+}
+[data-bs-theme="light"] {
+  .sigro-chip.tono-bien { --tono: #0b7a64; --tono-borde: #12b897; }
+  .sigro-chip.tono-aviso { --tono: #8a5a00; --tono-borde: #f5b82e; }
+  .sigro-chip.tono-grave { --tono: #b42318; --tono-borde: #e5484d; }
+  .sigro-chip.tono-info { --tono: #5a4bd1; --tono-borde: #7c6cf6; }
+  .sigro-chip.tono-marca { --tono: #7a5d00; --tono-borde: #e0b93a; }
+  .sigro-chip.tono-neutro { --tono: #5c5d5d; --tono-borde: #d2d3d3; }
+}
+.sigro-seg {
+  padding: 4px; gap: 2px; border-radius: 999px; background: var(--bs-body-bg); border: 1px solid var(--bs-border-color);
+  > .btn { border: 0 !important; border-radius: 999px !important; font-weight: 500; }
+  > .btn-outline-primary { --bs-btn-color: var(--bs-body-color); --bs-btn-hover-bg: var(--bs-tertiary-bg); --bs-btn-hover-color: var(--bs-body-color); }
 }
 
-.sigro-menu .nav-link.active {
-  background-color: var(--bs-primary-bg-subtle);
-  color: var(--bs-primary-text-emphasis);
-  font-weight: 600;
-}
+// ── Ingresar ──
+.sigro-portada { background: #161717; color: #fff; border-radius: 2rem; .text-primary { color: #fad85d !important; } h1 { color: #fff; } }
 
-// Compatibilidad: algunas pantallas aún escriben estilos en línea con los
-// nombres de color de la versión anterior. Se apuntan a las variables de
-// Bootstrap, así el modo oscuro de Bootstrap también las cubre.
+// Compatibilidad: pantallas que aún escriben estilos en línea con los nombres de
+// color de la versión anterior. Apuntan a las variables de Bootstrap.
 :root,
 [data-bs-theme] {
   --fondo: var(--bs-body-bg);
-  --tarjeta: var(--bs-body-bg);
+  --tarjeta: var(--sigro-tarjeta);
   --tarjeta-suave: var(--bs-tertiary-bg);
   --borde: var(--bs-border-color);
   --linea: var(--bs-border-color-translucent);
@@ -78,7 +296,9 @@ $utilities: map-merge($utilities, (
   --tinta-plano: var(--bs-secondary-color);
   --marca: var(--bs-primary);
   --accion: var(--bs-primary);
-  --accion-tinta: #fff;
+  --accion-tinta: #{$dark};
+  --pildora: var(--bs-primary);
+  --vidrio-sombra-alta: none;
   --marca-tinte: var(--bs-primary-bg-subtle);
   --marca-tinte-tinta: var(--bs-primary-text-emphasis);
   --bien: var(--bs-success-text-emphasis);
@@ -89,19 +309,19 @@ $utilities: map-merge($utilities, (
   --grave-tinte: var(--bs-danger-bg-subtle);
   --info: var(--bs-info-text-emphasis);
   --info-tinte: var(--bs-info-bg-subtle);
-  --fam-materiales: #{$primary};
-  --fam-herramientas: #0369a1;
-  --fam-horas: #4d7c0f;
+  --fam-materiales: #7c6cf6;
+  --fam-herramientas: #12b897;
+  --fam-horas: #f5b82e;
   --radio: var(--bs-border-radius-lg);
   --radio-chico: var(--bs-border-radius);
   --radio-pildora: var(--bs-border-radius-pill);
-  --radio-vidrio: var(--bs-border-radius-lg);
-  --sombra: var(--bs-box-shadow-sm);
-  --vidrio: var(--bs-body-bg);
-  --vidrio-fuerte: var(--bs-body-bg);
+  --radio-vidrio: 1.75rem;
+  --sombra: none;
+  --vidrio: var(--sigro-tarjeta);
+  --vidrio-fuerte: var(--sigro-tarjeta);
   --vidrio-celda: var(--bs-tertiary-bg);
   --vidrio-borde: var(--bs-border-color);
   --campo-fondo: var(--bs-body-bg);
   --campo-borde: var(--bs-border-color);
-  --velo: rgba(0, 0, 0, 0.4);
+  --velo: rgba(0, 0, 0, 0.55);
 }

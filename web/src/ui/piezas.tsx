@@ -7,6 +7,7 @@
 import type { CSSProperties, ReactNode } from 'react'
 import { Alert, Button, ButtonGroup, Card, Form, InputGroup, Nav, Stack } from 'react-bootstrap'
 import { Ayuda, type Clave } from './Glosario'
+import { DibujoObra, type Ilustracion } from './Ilustraciones'
 
 /** Separa un estilo en lo que va a la Card (tamaño en la fila) y lo que va a su contenido (cómo se acomodan los hijos). */
 export function partirEstilo(estilo?: CSSProperties): [CSSProperties, CSSProperties] {
@@ -61,29 +62,47 @@ export function Pildora({ children, tipo = 'primario', deshabilitado, enClic, an
   )
 }
 
-/** Cifra clave de la página: una Card con rótulo, valor grande y pie que la explica. */
-export function Kpi({ rotulo, valor, pie, prefijo, color, ayuda }: {
+/** Tarjeta «ticket» del rediseño: fondo de color (se turnan solos por orden), franja de luz,
+    muescas a los lados e ilustración de obra. El contenido lo pone quien la usa. */
+export function Ticket({ children, ilustracion, etiqueta, estilo }: {
+  children: ReactNode
+  ilustracion?: Ilustracion
+  etiqueta?: string
+  estilo?: CSSProperties
+}) {
+  return (
+    <section className="sigro-ticket" aria-label={etiqueta} style={{ flex: '1 1 200px', ...estilo }}>
+      {[26, 50, 74].map((y) => (
+        <span key={y} aria-hidden="true">
+          <span className="muesca" style={{ left: '-0.625rem', top: `${y}%` }} />
+          <span className="muesca" style={{ right: '-0.625rem', top: `${y}%` }} />
+        </span>
+      ))}
+      <span className="franja" aria-hidden="true" />
+      {ilustracion && <span className="ilustracion"><DibujoObra cual={ilustracion} /></span>}
+      {children}
+    </section>
+  )
+}
+
+/** Cifra clave de la página: un ticket con rótulo, valor grande y pie que la explica. */
+export function Kpi({ rotulo, valor, pie, prefijo, ayuda, ilustracion }: {
   rotulo: string
   /** término del glosario: agrega el «ⓘ» con su definición (Popover) */
   ayuda?: Clave
   valor: ReactNode
   pie?: ReactNode
   prefijo?: string
+  /** sobre un ticket de color el valor va siempre en negro; el signo y el pie dicen si es bueno o malo */
   color?: string
+  ilustracion?: Ilustracion
 }) {
   return (
-    <Card className="shadow-sm h-100 min-w-0"  style={{ flex: '1 1 200px' }}>
-      <Card.Body>
-        <Card.Subtitle className="small text-body-secondary fw-semibold mb-2">
-          {rotulo}{ayuda && <Ayuda clave={ayuda} titulo={rotulo} />}
-        </Card.Subtitle>
-        <div className="d-flex align-items-baseline gap-1">
-          {prefijo && <span className="fw-semibold text-body-secondary">{prefijo}</span>}
-          <span className="n fs-3 fw-bold" style={color ? { color } : undefined}>{valor}</span>
-        </div>
-        {pie && <div className="small text-body-secondary mt-1">{pie}</div>}
-      </Card.Body>
-    </Card>
+    <Ticket ilustracion={ilustracion} etiqueta={rotulo}>
+      <div className="rotulo">{rotulo}{ayuda && <Ayuda clave={ayuda} titulo={rotulo} />}</div>
+      <div className="valor n">{prefijo && <span className="fs-6 fw-semibold me-1">{prefijo}</span>}{valor}</div>
+      {pie && <div className="pie">{pie}</div>}
+    </Ticket>
   )
 }
 
@@ -109,7 +128,7 @@ export function Segmentado<T extends string | number | boolean>({ opciones, valo
     )
   }
   return (
-    <ButtonGroup aria-label={etiqueta} className="flex-wrap align-self-start">
+    <ButtonGroup aria-label={etiqueta} className="sigro-seg flex-wrap align-self-start">
       {opciones.map((o) => (
         <Button
           key={String(o.valor)}
