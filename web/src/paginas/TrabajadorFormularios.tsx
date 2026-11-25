@@ -17,6 +17,7 @@ import { useEnVivo } from '../formularios/enVivo'
 import { Boton, Campo, Chip, Modal } from '../ui/base'
 import { PanelDetalle } from '../ui/PanelDetalle'
 import { CATEGORIAS, categoria, errorBaja, horas, validarTrabajador, type DatosTrabajador } from './mano-de-obra-reglas'
+import { Fecha, hoyEnLima } from '../ui/Fecha'
 
 const dia = (iso: string | null | undefined) => (iso ? `${iso.slice(8, 10)}/${iso.slice(5, 7)}/${iso.slice(0, 4)}` : '—')
 const hoyLima = () => new Date().toLocaleDateString('en-CA', { timeZone: 'America/Lima' })
@@ -114,12 +115,12 @@ export function FormTrabajador({ trabajador, enCerrar, enGuardado }: {
           </Form.Group>
           <div className="flex-grow-1" style={{ minWidth: 160 }}><Campo id="trab-cuad" etiqueta="Cuadrilla" marcador="p. ej. Cuadrilla de concreto" valor={d.cuadrilla} enCambio={poner('cuadrilla')} {...v.campo('cuadrilla')} /></div>
           {!corregir && (
-            <Form.Group controlId="trab-ingreso" style={{ minWidth: 160 }}>
-              <Form.Label className="small fw-semibold">Fecha de ingreso</Form.Label>
-              <Form.Control type="date" value={d.fechaIngreso} onChange={(e) => { poner('fechaIngreso')(e.target.value); v.salir('fechaIngreso') }}
-                isInvalid={!!v.campo('fechaIngreso').error} />
-              <Form.Control.Feedback type="invalid">{v.campo('fechaIngreso').error}</Form.Control.Feedback>
-            </Form.Group>
+            <div style={{ minWidth: 180 }}>
+              <label htmlFor="trab-ingreso" className="form-label small fw-semibold">Fecha de ingreso</label>
+              <Fecha id="trab-ingreso" valor={d.fechaIngreso} max={hoyEnLima()} alCambiar={(x) => { poner('fechaIngreso')(x); v.salir('fechaIngreso') }}
+                invalido={!!v.campo('fechaIngreso').error} valido={v.campo('fechaIngreso').valido} describedBy={v.campo('fechaIngreso').error ? 'trab-ingreso-error' : undefined} />
+              {v.campo('fechaIngreso').error && <div id="trab-ingreso-error" className="invalid-feedback d-block">{v.campo('fechaIngreso').error}</div>}
+            </div>
           )}
         </div>
         {general && <span role="alert" className="small text-danger">{general}</span>}
@@ -146,11 +147,11 @@ export function BajaTrabajador({ trabajador, enCerrar, enGuardado }: { trabajado
     <Modal titulo={`Dar de baja a ${trabajador.nombre}`} enCerrar={enCerrar}>
       <div className="d-flex flex-column gap-3">
         <span className="small">No se borra nada: queda «de baja» desde esa fecha y sus jornadas se conservan. La baja no se cambia después.</span>
-        <Form.Group controlId="baja-fecha">
-          <Form.Label className="small fw-semibold">Último día en la obra</Form.Label>
-          <Form.Control type="date" value={fecha} min={trabajador.fechaIngreso} onChange={(e) => { setFecha(e.target.value); setError(null) }} isInvalid={!!error} />
-          <Form.Control.Feedback type="invalid">{error}</Form.Control.Feedback>
-        </Form.Group>
+        <div>
+          <label htmlFor="baja-fecha" className="form-label small fw-semibold">Último día en la obra</label>
+          <Fecha id="baja-fecha" valor={fecha} min={trabajador.fechaIngreso} alCambiar={(x) => { setFecha(x); setError(null) }} invalido={!!error} describedBy={error ? 'baja-fecha-error' : undefined} />
+          {error && <div id="baja-fecha-error" className="invalid-feedback d-block">{error}</div>}
+        </div>
         <div className="d-flex gap-2 justify-content-end">
           <Boton tipo="secundario" enClic={enCerrar}>Cancelar</Boton>
           <Boton tipo="peligro" enClic={guardar} deshabilitado={ocupado}>{ocupado ? 'Guardando…' : 'Dar de baja'}</Boton>

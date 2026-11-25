@@ -31,6 +31,8 @@ import { AltaProveedor } from './Proveedores'
 import { useAvisos } from '../ui/Avisos'
 import { EsqueletoTabla } from '../ui/Esqueleto'
 import { PanelDetalle } from '../ui/PanelDetalle'
+import { REGLA_COMPROBANTE, SoltarArchivo } from '../ui/SoltarArchivo'
+import { Fecha } from '../ui/Fecha'
 
 /* HU-35: el estado lo deriva el servidor de las recepciones; aquí solo se pinta */
 const ESTADO_COMPRA: Record<EstadoCompra, { texto: string; tono: TonoChip }> = {
@@ -321,20 +323,8 @@ function ComprobantesCompra({ compra, enCerrar, enCambio }: {
         </p>
 
         {compra.estado !== 'anulada' && (
-          <label className="d-flex flex-column gap-2 small fw-semibold text-body-secondary">
-            Adjuntar archivo
-            <input
-              type="file"
-              accept="application/pdf,image/jpeg,image/png,.pdf,.jpg,.jpeg,.png"
-              disabled={subiendo}
-              onChange={(e) => {
-                const file = e.target.files?.[0] ?? null
-                e.target.value = ''
-                void subir(file)
-              }}
-              className="form-control form-control-sm"
-            />
-          </label>
+          <SoltarArchivo regla={REGLA_COMPROBANTE} archivo={null} etiqueta="Adjuntar comprobante" compacto deshabilitado={subiendo}
+            titulo={subiendo ? 'Subiendo…' : 'Suelta aquí la factura o boleta'} alElegir={(a) => void subir(a)} />
         )}
 
         {subiendo && <span className="small text-body-secondary">Subiendo comprobante…</span>}
@@ -622,8 +612,8 @@ export function Compras() {
             </div>
             <div style={celdaForm(1, 150)}>
               <Etiqueta htmlFor="c-fecha">Fecha</Etiqueta>
-              <input className={`form-control${vc.errores.fecha ? ' is-invalid' : ''}`} id="c-fecha" type="date" value={fecha} max={hoyLima()}
-                onChange={(e) => { setFecha(e.target.value); vc.salir('fecha') }} aria-invalid={!!vc.errores.fecha} aria-describedby={vc.errores.fecha ? 'c-fecha-error' : undefined} />
+              <Fecha id="c-fecha" valor={fecha} max={hoyLima()} alCambiar={(x) => { setFecha(x); vc.salir('fecha') }}
+                invalido={!!vc.errores.fecha} describedBy={vc.errores.fecha ? 'c-fecha-error' : undefined} />
               {vc.errores.fecha && <div id="c-fecha-error" className="invalid-feedback d-block" aria-live="polite">{vc.errores.fecha}</div>}
             </div>
           </div>
@@ -723,17 +713,11 @@ export function Compras() {
             ))}
           </div>
 
-          <label className="d-flex flex-column gap-2 small fw-semibold text-body-secondary">
-            Comprobante digital (PDF, JPG o PNG, opcional — máx. 10 MB)
-            <input
-              key={inputArchivoClave}
-              id="c-archivo"
-              type="file"
-              accept="application/pdf,image/jpeg,image/png,.pdf,.jpg,.jpeg,.png"
-              onChange={(e) => setArchivoComprobante(e.target.files?.[0] ?? null)}
-              className="form-control form-control-sm"
-            />
-          </label>
+          <div className="d-flex flex-column gap-2">
+            <span className="small fw-semibold text-body-secondary">Comprobante digital (opcional)</span>
+            <SoltarArchivo key={inputArchivoClave} regla={REGLA_COMPROBANTE} archivo={archivoComprobante} etiqueta="Comprobante digital de la compra"
+              titulo="Suelta aquí la foto o el PDF de la factura" alElegir={setArchivoComprobante} />
+          </div>
 
           {error && <Aviso tono="grave" rol="alert">{error}</Aviso>}
           {exito?.advertencias && exito.advertencias.length > 0 && (

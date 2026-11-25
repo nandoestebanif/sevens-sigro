@@ -594,3 +594,59 @@ h1, .h1, h2, .h2, h3, .h3 { letter-spacing: -0.02em; }
 [data-bs-theme="light"] .sigro-accion.accion-factor { --c: #c2410c; }
 .sigro-accion.accion-archivo { --c: #b9a7ff; }
 [data-bs-theme="light"] .sigro-accion.accion-archivo { --c: #6d4fd8; }
+
+/* ── fase 3 · arrastrar y soltar (ui/SoltarArchivo) ── */
+.sigro-soltar {
+  display: flex; align-items: center; gap: 14px; cursor: pointer;
+  padding: 18px 20px; border-radius: 18px;
+  border: 2px dashed color-mix(in srgb, var(--marca) 55%, transparent);
+  background: color-mix(in srgb, var(--marca) 6%, transparent);
+  transition: background .18s, border-color .18s, transform .18s;
+  .icono {
+    flex: 0 0 auto; width: 52px; height: 58px; border-radius: 12px; display: grid; place-items: center;
+    font-weight: 800; font-size: 14px; background: var(--bs-body-bg); border: 1px solid var(--bs-border-color); color: var(--marca);
+  }
+  .accion { font-weight: 700; font-size: 14px; padding: 8px 16px; border-radius: 999px; border: 1px solid var(--bs-border-color); }
+  &:hover, &:focus-visible { background: color-mix(in srgb, var(--marca) 12%, transparent); border-color: var(--marca); outline: none; }
+  &:focus-visible { box-shadow: 0 0 0 3px color-mix(in srgb, var(--marca) 45%, transparent); }
+  &.encima { background: color-mix(in srgb, var(--marca) 20%, transparent); border-style: solid; transform: scale(1.01); }
+  &.con-archivo { border-style: solid; border-color: color-mix(in srgb, var(--bien) 70%, transparent); .icono { color: var(--bien); } }
+  &.con-error { border-color: var(--bs-danger); }
+  &.compacto { padding: 12px 14px; .icono { width: 40px; height: 44px; font-size: 12px; } }
+  &[aria-disabled] { opacity: .55; cursor: not-allowed; }
+  @media (prefers-reduced-motion: reduce) { transition: none; &.encima { transform: none; } }
+}
+
+/* ── fase 3 · selector de fecha (ui/Fecha) ── */
+.sigro-fecha { min-width: 0; .sigro-fecha-boton { border-top-left-radius: 0; border-bottom-left-radius: 0; } }
+.sigro-calendario { width: 296px; }
+.sigro-dias {
+  display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; text-align: center;
+  .cab { font-size: 12px; font-weight: 700; color: var(--bs-secondary-color); padding: 4px 0; }
+  button {
+    border: 1px solid transparent; background: transparent; color: inherit; border-radius: 10px;
+    height: 36px; font-variant-numeric: tabular-nums; font-weight: 600; transition: background .12s;
+    &:hover:not(:disabled) { background: color-mix(in srgb, var(--marca) 15%, transparent); }
+    &:focus-visible { outline: 2px solid var(--marca); outline-offset: 1px; }
+    &.hoy { border-color: var(--marca); }
+    &.elegido { background: var(--marca); color: #111; }
+    &:disabled { opacity: .3; cursor: not-allowed; }
+  }
+}
+
+/* ── fase 3 · avance del plazo y cifras (Obra, Inicio, Stock) ── */
+.sigro-avance-plazo {
+  height: 10px; border-radius: 999px; background: var(--bs-secondary-bg); overflow: hidden;
+  span { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, color-mix(in srgb, var(--marca) 65%, transparent), var(--marca)); transition: width .6s ease; }
+}
+.sigro-cifras {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px;
+  > div { padding: 10px 14px; border-radius: 14px; background: var(--bs-tertiary-bg); display: flex; flex-direction: column; }
+  strong { font-size: 1.25rem; line-height: 1.2; }
+  span { font-size: 12.5px; color: var(--bs-secondary-color); }
+}
+.sigro-tira-semanas .con-numero { position: relative; }
+.sigro-tira-semanas .con-numero::after {
+  content: attr(data-n); position: absolute; top: 20px; left: 0; font-size: 9.5px; color: var(--bs-secondary-color); font-variant-numeric: tabular-nums;
+}
+.sigro-tira-semanas { row-gap: 16px !important; padding-bottom: 12px; }
