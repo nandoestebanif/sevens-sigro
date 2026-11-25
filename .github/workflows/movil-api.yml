@@ -1,0 +1,23 @@
+# Backend de la app en Spring Boot: pruebas en cada PR que lo toque
+name: movil-api
+on:
+  pull_request:
+    paths: ["movil-api/**", ".github/workflows/movil-api.yml"]
+  push:
+    branches: [main]
+    paths: ["movil-api/**"]
+jobs:
+  pruebas:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: movil-api
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: maven
+      - name: Pruebas (JUnit 5 + MockMvc)
+        run: mvn -B test
