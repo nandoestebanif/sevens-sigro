@@ -162,6 +162,12 @@ kover {
             includes {
                 packages("pe.sevens.sigro.dominio", "pe.sevens.sigro.dominio.casosdeuso", "pe.sevens.sigro.datos.repositorio", "pe.sevens.sigro.datos.remoto")
             }
+            // Los DTO @Serializable solo transportan datos: el código que genera kotlinx.serialization (write$Self,
+            // $$serializer) suma ramas que no son lógica nuestra. Lo que se mide es el repositorio que los usa.
+            excludes {
+                annotatedBy("kotlinx.serialization.Serializable")
+                classes("*\$\$serializer")
+            }
         }
     }
 }
