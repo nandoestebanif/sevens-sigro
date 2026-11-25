@@ -12,7 +12,7 @@ export interface Existencia {
   unidad: string
   tipo: TipoInsumo
   cantidad: number
-  almacenes: { almacen: string; cantidad: number }[]
+  almacenes: { almacen: string; cantidad: number; almacenId?: number | null }[]
   unidadCompra: string | null
   cantidadCompra: number | null
   puntoReposicion: number | null

@@ -27,7 +27,7 @@ export async function existencias(): Promise<{ filas: Existencia[]; almacenes: s
     return {
       insumoId: c.insumoId, codigo: c.insumoCodigo, descripcion: c.descripcion, unidad: c.unidad,
       tipo: tipo.get(c.insumoId) ?? 'sin_dato', cantidad,
-      almacenes: s.porAlmacen.filter((p) => p.insumoId === c.insumoId).map((p) => ({ almacen: p.almacen ?? '', cantidad: num(p.cantidad) })),
+      almacenes: s.porAlmacen.filter((p) => p.insumoId === c.insumoId).map((p) => ({ almacen: p.almacen ?? '', cantidad: num(p.cantidad), almacenId: p.almacenId })),
       unidadCompra: c.unidadCompra ?? null, cantidadCompra: nul(c.cantidadEnUnidadCompra),
       puntoReposicion: nul(c.puntoReposicion), stockSeguridad: nul(c.stockSeguridad),
       costoPromedio: nul(c.costoPromedio), valor: num(c.valor), ultimoMovimiento: c.ultimoMovimientoEn,

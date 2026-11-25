@@ -19,6 +19,7 @@ import { Aviso, Chips, Encabezado, Kpi, Segmentado, TituloSeccion, Vidrio } from
 import { TablaDatos } from '../ui/TablaDatos'
 import { TEXTO_ESTADO, dondeEsta, filtrar, ordenarPorUrgencia, resumir, type EstadoExistencia, type Existencia, type FiltroEstado } from './existencias-reglas'
 import { EnVivo, useActualizacion } from '../ui/Actualizacion'
+import { PanelPrestamos } from './Prestamos'
 
 const cifra = (n: number) => n.toLocaleString('es-PE', { maximumFractionDigits: 2 })
 const soles = (n: number) => n.toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
@@ -131,6 +132,7 @@ export function Existencias({ soloEquipos = false }: { soloEquipos?: boolean }) 
               ]}
             />
           </Vidrio>
+          {soloEquipos && <PanelPrestamos herramientas={base} />}
         </>
       )}
     </div>
