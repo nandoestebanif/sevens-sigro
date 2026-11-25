@@ -55,11 +55,11 @@ export function FilasVirtuales<T>({ items, alto = 49, columnas, fila, margen = 1
 
   return (
     <tbody ref={cuerpo}>
-      {arriba > 0 && <tr aria-hidden="true"><td colSpan={columnas} style={{ height: arriba, padding: 0, border: 0 }} /></tr>}
+      {arriba > 0 && <tr aria-hidden="true"><td colSpan={columnas} className="p-0" style={{ height: arriba, border: 0 }} /></tr>}
       {visibles.map((x) => (
         <Fila key={x.key} item={items[x.index]} indice={x.index} fila={fila as PropsFila['fila']} medirRef={v.measureElement} />
       ))}
-      {abajo > 0 && <tr aria-hidden="true"><td colSpan={columnas} style={{ height: abajo, padding: 0, border: 0 }} /></tr>}
+      {abajo > 0 && <tr aria-hidden="true"><td colSpan={columnas} className="p-0" style={{ height: abajo, border: 0 }} /></tr>}
     </tbody>
   )
 }

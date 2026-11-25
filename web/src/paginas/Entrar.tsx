@@ -11,6 +11,9 @@ import { ErrorApi } from '../api/error'
 import { API_URL, iniciarSesion } from '../api/http'
 import { Alert, Button, Card, Col, Container, Form, InputGroup, Row } from 'react-bootstrap'
 import logo from '../assets/sevens-logo.png'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { esquemaEntrar, type DatosEntrar } from '../formularios/esquemas'
 
 const PROMESAS = [
   'El presupuesto del S10 se importa tal cual: 284 insumos, al céntimo.',
@@ -24,24 +27,26 @@ function servidor(): string {
 
 /** `saliendo`: ya entró; la tarjeta se desvanece antes de la capa «Preparando tu obra» (App.tsx). */
 export function Entrar({ saliendo = false }: { saliendo?: boolean }) {
-  const [usuario, setUsuario] = useState('')
-  const [clave, setClave] = useState('')
+  // React Hook Form guarda los campos y sus errores; Zod (esquemaEntrar) dice qué es válido
+  const { register, handleSubmit, formState: { errors, isSubmitting: enviando } } = useForm<DatosEntrar>({
+    resolver: zodResolver(esquemaEntrar),
+    defaultValues: { usuario: '', clave: '' },
+  })
   const [verClave, setVerClave] = useState(false)
-  const [error, setError] = useState('')
-  const [enviando, setEnviando] = useState(false)
+  const [error, setError] = useState('') // error del servidor (401, sin red), no de validación
   // el servidor está despertando (502, 503 o sin red): se reintenta solo y no se muestra un error falso
   const [conectando, setConectando] = useState(false)
 
-  const entrar = async () => {
-    if (!usuario.trim() || !clave) { setError('Escribe tu usuario y tu contraseña.'); return }
-    setEnviando(true); setConectando(false); setError('')
+  // solo se llama si el esquema pasó (handleSubmit valida antes)
+  const entrar = async ({ usuario, clave }: DatosEntrar) => {
+    setConectando(false); setError('')
     try {
-      await iniciarSesion(usuario.trim(), clave, { alReintentar: () => setConectando(true) })
+      await iniciarSesion(usuario, clave, { alReintentar: () => setConectando(true) })
     } catch (e) {
       // 401: «Usuario o contraseña incorrectos.»; agotados los reintentos: «No pudimos conectar…»
       setError(e instanceof ErrorApi ? e.message : 'No se pudo ingresar. Inténtalo de nuevo.')
     } finally {
-      setEnviando(false); setConectando(false)
+      setConectando(false)
     }
   }
   const textoBoton = conectando ? 'Conectando con el servidor…' : enviando || saliendo ? 'Entrando…' : 'Entrar'
@@ -61,26 +66,29 @@ export function Entrar({ saliendo = false }: { saliendo?: boolean }) {
         <Col sm={10} md={7} lg={5} xl={4}>
           <Card className="shadow">
             <Card.Body className="p-4">
-              <Form onSubmit={(e) => { e.preventDefault(); entrar() }}>
+              <Form noValidate onSubmit={handleSubmit(entrar)}>
                 <h2 className="h4 mb-1">Ingresar</h2>
                 <p className="text-body-secondary small">Con tu usuario de SIGRO. Verás solo las obras donde estás asignado.</p>
 
                 <Form.Group className="mb-3" controlId="usuario">
                   <Form.Label>Usuario</Form.Label>
-                  <Form.Control value={usuario} placeholder="Tu usuario" autoComplete="username" autoFocus
-                    onChange={(e) => setUsuario(e.target.value)} />
+                  {/* {...register('usuario')} conecta el campo: valor, cambios y validación */}
+                  <Form.Control {...register('usuario')} placeholder="Tu usuario" autoComplete="username" autoFocus
+                    isInvalid={!!errors.usuario} />
+                  <Form.Control.Feedback type="invalid">{errors.usuario?.message}</Form.Control.Feedback>
                 </Form.Group>
 
                 <Form.Group className="mb-3" controlId="clave">
                   <Form.Label>Contraseña</Form.Label>
                   {/* InputGroup: el campo y el botón «Ver» quedan pegados */}
-                  <InputGroup>
-                    <Form.Control type={verClave ? 'text' : 'password'} value={clave} placeholder="Tu contraseña"
-                      autoComplete="current-password" onChange={(e) => setClave(e.target.value)} />
+                  <InputGroup hasValidation>
+                    <Form.Control {...register('clave')} type={verClave ? 'text' : 'password'} placeholder="Tu contraseña"
+                      autoComplete="current-password" isInvalid={!!errors.clave} />
                     <Button variant="outline-secondary" onClick={() => setVerClave(!verClave)}
                       aria-label={verClave ? 'Ocultar contraseña' : 'Mostrar contraseña'} aria-pressed={verClave}>
                       {verClave ? 'Ocultar' : 'Ver'}
                     </Button>
+                    <Form.Control.Feedback type="invalid">{errors.clave?.message}</Form.Control.Feedback>
                   </InputGroup>
                 </Form.Group>
 

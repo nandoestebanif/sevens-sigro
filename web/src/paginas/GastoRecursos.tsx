@@ -21,8 +21,11 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ErrorApi } from '../api/cliente'
 import { fechaCorte, gasto, type Cifra, type ClaveCifra, type Gasto } from '../api/costo'
-import { Chip, Vacio } from '../ui/base'
+import { Chip } from '../ui/base'
 import { Aviso, TituloSeccion, Vidrio } from '../ui/piezas'
+import { GraficoFlujo } from '../ui/GraficosPerezosos'
+import { Termino } from '../ui/Glosario'
+import { EsqueletoKpis } from '../ui/Esqueleto'
 
 const soles = (v: number) => v.toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 const horas = (v: number | null) => (v === null ? '—' : v.toLocaleString('es-PE', { maximumFractionDigits: 1 }))
@@ -35,7 +38,7 @@ const FAMILIA: Record<string, string> = { material: 'Materiales', materiales: 'M
 function Tarjeta({ c, g }: { c: Cifra; g: Gasto }) {
   const esHoras = c.clave === 'horas_hombre'
   return (
-    <div className="d-flex flex-column gap-2" style={{ flex: '1 1 200px', minWidth: 0, background: 'var(--vidrio-celda)', borderRadius: 18, padding: '14px 16px' }}>
+    <div className="d-flex flex-column gap-2 min-w-0 bg-body-tertiary rounded-4 py-3 px-3"  style={{ flex: '1 1 200px' }}>
       <span className="small fw-bold text-uppercase text-body-secondary">{ROTULO[c.clave]}</span>
       {esHoras && c.valor === null ? (
         <span className="n fs-4 fw-bold">
@@ -81,21 +84,21 @@ export function GastoRecursos() {
           </div>
           <label className="d-flex align-items-center gap-2 small fw-semibold text-body-secondary">
             Fecha de corte
-            <input type="date" className="form-control px-3" aria-label="Fecha de corte del gasto" value={fecha} max={hoyLima()}
-              onChange={(e) => setFecha(e.target.value)} style={{ height: 40, borderRadius: 12 }} />
+            <input type="date" className="form-control" aria-label="Fecha de corte del gasto" value={fecha} max={hoyLima()}
+              onChange={(e) => setFecha(e.target.value)}  style={{ height: 40 }} />
             {fecha && <button type="button" onClick={() => setFecha('')}
-              className="px-3 fw-semibold" style={{ height: 40, borderRadius: 20, border: '1px solid var(--separador)', background: 'transparent' }}>Ahora</button>}
+              className="btn btn-outline-secondary btn-sm">Ahora</button>}
           </label>
         </div>
 
         {error && <Aviso tono="grave" rol="alert">{error}</Aviso>}
-        {!g && !error && <Vacio titulo="Consultando…" detalle="Leyendo compras, el libro de almacén y las horas registradas." />}
+        {!g && !error && <EsqueletoKpis cuantas={5} />}
         {g && (
           <>
             {g.porConciliar && (
               <Aviso tono="aviso" rol="status">
-                <strong>Cifras por conciliar:</strong> no se presentan como definitivas.
-                <ul style={{ margin: '4px 0 0', paddingLeft: 18 }}>{g.conciliacion.map((t) => <li key={t}>{t}</li>)}</ul>
+                <strong><Termino clave="por conciliar">Cifras por conciliar</Termino>:</strong> no se presentan como definitivas.
+                <ul className="ps-3" style={{ margin: '4px 0 0' }}>{g.conciliacion.map((t) => <li key={t}>{t}</li>)}</ul>
               </Aviso>
             )}
             <div className="d-flex flex-wrap gap-3">
@@ -106,6 +109,9 @@ export function GastoRecursos() {
                 Traslados entre obras y ajustes de conteo: <strong>S/ {soles(g.otrosMovimientos)}</strong>. También mueven el stock:
                 recibido − consumido + estos movimientos = en stock.
               </p>
+            )}
+            {g.porFamilia.length > 0 && (
+              <GraficoFlujo familias={g.porFamilia.map((f) => ({ etiqueta: FAMILIA[f.familia] ?? f.familia, recibido: f.recibido, consumido: f.consumido, enStock: f.enStock }))} />
             )}
             {g.porFamilia.length > 0 && (
               <div className="overflow-x-auto">
@@ -125,7 +131,7 @@ export function GastoRecursos() {
             )}
             <div className="d-flex flex-wrap gap-2 align-items-center">
               <Chip tono="neutro">{g.criterio}</Chip>
-              <Link to="/inventario" style={{ fontSize: 13, fontWeight: 600, color: 'var(--accion)' }}>Ver el inventario valorizado →</Link>
+              <Link to="/inventario" className="small fw-semibold text-primary">Ver el inventario valorizado →</Link>
             </div>
           </>
         )}

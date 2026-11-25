@@ -1,6 +1,7 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import App from './App'
+import { ProveedorAvisos } from './ui/Avisos'
 // Bootstrap 5 personalizado con los colores de SEVEN'S (ver estilos/tema.scss)
 import './estilos/tema.scss'
 
@@ -13,6 +14,9 @@ try {
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <App />
+    {/* avisos flotantes (Toast) disponibles en toda la app */}
+    <ProveedorAvisos>
+      <App />
+    </ProveedorAvisos>
   </StrictMode>,
 )

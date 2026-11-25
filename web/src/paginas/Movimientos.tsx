@@ -17,11 +17,17 @@
    ───────────────────────────────────────────────────────────────────────── */
 import { diaHoraLima } from '../api/horaLima'
 import { usaApiReal } from '../api/http'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { ErrorApi, api } from '../api/cliente'
 import type { Movimiento, StockInsumo } from '../api/tipos'
-import { Chip, Modal, Vacio } from '../ui/base'
-import { Aviso, Chips, Encabezado, Pildora, TituloSeccion, Vidrio } from '../ui/piezas'
+import { Chip, Modal } from '../ui/base'
+import { Chips, Encabezado, Pildora, TituloSeccion, Vidrio } from '../ui/piezas'
+import { useAvisos } from '../ui/Avisos'
+import { Termino } from '../ui/Glosario'
+import { alternarOrden, ordenar, paginar, type Orden } from '../ui/tablas'
+import { Paginador, ThOrden } from '../ui/Tabla'
+import { EsqueletoTabla } from '../ui/Esqueleto'
+import { BotonExportar } from '../ui/BotonExportar'
 
 const n = (v: number) => v.toLocaleString('es-PE')
 const hora = (iso: string) => diaHoraLima(iso) // en hora de Lima, no en la UTC del servidor
@@ -57,7 +63,7 @@ function Reverso({ movimiento, enCerrar, enListo }: {
   return (
     <Modal titulo={`Corregir ${movimiento.id} con un reverso`} enCerrar={enCerrar}>
       <div className="d-flex flex-column gap-3">
-        <div style={{ padding: '12px 14px', background: 'var(--vidrio-celda)', borderRadius: 16 }}>
+        <div className="py-2 px-3 bg-body-tertiary rounded-4">
           <div className="small text-body-secondary">
             <strong>{TIPO[movimiento.tipo].texto}</strong>{' '}
             · {movimiento.descripcion}<br />
@@ -101,7 +107,7 @@ export function Movimientos() {
   const [stock, setStock] = useState<StockInsumo[] | null>(null)
   const [kardex, setKardex] = useState<Movimiento[] | null>(null)
   const [corrigiendo, setCorrigiendo] = useState<Movimiento | null>(null)
-  const [aviso, setAviso] = useState('')
+  const avisar = useAvisos()
 
   const cargar = () => {
     api.consultarStock().then(setStock)
@@ -112,6 +118,18 @@ export function Movimientos() {
   }, [])
 
   const corte = kardex?.[0]?.fechaServidor
+
+  // Orden y paginación del kárdex: se ordena la lista completa y luego se corta la página.
+  type Col = 'id' | 'fecha' | 'tipo' | 'insumo' | 'cantidad' | 'importe'
+  const [orden, setOrden] = useState<Orden<Col> | null>(null)
+  const [pagina, setPagina] = useState(1)
+  const [tam, setTam] = useState(25)
+  const valor = (m: Movimiento, k: Col): string | number => ({
+    id: m.id, fecha: m.fechaServidor, tipo: m.tipo, insumo: m.descripcion, cantidad: m.cantidad,
+    importe: m.importe ?? m.cantidad * m.costoUnitario,
+  })[k]
+  const pag = useMemo(() => paginar(ordenar(kardex ?? [], orden, valor), pagina, tam), [kardex, orden, pagina, tam])
+  const enOrdenar = (k: Col) => { setOrden((o) => alternarOrden(o, k)); setPagina(1) }
 
   return (
     <>
@@ -136,13 +154,13 @@ export function Movimientos() {
           <span className="small text-body-secondary">el saldo se deriva de los movimientos: no es un campo editable</span>
         </div>
         {stock === null ? (
-          <Vacio titulo="Cargando…" detalle="Sumando los movimientos del libro." />
+          <EsqueletoTabla />
         ) : (
           <div className="overflow-x-auto">
             <table className="table table-hover align-middle mb-0">
               <thead>
                 <tr>
-                  <th>Insumo</th><th>Por almacén</th><th className="n">Consolidado</th><th className="n">Punto de reposición</th><th className="n">Último movimiento</th>
+                  <th>Insumo</th><th>Por almacén</th><th className="n">Consolidado</th><th className="n"><Termino clave="punto de reposición">Punto de reposición</Termino></th><th className="n">Último movimiento</th>
                 </tr>
               </thead>
               <tbody>
@@ -173,27 +191,50 @@ export function Movimientos() {
         )}
       </Vidrio>
 
-      {aviso && <Aviso tono="bien" rol="status">{aviso}</Aviso>}
-
       {/* ── HU-45 · kárdex con reverso ── */}
       <Vidrio estilo={{ display: 'flex', flexDirection: 'column', gap: 12 }} etiqueta="Kárdex">
         <div className="d-flex flex-wrap justify-content-between align-items-baseline gap-2">
           <TituloSeccion>Kárdex · los movimientos del libro</TituloSeccion>
-          <span className="small text-body-secondary">aquí no hay editar ni eliminar: solo corregir con reverso</span>
+          <div className="d-flex align-items-center gap-3">
+            <span className="small text-body-secondary">aquí no hay editar ni eliminar: solo corregir con reverso</span>
+            {/* se exporta en el orden elegido y completo (todas las páginas) */}
+            <BotonExportar
+              titulo="Kárdex de la obra"
+              subtitulo="Libro de movimientos · costo congelado al instante de cada movimiento"
+              filas={ordenar(kardex ?? [], orden, valor)}
+              columnas={[
+                { titulo: 'Mov.', valor: (m) => m.id, ancho: 9 },
+                { titulo: 'Fecha (servidor)', valor: (m) => hora(m.fechaServidor), ancho: 16 },
+                { titulo: 'Tipo', valor: (m) => TIPO[m.tipo].texto, ancho: 10 },
+                { titulo: 'Insumo', valor: (m) => m.descripcion, ancho: 40 },
+                { titulo: 'Motivo', valor: (m) => m.motivo, ancho: 30 },
+                { titulo: 'Almacén', valor: (m) => m.almacen },
+                { titulo: 'Cantidad', valor: (m) => m.cantidad, formato: 'decimal' },
+                { titulo: 'Unidad', valor: (m) => m.unidad, ancho: 9 },
+                { titulo: 'Costo congelado (S/)', valor: (m) => m.costoUnitario, formato: 'soles' },
+                { titulo: 'Importe (S/)', valor: (m) => m.importe ?? Number((m.cantidad * m.costoUnitario).toFixed(2)), formato: 'soles' },
+                { titulo: 'Anulado por', valor: (m) => m.anuladoPor },
+              ]}
+            />
+          </div>
         </div>
         {kardex === null ? (
-          <Vacio titulo="Cargando…" detalle="Abriendo el libro de movimientos." />
+          <EsqueletoTabla columnas={6} />
         ) : (
+          <>
           <div className="overflow-x-auto">
             <table className="table table-hover align-middle mb-0" style={{ minWidth: 860 }}>
               <thead>
                 <tr>
-                  <th>Mov.</th><th>Fecha (servidor)</th><th>Tipo</th><th>Insumo y motivo</th>
-                  <th className="n">Cantidad</th><th className="n">Costo cong.</th><th className="n">Importe</th><th aria-label="Acción" />
+                  <ThOrden clave="id" orden={orden} enOrdenar={enOrdenar}>Mov.</ThOrden>
+                  <ThOrden clave="fecha" orden={orden} enOrdenar={enOrdenar}>Fecha (servidor)</ThOrden>
+                  <ThOrden clave="tipo" orden={orden} enOrdenar={enOrdenar}>Tipo</ThOrden>
+                  <ThOrden clave="insumo" orden={orden} enOrdenar={enOrdenar}>Insumo y motivo</ThOrden>
+                  <ThOrden clave="cantidad" orden={orden} enOrdenar={enOrdenar} className="n">Cantidad</ThOrden><th className="n"><Termino clave="costo congelado">Costo cong.</Termino></th><ThOrden clave="importe" orden={orden} enOrdenar={enOrdenar} className="n">Importe</ThOrden><th aria-label="Acción" />
                 </tr>
               </thead>
               <tbody>
-                {kardex.map((m) => {
+                {pag.items.map((m) => {
                   const anulado = m.anuladoPor !== null
                   const importe = m.importe ?? Number((m.cantidad * m.costoUnitario).toFixed(2))
                   return (
@@ -234,6 +275,8 @@ export function Movimientos() {
               </tbody>
             </table>
           </div>
+          <Paginador p={pag} enPagina={setPagina} tam={tam} enTam={(t) => { setTam(t); setPagina(1) }} />
+          </>
         )}
         <span className="small text-body-secondary">Cada salida congela el promedio de ese momento.</span>
       </Vidrio>
@@ -250,7 +293,7 @@ export function Movimientos() {
           movimiento={corrigiendo}
           enCerrar={() => setCorrigiendo(null)}
           enListo={() => {
-            setAviso(`Reverso registrado: ${corrigiendo.id} queda en el libro, anulado, y el saldo ya se recalculó con ambos movimientos.`)
+            avisar(`Reverso registrado: ${corrigiendo.id} queda en el libro, anulado, y el saldo ya se recalculó con ambos movimientos.`)
             setCorrigiendo(null)
             cargar()
           }}

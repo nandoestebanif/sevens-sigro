@@ -262,8 +262,8 @@ fun main(args: Array<String>) {
     val registros = RegistrosFalsos()
     capturar(dir, "03-elegir-obra") { PantallaObras(sesionEjemplo, {}, {}, ObrasViewModel(DispositivoFalso, salidas, registros)) }
 
-    capturar(dir, "04-inicio") { PantallaInicio(sesionEjemplo, obra, {}, InicioViewModel(SesionFalsa(), salidas, CatalogoFalso, sinProgramar)) }
-    capturar(dir, "04-inicio-oscuro", oscuro = true) { PantallaInicio(sesionEjemplo, obra, {}, InicioViewModel(SesionFalsa(), salidas, CatalogoFalso, sinProgramar)) }
+    capturar(dir, "04-inicio") { PantallaInicio(sesionEjemplo, obra, {}, InicioViewModel(SesionFalsa(), salidas, registros, CatalogoFalso, sinProgramar)) }
+    capturar(dir, "04-inicio-oscuro", oscuro = true) { PantallaInicio(sesionEjemplo, obra, {}, InicioViewModel(SesionFalsa(), salidas, registros, CatalogoFalso, sinProgramar)) }
 
     val buscar = SalidaViewModel(CatalogoFalso, salidas, sinProgramar, ObraFalsa)
     capturar(dir, "05-salida-buscar", preparar = { buscar.buscar("cemento") }) { PantallaSalida(1, {}, vm = buscar) }
@@ -291,7 +291,7 @@ fun main(args: Array<String>) {
     val rechazada = kotlinx.coroutines.runBlocking { salidas.salidasDeObra(1).first() }.first { it.estado == EstadoEnvio.RECHAZADO }
     capturar(dir, "24-salida-de-nuevo", alto = 1100) { PantallaSalida(1, {}, base = rechazada, vm = deNuevo) }
     // Modo oscuro (Perfil → Apariencia)
-    capturar(dir, "30-oscuro-inicio", oscuro = true) { PantallaInicio(sesionEjemplo, obra, {}, InicioViewModel(SesionFalsa(), salidas, CatalogoFalso, sinProgramar)) }
+    capturar(dir, "30-oscuro-inicio", oscuro = true) { PantallaInicio(sesionEjemplo, obra, {}, InicioViewModel(SesionFalsa(), salidas, registros, CatalogoFalso, sinProgramar)) }
     val llenaOsc = SalidaViewModel(CatalogoFalso, salidas, sinProgramar, ObraFalsa, StockFalso, TrabajadoresFalsos)
     capturar(dir, "31-oscuro-salida", oscuro = true, preparar = {
         llenaOsc.elegir(insumo("CEMENTO PORTLAND TIPO I")); llenaOsc.cantidad("25"); llenaOsc.motivo("Vaciado de columnas 2.º piso")

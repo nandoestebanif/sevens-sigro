@@ -93,7 +93,7 @@ val moduloDatos = module {
 val moduloPresentacion = module {
     viewModel { RaizViewModel(get()) }
     viewModel { EntrarViewModel(get()) }
-    viewModel { InicioViewModel(get(), get(), get(), get()) }
+    viewModel { InicioViewModel(get(), get(), get(), get(), get()) }
     viewModel { SalidaViewModel(get(), get(), get(), get(), get(), get()) }
     viewModel { PerfilViewModel(get(), get(), get(), get()) }
     viewModel { PendientesViewModel(get(), get()) }

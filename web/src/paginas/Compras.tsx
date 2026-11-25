@@ -24,6 +24,8 @@ import { ListGroup } from 'react-bootstrap'
 import { usaApiReal } from '../api/http'
 import { desvioPct, precios, type PrecioReferencia } from '../api/oficina'
 import { AltaProveedor } from './Proveedores'
+import { useAvisos } from '../ui/Avisos'
+import { EsqueletoTabla } from '../ui/Esqueleto'
 
 /* HU-35: el estado lo deriva el servidor de las recepciones; aquí solo se pinta */
 const ESTADO_COMPRA: Record<EstadoCompra, { texto: string; tono: TonoChip }> = {
@@ -88,7 +90,7 @@ function RecepcionCompra({ compra, enCerrar, enListo }: {
   return (
     <Modal titulo={`Recibir la compra ${compra.numeroComprobante}`} enCerrar={enCerrar}>
       {detalle === null ? (
-        <Vacio titulo="Cargando…" detalle="Consultando pedido, recibido y pendiente." />
+        <EsqueletoTabla />
       ) : (
         <div className="d-flex flex-column gap-3">
           <p className="small text-body-secondary">
@@ -99,7 +101,7 @@ function RecepcionCompra({ compra, enCerrar, enListo }: {
           <div className="overflow-x-auto">
           <table className="table table-sm align-middle mb-0" style={{ minWidth: 380 }}>
             <thead>
-              <tr style={{ borderBottom: '1px solid var(--campo-borde)' }}>
+              <tr className="border-bottom">
                 {['Insumo', 'Pedido', 'Recibido', 'Pendiente', 'Recibir ahora'].map((h, i) => (
                   <th key={h} style={{ padding: '7px 6px', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: 'var(--tinta-2)', letterSpacing: 0.4, textAlign: i ? 'right' : 'left' }}>{h}</th>
                 ))}
@@ -107,17 +109,17 @@ function RecepcionCompra({ compra, enCerrar, enListo }: {
             </thead>
             <tbody>
               {detalle.map((l) => (
-                <tr key={l.insumoId} style={{ borderBottom: '1px solid var(--separador)' }}>
-                  <td className="small fw-semibold" style={{ padding: '9px 6px' }}>{l.descripcion}</td>
-                  <td className="n small text-body-secondary text-end" style={{ padding: '9px 6px' }}>{l.pedido.toLocaleString('es-PE')} {l.unidadCompra}</td>
-                  <td className="n small text-body-secondary text-end" style={{ padding: '9px 6px' }}>{l.recibido.toLocaleString('es-PE')}</td>
-                  <td className="n small fw-bold text-end" style={{ padding: '9px 6px' }}>{l.pendiente.toLocaleString('es-PE')}</td>
+                <tr key={l.insumoId} className="border-bottom">
+                  <td className="small fw-semibold py-2 px-1" >{l.descripcion}</td>
+                  <td className="n small text-body-secondary text-end py-2 px-1" >{l.pedido.toLocaleString('es-PE')} {l.unidadCompra}</td>
+                  <td className="n small text-body-secondary text-end py-2 px-1" >{l.recibido.toLocaleString('es-PE')}</td>
+                  <td className="n small fw-bold text-end py-2 px-1" >{l.pendiente.toLocaleString('es-PE')}</td>
                   <td className="text-end" style={{ padding: '9px 0 9px 10px', width: 90 }}>
                     <input
                       aria-label={`Cantidad a recibir de ${l.descripcion}`}
                       value={cantidades[l.insumoId] ?? ''}
                       onChange={(e) => { setExceso(null); setCantidades((c) => ({ ...c, [l.insumoId]: e.target.value })) }}
-                      className="form-control px-3 text-end"
+                      className="form-control text-end"
                       style={{ width: 86, height: 40 }}
                     />
                   </td>
@@ -129,7 +131,7 @@ function RecepcionCompra({ compra, enCerrar, enListo }: {
           {exceso && (
             <Aviso tono="aviso" rol="alert">
               <strong>Con esta recepción se pasa lo requerido en el S10.</strong>
-              <ul style={{ margin: '6px 0 8px', paddingLeft: 18 }}>
+              <ul className="ps-3" style={{ margin: '6px 0 8px' }}>
                 {exceso.lineas.filter((x) => x.excede).map((x) => (
                   <li key={x.insumoId} className="small">
                     {x.descripcion}: requerido {x.requerido === null ? 'no está en el requerimiento' : `${x.requerido.toLocaleString('es-PE')} ${x.unidad}`},
@@ -145,8 +147,8 @@ function RecepcionCompra({ compra, enCerrar, enListo }: {
                 maxLength={300}
                 onChange={(e) => setMotivo(e.target.value)}
                 placeholder="Ej.: reposición por merma en el vaciado de losa"
-                className="form-control d-block w-100 mt-2"
-                style={{ minHeight: 60, padding: 10, boxSizing: 'border-box' }}
+                className="form-control d-block w-100 mt-2 p-2"
+                 style={{ minHeight: 60, boxSizing: 'border-box' }}
               />
             </Aviso>
           )}
@@ -169,15 +171,6 @@ function RecepcionCompra({ compra, enCerrar, enListo }: {
 
 const soles = (n: number) =>
   n.toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-
-const estiloCampo: React.CSSProperties = {
-  height: 44, border: '1px solid var(--campo-borde)', borderRadius: 14,
-  padding: '0 12px', fontSize: 14, fontFamily: 'inherit', background: 'var(--campo-fondo)',
-  color: 'var(--tinta)', outlineColor: 'var(--accion)',
-  // responsive: el campo ocupa su celda y jamás la empuja (un select con 626
-  // razones sociales largas, sin esto, desborda toda la fila)
-  width: '100%', minWidth: 0, maxWidth: '100%',
-}
 
 /** celda de formulario que envuelve: crece hasta su proporción y baja de fila
     cuando no cabe, en vez de desbordar la pantalla */
@@ -248,7 +241,7 @@ function ComprobantesCompra({ compra, enCerrar, enCambio }: {
 }) {
   const [lista, setLista] = useState<ComprobanteCompra[] | null>(null)
   const [error, setError] = useState('')
-  const [aviso, setAviso] = useState('')
+  const avisar = useAvisos()
   const [subiendo, setSubiendo] = useState(false)
   const [anulandoId, setAnulandoId] = useState<string | null>(null)
   const [motivoAnulacion, setMotivoAnulacion] = useState('')
@@ -262,10 +255,10 @@ function ComprobantesCompra({ compra, enCerrar, enCambio }: {
 
   const subir = async (archivo: File | null) => {
     if (!archivo) return
-    setSubiendo(true); setError(''); setAviso('')
+    setSubiendo(true); setError('')
     try {
       await api.subirComprobante(compra.id, archivo)
-      setAviso(`Comprobante «${archivo.name}» adjuntado correctamente.`)
+      avisar(`Comprobante «${archivo.name}» adjuntado correctamente.`)
       recargar()
       enCambio()
     } catch (e) {
@@ -276,10 +269,10 @@ function ComprobantesCompra({ compra, enCerrar, enCambio }: {
   }
 
   const descargar = async (c: ComprobanteCompra) => {
-    setError(''); setAviso('')
+    setError('')
     try {
       const blob = await api.descargarComprobante(compra.id, c.id)
-      if (!blob) { setAviso('En modo demostración solo se descargan archivos subidos en esta sesión.'); return }
+      if (!blob) { avisar('En modo demostración solo se descargan archivos subidos en esta sesión.', 'info'); return }
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
@@ -292,12 +285,12 @@ function ComprobantesCompra({ compra, enCerrar, enCambio }: {
   }
 
   const anular = async (c: ComprobanteCompra) => {
-    setProcesandoAnulacion(true); setError(''); setAviso('')
+    setProcesandoAnulacion(true); setError('')
     try {
       await api.anularComprobante(compra.id, c.id, motivoAnulacion)
       setAnulandoId(null)
       setMotivoAnulacion('')
-      setAviso(`Comprobante «${c.nombre}» marcado como anulado (se conserva el historial).`)
+      avisar(`Comprobante «${c.nombre}» marcado como anulado (se conserva el historial).`)
       recargar()
       enCambio()
     } catch (e) {
@@ -330,23 +323,22 @@ function ComprobantesCompra({ compra, enCerrar, enCambio }: {
                 e.target.value = ''
                 void subir(file)
               }}
-              className="small"
+              className="form-control form-control-sm"
             />
           </label>
         )}
 
         {subiendo && <span className="small text-body-secondary">Subiendo comprobante…</span>}
         {error && <Aviso tono="grave" rol="alert">{error}</Aviso>}
-        {aviso && <Aviso tono="bien" rol="status">{aviso}</Aviso>}
 
         {lista === null ? (
-          <Vacio titulo="Cargando…" detalle="Consultando comprobantes adjuntos de la compra." />
+          <EsqueletoTabla />
         ) : lista.length === 0 ? (
           <Vacio titulo="Sin comprobantes adjuntos" detalle="Esta compra aún no tiene factura o boleta digital cargada." />
         ) : (
           <ul className="list-unstyled m-0 p-0 d-flex flex-column gap-2">
             {lista.map((c) => (
-              <li key={c.id} className="d-flex flex-column gap-2" style={{ background: 'var(--vidrio-celda)', borderRadius: 14, padding: '10px 12px' }}>
+              <li key={c.id} className="d-flex flex-column gap-2 bg-body-tertiary rounded-4 py-2 px-2" >
                 <div className="d-flex justify-content-between gap-2 align-items-center flex-wrap">
                   <strong className="small">{c.nombre}</strong>
                   <Chip tono={c.estado === 'vigente' ? 'bien' : 'grave'}>{c.estado === 'vigente' ? 'Vigente' : 'Anulado'}</Chip>
@@ -364,7 +356,7 @@ function ComprobantesCompra({ compra, enCerrar, enCambio }: {
                   )}
                 </div>
                 {anulandoId === c.id && (
-                  <div className="d-flex flex-column gap-2 pt-2" style={{ borderTop: '1px solid var(--separador)' }}>
+                  <div className="d-flex flex-column gap-2 pt-2 border-top" >
                     <Campo
                       id={`motivo-comp-${c.id}`}
                       etiqueta="Motivo de anulación (mínimo 5 caracteres)"
@@ -437,7 +429,7 @@ export function Compras() {
   const [anulando, setAnulando] = useState<Compra | null>(null)
   const [archivoComprobante, setArchivoComprobante] = useState<File | null>(null)
   const [inputArchivoClave, setInputArchivoClave] = useState(0)
-  const [avisoRecepcion, setAvisoRecepcion] = useState('')
+  const avisar = useAvisos()
 
   const cargar = () => {
     const alFallar = (e: unknown) => setError(e instanceof ErrorApi ? e.message : 'No se pudieron cargar los datos de compras.')
@@ -490,6 +482,7 @@ export function Compras() {
         }
       }
       setExito(compra)
+      avisar(`Compra ${compra.numeroComprobante} registrada. El stock no se movió: se moverá con la recepción, desde la app.`)
       setLineas([])
       setNumero('')
       setArchivoComprobante(null)
@@ -516,7 +509,7 @@ export function Compras() {
       </Chips>
 
       <div className="d-flex flex-wrap gap-3 align-items-start">
-        <section className="card card-body shadow d-flex flex-column gap-3" aria-label="Registrar la compra" style={{ flex: '999 1 560px', minWidth: 0, borderRadius: 'var(--radio-vidrio)', padding: '20px 22px', boxShadow: 'var(--vidrio-sombra-alta)' }}>
+        <section className="card card-body shadow d-flex flex-column gap-3 min-w-0 rounded-3 py-3 px-4" aria-label="Registrar la compra"  style={{ flex: '999 1 560px', boxShadow: 'var(--vidrio-sombra-alta)' }}>
           <div className="d-flex flex-column gap-1">
             <TituloSeccion>Registrar la compra</TituloSeccion>
             <p className="small text-body-secondary">
@@ -538,7 +531,7 @@ export function Compras() {
             </div>
             <div style={celdaForm(1, 110)}>
               <Etiqueta htmlFor="c-tipo">Tipo</Etiqueta>
-              <select id="c-tipo" value={tipo} onChange={(e) => setTipo(e.target.value as TipoComprobante)} style={estiloCampo}>
+              <select className="form-select" id="c-tipo" value={tipo} onChange={(e) => setTipo(e.target.value as TipoComprobante)}>
                 <option value="factura">Factura</option>
                 <option value="boleta">Boleta</option>
               </select>
@@ -548,15 +541,15 @@ export function Compras() {
             </div>
             <div style={celdaForm(1, 150)}>
               <Etiqueta htmlFor="c-fecha">Fecha</Etiqueta>
-              <input id="c-fecha" type="date" value={fecha} max={hoyLima()} onChange={(e) => setFecha(e.target.value)} style={estiloCampo} />
+              <input className="form-control" id="c-fecha" type="date" value={fecha} max={hoyLima()} onChange={(e) => setFecha(e.target.value)} />
             </div>
           </div>
 
           {/* línea en edición · misma envoltura */}
-          <div className="d-flex flex-wrap gap-3 align-items-end pt-3" style={{ borderTop: '1px solid var(--separador)' }}>
+          <div className="d-flex flex-wrap gap-3 align-items-end pt-3 border-top" >
             <div style={celdaForm(3, 220)}>
               <Etiqueta htmlFor="c-insumo">Insumo (busca entre los 237 del S10)</Etiqueta>
-              <input
+              <input className="form-control"
                 id="c-insumo"
                 list="catalogo-insumos"
                 value={insumoTexto}
@@ -566,7 +559,7 @@ export function Compras() {
                   setInsumoId(insumos.some((i) => i.codigo === cod) ? cod : '')
                 }}
                 placeholder="Escribe código o nombre…"
-                style={estiloCampo}
+
               />
               <datalist id="catalogo-insumos">
                 {insumos.map((i) => (
@@ -603,7 +596,7 @@ export function Compras() {
                 maxLength={300}
                 onChange={(e) => setNota(e.target.value)}
                 placeholder="p. ej. alza del proveedor por escasez"
-                className="form-control d-block w-100 mt-2 px-3"
+                className="form-control d-block w-100 mt-2"
                 style={{ height: 40, boxSizing: 'border-box' }}
               />
             </Aviso>
@@ -613,8 +606,8 @@ export function Compras() {
           {lineas.length > 0 && (
             <div className="d-flex flex-column">
               {lineas.map((l, i) => (
-                <div key={`${l.insumoId}-${i}`} className="d-flex align-items-center gap-2" style={{ padding: '8px 0', borderBottom: '1px solid var(--separador)' }}>
-                  <span className="flex-grow-1 d-flex flex-column" style={{ minWidth: 0 }}>
+                <div key={`${l.insumoId}-${i}`} className="d-flex align-items-center gap-2 py-2 px-0 border-bottom" >
+                  <span className="flex-grow-1 d-flex flex-column min-w-0" >
                     <span className="fw-bold">{l.descripcion}</span>
                     <span className="n small text-body-secondary">{l.cantidad} {l.unidadCompra} × S/ {soles(l.precioUnitario)}
                       {l.fueraDeLoHabitual && <> · <span className="text-warning-emphasis fw-bold">fuera de lo habitual</span>{l.notaPrecio ? ` («${l.notaPrecio}»)` : ''}</>}</span>
@@ -624,8 +617,7 @@ export function Compras() {
                     type="button"
                     aria-label={`Quitar ${l.descripcion}`}
                     onClick={() => setLineas((ls) => ls.filter((_, j) => j !== i))}
-                   
-                    className="text-body-secondary flex-shrink-0" style={{ width: 44, height: 44, borderRadius: 22, border: 0, background: 'transparent' }}
+                    className="btn btn-link text-body-secondary flex-shrink-0"
                   >
                     ✕
                   </button>
@@ -635,9 +627,9 @@ export function Compras() {
           )}
 
           {/* totales: base imponible, impuesto y total (criterio de HU-32) */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 8 }}>
+          <div className="gap-2" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))' }}>
             {[['Base imponible', base], ['IGV 18 %', total - base], ['Total', total]].map(([rot, val]) => (
-              <div key={rot as string} className="d-flex flex-column" style={{ background: 'var(--vidrio-celda)', borderRadius: 14, padding: '8px 10px' }}>
+              <div key={rot as string} className="d-flex flex-column bg-body-tertiary rounded-4 py-2 px-2" >
                 <span className="small text-body-secondary">{rot as string}</span>
                 <span className="n" style={{ fontSize: rot === 'Total' ? 17 : 15, fontWeight: 800 }}>S/ {soles(val as number)}</span>
               </div>
@@ -652,16 +644,11 @@ export function Compras() {
               type="file"
               accept="application/pdf,image/jpeg,image/png,.pdf,.jpg,.jpeg,.png"
               onChange={(e) => setArchivoComprobante(e.target.files?.[0] ?? null)}
-              className="small"
+              className="form-control form-control-sm"
             />
           </label>
 
           {error && <Aviso tono="grave" rol="alert">{error}</Aviso>}
-          {exito && (
-            <Aviso tono="bien" rol="status">
-              Compra {exito.numeroComprobante} registrada. El stock no se movió: se moverá con la recepción, desde la app.
-            </Aviso>
-          )}
           {exito?.advertencias && exito.advertencias.length > 0 && (
             <Aviso tono="aviso" rol="status">{exito.advertencias.join(' · ')}</Aviso>
           )}
@@ -675,12 +662,11 @@ export function Compras() {
         </section>
 
         {/* lo principal es registrar; las compras ya registradas van al costado, compactas, para recibirlas */}
-        <aside className="card card-body shadow-sm d-flex flex-column gap-2" aria-label="Compras registradas" style={{ flex: '1 1 340px', minWidth: 0, borderRadius: 'var(--radio-vidrio)', padding: '18px 18px' }}>
+        <aside className="card card-body shadow-sm d-flex flex-column gap-2 min-w-0 rounded-3 py-3 px-3" aria-label="Compras registradas"  style={{ flex: '1 1 340px' }}>
           <div className="d-flex flex-column gap-1">
             <TituloSeccion>Compras registradas{compras.length ? ` · ${compras.length}` : ''}</TituloSeccion>
             <span className="small text-body-secondary">una compra admite varias recepciones hasta completar lo comprado</span>
           </div>
-          {avisoRecepcion && <Aviso tono="bien" rol="status">{avisoRecepcion}</Aviso>}
           {compras.length === 0 ? (
             <Vacio titulo="Todavía no hay compras" detalle="Las que registres aparecerán aquí con su estado de recepción." />
           ) : (
@@ -712,7 +698,7 @@ export function Compras() {
                         <Pildora tipo="secundario" chica etiqueta={`Recibir la compra ${c.numeroComprobante}`} enClic={() => setRecibiendo(c)}>Recibir</Pildora>
                       )}
                       {c.estado !== 'anulada' && (
-                        <Pildora tipo="secundario" chica etiqueta={`Anular la compra ${c.numeroComprobante}`} enClic={() => { setAvisoRecepcion(''); setAnulando(c) }}>Anular</Pildora>
+                        <Pildora tipo="secundario" chica etiqueta={`Anular la compra ${c.numeroComprobante}`} enClic={() => {; setAnulando(c) }}>Anular</Pildora>
                       )}
                     </span>
                   </div>
@@ -732,7 +718,7 @@ export function Compras() {
           compra={recibiendo}
           enCerrar={() => setRecibiendo(null)}
           enListo={() => {
-            setAvisoRecepcion(`Recepción de ${recibiendo.numeroComprobante} registrada: los ingresos ya están en el kárdex (Ingresos y salidas) y el stock se movió recién ahora.`)
+            avisar(`Recepción de ${recibiendo.numeroComprobante} registrada: los ingresos ya están en el kárdex (Ingresos y salidas) y el stock se movió recién ahora.`)
             setRecibiendo(null)
             cargar()
           }}
@@ -743,7 +729,7 @@ export function Compras() {
           compra={anulando}
           enCerrar={() => setAnulando(null)}
           enListo={(c) => {
-            setAvisoRecepcion(`Compra ${c.numeroComprobante} anulada: sigue en la lista con su motivo y ya no cuenta en «Comprado».`)
+            avisar(`Compra ${c.numeroComprobante} anulada: sigue en la lista con su motivo y ya no cuenta en «Comprado».`)
             setAnulando(null)
             cargar()
           }}
