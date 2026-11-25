@@ -23,6 +23,16 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
@@ -148,21 +158,32 @@ fun CampoVidrio(
     sufijo: String? = null,
     transformacion: VisualTransformation = VisualTransformation.None,
     finalIcono: @Composable (() -> Unit)? = null,
+    /** Validación en vivo: se llama al salir del campo (para mostrar su error sin esperar la pausa). */
+    alSalir: (() -> Unit)? = null,
+    /** Ya revisado y bien: un ✓ al final (si no hay otro ícono) para que se vea que quedó listo. */
+    correcto: Boolean = false,
 ) {
     val pie = error ?: ayuda
+    var tuvoFoco by remember { mutableStateOf(false) }
+    val icono = finalIcono ?: if (correcto && error == null) {
+        { Icon(Icons.Filled.CheckCircle, contentDescription = "Correcto", tint = Paleta.EnviadoTexto) }
+    } else null
     OutlinedTextField(
         value = valor,
         onValueChange = alCambiar,
         label = { Text(etiqueta) },
         placeholder = marcador?.let { { Text(it) } },
-        supportingText = pie?.let { { Text(it) } },
+        supportingText = pie?.let { { Text(it, modifier = if (error != null) Modifier.semantics { liveRegion = LiveRegionMode.Polite } else Modifier) } },
         isError = error != null,
         suffix = sufijo?.let { { Text(it) } },
-        trailingIcon = finalIcono,
+        trailingIcon = icono,
         singleLine = true,
         keyboardOptions = KeyboardOptions(keyboardType = teclado),
         visualTransformation = transformacion,
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth().onFocusChanged { f ->
+            if (tuvoFoco && !f.isFocused) alSalir?.invoke()
+            tuvoFoco = f.isFocused
+        },
     )
 }
 

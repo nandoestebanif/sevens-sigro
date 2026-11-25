@@ -84,6 +84,7 @@ import pe.sevens.sigro.dominio.RepositorioCatalogo
 import pe.sevens.sigro.dominio.RepositorioObra
 import pe.sevens.sigro.dominio.RepositorioSalidas
 import pe.sevens.sigro.dominio.ValidarSalida
+import pe.sevens.sigro.dominio.ValidacionEnVivo
 import pe.sevens.sigro.plataforma.reducirMovimiento
 import pe.sevens.sigro.ui.componentes.BotonNegro
 import pe.sevens.sigro.ui.componentes.CampoVidrio
@@ -127,6 +128,8 @@ data class EstadoSalida(
     val quienRetira: String = "",
     val frente: String = "",
     val errores: Map<String, String> = emptyMap(),
+    /** Campos ya revisados que están bien (✓), de la validación en vivo. */
+    val correctos: Set<String> = emptySet(),
     val guardando: Boolean = false,
     val guardada: Boolean = false,
     /** Lo último usado en esta obra (desde este celular), para no escribirlo cada vez. */
@@ -147,6 +150,19 @@ class SalidaViewModel(
     private val _e = MutableStateFlow(EstadoSalida())
     val estado = _e.asStateFlow()
     private var busquedaJob: Job? = null
+
+    /** Validación mientras se escribe (las mismas reglas que al guardar). */
+    private val enVivo = ValidacionEnVivo(viewModelScope, ::validarTodo, { r -> _e.update { it.copy(errores = r.errores, correctos = r.correctos) } })
+
+    private fun validarTodo(): Map<String, String> {
+        val s = _e.value
+        return ValidarSalida.errores(s.insumo, s.cantidad, s.motivo, s.quienRetira) +
+            (errorQuienRetira(s.quienRetira, s.trabajadoresObra)?.takeIf { s.quienRetira.trim().length >= 3 }?.let { mapOf("quienRetira" to it) } ?: emptyMap()) +
+            (if (almacen.estado.value.falta) mapOf("almacen" to "Elige de qué almacén sale") else emptyMap())
+    }
+
+    /** Salió de un campo: su error (si lo hay) se muestra sin esperar la pausa. */
+    fun salirDe(campo: String) = enVivo.salir(campo)
 
     /** M6: de qué almacén sale (HU-40 lo exige). */
     val almacen = SelectorAlmacen(obra, viewModelScope)
@@ -174,7 +190,7 @@ class SalidaViewModel(
     }
     fun elegirAlmacen(obraId: Int, a: AlmacenObra) {
         almacen.elegir(obraId, a)
-        _e.update { it.copy(errores = it.errores - "almacen") }
+        enVivo.salir("almacen")
         recalcularDisponibles(a.id)
     }
 
@@ -194,21 +210,24 @@ class SalidaViewModel(
         }
     }
 
-    fun elegir(i: Insumo) = _e.update { it.copy(insumo = i, busqueda = "", resultados = emptyList(), errores = it.errores - "insumo") }
-    fun quitarInsumo() { _e.update { it.copy(insumo = null) }; recalcularDisponibles() }
-    fun cantidad(v: String) = _e.update { it.copy(cantidad = v, errores = it.errores - "cantidad") }
-    fun motivo(v: String) = _e.update { it.copy(motivo = v, errores = it.errores - "motivo") }
-    fun quienRetira(v: String) = _e.update { it.copy(quienRetira = v, buscandoQuien = it.trabajadoresObra.isNotEmpty(), errores = it.errores - "quienRetira") }
-    fun elegirQuien(nombre: String) = _e.update { it.copy(quienRetira = nombre, buscandoQuien = false, errores = it.errores - "quienRetira") }
+    fun elegir(i: Insumo) { _e.update { it.copy(insumo = i, busqueda = "", resultados = emptyList()) }; enVivo.salir("insumo") }
+    fun quitarInsumo() { _e.update { it.copy(insumo = null) }; enVivo.revisarYa(); recalcularDisponibles() }
+
+    /** [alInstante]: vino de un atajo o una sugerencia (no se está escribiendo), se revisa sin pausa. */
+    fun cantidad(v: String, alInstante: Boolean = false) { _e.update { it.copy(cantidad = v) }; revisar("cantidad", alInstante) }
+    fun motivo(v: String, alInstante: Boolean = false) { _e.update { it.copy(motivo = v) }; revisar("motivo", alInstante) }
+    fun quienRetira(v: String, alInstante: Boolean = false) {
+        _e.update { it.copy(quienRetira = v, buscandoQuien = !alInstante && it.trabajadoresObra.isNotEmpty()) }
+        revisar("quienRetira", alInstante)
+    }
+    fun elegirQuien(nombre: String) { _e.update { it.copy(quienRetira = nombre, buscandoQuien = false) }; enVivo.salir("quienRetira") }
+    private fun revisar(campo: String, alInstante: Boolean) = if (alInstante) enVivo.salir(campo) else enVivo.cambio(campo)
     fun frente(v: String) = _e.update { it.copy(frente = v) }
 
     fun guardar(obraId: Int) {
         val s = _e.value
         val alm = almacen.estado.value
-        val errores = ValidarSalida.errores(s.insumo, s.cantidad, s.motivo, s.quienRetira) +
-            (errorQuienRetira(s.quienRetira, s.trabajadoresObra)?.takeIf { s.quienRetira.trim().length >= 3 }?.let { mapOf("quienRetira" to it) } ?: emptyMap()) +
-            (if (alm.falta) mapOf("almacen" to "Elige de qué almacén sale") else emptyMap())
-        if (errores.isNotEmpty()) { _e.update { it.copy(errores = errores) }; return }
+        if (enVivo.alGuardar().isNotEmpty()) return
         _e.update { it.copy(guardando = true) }
         viewModelScope.launch {
             // caso de uso: guarda en el celular y pide la sincronización (si hay señal se envía ya; si no, cuando vuelva)
@@ -220,6 +239,7 @@ class SalidaViewModel(
     /** Otra salida: se conserva quién retira y el frente, que suelen repetirse en la misma jornada. */
     fun otra() {
         _e.update { EstadoSalida(quienRetira = it.quienRetira, frente = it.frente, stock = it.stock, trabajadoresObra = it.trabajadoresObra, sugerencias = it.sugerencias) }
+        enVivo.reiniciar()
         recalcularDisponibles()
     }
 }
@@ -300,24 +320,28 @@ fun PantallaSalida(obraId: Int, alVolver: () -> Unit, base: SalidaRegistrada? = 
                     }
 
                     CampoVidrio(
-                        e.cantidad, vm::cantidad, "Cantidad",
+                        e.cantidad, { vm.cantidad(it) }, "Cantidad",
                         teclado = KeyboardType.Decimal, sufijo = e.insumo?.let { Texto.unidad(it.unidad, e.cantidad) } ?: "", error = e.errores["cantidad"],
                         ayuda = stockConocido(e.stock, e.insumo, almacen.elegido?.id),
+                        alSalir = { vm.salirDe("cantidad") }, correcto = "cantidad" in e.correctos,
                     )
                     // Atajos de cantidad: con guantes es más rápido tocar +5 que escribir
-                    AtajosCantidad(e.cantidad, vm::cantidad)
+                    AtajosCantidad(e.cantidad) { vm.cantidad(it, alInstante = true) }
                 }
 
                 Column(
                     Modifier.fillMaxWidth().vidrio(RoundedCornerShape(26.dp)).padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
-                    CampoVidrio(e.motivo, vm::motivo, "Motivo", marcador = "Ej.: vaciado de losa 3.er piso", error = e.errores["motivo"])
-                    Sugerencias(e.sugerencias.motivos, e.motivo, vm::motivo)
                     CampoVidrio(
-                        e.quienRetira, vm::quienRetira, "Retira",
+                        e.motivo, { vm.motivo(it) }, "Motivo", marcador = "Ej.: vaciado de losa 3.er piso", error = e.errores["motivo"],
+                        alSalir = { vm.salirDe("motivo") }, correcto = "motivo" in e.correctos,
+                    )
+                    Sugerencias(e.sugerencias.motivos, e.motivo) { vm.motivo(it, alInstante = true) }
+                    CampoVidrio(
+                        e.quienRetira, { vm.quienRetira(it) }, "Retira",
                         marcador = if (e.trabajadoresObra.isNotEmpty()) "Busca entre los ${e.trabajadoresObra.size} trabajadores de la obra" else "Nombre de quien lo lleva",
-                        error = e.errores["quienRetira"],
+                        error = e.errores["quienRetira"], alSalir = { vm.salirDe("quienRetira") },
                         finalIcono = { Icon(Icons.Filled.Search, contentDescription = null, tint = Paleta.Texto3, modifier = Modifier.padding(end = 10.dp)) },
                     )
                     if (e.trabajadoresObra.isNotEmpty() && e.buscandoQuien) {
@@ -325,7 +349,7 @@ fun PantallaSalida(obraId: Int, alVolver: () -> Unit, base: SalidaRegistrada? = 
                         if (quienes.isEmpty()) Text("Nadie de la obra se llama así.", fontSize = 15.sp, color = Paleta.Texto2)
                         else ListaVidrio(quienes.take(6)) { n -> FilaElegible(n, null) { vm.elegirQuien(n) } }
                     } else if (e.trabajadoresObra.isEmpty()) {
-                        Sugerencias(e.sugerencias.quienes, e.quienRetira, vm::quienRetira)
+                        Sugerencias(e.sugerencias.quienes, e.quienRetira) { vm.quienRetira(it, alInstante = true) }
                     }
                     CampoVidrio(e.frente, vm::frente, "Frente o cuadrilla (opcional)")
                     Sugerencias(e.sugerencias.frentes, e.frente, vm::frente)
