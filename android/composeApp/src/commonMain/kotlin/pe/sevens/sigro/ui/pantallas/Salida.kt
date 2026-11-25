@@ -67,6 +67,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import org.koin.compose.viewmodel.koinViewModel
 import kotlinx.coroutines.flow.first
+import pe.sevens.sigro.dominio.Limites
 import pe.sevens.sigro.dominio.HoraLima
 import pe.sevens.sigro.dominio.RepositorioStock
 import pe.sevens.sigro.dominio.RepositorioTrabajadores
@@ -214,15 +215,15 @@ class SalidaViewModel(
     fun quitarInsumo() { _e.update { it.copy(insumo = null) }; enVivo.revisarYa(); recalcularDisponibles() }
 
     /** [alInstante]: vino de un atajo o una sugerencia (no se está escribiendo), se revisa sin pausa. */
-    fun cantidad(v: String, alInstante: Boolean = false) { _e.update { it.copy(cantidad = v) }; revisar("cantidad", alInstante) }
-    fun motivo(v: String, alInstante: Boolean = false) { _e.update { it.copy(motivo = v) }; revisar("motivo", alInstante) }
+    fun cantidad(v: String, alInstante: Boolean = false) { _e.update { it.copy(cantidad = Limites.cantidad(it.cantidad, v)) }; revisar("cantidad", alInstante) }
+    fun motivo(v: String, alInstante: Boolean = false) { _e.update { it.copy(motivo = Limites.texto(v, Limites.MOTIVO)) }; revisar("motivo", alInstante) }
     fun quienRetira(v: String, alInstante: Boolean = false) {
-        _e.update { it.copy(quienRetira = v, buscandoQuien = !alInstante && it.trabajadoresObra.isNotEmpty()) }
+        _e.update { it.copy(quienRetira = Limites.texto(v, Limites.QUIEN_RETIRA), buscandoQuien = !alInstante && it.trabajadoresObra.isNotEmpty()) }
         revisar("quienRetira", alInstante)
     }
     fun elegirQuien(nombre: String) { _e.update { it.copy(quienRetira = nombre, buscandoQuien = false) }; enVivo.salir("quienRetira") }
     private fun revisar(campo: String, alInstante: Boolean) = if (alInstante) enVivo.salir(campo) else enVivo.cambio(campo)
-    fun frente(v: String) = _e.update { it.copy(frente = v) }
+    fun frente(v: String) = _e.update { it.copy(frente = Limites.texto(v, Limites.FRENTE)) }
 
     fun guardar(obraId: Int) {
         val s = _e.value
@@ -335,6 +336,7 @@ fun PantallaSalida(obraId: Int, alVolver: () -> Unit, base: SalidaRegistrada? = 
                 ) {
                     CampoVidrio(
                         e.motivo, { vm.motivo(it) }, "Motivo", marcador = "Ej.: vaciado de losa 3.er piso", error = e.errores["motivo"],
+                        ayuda = Limites.contador(e.motivo, Limites.MOTIVO),
                         alSalir = { vm.salirDe("motivo") }, correcto = "motivo" in e.correctos,
                     )
                     Sugerencias(e.sugerencias.motivos, e.motivo) { vm.motivo(it, alInstante = true) }

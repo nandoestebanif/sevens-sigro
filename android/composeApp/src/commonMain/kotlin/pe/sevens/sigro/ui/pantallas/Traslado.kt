@@ -26,6 +26,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import org.koin.compose.viewmodel.koinViewModel
+import pe.sevens.sigro.dominio.Limites
 import pe.sevens.sigro.dominio.Insumo
 import pe.sevens.sigro.dominio.LineaAlmacen
 import pe.sevens.sigro.dominio.ObraAsignada
@@ -98,7 +99,7 @@ class TrasladoViewModel(
         buscador.limpiar()
         _e.update { s -> if (s.lineas.any { it.insumo.id == i.id }) s else s.copy(lineas = s.lineas + LineaAlmacen(i, ""), errores = s.errores - "lineas") }
     }
-    fun cantidad(idx: Int, v: String) = _e.update { s -> s.copy(lineas = s.lineas.mapIndexed { i, l -> if (i == idx) l.copy(cantidad = v) else l }, errores = s.errores - "$idx") }
+    fun cantidad(idx: Int, v: String) = _e.update { s -> s.copy(lineas = s.lineas.mapIndexed { i, l -> if (i == idx) l.copy(cantidad = Limites.cantidad(l.cantidad, v)) else l }, errores = s.errores - "$idx") }
     fun quitar(idx: Int) = _e.update { s -> s.copy(lineas = s.lineas.filterIndexed { i, _ -> i != idx }, errores = emptyMap()) }
 
     fun guardar(obraId: Int) {

@@ -512,24 +512,30 @@ enum class OrigenIngreso(val api: String, val legible: String, val exigeDetalle:
 enum class MotivoDiferencia(val legible: String) { MERMA("Merma"), ERROR("Error de registro"), PERDIDA("Pérdida"), OTRO("Otro") }
 
 object ValidarAlmacen {
-    private val decimal = Regex("""^\d{1,12}([.,]\d{1,6})?$""")
+    private val cantidadOk = Regex("""^\d{1,${Limites.ENTEROS_CANTIDAD}}([.,]\d{1,${Limites.DECIMALES_CANTIDAD}})?$""")
+    private val costoOk = Regex("""^\d{1,${Limites.ENTEROS_COSTO}}([.,]\d{1,${Limites.DECIMALES_COSTO}})?$""")
+    private val numero = Regex("""^\d+([.,]\d+)?$""")
 
-    /** Cantidad positiva con hasta 6 decimales; null si está bien. */
-    fun cantidad(texto: String, permitirCero: Boolean = false): String? {
+    /** Cantidad positiva con hasta 4 decimales (NUMERIC(18,4) en el servidor); null si está bien. */
+    fun cantidad(texto: String, permitirCero: Boolean = false): String? =
+        revisar(texto, permitirCero, cantidadOk, Limites.ENTEROS_CANTIDAD, Limites.DECIMALES_CANTIDAD)
+
+    /** HU-41: el costo unitario es obligatorio, sin él no se valoriza (hasta 6 decimales). */
+    fun costo(texto: String): String? = when (val e = revisar(texto, false, costoOk, Limites.ENTEROS_COSTO, Limites.DECIMALES_COSTO)) {
+        null -> null
+        "Escribe la cantidad" -> "Escribe el costo unitario en soles"
+        else -> e // al escribir se dice qué está mal: letras, cero o demasiadas cifras
+    }
+
+    private fun revisar(texto: String, permitirCero: Boolean, formato: Regex, enteros: Int, decimales: Int): String? {
         val c = texto.trim()
         return when {
             c.isEmpty() -> "Escribe la cantidad"
-            !decimal.matches(c) -> "Solo números, con hasta 6 decimales"
+            numero.matches(c) && !formato.matches(c) -> Limites.excesoNumero(c, enteros, decimales)
+            !formato.matches(c) -> "Solo números, con hasta $decimales decimales"
             !permitirCero && (ValidarSalida.normalizarCantidad(c).toDoubleOrNull() ?: 0.0) <= 0.0 -> "Debe ser mayor que cero"
             else -> null
         }
-    }
-
-    /** HU-41: el costo unitario es obligatorio, sin él no se valoriza. */
-    fun costo(texto: String): String? = when (val e = cantidad(texto)) {
-        null -> null
-        "Escribe la cantidad" -> "Escribe el costo unitario en soles"
-        else -> e // al escribir se dice qué está mal: letras o cero
     }
 }
 

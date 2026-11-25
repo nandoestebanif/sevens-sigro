@@ -11,7 +11,7 @@
    ───────────────────────────────────────────────────────────────────────── */
 import { BuscarOpcion } from '../ui/BuscarOpcion'
 import { useEnVivo } from '../formularios/enVivo'
-import { aNumero, cantidadPositiva, importeNoNegativo, minimo } from '../formularios/reglas'
+import { aNumero, cantidadPositiva, importeNoNegativo, LIMITE_CANTIDAD, MAX_MOTIVO, minimo } from '../formularios/reglas'
 import { fechaHoraLima } from '../api/horaLima'
 import { useEffect, useMemo, useState } from 'react'
 import { ErrorApi, api as cliente } from '../api/cliente'
@@ -54,8 +54,8 @@ function AjustarLinea({ l, enCerrar, enListo }: { l: LineaRequerimiento; enCerra
       <div className="d-flex flex-column gap-3">
         <p><strong>{l.descripcion}</strong> · planificado hoy: {n(l.cantidad)} {l.unidad}</p>
         <div className="d-flex flex-wrap gap-3 align-items-end">
-          <div style={{ flex: '1 1 150px' }}><Campo id="r-cant" etiqueta={`Nueva cantidad (${l.unidad})`} valor={valor} enCambio={(x) => { setValor(x); v.cambio('cantidad') }} modoTeclado="decimal" {...v.campo('cantidad')} /></div>
-          <div style={{ flex: '2 1 240px' }}><Campo id="r-mot" etiqueta="Motivo" valor={motivo} enCambio={(x) => { setMotivo(x); v.cambio('motivo') }} marcador="p. ej. metrado corregido por el residente" {...v.campo('motivo')} /></div>
+          <div style={{ flex: '1 1 150px' }}><Campo id="r-cant" etiqueta={`Nueva cantidad (${l.unidad})`} valor={valor} enCambio={(x) => { setValor(x); v.cambio('cantidad') }} modoTeclado="decimal" limite={LIMITE_CANTIDAD} {...v.campo('cantidad')} /></div>
+          <div style={{ flex: '2 1 240px' }}><Campo id="r-mot" etiqueta="Motivo" valor={motivo} enCambio={(x) => { setMotivo(x); v.cambio('motivo') }} marcador="p. ej. metrado corregido por el residente" maxLargo={MAX_MOTIVO} {...v.campo('motivo')} /></div>
         </div>
         {nueva > 0 && nueva !== l.cantidad && (
           <p className="small text-body-secondary">
@@ -132,10 +132,10 @@ function AgregarInsumo({ yaPlanificados, enCerrar, enListo }: { yaPlanificados: 
           enCambio={(c) => { setTexto(c); v.salir('insumo') }} marcador="Escribe código o nombre…"
           error={v.errores.insumo} ayuda={`${disponibles.length.toLocaleString('es-PE')} insumos del catálogo que aún no están planificados`} />
         <div className="d-flex flex-wrap gap-3 align-items-end">
-          <div style={{ flex: '1 1 140px' }}><Campo id="r-acant" etiqueta="Cantidad (unidad del S10)" valor={cantidad} enCambio={(x) => { setCantidad(x); v.cambio('cantidad') }} marcador="0" modoTeclado="decimal" {...v.campo('cantidad')} /></div>
-          <div style={{ flex: '1 1 140px' }}><Campo id="r-apre" etiqueta="Precio unitario (S/)" valor={precio} enCambio={(x) => { setPrecio(x); v.cambio('precio') }} marcador="0.00" modoTeclado="decimal" {...v.campo('precio')} /></div>
+          <div style={{ flex: '1 1 140px' }}><Campo id="r-acant" etiqueta="Cantidad (unidad del S10)" valor={cantidad} enCambio={(x) => { setCantidad(x); v.cambio('cantidad') }} marcador="0" modoTeclado="decimal" limite={LIMITE_CANTIDAD} {...v.campo('cantidad')} /></div>
+          <div style={{ flex: '1 1 140px' }}><Campo id="r-apre" etiqueta="Precio unitario (S/)" valor={precio} enCambio={(x) => { setPrecio(x); v.cambio('precio') }} marcador="0.00" modoTeclado="decimal" limite={LIMITE_CANTIDAD} {...v.campo('precio')} /></div>
         </div>
-        <Campo id="r-amot" etiqueta="Motivo" valor={motivo} enCambio={(x) => { setMotivo(x); v.cambio('motivo') }} marcador="p. ej. partida adicional aprobada por el residente" {...v.campo('motivo')} />
+        <Campo id="r-amot" etiqueta="Motivo" valor={motivo} enCambio={(x) => { setMotivo(x); v.cambio('motivo') }} marcador="p. ej. partida adicional aprobada por el residente" maxLargo={MAX_MOTIVO} {...v.campo('motivo')} />
         {elegido && cant > 0 && pre >= 0 && (
           <p className="small text-body-secondary">
             Costo planificado: <strong>S/ {(cant * pre).toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong>

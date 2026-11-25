@@ -16,7 +16,7 @@
    ───────────────────────────────────────────────────────────────────────── */
 import { useEffect, useMemo, useState } from 'react'
 import { useEnVivo } from '../formularios/enVivo'
-import { aNumero, cantidadPositiva, minimo } from '../formularios/reglas'
+import { aNumero, cantidadPositiva, filtrarNumero, LIMITE_CANTIDAD, MAX_MOTIVO, minimo } from '../formularios/reglas'
 import { useSearchParams } from 'react-router-dom'
 import { ErrorApi, api } from '../api/cliente'
 import type { Compra, ComprobanteCompra, EstadoCompra, InsumoCatalogo, LineaCompra, LineaRecepcion, Proveedor, TipoComprobante, VerificacionRecepcion } from '../api/tipos'
@@ -125,7 +125,8 @@ function RecepcionCompra({ compra, enCerrar, enListo }: {
                     <input
                       aria-label={`Cantidad a recibir de ${l.descripcion}`}
                       value={cantidades[l.insumoId] ?? ''}
-                      onChange={(e) => { setExceso(null); setCantidades((c) => ({ ...c, [l.insumoId]: e.target.value })) }}
+                      inputMode="decimal"
+                      onChange={(e) => { setExceso(null); setCantidades((c) => ({ ...c, [l.insumoId]: filtrarNumero(c[l.insumoId] ?? '', e.target.value) })) }}
                       className="form-control text-end"
                       style={{ width: 86, height: 40 }}
                     />
@@ -234,7 +235,7 @@ function AnularCompra({ compra, enCerrar, enListo }: { compra: Compra; enCerrar:
           </Aviso>
         )}
         <Campo id="motivo-anular-compra" etiqueta="Motivo (mínimo 5 caracteres)" valor={motivo} enCambio={(x) => { setMotivo(x); v.cambio('motivo') }}
-          marcador="p. ej. Compra de prueba registrada por error" {...v.campo('motivo')} />
+          marcador="p. ej. Compra de prueba registrada por error" maxLargo={MAX_MOTIVO} {...v.campo('motivo')} />
         {error && <div role="alert" className="small text-danger">{error}</div>}
         <div className="d-flex gap-2 justify-content-end">
           <Pildora tipo="secundario" enClic={enCerrar} deshabilitado={guardando}>Cancelar</Pildora>
@@ -645,10 +646,10 @@ export function Compras() {
               </datalist>
             </div>
             <div style={celdaForm(1, 120)}>
-              <Campo id="c-cant" etiqueta={`Cantidad${insumoId ? ` (${insumos.find((i) => i.id === insumoId)?.unidadCompra})` : ''}`} valor={cantidad} enCambio={(x) => { setCantidad(x); vl.cambio('cantidad') }} marcador="0" modoTeclado="decimal" {...vl.campo('cantidad')} />
+              <Campo id="c-cant" etiqueta={`Cantidad${insumoId ? ` (${insumos.find((i) => i.id === insumoId)?.unidadCompra})` : ''}`} valor={cantidad} enCambio={(x) => { setCantidad(x); vl.cambio('cantidad') }} marcador="0" modoTeclado="decimal" limite={LIMITE_CANTIDAD} {...vl.campo('cantidad')} />
             </div>
             <div style={celdaForm(1, 150)}>
-              <Campo id="c-precio" etiqueta="Precio unit. S/ (con IGV)" valor={precio} enCambio={(x) => { setPrecio(x); vl.cambio('precio') }} marcador="0.00" modoTeclado="decimal" {...vl.campo('precio')} />
+              <Campo id="c-precio" etiqueta="Precio unit. S/ (con IGV)" valor={precio} enCambio={(x) => { setPrecio(x); vl.cambio('precio') }} marcador="0.00" modoTeclado="decimal" limite={LIMITE_CANTIDAD} {...vl.campo('precio')} />
             </div>
             <div className="flex-shrink-0" style={ALTURA_ETIQUETA}>
               <Pildora tipo="secundario" enClic={agregarLinea}>Agregar</Pildora>
