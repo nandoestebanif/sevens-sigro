@@ -50,6 +50,7 @@ import pe.sevens.sigro.ui.componentes.Separador
 import pe.sevens.sigro.ui.componentes.TarjetaVidrio
 import pe.sevens.sigro.ui.componentes.planoRegistros
 import pe.sevens.sigro.ui.tema.Paleta
+import pe.sevens.sigro.dominio.casosdeuso.SincronizarCola
 
 /*
  * 2.5 · Mis registros (lienzo Registros.dc.html, HU-37 / HU-38): todo lo registrado en esta obra desde
@@ -128,6 +129,7 @@ fun unirRegistros(salidas: List<SalidaRegistrada>, registros: List<RegistroLocal
     }).sortedByDescending { it.horaMs }
 
 class PendientesViewModel(private val salidas: RepositorioSalidas, private val registros: RepositorioRegistros) : ViewModel() {
+    private val sincronizarCola = SincronizarCola(salidas, registros)
     private val _enviando = MutableStateFlow(false)
     val enviando = _enviando.asStateFlow()
 
@@ -137,8 +139,7 @@ class PendientesViewModel(private val salidas: RepositorioSalidas, private val r
     fun enviarAhora() {
         _enviando.value = true
         viewModelScope.launch {
-            runCatching { salidas.sincronizar(manual = true) }
-            runCatching { registros.sincronizar(manual = true) }
+            sincronizarCola(manual = true) // caso de uso: las dos colas, una falla no frena a la otra
             _enviando.value = false
         }
     }

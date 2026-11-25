@@ -127,6 +127,7 @@ import pe.sevens.sigro.ui.componentes.planoInicio
 import pe.sevens.sigro.ui.componentes.vidrio
 import pe.sevens.sigro.ui.tema.Apariencia
 import pe.sevens.sigro.ui.tema.Paleta
+import pe.sevens.sigro.dominio.casosdeuso.SincronizarCola
 
 data class EstadoInicio(
     val insumosEnCelular: Int = 0,
@@ -173,6 +174,7 @@ class InicioViewModel(
     private val catalogo: RepositorioCatalogo,
     private val programador: ProgramadorSincronizacion,
 ) : ViewModel() {
+    private val sincronizarCola = SincronizarCola(salidas, registros)
     private val _estado = MutableStateFlow(EstadoInicio())
     val estado = _estado.asStateFlow()
     /** Por enviar de las dos colas (salidas y la general), para el botón «Enviar ahora» y la insignia. */
@@ -205,10 +207,8 @@ class InicioViewModel(
     fun enviarAhora() {
         _estado.update { it.copy(enviando = true) }
         viewModelScope.launch {
-            // Las dos colas, como en «Mis registros». Si una falla (sin señal), la otra igual se intenta.
-            val a = runCatching { salidas.sincronizar(manual = true) }.getOrElse { ResultadoSincronizacion(0, 0, 0) }
-            val b = runCatching { registros.sincronizar(manual = true) }.getOrElse { ResultadoSincronizacion(0, 0, 0) }
-            val r = ResultadoSincronizacion(a.enviados + b.enviados, a.rechazados + b.rechazados, a.siguenPendientes + b.siguenPendientes)
+            // Caso de uso: las dos colas, como en «Mis registros». Si una falla (sin señal), la otra igual se intenta.
+            val r = sincronizarCola(manual = true)
             val texto = when {
                 r.enviados == 0 && r.rechazados == 0 && r.siguenPendientes == 0 -> "Todo está enviado"
                 r.siguenPendientes > 0 && r.enviados == 0 -> "Sin señal: ${registros(r.siguenPendientes)} ${if (r.siguenPendientes == 1) "espera" else "esperan"} y se ${if (r.siguenPendientes == 1) "enviará" else "enviarán"} solos"
