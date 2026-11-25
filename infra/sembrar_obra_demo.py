@@ -25,8 +25,13 @@ cli = httpx.Client(timeout=120)
 def u(): return str(uuid.uuid4())
 
 
+PIN = {"token": None}  # pase del panel de administración (migración 0024); vive solo en memoria
+
+
 def llamar(tok, metodo, ruta, cuerpo=None, ok=(200, 201), callar=()):
-    r = cli.request(metodo, URL + ruta, json=cuerpo, headers={"Authorization": f"Bearer {tok}"} if tok else {})
+    cab = {"Authorization": f"Bearer {tok}"} if tok else {}
+    if tok and PIN["token"]: cab["X-SIGRO-PIN"] = PIN["token"]
+    r = cli.request(metodo, URL + ruta, json=cuerpo, headers=cab)
     if r.status_code not in ok:
         cod = (r.json().get("codigo") if r.headers.get("content-type", "").startswith("application/json") else "") or ""
         if cod not in callar:
@@ -46,6 +51,11 @@ def clave_nueva(): return secrets.token_urlsafe(9) + "Aa9"
 
 print(f"Servidor: {URL}")
 adm = entrar(input("Usuario administrador: ").strip(), getpass.getpass("Clave: "))
+# Si el administrador ya tiene PIN, crear usuarios y autorizar celulares lo piden (no se guarda ni se imprime).
+if (llamar(adm, "GET", "/auth/pin", callar=("no_encontrado",)) or {}).get("configurado"):
+    v = llamar(adm, "POST", "/auth/pin/verificar", {"pin": getpass.getpass("PIN del panel de administración: ")})
+    if not v: sys.exit("PIN incorrecto: no se tocó nada.")
+    PIN["token"] = v.get("pin_token")
 
 # 1 · obra y almacenes
 obra = next((o for o in (llamar(adm, "GET", "/obras") or []) if o.get("nombre") == OBRA), None)
@@ -162,8 +172,11 @@ for t in trab.values():
     for d in (1, 2):
         llamar(S, "POST", f"/obras/{P}/jornadas", {"trabajador_id": t["id"], "fecha": str(hoy - timedelta(days=d)), "estado": "presente",
                                                    "horas_normales": "8", "horas_extra": "2" if d == 1 else "0", "uuid_cliente": u()},
-               callar=("jornada_duplicada", "ya_registrada"))
+               callar=("jornada_duplicada", "ya_registrada", "uq_jornada_original"))
 print(f"9. {len(trab)} trabajadores de prueba con su asistencia")
+# 10 · prueba de permisos: el almacenero ya no registra personal (debe salir 403 y quedar en la bitácora)
+r = cli.post(URL + f"/obras/{P}/trabajadores", json={}, headers={"Authorization": f"Bearer {A}"})
+print(f"10. Permisos: el almacenero intenta registrar personal → {r.status_code} ({'rechazado, bien' if r.status_code == 403 else 'REVISAR'})")
 
 # 10 · se revoca el celular del script: el de la demo se autoriza en la app
 if disp: llamar(adm, "POST", f"/obras/{P}/dispositivos/{disp['id']}/revocar", {"motivo": "Celular del script de demostración"})

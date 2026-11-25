@@ -20,6 +20,7 @@ import type {
 } from './tipos'
 // importes propios de almacén y semana: en su línea, para no chocar con la lista de arriba
 import type { Movimiento, ReporteSemana, StockInsumo, VerificacionRecepcion } from './tipos'
+import { olvidarPin, tokenPin } from './pin'
 
 export const API_URL: string = (import.meta.env.VITE_API_URL ?? '').replace(/\/$/, '')
 export const usaApiReal = API_URL !== ''
@@ -84,6 +85,7 @@ export async function pedir<T>(metodo: 'GET' | 'POST', ruta: string, cuerpo?: ob
       headers: {
         ...(cuerpo ? { 'Content-Type': 'application/json' } : {}),
         ...(s ? { Authorization: `Bearer ${s.token}` } : {}),
+        ...(tokenPin() ? { 'X-SIGRO-PIN': tokenPin()! } : {}),   // panel de administración (0024)
       },
       body: cuerpo ? JSON.stringify(convertir(cuerpo, aSnake)) : undefined,
     })
@@ -96,7 +98,11 @@ export async function pedir<T>(metodo: 'GET' | 'POST', ruta: string, cuerpo?: ob
     throw new ErrorApi('sesion_vencida', 'Tu sesión venció. Vuelve a ingresar.')
   }
   const texto = await r.text()
-  if (!r.ok) throw construirErrorHttp(r, texto)
+  if (!r.ok) {
+    const e = construirErrorHttp(r, texto)
+    if (e.codigo === 'pin_requerido') olvidarPin()   // venció: el panel vuelve a pedirlo
+    throw e
+  }
   try {
     return convertir(texto ? JSON.parse(texto) : null, aCamel) as T
   } catch {
