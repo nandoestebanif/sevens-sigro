@@ -32,6 +32,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 import org.koin.compose.viewmodel.koinViewModel
+import pe.sevens.sigro.dominio.intentosAgotados
 import pe.sevens.sigro.dominio.EstadoEnvio
 import pe.sevens.sigro.dominio.HoraLima
 import pe.sevens.sigro.dominio.RegistroLocal
@@ -49,6 +50,7 @@ import pe.sevens.sigro.ui.componentes.Separador
 import pe.sevens.sigro.ui.componentes.TarjetaVidrio
 import pe.sevens.sigro.ui.componentes.planoRegistros
 import pe.sevens.sigro.ui.tema.Paleta
+import pe.sevens.sigro.dominio.casosdeuso.SincronizarCola
 
 /*
  * 2.5 · Mis registros (lienzo Registros.dc.html, HU-37 / HU-38): todo lo registrado en esta obra desde
@@ -127,6 +129,7 @@ fun unirRegistros(salidas: List<SalidaRegistrada>, registros: List<RegistroLocal
     }).sortedByDescending { it.horaMs }
 
 class PendientesViewModel(private val salidas: RepositorioSalidas, private val registros: RepositorioRegistros) : ViewModel() {
+    private val sincronizarCola = SincronizarCola(salidas, registros)
     private val _enviando = MutableStateFlow(false)
     val enviando = _enviando.asStateFlow()
 
@@ -136,8 +139,7 @@ class PendientesViewModel(private val salidas: RepositorioSalidas, private val r
     fun enviarAhora() {
         _enviando.value = true
         viewModelScope.launch {
-            runCatching { salidas.sincronizar() }
-            runCatching { registros.sincronizar() }
+            sincronizarCola(manual = true) // caso de uso: las dos colas, una falla no frena a la otra
             _enviando.value = false
         }
     }
@@ -220,7 +222,10 @@ private fun Fila(f: FilaRegistro, abierto: Boolean, alCorregir: (SalidaRegistrad
         if (f.estado == EstadoEnvio.RECHAZADO && f.salida != null) {
             BotonNegro("Corregir y registrar de nuevo", { alCorregir(f.salida) }, contorno = true)
         }
-        if (f.estado == EstadoEnvio.PENDIENTE && f.nota != null) {
+        // Reintento acotado: agotados los intentos automáticos se dice claro y se ofrece el envío manual.
+        if (intentosAgotados(f.estado, f.intentos)) {
+            AvisoRojo("No se pudo enviar tras ${f.intentos} intentos. Sigue guardado: toca «Enviar ahora» para volver a intentarlo.")
+        } else if (f.estado == EstadoEnvio.PENDIENTE && f.nota != null) {
             Text(
                 f.nota,
                 fontSize = 13.sp, lineHeight = 18.sp, color = Paleta.PendienteTexto,

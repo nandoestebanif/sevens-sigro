@@ -28,13 +28,26 @@ interface RepositorioCatalogo {
 
 data class ResultadoSincronizacion(val enviados: Int, val rechazados: Int, val siguenPendientes: Int)
 
+/**
+ * Reintento acotado: el envío automático (WorkManager, al abrir la app) prueba cada registro hasta
+ * [MAX_INTENTOS_AUTOMATICOS] veces, con espera creciente entre lotes. Agotados, el registro NO se pierde:
+ * queda «por enviar» con la marca «no se pudo enviar» y solo se vuelve a intentar cuando el almacenero
+ * toca «Enviar ahora» (envío manual). Solo se reintenta lo idempotente: cada registro lleva su uuid_cliente.
+ */
+const val MAX_INTENTOS_AUTOMATICOS = 8
+
+/** ¿Ya se agotaron los intentos automáticos de un registro que sigue pendiente? */
+fun intentosAgotados(estado: EstadoEnvio, intentos: Int): Boolean =
+    estado == EstadoEnvio.PENDIENTE && intentos >= MAX_INTENTOS_AUTOMATICOS
+
 interface RepositorioSalidas {
     fun salidasDeObra(obraId: Int): Flow<List<SalidaRegistrada>>
     val pendientes: Flow<Int>
     /** HU-37: guarda en el celular con uuid y hora del dispositivo. No necesita señal. */
     suspend fun registrar(nueva: NuevaSalida): SalidaRegistrada
     /** HU-38: envía la cola. Seguro de repetir: el uuid hace idempotente cada envío. */
-    suspend fun sincronizar(): ResultadoSincronizacion
+    /** `manual` = el usuario tocó «Enviar ahora»: incluye también los que agotaron sus intentos automáticos. */
+    suspend fun sincronizar(manual: Boolean = false): ResultadoSincronizacion
 }
 
 interface RepositorioDispositivo {

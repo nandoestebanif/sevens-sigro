@@ -54,7 +54,7 @@ private class ColaEspia(private val ya: Set<Int> = emptySet()) : RepositorioRegi
     }
     override suspend fun yaMarcados(obraId: Int, fecha: String) = ya + asistencias.flatten().map { it.trabajador.id }
     override suspend fun registrarAlmacen(obraId: Int, registro: RegistroAlmacen) = error("no se usa")
-    override suspend fun sincronizar() = ResultadoSincronizacion(0, 0, 0)
+    override suspend fun sincronizar(manual: Boolean) = ResultadoSincronizacion(0, 0, 0)
 }
 
 private class JornadasEspia(private val falla: ErrorSigro? = null) : RepositorioJornadas {

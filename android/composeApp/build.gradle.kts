@@ -8,6 +8,7 @@ plugins {
     alias(libs.plugins.kotlinSerialization)
     alias(libs.plugins.ksp)
     alias(libs.plugins.room)
+    alias(libs.plugins.kover)
 }
 
 kotlin {
@@ -148,5 +149,18 @@ if (providers.gradleProperty("sigro.metricasCompose").isPresent) {
     composeCompiler {
         reportsDestination = layout.buildDirectory.dir("compose-metricas")
         metricsDestination = layout.buildDirectory.dir("compose-metricas")
+    }
+}
+
+// Cobertura de pruebas para SonarQube (rúbrica: «cobertura de domain y data ≥ 40 %»).
+// ./gradlew :composeApp:koverXmlReportDebug → build/reports/kover/reportDebug.xml (lo lee sonar.coverage.jacoco.xmlReportPaths)
+// Se mide solo dominio y datos: la interfaz de Compose se prueba en el celular (matriz de dispositivos), no con pruebas unitarias.
+kover {
+    reports {
+        filters {
+            includes {
+                packages("pe.sevens.sigro.dominio", "pe.sevens.sigro.dominio.casosdeuso", "pe.sevens.sigro.datos.repositorio", "pe.sevens.sigro.datos.remoto")
+            }
+        }
     }
 }

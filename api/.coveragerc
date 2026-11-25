@@ -1,0 +1,7 @@
+[run]
+source = app
+# rutas relativas («app/…»): así el reporte sirve igual en la PC, en GitHub Actions y en SonarCloud
+relative_files = true
+
+[report]
+skip_empty = true

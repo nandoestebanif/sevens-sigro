@@ -17,6 +17,7 @@ import pe.sevens.sigro.dominio.ProgramadorSincronizacion
 import pe.sevens.sigro.dominio.RepositorioRegistros
 import pe.sevens.sigro.dominio.RepositorioSalidas
 import java.util.concurrent.TimeUnit
+import pe.sevens.sigro.dominio.casosdeuso.SincronizarCola
 
 /**
  * HU-38 en Android: WorkManager ejecuta el envío SOLO cuando hay red y sobrevive a que
@@ -29,10 +30,10 @@ class SincronizacionWorker(contexto: Context, params: WorkerParameters) :
     private val registros: RepositorioRegistros by inject() // asistencia (y almacén cuando tenga servicio)
 
     override suspend fun doWork(): Result {
-        val r = salidas.sincronizar()
-        val g = registros.sincronizar()
+        // Caso de uso común (el mismo que usa «Enviar ahora»), en modo automático: respeta el tope de intentos.
+        val r = SincronizarCola(salidas, registros)()
         // Quedan pendientes: WorkManager reintenta con espera creciente, sin gastar batería.
-        return if (r.siguenPendientes + g.siguenPendientes > 0) Result.retry() else Result.success()
+        return if (r.siguenPendientes > 0) Result.retry() else Result.success()
     }
 }
 
