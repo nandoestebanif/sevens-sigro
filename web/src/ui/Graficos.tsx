@@ -16,6 +16,7 @@ import {
 } from 'chart.js'
 import { useEffect, useState } from 'react'
 import { Bar, Doughnut, Line } from 'react-chartjs-2'
+import { MARCA, PALETA } from '../estilos/paleta'
 
 // Chart.js es modular: se registra solo lo que se usa (así el paquete pesa menos).
 ChartJS.register(ArcElement, BarElement, CategoryScale, LinearScale, LineElement, PointElement, Filler, Legend, Tooltip)
@@ -26,12 +27,9 @@ ChartJS.defaults.font.size = 12
 ChartJS.defaults.elements.bar.borderRadius = 8
 ChartJS.defaults.datasets.bar.maxBarThickness = 44
 Object.assign(ChartJS.defaults.plugins.tooltip, {
-  backgroundColor: '#161717', titleColor: '#ffffff', bodyColor: '#d2d3d3', padding: 12, cornerRadius: 12, boxPadding: 6,
+  backgroundColor: MARCA.negro, titleColor: '#ffffff', bodyColor: '#d2d3d3', padding: 12, cornerRadius: 12, boxPadding: 6,
   borderColor: '#3d3e3e', borderWidth: 1,
 })
-
-/** Paleta de datos del rediseño: violeta, menta y amarillo primero (los tres flujos), luego rosa, lila y naranja. */
-export const PALETA = { violeta: '#7c6cf6', menta: '#2ee6c5', amarillo: '#fad85d', rosa: '#ff8fa3', lila: '#f2a6ff', naranja: '#ffb86b', rojo: '#ff6b6b' }
 
 const soles = (v: number) => `${v < 0 ? "−" : ""}S/ ${Math.abs(v).toLocaleString("es-PE", { maximumFractionDigits: 0 })}`
 
@@ -43,7 +41,7 @@ function useColoresTema() {
       texto: css.getPropertyValue('--bs-body-color').trim() || '#212529',
       secundario: css.getPropertyValue('--bs-secondary-color').trim() || '#6c757d',
       rejilla: css.getPropertyValue('--bs-border-color-translucent').trim() || 'rgba(0,0,0,.1)',
-      primario: css.getPropertyValue('--bs-primary').trim() || '#fad85d',
+      primario: css.getPropertyValue('--bs-primary').trim() || MARCA.amarillo,
     }
   }
   const [c, setC] = useState(leer)
