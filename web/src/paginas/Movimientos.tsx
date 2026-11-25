@@ -104,6 +104,13 @@ function Reverso({ movimiento, enCerrar, enListo }: {
   )
 }
 
+/* orden del kárdex por columna: fuera del componente, así useMemo no depende de una función nueva en cada render */
+type ColKardex = 'id' | 'fecha' | 'tipo' | 'insumo' | 'cantidad' | 'importe'
+const valorKardex = (m: Movimiento, k: ColKardex): string | number => ({
+  id: m.id, fecha: m.fechaServidor, tipo: m.tipo, insumo: m.descripcion, cantidad: m.cantidad,
+  importe: m.importe ?? m.cantidad * m.costoUnitario,
+})[k]
+
 export function Movimientos() {
   const [stock, setStock] = useState<StockInsumo[] | null>(null)
   const [kardex, setKardex] = useState<Movimiento[] | null>(null)
@@ -121,16 +128,11 @@ export function Movimientos() {
   const corte = kardex?.[0]?.fechaServidor
 
   // Orden y paginación del kárdex: se ordena la lista completa y luego se corta la página.
-  type Col = 'id' | 'fecha' | 'tipo' | 'insumo' | 'cantidad' | 'importe'
-  const [orden, setOrden] = useState<Orden<Col> | null>(null)
+  const [orden, setOrden] = useState<Orden<ColKardex> | null>(null)
   const [pagina, setPagina] = useState(1)
   const [tam, setTam] = useState(25)
-  const valor = (m: Movimiento, k: Col): string | number => ({
-    id: m.id, fecha: m.fechaServidor, tipo: m.tipo, insumo: m.descripcion, cantidad: m.cantidad,
-    importe: m.importe ?? m.cantidad * m.costoUnitario,
-  })[k]
-  const pag = useMemo(() => paginar(ordenar(kardex ?? [], orden, valor), pagina, tam), [kardex, orden, pagina, tam])
-  const enOrdenar = (k: Col) => { setOrden((o) => alternarOrden(o, k)); setPagina(1) }
+  const pag = useMemo(() => paginar(ordenar(kardex ?? [], orden, valorKardex), pagina, tam), [kardex, orden, pagina, tam])
+  const enOrdenar = (k: ColKardex) => { setOrden((o) => alternarOrden(o, k)); setPagina(1) }
 
   return (
     <>
@@ -202,7 +204,7 @@ export function Movimientos() {
             <BotonExportar
               titulo="Kárdex de la obra"
               subtitulo="Libro de movimientos · costo congelado al instante de cada movimiento"
-              filas={ordenar(kardex ?? [], orden, valor)}
+              filas={ordenar(kardex ?? [], orden, valorKardex)}
               columnas={[
                 { titulo: 'Mov.', valor: (m) => m.id, ancho: 9 },
                 { titulo: 'Fecha (servidor)', valor: (m) => hora(m.fechaServidor), ancho: 16 },

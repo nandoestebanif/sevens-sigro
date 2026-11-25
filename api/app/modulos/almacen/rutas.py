@@ -610,14 +610,20 @@ def stock(almacen_id: int | None = Query(None, ge=1), a: Actor = Depends(exigir(
     advertencias = []
     if consolidado:
         try:
-            puntos = {p["insumo_id"]: Decimal(str(p["punto_reposicion"])) for p in
-                      internos.json_de(contexto.COMPRAS, "GET", f"/interno/obras/{a.obra_id}/parametros-reposicion")}
-            factores = {i: Decimal(str(x["factor_conversion"])) for i, x in
-                        _insumos(s, [r["insumo_id"] for r in consolidado], para_registrar=False).items()}
+            parametros = {p["insumo_id"]: p for p in
+                          internos.json_de(contexto.COMPRAS, "GET", f"/interno/obras/{a.obra_id}/parametros-reposicion")}
+            insumos = _insumos(s, [r["insumo_id"] for r in consolidado], para_registrar=False)
             for r in consolidado:
-                if r["insumo_id"] in puntos and r["insumo_id"] in factores:
-                    r["punto_reposicion"] = puntos[r["insumo_id"]]
-                    r["bajo_punto_reposicion"] = r["cantidad"] / factores[r["insumo_id"]] < puntos[r["insumo_id"]]
+                par, ins = parametros.get(r["insumo_id"]), insumos.get(r["insumo_id"])
+                if par is None or ins is None:
+                    continue
+                # D06: punto y stock de seguridad están en unidad de compra; el saldo se convierte aquí (el cliente nunca convierte)
+                factor = Decimal(str(ins["factor_conversion"]))
+                en_compra = r["cantidad"] / factor
+                punto, seguridad = Decimal(str(par["punto_reposicion"])), Decimal(str(par["stock_seguridad"]))
+                r.update(punto_reposicion=punto, bajo_punto_reposicion=en_compra < punto,
+                         stock_seguridad=seguridad, bajo_stock_seguridad=en_compra < seguridad,
+                         unidad_compra=ins["unidad_compra"], cantidad_en_unidad_compra=en_compra.quantize(Decimal("0.0001")))
         except ErrorSigro:
             advertencias.append("No se pudo consultar el punto de reposición (compras o catálogo no respondió).")
     corte = max((r["ultimo_movimiento_en"] for r in consolidado), default=None)
