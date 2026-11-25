@@ -13,6 +13,7 @@
 import { reposicionHttp, usaApiReal } from '../api/http'
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { Tab, Tabs } from 'react-bootstrap'
 import { api } from '../api/cliente'
 import { ErrorApi, mensajeDeCarga } from '../api/error'
 import type { AlertaReposicion, AvanceInsumo } from '../api/tipos'
@@ -71,6 +72,8 @@ export function Reposicion() {
   const [alertas, setAlertas] = useState<AlertaReposicion[]>([])
   const [soloCriticos, setSoloCriticos] = useState(false)
   const [fase, setFase] = useState('todas')
+  // fase 1 del rediseño: tres pestañas en vez de una página larga (lo de abajo ya no queda escondido)
+  const [pestana, setPestana] = useState<string | null>(null)
 
   const [fallo, setFallo] = useState('')
   const [avisoCritico, setAvisoCritico] = useState<{ codigo: string; texto: string } | null>(null)
@@ -146,8 +149,17 @@ export function Reposicion() {
           <Chip tono="neutro">La sugerencia de compra (HU-27) es el menor entre lo que falta y lo que exige la fase en curso</Chip>
         </Chips>
 
-        {alertas.map((a) => <Alerta key={a.insumoId} a={a} />)}
-
+        <Tabs id="reposicion-pestanas" activeKey={pestana ?? (alertas.some((a) => a.estado === 'activa') ? 'alertas' : 'saldo')}
+          onSelect={(k) => setPestana(k)} className="sigro-pestanas" mountOnEnter>
+          <Tab eventKey="alertas" title={<>Alertas <span className="badge rounded-pill text-bg-danger ms-1">{alertas.filter((a) => a.estado === 'activa').length}</span></>}>
+            <div className="d-flex flex-column gap-3 pt-3">
+              {alertas.length === 0
+                ? <Vidrio><Vacio titulo="Sin alertas" detalle="Ningún insumo está bajo su punto de reposición. Los puntos se definen en «Parámetros de reposición»." /></Vidrio>
+                : alertas.map((a) => <Alerta key={a.insumoId} a={a} />)}
+            </div>
+          </Tab>
+          <Tab eventKey="saldo" title={<>Saldo por comprar <span className="badge rounded-pill text-bg-secondary ms-1">{visibles.length}</span></>}>
+        <div className="pt-3">
         <Vidrio estilo={{ display: 'flex', flexDirection: 'column', gap: 14 }} etiqueta="Saldo por comprar">
           <div className="d-flex flex-column gap-1">
             <TituloSeccion>Saldo por comprar</TituloSeccion>
@@ -212,8 +224,12 @@ export function Reposicion() {
             />
           )}
         </Vidrio>
+        </div>
+          </Tab>
 
         {conHu28 && puedeMarcar && candidatos.length > 0 && (
+          <Tab eventKey="sugeridos" title={<>Sugeridos como críticos <span className="badge rounded-pill text-bg-secondary ms-1">{candidatos.length}</span></>}>
+          <div className="pt-3">
           <Vidrio estilo={{ display: 'flex', flexDirection: 'column', gap: 10 }} etiqueta="Críticos sugeridos">
             <div>
               <TituloSeccion>Sugeridos como críticos</TituloSeccion>
@@ -238,7 +254,10 @@ export function Reposicion() {
               )}
             />
           </Vidrio>
+          </div>
+          </Tab>
         )}
+        </Tabs>
 
       </div>
     </>
