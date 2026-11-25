@@ -143,6 +143,10 @@ h1, .h1, h2, .h2, h3, .h3 { letter-spacing: -0.02em; }
   .nav-link { border-radius: 999px; background: var(--sigro-tarjeta); padding: 0.5rem 1rem !important; color: var(--bs-body-color); font-weight: 500; }
 }
 
+@include media-breakpoint-down(lg) {
+  .sigro-barra .sigro-obra { order: 3; width: 100%; }
+}
+
 @include media-breakpoint-up(lg) {
   .sigro-menu {
     flex: 0 0 19rem;
