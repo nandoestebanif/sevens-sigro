@@ -13,7 +13,6 @@ Uso:
 from __future__ import annotations
 
 import argparse
-import json
 import os
 import re
 import sys
@@ -22,7 +21,7 @@ from pathlib import Path
 
 from sqlalchemy import create_engine, text
 
-from semillas.entrada import archivo_de_datos, conexion_postgres
+from semillas.entrada import archivo_de_datos, conexion_postgres, leer_json
 
 from app.modulos.compras.dominio import ruc_valido
 
@@ -30,7 +29,7 @@ FORMATO_DB = re.compile(r"^[0-9A-Za-z-]{4,20}$")     # ck_proveedor_ruc_formato
 
 
 def leer(ruta: Path) -> list[dict]:
-    datos = json.loads(ruta.read_text(encoding="utf-8"))
+    datos = leer_json(ruta)
     if not isinstance(datos, list):
         raise SystemExit("Se esperaba una lista de proveedores.")
     return datos
