@@ -4,9 +4,8 @@ from __future__ import annotations
 from datetime import date
 
 from fastapi import APIRouter, Depends, Query
-from sqlalchemy.orm import Session
 
-from app.db import obtener_sesion
+from app.db import SesionPorPeticion
 from app.internos import exigir_servicio
 from app.sql import fila
 
@@ -14,8 +13,7 @@ interno = APIRouter(prefix="/interno", tags=["interno"], dependencies=[Depends(e
 
 
 @interno.get("/obras/{obra_id}/horas")
-def horas(obra_id: int, hasta: date | None = Query(None, description="solo jornadas con fecha <= hasta"),
-          s: Session = Depends(obtener_sesion, scope="function")):
+def horas(s: SesionPorPeticion, obra_id: int, hasta: date | None = Query(None, description="solo jornadas con fecha <= hasta")):
     """Horas de las jornadas vigentes de la obra, con las extra aparte, y la fecha de la última jornada (corte).
     Con `hasta`, solo las jornadas hasta ese día (fecha de corte del tablero)."""
     return fila(s, "SELECT coalesce(sum(horas_normales), 0) AS horas_normales, coalesce(sum(horas_extra), 0) AS horas_extra, "

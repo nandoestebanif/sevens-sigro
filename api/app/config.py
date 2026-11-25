@@ -5,10 +5,23 @@ import os
 from dataclasses import dataclass
 from decimal import Decimal
 
+from sqlalchemy.engine import URL
+
 from app import contexto
 
 _DEV_SECRET = "solo-para-desarrollo-no-usar-en-produccion-0123456789"
-_DEV_DB = "postgresql+psycopg://sigro_api:sigro_api_dev@localhost:5432/sigro_dev"
+
+
+def base_local(usuario: str) -> str:
+    """Cadena de la base de la PC de desarrollo (la que levanta docker compose), SOLO como valor por defecto.
+
+    La clave sale de SIGRO_DEV_CLAVE o, si no está, de la convención local `<usuario>_dev`; ninguna cadena con clave
+    queda escrita en el código. En la nube nunca se usa: allí la cadena completa llega por variable de entorno.
+    """
+    clave = os.environ.get("SIGRO_DEV_CLAVE", f"{usuario}_dev")
+    return URL.create(
+        "postgresql+psycopg", username=usuario, password=clave, host="localhost", port=5432, database="sigro_dev",
+    ).render_as_string(hide_password=False)
 
 
 def un_proceso() -> bool:
@@ -26,7 +39,7 @@ def url_de_base() -> str:
     variable, falla: nunca se cae a la cadena de otro servicio. El mensaje no incluye la cadena.
     """
     if not un_proceso():
-        return os.environ.get("SIGRO_APP_DATABASE_URL", _DEV_DB)
+        return os.environ.get("SIGRO_APP_DATABASE_URL") or base_local("sigro_api")
     servicio = contexto.actual()
     if not servicio:
         raise RuntimeError("nodo único: se pidió la base fuera de un servicio (contexto.SERVICIO vacío)")

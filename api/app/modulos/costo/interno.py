@@ -12,9 +12,8 @@ from typing import Literal
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
 from sqlalchemy import text
-from sqlalchemy.orm import Session
 
-from app.db import obtener_sesion
+from app.db import SesionPorPeticion
 from app.internos import exigir_servicio
 
 interno = APIRouter(prefix="/interno", tags=["interno"], dependencies=[Depends(exigir_servicio)])
@@ -46,7 +45,7 @@ class EventoIn(BaseModel):
 
 
 @interno.post("/eventos")
-def recibir(ev: EventoIn, s: Session = Depends(obtener_sesion, scope="function")):
+def recibir(ev: EventoIn, s: SesionPorPeticion):
     nuevo = s.execute(text("INSERT INTO costo.evento_recibido (evento_id, tipo) VALUES (:i, :t) ON CONFLICT (evento_id) DO NOTHING "
                            "RETURNING evento_id"), {"i": ev.evento_id, "t": ev.tipo}).scalar()
     if nuevo is None:
