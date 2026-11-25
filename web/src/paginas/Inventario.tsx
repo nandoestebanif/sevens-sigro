@@ -13,16 +13,16 @@
      «ahora» y la pantalla lo dice.
    Nada se suma en la web: la pantalla solo ordena y filtra lo que llegó.
    ───────────────────────────────────────────────────────────────────────── */
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { ErrorApi } from '../api/cliente'
 import { almacenesDeLaObra, fechaCorte, inventario, type Inventario as Inv } from '../api/costo'
 import { usaApiReal } from '../api/http'
 import { Chip, Vacio } from '../ui/base'
 import { Aviso, Chips, Encabezado, Kpi, TituloSeccion, Vidrio } from '../ui/piezas'
 import { GraficoReparto } from '../ui/GraficosPerezosos'
-import { Termino } from '../ui/Glosario'
 import { EsqueletoKpis } from '../ui/Esqueleto'
 import { BotonExportar } from '../ui/BotonExportar'
+import { TablaDatos } from '../ui/TablaDatos'
 
 const soles = (v: number, dec = 2) => v.toLocaleString('es-PE', { minimumFractionDigits: dec, maximumFractionDigits: dec })
 const cant = (v: number) => v.toLocaleString('es-PE', { maximumFractionDigits: 4 })
@@ -34,7 +34,6 @@ export function Inventario() {
   const [fecha, setFecha] = useState('')             // vacío = ahora
   const [v, setV] = useState<Inv | null>(null)
   const [error, setError] = useState('')
-  const [q, setQ] = useState('')
 
   useEffect(() => { if (usaApiReal) almacenesDeLaObra().then(setAlmacenes).catch(() => setAlmacenes([])) }, [])
   useEffect(() => {
@@ -46,10 +45,7 @@ export function Inventario() {
         : e instanceof ErrorApi ? e.message : 'No se pudo calcular el inventario.'))
   }, [almacen, fecha])
 
-  const filas = useMemo(() => {
-    const t = q.trim().toLowerCase()
-    return (v?.porInsumo ?? []).filter((i) => !t || i.descripcion.toLowerCase().includes(t) || i.codigo.toLowerCase().includes(t))
-  }, [v, q])
+  const filas = v?.porInsumo ?? []
   const nombreAlmacen = almacen === 'todos' ? 'Todos los almacenes (consolidado de la obra)' : almacenes.find((a) => String(a.id) === almacen)?.nombre ?? `Almacén ${almacen}`
 
   return (
@@ -139,34 +135,23 @@ export function Inventario() {
                       ]}
                     />
                   </div>
-                  <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Buscar por nombre o código…" aria-label="Buscar insumo"
-                    className="form-control" />
-                  {v.porInsumo.length === 0 ? (
-                    <Vacio titulo="Sin stock a esa fecha" detalle="No hay insumos con saldo en el almacén elegido a la fecha de corte." />
-                  ) : (
-                    <div className="overflow-x-auto">
-                      <table className="table table-hover align-middle mb-0">
-                        <thead>
-                          <tr>
-                            <th className="text-start">Insumo</th><th className="n">Cantidad</th><th className="n"><Termino clave="costo promedio">Costo promedio</Termino></th>
-                            <th className="n">Valor</th><th className="n">% del total</th><th className="n">Último movimiento</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {filas.map((i) => (
-                            <tr key={i.codigo}>
-                              <td><strong>{i.descripcion}</strong><div className="small text-body-secondary">SKU {i.codigo}</div></td>
-                              <td className="n">{cant(i.cantidad)} {i.unidad}</td>
-                              <td className="n">{i.costoPromedio === null ? '—' : `S/ ${soles(i.costoPromedio)}`}</td>
-                              <td className="n"><strong>S/ {soles(i.valor)}</strong></td>
-                              <td className="n">{i.porcentaje.toLocaleString('es-PE')} %</td>
-                              <td className="n text-nowrap">{fechaCorte(i.ultimoMovimiento).split(',')[0]}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
+                  <TablaDatos
+                    etiqueta="Inventario por insumo"
+                    filas={v.porInsumo}
+                    clave={(i) => i.codigo}
+                    buscar={(i) => `${i.descripcion} ${i.codigo}`}
+                    marcadorBusqueda="Buscar por nombre o código…"
+                    ordenInicial={{ clave: 'valor', dir: 'desc' }}
+                    vacio={{ titulo: 'Sin stock a esa fecha', detalle: 'No hay insumos con saldo en el almacén elegido a la fecha de corte.' }}
+                    columnas={[
+                      { clave: 'insumo', titulo: 'Insumo', valor: (i) => i.descripcion, celda: (i) => <><strong>{i.descripcion}</strong><div className="small text-body-secondary">SKU {i.codigo}</div></> },
+                      { clave: 'cantidad', titulo: 'Cantidad', numerica: true, valor: (i) => i.cantidad, celda: (i) => <span className="text-nowrap">{cant(i.cantidad)} {i.unidad}</span> },
+                      { clave: 'promedio', titulo: 'Costo promedio', numerica: true, valor: (i) => i.costoPromedio, celda: (i) => i.costoPromedio === null ? '—' : `S/ ${soles(i.costoPromedio)}` },
+                      { clave: 'valor', titulo: 'Valor', numerica: true, valor: (i) => i.valor, celda: (i) => <strong className="text-nowrap">S/ {soles(i.valor)}</strong> },
+                      { clave: 'pct', titulo: '% del total', numerica: true, valor: (i) => i.porcentaje, celda: (i) => `${i.porcentaje.toLocaleString('es-PE')} %` },
+                      { clave: 'ultimo', titulo: 'Último movimiento', numerica: true, soloEscritorio: true, valor: (i) => i.ultimoMovimiento, celda: (i) => <span className="text-nowrap">{fechaCorte(i.ultimoMovimiento).split(',')[0]}</span> },
+                    ]}
+                  />
                   <p className="small text-body-secondary">{v.criterio} {v.declaracion}</p>
                 </Vidrio>
               </>

@@ -10,13 +10,16 @@
    - Los conceptos se muestran por separado, nunca como un solo «mínimo».
    - El punto no puede ser menor que el stock de seguridad (se avisa bajo el campo y lo valida el servidor).
    ───────────────────────────────────────────────────────────────────────── */
+import { AccionesFila, TablaDatos } from '../ui/TablaDatos'
+import { puedo } from '../api/permisos'
+import { Chips, Encabezado, Pildora, Vidrio } from '../ui/piezas'
 import { useEffect, useMemo, useState } from 'react'
 import { ErrorApi, api } from '../api/cliente'
 import { mensajeDeCarga } from '../api/error'
 import type { AvanceInsumo, ParametroReposicion } from '../api/tipos'
 import { unidadParaMostrar } from '../api/unidades'
 import { BuscarOpcion } from '../ui/BuscarOpcion'
-import { Boton, Modal, Tarjeta, Titulo, Vacio } from '../ui/base'
+import { Boton, Chip, Modal, Vacio } from '../ui/base'
 import { type ErroresParametros, leerCantidad, validarParametros } from './parametros-reglas'
 import { EsqueletoTabla } from '../ui/Esqueleto'
 
@@ -156,46 +159,44 @@ export function Parametros() {
   const sinParametro = useMemo(
     () => insumos.filter((i) => !(vigentes ?? []).some((v) => v.insumoCodigo === i.codigo)), [insumos, vigentes])
 
+  const puedeRegistrar = puedo('reposicion.registrar')
+
   return (
     <div className="d-flex flex-column gap-3 pb-4">
-      <div className="d-flex justify-content-between align-items-center gap-3 flex-wrap">
-        <Titulo sub="Cuándo reponer cada insumo y con cuánto colchón. Cambiarlos no borra lo anterior: queda en su historial.">
-          Parámetros de reposición
-        </Titulo>
-        <Boton enClic={() => setEditando('nuevo')} deshabilitado={!!fallo || !sinParametro.length}>Definir parámetros</Boton>
-      </div>
-      <Tarjeta relleno={false}>
+      <Encabezado titulo="Parámetros de reposición" sub="Cuándo reponer cada insumo y con cuánto colchón."
+        acciones={puedeRegistrar && <Pildora enClic={() => setEditando('nuevo')} deshabilitado={!!fallo || !sinParametro.length}>Definir parámetros</Pildora>} />
+      <Chips>
+        <Chip tono="neutro">Cambiarlos no borra lo anterior: queda en su historial con fecha</Chip>
+        <Chip tono="neutro">El punto de reposición no puede ser menor que el stock de seguridad</Chip>
+      </Chips>
+      <Vidrio estilo={{ display: 'flex', flexDirection: 'column', gap: 12 }} etiqueta="Parámetros vigentes">
         {vigentes === null ? <EsqueletoTabla />
           : fallo ? <Vacio titulo="No se pudieron cargar los parámetros" detalle={fallo} />
-          : vigentes.length === 0 ? (
-            <Vacio titulo="Todavía no hay parámetros en esta obra"
-              detalle={insumos.length ? 'Define el stock de seguridad y el punto de reposición de los insumos críticos primero.'
-                : 'Primero carga el requerimiento de la obra en «Importar del S10».'} />
-          ) : (
-            <table className="w-100" >
-              <thead><tr className="bg-body-tertiary border-bottom">
-                {['Insumo', 'Stock de seguridad', 'Punto de reposición', 'Vigente desde', ''].map((h, i) => (
-                  <th key={i} style={{ padding: '11px 16px', fontSize: 11, fontWeight: 600, color: 'var(--tinta-3)', textAlign: i === 0 || i === 3 ? 'left' : 'right' }}>{h}</th>
-                ))}
-              </tr></thead>
-              <tbody>{vigentes.map((p) => (
-                <tr key={p.insumoCodigo} className="border-bottom">
-                  <td className="py-2 px-3">
-                    <div className="small fw-semibold">{p.descripcion}</div>
-                    <div className="n small text-body-secondary">{p.insumoCodigo}</div>
-                  </td>
-                  <td className="n text-end small py-2 px-3" >{n(p.stockSeguridad)} {p.unidadCompra}</td>
-                  <td className="n text-end small fw-bold py-2 px-3" >{n(p.puntoReposicion)} {p.unidadCompra}</td>
-                  <td className="small text-body-secondary py-2 px-3" >{fecha(p.vigenteDesde)}</td>
-                  <td className="text-end text-nowrap py-2 px-3" >
-                    <Boton tipo="fantasma" enClic={() => setViendo(p)}>Historial</Boton>
-                    <Boton tipo="secundario" enClic={() => setEditando(p)}>Cambiar</Boton>
-                  </td>
-                </tr>
-              ))}</tbody>
-            </table>
+          : (
+            <TablaDatos
+              etiqueta="Parámetros vigentes"
+              filas={vigentes}
+              clave={(p) => p.insumoCodigo}
+              buscar={(p) => `${p.descripcion} ${p.insumoCodigo}`}
+              marcadorBusqueda="Buscar insumo…"
+              vacio={{ titulo: 'Todavía no hay parámetros en esta obra', detalle: insumos.length
+                ? 'Define el stock de seguridad y el punto de reposición de los insumos críticos primero.'
+                : 'Primero carga el requerimiento de la obra en «Importar del S10».' }}
+              columnas={[
+                { clave: 'insumo', titulo: 'Insumo', valor: (p) => p.descripcion, celda: (p) => <><strong>{p.descripcion}</strong><div className="n small text-body-secondary">SKU {p.insumoCodigo}</div></> },
+                { clave: 'seguridad', titulo: 'Stock de seguridad', numerica: true, valor: (p) => p.stockSeguridad, celda: (p) => <span className="text-nowrap">{n(p.stockSeguridad)} {p.unidadCompra}</span> },
+                { clave: 'punto', titulo: 'Punto de reposición', numerica: true, valor: (p) => p.puntoReposicion, celda: (p) => <strong className="text-nowrap">{n(p.puntoReposicion)} {p.unidadCompra}</strong> },
+                { clave: 'desde', titulo: 'Vigente desde', numerica: true, valor: (p) => p.vigenteDesde, celda: (p) => <span className="text-nowrap">{fecha(p.vigenteDesde)}</span> },
+              ]}
+              acciones={(p) => (
+                <AccionesFila de={p.descripcion} acciones={[
+                  { texto: 'Historial', enClic: () => setViendo(p) },
+                  puedeRegistrar && { texto: 'Cambiar', enClic: () => setEditando(p) },
+                ]} />
+              )}
+            />
           )}
-      </Tarjeta>
+      </Vidrio>
       {editando && (
         <Formulario insumos={sinParametro} todos={insumos} inicial={editando === 'nuevo' ? null : editando}
           enCerrar={() => setEditando(null)} enListo={() => { setEditando(null); cargar() }} />

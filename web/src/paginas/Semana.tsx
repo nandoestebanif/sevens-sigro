@@ -11,6 +11,7 @@
    - Puede exportarse → «Descargar CSV» (lo arma el servidor, mismas cifras).
    Diseño: T-308 (reporte semanal), con el estilo vidrio de «Ingresos y salidas».
    ───────────────────────────────────────────────────────────────────────── */
+import { TablaDatos } from '../ui/TablaDatos'
 import { useEffect, useState } from 'react'
 import { ErrorApi, api } from '../api/cliente'
 import { sesionActual, usaApiReal } from '../api/http'
@@ -132,29 +133,22 @@ export function Semana() {
           {!r && !error && <EsqueletoTabla />}
           {r && r.filas.length === 0 && <Vacio titulo="Sin movimientos esta semana" detalle={r.criterio} />}
           {r && r.filas.length > 0 && (
-            <div className="overflow-x-auto">
-              <table className="table table-hover align-middle mb-0">
-                <thead>
-                  <tr>
-                    <th className="text-start">Insumo</th>
-                    <th className="text-start">Almacén</th>
-                    <th className="n">Saldo inicial</th><th className="n">Entradas</th><th className="n">Salidas</th><th className="n">Saldo final</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {r.filas.map((f) => (
-                    <tr key={`${f.almacen}-${f.insumoId}`}>
-                      <td><strong>{f.descripcion}</strong><div className="small text-body-secondary">SKU {f.insumoId} · {f.unidad}</div></td>
-                      <td>{f.almacen}</td>
-                      <td className="n">{n(f.saldoInicial)}</td>
-                      <td className="n text-success">{f.entradas >= 0 ? `+ ${n(f.entradas)}` : <span title="Un reverso anuló entradas de otra semana">− {n(-f.entradas)} por reverso</span>}</td>
-                      <td className="n">{f.salidas >= 0 ? `− ${n(f.salidas)}` : <span title="Un reverso anuló salidas de otra semana">+ {n(-f.salidas)} por reverso</span>}</td>
-                      <td className="n"><strong>{n(f.saldoFinal)}</strong></td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <TablaDatos
+                etiqueta={`Movimiento de la semana ${numero}`}
+                filas={r.filas}
+                clave={(f) => `${f.almacen}-${f.insumoId}`}
+                buscar={(f) => `${f.descripcion} ${f.almacen} ${f.insumoId}`}
+                marcadorBusqueda="Buscar insumo o almacén…"
+                vacio={{ titulo: 'Sin movimientos esa semana', detalle: 'Solo aparecen los insumos que se movieron.' }}
+                columnas={[
+                  { clave: 'insumo', titulo: 'Insumo', valor: (f) => f.descripcion, celda: (f) => <><strong>{f.descripcion}</strong><div className="small text-body-secondary">SKU {f.insumoId} · {f.unidad}</div></> },
+                  { clave: 'almacen', titulo: 'Almacén', valor: (f) => f.almacen, celda: (f) => f.almacen },
+                  { clave: 'inicial', titulo: 'Saldo inicial', numerica: true, valor: (f) => f.saldoInicial, celda: (f) => n(f.saldoInicial) },
+                  { clave: 'entradas', titulo: 'Entradas', numerica: true, valor: (f) => f.entradas, celda: (f) => <span className="text-success">{f.entradas >= 0 ? `+ ${n(f.entradas)}` : <span title="Un reverso anuló entradas de otra semana">− {n(-f.entradas)} por reverso</span>}</span> },
+                  { clave: 'salidas', titulo: 'Salidas', numerica: true, valor: (f) => f.salidas, celda: (f) => f.salidas >= 0 ? `− ${n(f.salidas)}` : <span title="Un reverso anuló salidas de otra semana">+ {n(-f.salidas)} por reverso</span> },
+                  { clave: 'final', titulo: 'Saldo final', numerica: true, valor: (f) => f.saldoFinal, celda: (f) => <strong>{n(f.saldoFinal)}</strong> },
+                ]}
+              />
           )}
           {r && <p className="small text-body-secondary">{r.criterio}</p>}
         </Vidrio>

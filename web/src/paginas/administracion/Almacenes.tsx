@@ -1,9 +1,10 @@
 /* Almacenes de la obra activa: lista y alta (central o de frente). El almacén elegido en cada movimiento
    sale de esta lista; el saldo de cada uno lo calcula el servidor. */
+import { TablaDatos } from '../../ui/TablaDatos'
 import { useState } from 'react'
 import { administracion, type TipoAlmacen } from '../../api/administracion'
 import { Boton, Campo, Chip, Tarjeta } from '../../ui/base'
-import { AvisoBien, AvisoError, Estado, Selector, Tabla, estiloCelda, estiloCeldaSuave, filaTabla, useCarga } from './comun'
+import { AvisoBien, AvisoError, Estado, Selector, useCarga } from './comun'
 import { TIPOS_ALMACEN, mensajeParaPersona, textoTipoAlmacen } from './reglas'
 
 export function Almacenes({ obraId, obraNombre }: { obraId: string; obraNombre: string }) {
@@ -53,15 +54,17 @@ export function Almacenes({ obraId, obraNombre }: { obraId: string; obraNombre: 
           vacio={{ titulo: 'La obra no tiene almacenes', detalle: 'Registra al menos uno: sin almacén no se pueden registrar ingresos ni salidas.' }}
         >
           {(lista) => (
-            <Tabla etiqueta={`Almacenes de ${obraNombre}`} titulos={['Nombre', 'Tipo', 'Estado']}>
-              {lista.map((a, i) => (
-                <tr key={a.id} style={filaTabla(i === lista.length - 1)}>
-                  <td style={{ ...estiloCelda, fontWeight: 600 }}>{a.nombre}</td>
-                  <td style={estiloCeldaSuave}>{textoTipoAlmacen(a.tipo)}</td>
-                  <td style={estiloCelda}><Chip tono={a.estado === 'activo' ? 'bien' : 'neutro'}>{a.estado === 'activo' ? 'Activo' : 'Cerrado'}</Chip></td>
-                </tr>
-              ))}
-            </Tabla>
+            <TablaDatos
+              etiqueta={`Almacenes de ${obraNombre}`}
+              filas={lista}
+              clave={(a) => a.id}
+              vacio={{ titulo: 'Sin almacenes', detalle: 'Crea el almacén central de la obra.' }}
+              columnas={[
+                { clave: 'nombre', titulo: 'Nombre', valor: (a) => a.nombre, celda: (a) => <strong>{a.nombre}</strong> },
+                { clave: 'tipo', titulo: 'Tipo', valor: (a) => textoTipoAlmacen(a.tipo), celda: (a) => textoTipoAlmacen(a.tipo) },
+                { clave: 'estado', titulo: 'Estado', valor: (a) => a.estado, celda: (a) => <Chip tono={a.estado === 'activo' ? 'bien' : 'neutro'}>{a.estado === 'activo' ? 'Activo' : 'Cerrado'}</Chip> },
+              ]}
+            />
           )}
         </Estado>
       </Tarjeta>

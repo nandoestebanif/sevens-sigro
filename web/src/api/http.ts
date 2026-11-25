@@ -313,6 +313,8 @@ export const catalogoHttp = {
    todo es de la obra activa (regla 9): la ruta lleva su id y el servidor verifica la asignación */
 export const obraId = async () => (await obrasHttp.activa()).id
 export const num = (x: unknown) => Number(x ?? 0) // la API manda los decimales como texto exacto
+/** Mano de obra del S10: se planifica en horas hombre y no se compra. */
+export const esHoraHombre = (unidad: string) => /^h\.?h\.?$/i.test(unidad.trim())
 
 interface SaldoApi {
   insumoId: number; insumoCodigo: string; descripcion: string; unidadS10: string; unidadCompra: string
@@ -342,7 +344,8 @@ export const reposicionHttp = {
     // crítico = insumo con punto de reposición vigente (HU-25). Sin permiso para verlos, nadie es crítico y la pantalla carga.
     const criticos = marcados ?? await reposicionHttp.parametros()
       .then((ps) => new Set(ps.map((p) => p.insumoCodigo))).catch(() => new Set<string>())
-    return xs.map((s) => {
+    // las horas hombre del S10 (unidad «hh») no se compran: se controlan en Mano de obra (HU-64/65)
+    return xs.filter((s) => !esHoraHombre(s.unidadS10)).map((s) => {
       const req = num(s.requerido), comp = num(s.comprado)
       return {
         insumoId: String(s.insumoId), codigo: s.insumoCodigo, descripcion: s.descripcion,
@@ -370,6 +373,12 @@ export const reposicionHttp = {
   /** HU-28: el residente marca o quita la marca (cada cambio queda con autor y fecha en el servidor). */
   async marcarCritico(insumoCodigo: string, critico: boolean): Promise<void> {
     await pedir('POST', `/obras/${await obraId()}/criticos`, { insumoCodigo, critico })
+  },
+  /** HU-28: el sistema PROPONE los insumos que concentran el valor presupuestado; marcar sigue siendo decisión del residente. */
+  async candidatosCriticos(limite = 10): Promise<{ codigo: string; descripcion: string; costo: number; pct: number; critico: boolean }[]> {
+    const xs = await pedir<{ insumoCodigo: string; descripcion: string; costoPlanificado: string; pctDelTotal: string; critico: boolean }[]>(
+      'GET', `/obras/${await obraId()}/criticos/candidatos?limite=${limite}`)
+    return xs.map((x) => ({ codigo: x.insumoCodigo, descripcion: x.descripcion, costo: num(x.costoPlanificado), pct: num(x.pctDelTotal), critico: x.critico }))
   },
   async parametros(): Promise<ParametroReposicion[]> {
     return (await pedir<ParametroApi[]>('GET', `/obras/${await obraId()}/parametros-reposicion`)).map(aParametro)

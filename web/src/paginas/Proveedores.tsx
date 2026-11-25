@@ -21,8 +21,10 @@ import { ErrorApi, api } from '../api/cliente'
 import { consultarRucEnSunat, rucValido, type RucSunat } from '../api/sunat'
 import { proveedores as proveedoresOficina } from '../api/oficina'
 import type { EstadoProveedor, Proveedor } from '../api/tipos'
-import { Chip, Modal, Vacio, type TonoChip } from '../ui/base'
-import { Aviso, Chips, Encabezado, Pildora, Vidrio, Buscador } from '../ui/piezas'
+import { Chip, Modal, type TonoChip } from '../ui/base'
+import { Aviso, Chips, Encabezado, Pildora, Segmentado, Vidrio } from '../ui/piezas'
+import { AccionesFila, TablaDatos } from '../ui/TablaDatos'
+import { puedo } from '../api/permisos'
 import { EsqueletoTabla } from '../ui/Esqueleto'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -151,9 +153,8 @@ function BajaProveedor({ p, enCerrar, enListo }: { p: Proveedor; enCerrar: () =>
 
 export function Proveedores() {
   const [todos, setTodos] = useState<Proveedor[] | null>(null)
-  const [busqueda, setBusqueda] = useState('')
+  const [filtro, setFiltro] = useState<'activos' | 'baja' | 'todos'>('activos')
   const [altaAbierta, setAltaAbierta] = useState(false)
-  const [tope, setTope] = useState(60)
   const [bajando, setBajando] = useState<Proveedor | null>(null)
   const [validandoId, setValidandoId] = useState<string | null>(null)
   const [avisoValidacion, setAvisoValidacion] = useState<{ tono: 'bien' | 'aviso' | 'grave'; texto: string } | null>(null)
@@ -189,105 +190,66 @@ export function Proveedores() {
     }
   }
 
-  const visibles = useMemo(() => {
+  const filtrados = useMemo(() => {
     if (!todos) return null
-    const q = busqueda.trim().toLowerCase()
-    // los que llevan historia de compras van arriba; el resto, alfabético
-    const orden = [...todos].sort((a, b) => b.comprasRegistradas - a.comprasRegistradas)
-    if (!q) return orden
-    return orden.filter((p) => p.razonSocial.toLowerCase().includes(q) || p.ruc.includes(q))
-  }, [todos, busqueda])
-  const recorte = visibles?.slice(0, tope) ?? null
+    const lista = filtro === 'todos' ? todos : todos.filter((p) => (p.estado === 'de_baja') === (filtro === 'baja'))
+    // los que tienen historia de compras van arriba hasta que se ordene por una columna
+    return [...lista].sort((a, b) => b.comprasRegistradas - a.comprasRegistradas)
+  }, [todos, filtro])
+  const puedeRegistrar = puedo('proveedor.registrar')
 
   return (
     <>
     <div className="d-flex flex-column gap-3 pb-4">
       <Encabezado
         titulo="Proveedores"
-        sub="RUC único en todo el sistema · un proveedor de baja no aparece al registrar compras nuevas"
-        acciones={<Pildora enClic={() => setAltaAbierta(true)}>Registrar proveedor</Pildora>}
+        sub="RUC único en todo el sistema."
+        acciones={puedeRegistrar && <Pildora enClic={() => setAltaAbierta(true)}>Registrar proveedor</Pildora>}
       />
 
       <Chips>
         <Chip tono="marca">Proveedores reales del cliente{todos ? ` · ${todos.length.toLocaleString('es-PE')}` : ''}</Chip>
         {usaApiReal
           ? <Chip tono="info">Compras y última compra: del servidor · días de entrega: aún sin registrar</Chip>
-          : <Chip tono="info">Compras, entrega y última compra: datos de ejemplo</Chip>}
+          : <Chip tono="aviso">Compras, entrega y última compra: datos de ejemplo</Chip>}
+        <Chip tono="neutro">Un proveedor de baja sigue en la lista, pero no aparece al registrar compras nuevas</Chip>
+        <Chip tono="neutro">El plazo de entrega alimenta el punto de reposición</Chip>
       </Chips>
 
       {avisoValidacion && <Aviso tono={avisoValidacion.tono} rol="status">{avisoValidacion.texto}</Aviso>}
 
       <Vidrio estilo={{ display: 'flex', flexDirection: 'column', gap: 12 }} etiqueta="Lista de proveedores">
-        <Buscador valor={busqueda} enCambio={(v) => { setBusqueda(v); setTope(60) }} marcador="Buscar por razón social o RUC…" etiqueta="Buscar proveedor por razón social o RUC" />
-
-        {visibles === null ? (
-          <EsqueletoTabla />
-        ) : visibles.length === 0 ? (
-          <Vacio
-            titulo="Ningún proveedor coincide"
-            detalle="Prueba con otra razón social u otro RUC, o registra el proveedor."
+        {filtrados === null ? <EsqueletoTabla /> : (
+          <TablaDatos
+            etiqueta="Proveedores"
+            filas={filtrados}
+            clave={(p) => p.id}
+            buscar={(p) => `${p.razonSocial} ${p.ruc}`}
+            marcadorBusqueda="Buscar por razón social o RUC…"
+            filtros={<Segmentado etiqueta="Estado" valor={filtro} enCambio={setFiltro}
+              opciones={[{ valor: 'activos', texto: 'Activos' }, { valor: 'baja', texto: 'De baja' }, { valor: 'todos', texto: 'Todos' }]} />}
+            vacio={{ titulo: filtro === 'baja' ? 'Ningún proveedor de baja' : 'Aún no hay proveedores', detalle: 'Regístralo con su RUC: se valida en SUNAT.' }}
+            columnas={[
+              { clave: 'razon', titulo: 'Proveedor', valor: (p) => p.razonSocial, celda: (p) => <strong>{p.razonSocial}</strong> },
+              { clave: 'ruc', titulo: 'RUC', valor: (p) => p.ruc, celda: (p) => <span className="text-body-secondary n">{p.ruc}</span> },
+              { clave: 'estado', titulo: 'Estado', valor: (p) => ESTADO[p.estado].texto, celda: (p) => (
+                <>
+                  <Chip tono={ESTADO[p.estado].tono}>{ESTADO[p.estado].texto}</Chip>
+                  {p.alertaSunat && <div className="small text-warning-emphasis mt-1">{p.alertaSunat}</div>}
+                </>
+              ) },
+              { clave: 'compras', titulo: 'Compras', numerica: true, valor: (p) => p.comprasRegistradas, celda: (p) => p.comprasRegistradas },
+              { clave: 'ultima', titulo: 'Última compra', numerica: true, valor: (p) => p.ultimaCompra, celda: (p) => <span className="text-nowrap">{p.ultimaCompra ?? '—'}</span> },
+            ]}
+            acciones={(p) => p.estado === 'de_baja' ? <span className="small text-body-secondary">De baja</span> : (
+              <AccionesFila de={p.razonSocial} acciones={[
+                /^\d{11}$/.test(p.ruc) && { texto: validandoId === p.id ? 'Validando…' : 'Validar en SUNAT', deshabilitado: validandoId === p.id, enClic: () => revalidar(p) },
+                usaApiReal && puedeRegistrar && { texto: 'Dar de baja', peligro: true, enClic: () => setBajando(p) },
+              ]} />
+            )}
           />
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="table table-hover align-middle mb-0">
-              <thead>
-                <tr>
-                  <th>Proveedor</th><th>RUC</th><th>Estado</th>
-                  <th className="n">Entrega</th><th className="n">Compras</th><th className="n">Última compra</th>
-                  <th aria-label="Acción" />
-                </tr>
-              </thead>
-              <tbody>
-                {recorte!.map((p) => (
-                  <tr key={p.id}>
-                    <td className="fw-semibold" style={{ minWidth: 260 }}>{p.razonSocial}</td>
-                    <td className="n text-start text-body-secondary">{p.ruc}</td>
-                    <td>
-                      <Chip tono={ESTADO[p.estado].tono}>{ESTADO[p.estado].texto}</Chip>
-                      {p.alertaSunat && (
-                        <div className="small text-warning-emphasis mt-1">{p.alertaSunat}</div>
-                      )}
-                    </td>
-                    <td className="n text-nowrap">{p.diasEntrega == null ? '—' : `${p.diasEntrega} días`}</td>
-                    <td className="n">{p.comprasRegistradas}</td>
-                    <td className="n text-nowrap">{p.ultimaCompra ?? '—'}</td>
-                    <td className="text-end">
-                      <div className="d-inline-flex gap-2 flex-wrap justify-content-end">
-                        {p.estado !== 'de_baja' && /^\d{11}$/.test(p.ruc) && (
-                          <Pildora
-                            tipo="secundario"
-                            chica
-                            etiqueta={`Validar en SUNAT a ${p.razonSocial}`}
-                            deshabilitado={validandoId === p.id}
-                            enClic={() => revalidar(p)}
-                          >
-                            {validandoId === p.id ? 'Validando…' : 'Validar de nuevo'}
-                          </Pildora>
-                        )}
-                        {usaApiReal && p.estado !== 'de_baja' && (
-                          <Pildora tipo="secundario" chica etiqueta={`Dar de baja a ${p.razonSocial}`} enClic={() => setBajando(p)}>Dar de baja</Pildora>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-        {visibles && visibles.length > tope && (
-          <div className="pt-2 d-flex justify-content-center">
-            <Pildora tipo="secundario" enClic={() => setTope(tope + 60)}>
-              Mostrar 60 más · van {tope} de {visibles.length.toLocaleString('es-PE')}
-            </Pildora>
-          </div>
         )}
       </Vidrio>
-
-      <p className="small text-body-secondary px-1">
-        El plazo de entrega de cada proveedor alimenta el punto de reposición. Los días se
-        recalculan con las recepciones reales.
-      </p>
 
       {bajando && (
         <BajaProveedor p={bajando} enCerrar={() => setBajando(null)} enListo={() => { setBajando(null); cargar() }} />
