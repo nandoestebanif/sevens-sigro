@@ -314,6 +314,18 @@ h1, .h1, h2, .h2, h3, .h3 { letter-spacing: -0.02em; }
 // el esqueleto del ticket: misma forma, en el gris de la tarjeta, sin muescas ni color
 .sigro-ticket.sigro-ticket-esqueleto { --sigro-ticket: var(--sigro-tarjeta) !important; color: var(--bs-secondary-color); min-height: 9rem; }
 
+// ── Modales, menús desplegables, globos y avisos flotantes con la misma piel ──
+.modal { --bs-modal-bg: var(--sigro-tarjeta); --bs-modal-border-width: 0; --bs-modal-border-radius: 1.75rem; --bs-modal-inner-border-radius: 1.75rem; --bs-modal-header-border-color: var(--bs-border-color); --bs-modal-footer-border-color: var(--bs-border-color); --bs-modal-padding: 1.5rem; --bs-modal-header-padding: 1.25rem 1.5rem; }
+.modal-title { font-weight: 600; }
+.modal-backdrop { --bs-backdrop-opacity: 0.65; }
+.dropdown-menu { --bs-dropdown-bg: var(--sigro-tarjeta); --bs-dropdown-border-color: var(--bs-border-color); --bs-dropdown-border-radius: 1rem; --bs-dropdown-link-active-bg: #fad85d; --bs-dropdown-link-active-color: #161717; --bs-dropdown-link-hover-bg: var(--bs-tertiary-bg); padding: 0.4rem; }
+.dropdown-item { border-radius: 0.6rem; }
+.popover { --bs-popover-bg: var(--sigro-tarjeta); --bs-popover-border-color: var(--bs-border-color); --bs-popover-border-radius: 1rem; --bs-popover-header-bg: var(--sigro-tarjeta); }
+.toast { --bs-toast-border-radius: 1rem; --bs-toast-border-color: var(--bs-border-color); --bs-toast-header-bg: transparent; box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35); }
+.nav-tabs { --bs-nav-tabs-border-color: var(--bs-border-color); --bs-nav-tabs-link-active-bg: var(--sigro-tarjeta); --bs-nav-tabs-link-active-border-color: var(--bs-border-color) var(--bs-border-color) var(--sigro-tarjeta); --bs-nav-tabs-border-radius: 0.9rem; }
+.nav-tabs .nav-link { color: var(--bs-secondary-color); font-weight: 500; }
+.nav-tabs .nav-link.active { color: var(--bs-body-color); box-shadow: inset 0 -3px 0 #fad85d; }
+
 // ── Estado vacío: la ilustración en un círculo suave sobre el texto ──
 .sigro-vacio .dibujo {
   display: inline-flex; align-items: center; justify-content: center; width: 7rem; height: 7rem; border-radius: 50%;
