@@ -9,11 +9,11 @@ import { cerrarSesion, sesionActual, usaApiReal } from './api/http'
 import { ElegirObra } from './paginas/ElegirObra'
 import { Entrar } from './paginas/Entrar'
 import { Arranque, CapaPlano, useInerte } from './ui/Arranque'
-import {  } from './ui/piezas'
 import { esAdministrador } from './paginas/administracion/reglas'
 import type { Obra, ObraActiva } from './api/tipos'
 import logoBlanco from './assets/sevens-logo-blanco.webp'
-import { Accordion, Alert, Badge, Button, Container, Form, Nav, NavDropdown, Offcanvas } from 'react-bootstrap'
+import { Accordion, Alert, Badge, Button, Container, Modal, Nav, NavDropdown, Offcanvas } from 'react-bootstrap'
+import { SelectorObra } from './ui/SelectorObra'
 import { EsqueletoPagina } from './ui/Esqueleto'
 import { useInstalar } from './ui/instalar'
 
@@ -174,15 +174,18 @@ function AjustesPantalla() {
   const [tema, setTema] = useState(() => {
     try { return localStorage.getItem('sigro-tema') ?? 'oscuro' } catch { return 'oscuro' }
   })
+  // el tamaño del texto vale solo para esta pestaña (sessionStorage): una pantalla ajena o un zoom del navegador
+  // no deja la web agrandada la próxima vez; el tema sí se recuerda en el dispositivo
   const [escala, setEscala] = useState(() => {
-    try { return localStorage.getItem('sigro-escala') ?? '100' } catch { return '100' }
+    try { return sessionStorage.getItem('sigro-escala') ?? '100' } catch { return '100' }
   })
   useEffect(() => {
     document.documentElement.dataset.bsTheme = tema === 'oscuro' ? 'dark' : 'light'
     document.documentElement.style.fontSize = `${escala}%`
     try {
       localStorage.setItem('sigro-tema', tema)
-      localStorage.setItem('sigro-escala', escala)
+      sessionStorage.setItem('sigro-escala', escala)
+      localStorage.removeItem('sigro-escala')         // lo que quedó guardado de antes deja de aplicarse
     } catch { /* sin almacenamiento, los ajustes no persisten */ }
   }, [tema, escala])
   const instalar = useInstalar()
@@ -368,6 +371,8 @@ function Sistema({ preparando = false, nombreObra = '', alTerminar }: {
 
   const [menuAbierto, setMenuAbierto] = useState(false)
   const [cambiandoClave, setCambiandoClave] = useState(false)
+  const [eligiendoObra, setEligiendoObra] = useState(false)
+  const [abriendo, setAbriendo] = useState<string | null>(null)
   // menú contraído (solo íconos), como en el diseño; se guarda en este dispositivo
   const [compacto, setCompacto] = useState(() => {
     try { return localStorage.getItem('sigro-menu-compacto') === '1' } catch { return false }
@@ -403,7 +408,10 @@ function Sistema({ preparando = false, nombreObra = '', alTerminar }: {
                 aria-label={compacto ? 'Expandir menú' : 'Contraer menú'} aria-pressed={compacto}>
                 <Icono d={compacto ? 'M9 6l6 6-6 6' : 'M15 6l-6 6 6 6'} tam={16} />
               </button>
-              <MenuSecciones grupos={grupos} alNavegar={() => setMenuAbierto(false)} compacto={compacto} alExpandir={() => setCompacto(false)} />
+              {/* solo esta parte se desplaza si la pantalla es baja (zoom 125 %, laptop 1366×768): logo, atajo y perfil quedan fijos */}
+              <div className="sigro-nav">
+                <MenuSecciones grupos={grupos} alNavegar={() => setMenuAbierto(false)} compacto={compacto} alExpandir={() => setCompacto(false)} />
+              </div>
               {/* la API decide quién registra compras (compra.registrar); aquí solo se ofrece el atajo */}
               {(!rol || ['almacenero', 'residente', 'administrador'].includes(rol)) && (
                 <div className="sigro-llamado">
@@ -441,17 +449,19 @@ function Sistema({ preparando = false, nombreObra = '', alTerminar }: {
           {/* Barra superior: obra activa, semana del plazo y ajustes de pantalla */}
           <header className="sigro-barra">
             <Button variant="primary" className="d-lg-none" onClick={() => setMenuAbierto(true)} aria-label="Abrir menú">☰</Button>
-            {/* obra activa: si hay más de una, se elige aquí (regla 9: solo ves lo de esta obra) */}
-            <div className="sigro-obra d-flex flex-wrap align-items-center gap-2">
-              <label htmlFor="obra-activa" className="small text-body-secondary">Obra</label>
-              {obras.length > 1 ? (
-                <Form.Select id="obra-activa" value={obra?.id ?? ''} onChange={(e) => cambiarObra(e.target.value)}>
-                  {obras.map((o) => <option key={o.id} value={o.id}>{o.nombre}</option>)}
-                </Form.Select>
-              ) : (
-                <span id="obra-activa" className="fw-semibold">{obra?.nombre ?? '…'}</span>
+            {/* obra activa (regla 9: solo ves lo de esta obra); con varias, «Cambiar de obra» abre la lista con buscador */}
+            <div className="sigro-obra d-flex align-items-center gap-2 min-w-0">
+              <span className="icono-obra" aria-hidden="true"><Icono d={ICONOS.obra} tam={18} /></span>
+              <div className="min-w-0">
+                <div className="small text-body-secondary lh-1">Obra</div>
+                <div id="obra-activa" className="fw-semibold text-truncate" title={obra?.nombre}>{obra?.nombre ?? '…'}</div>
+              </div>
+              {obra && <Badge pill className="d-none d-sm-inline-block">{obra.semana === 0 ? 'aún no inicia' : `semana ${obra.semana} de ${obra.semanasTotales}`}</Badge>}
+              {obras.length > 1 && (
+                <Button variant="outline-secondary" size="sm" className="text-nowrap rounded-pill" onClick={() => setEligiendoObra(true)}>
+                  Cambiar de obra
+                </Button>
               )}
-              {obra && <Badge pill>{obra.semana === 0 ? 'aún no inicia' : `semana ${obra.semana} de ${obra.semanasTotales}`}</Badge>}
             </div>
             <Nav className="ms-auto align-items-center">
               {usaApiReal && sesion && <Campana />}
@@ -490,6 +500,22 @@ function Sistema({ preparando = false, nombreObra = '', alTerminar }: {
         </div>
       </div>
       {cambiandoClave && <CambiarClave enCerrar={() => setCambiandoClave(false)} />}
+      {eligiendoObra && (
+        <Modal show onHide={() => setEligiendoObra(false)} centered>
+          <Modal.Header closeButton><Modal.Title as="h2" className="h5">Cambiar de obra</Modal.Title></Modal.Header>
+          <Modal.Body>
+            <SelectorObra
+              obras={obras.map((o) => ({ id: o.id, nombre: o.nombre, rol: ROLES[sesion?.obras.find((x) => String(x.id) === o.id)?.rol ?? ''] }))}
+              actual={obra?.id} ocupada={abriendo} autoFoco
+              alElegir={async (o) => {
+                if (o.id === obra?.id) { setEligiendoObra(false); return }
+                setAbriendo(o.id)
+                try { await cambiarObra(o.id); setEligiendoObra(false) } finally { setAbriendo(null) }
+              }}
+            />
+          </Modal.Body>
+        </Modal>
+      )}
     </HashRouter>
   )
 }

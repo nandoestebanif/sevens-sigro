@@ -4,7 +4,8 @@
    Una sola pieza para que cada listado se comporte igual:
    - columnas que se ordenan al tocar su título (▲ ▼), con reglas del español;
    - buscador sin tildes ni mayúsculas (cada palabra, en cualquier orden);
-   - paginación de Bootstrap (25 / 50 / 100 por página) solo si hace falta;
+   - paginación de Bootstrap (10 / 25 / 50 / 100 por página) solo si hace falta: ninguna lista obliga a
+     bajar y bajar para ver lo de abajo (fase 1 del rediseño, 25/11);
    - acciones por fila (dar de baja, anular, retirar…), que la pantalla muestra
      según el rol: el servidor igual lo verifica (regla 9);
    - en el celular, cada fila se vuelve una tarjeta con «etiqueta: valor»;
@@ -15,7 +16,7 @@ import { useMemo, useState, type ReactNode } from 'react'
 import { Dropdown, Form, InputGroup } from 'react-bootstrap'
 import { Vacio } from './base'
 import { Paginador, ThOrden } from './Tabla'
-import { alternarOrden, filtrarTexto, ordenar, paginar, type Orden } from './tablas'
+import { TAMANOS, alternarOrden, filtrarTexto, ordenar, paginar, type Orden } from './tablas'
 
 export interface Columna<T> {
   clave: string
@@ -32,7 +33,7 @@ export interface Columna<T> {
 
 export function TablaDatos<T>({
   filas, columnas, clave, etiqueta, buscar, marcadorBusqueda = 'Buscar…', acciones, tituloAcciones = 'Acciones',
-  vacio, sinResultados, ordenInicial = null, tamInicial = 25, filtros, claseFila,
+  vacio, sinResultados, ordenInicial = null, tamInicial = 10, filtros, claseFila,
 }: {
   filas: readonly T[]
   columnas: Columna<T>[]
@@ -113,7 +114,7 @@ export function TablaDatos<T>({
               </tbody>
             </table>
           </div>
-          {p.total > 25 && <Paginador p={p} enPagina={setPagina} tam={tam} enTam={(n) => { setTam(n); setPagina(1) }} />}
+          {p.total > TAMANOS[0] && <Paginador p={p} enPagina={setPagina} tam={tam} tamanos={TAMANOS} enTam={(n) => { setTam(n); setPagina(1) }} />}
         </>
       )}
     </div>

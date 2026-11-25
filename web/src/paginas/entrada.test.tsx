@@ -13,7 +13,10 @@ describe('portada de entrada', () => {
   it('el titular lleva su remate resaltado y el logo con texto alternativo', () => {
     const h = renderToStaticMarkup(<Portada titulo="Hola, Adiel." remate="¿En qué obra trabajas hoy?" />)
     expect(h).toContain('<h1')
-    expect(h).toContain('<span class="text-primary">¿En qué obra trabajas hoy?</span>')
+    // el lector de pantalla lee el titular entero; la vista lo anima palabra por palabra con el remate en amarillo
+    expect(h).toContain('<span class="visually-hidden">Hola, Adiel. ¿En qué obra trabajas hoy?</span>')
+    expect(h).toContain('class="text-primary sigro-remate"')
+    expect(h.match(/class="sigro-palabra"/g)).toHaveLength(7)
     expect(h).toContain('alt="SEVEN&#x27;S Ingenieros SAC"')
   })
   it('por defecto muestra las tres partes de SIGRO', () => {
