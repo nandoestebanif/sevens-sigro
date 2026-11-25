@@ -9,6 +9,8 @@
      existir en el catálogo; si ya está planificado, se ajusta (no se duplica).
      La línea queda marcada «Agregado a mano» para siempre.
    ───────────────────────────────────────────────────────────────────────── */
+import { useEnVivo } from '../formularios/enVivo'
+import { aNumero, cantidadPositiva, importeNoNegativo, minimo } from '../formularios/reglas'
 import { fechaHoraLima } from '../api/horaLima'
 import { useEffect, useMemo, useState } from 'react'
 import { ErrorApi, api as cliente } from '../api/cliente'
@@ -30,13 +32,16 @@ function AjustarLinea({ l, enCerrar, enListo }: { l: LineaRequerimiento; enCerra
   const [guardando, setGuardando] = useState(false)
   const [ajustes, setAjustes] = useState<Ajuste[] | null>(null)
   useEffect(() => { api.ajustes(l.id).then(setAjustes).catch(() => setAjustes([])) }, [l.id])
-  const nueva = Number(valor.replace(',', '.'))
+  const nueva = aNumero(valor)
+  // validación en vivo (formularios/enVivo.ts): cada campo con su mensaje mientras se escribe
+  const v = useEnVivo({
+    cantidad: cantidadPositiva(valor) ?? (nueva === l.cantidad ? 'Esa ya es la cantidad planificada.' : null),
+    motivo: minimo(motivo, 3, 'Sin motivo no hay ajuste: escribe por qué cambia (mínimo 3 letras).'),
+  })
 
   const guardar = async () => {
     setError('')
-    if (!(nueva > 0)) { setError('La cantidad debe ser mayor que cero.'); return }
-    if (nueva === l.cantidad) { setError('Esa ya es la cantidad planificada.'); return }
-    if (motivo.trim().length < 3) { setError('Sin motivo no hay ajuste: escribe por qué cambia.'); return }
+    if (v.alGuardar()) return
     setGuardando(true)
     try { await api.ajustar(l.id, nueva, motivo); enListo() }
     catch (e) { setError(e instanceof ErrorApi ? e.message : 'No se pudo ajustar.') }
@@ -48,8 +53,8 @@ function AjustarLinea({ l, enCerrar, enListo }: { l: LineaRequerimiento; enCerra
       <div className="d-flex flex-column gap-3">
         <p><strong>{l.descripcion}</strong> · planificado hoy: {n(l.cantidad)} {l.unidad}</p>
         <div className="d-flex flex-wrap gap-3 align-items-end">
-          <div style={{ flex: '1 1 150px' }}><Campo id="r-cant" etiqueta={`Nueva cantidad (${l.unidad})`} valor={valor} enCambio={setValor} /></div>
-          <div style={{ flex: '2 1 240px' }}><Campo id="r-mot" etiqueta="Motivo" valor={motivo} enCambio={setMotivo} marcador="p. ej. metrado corregido por el residente" /></div>
+          <div style={{ flex: '1 1 150px' }}><Campo id="r-cant" etiqueta={`Nueva cantidad (${l.unidad})`} valor={valor} enCambio={(x) => { setValor(x); v.cambio('cantidad') }} modoTeclado="decimal" {...v.campo('cantidad')} /></div>
+          <div style={{ flex: '2 1 240px' }}><Campo id="r-mot" etiqueta="Motivo" valor={motivo} enCambio={(x) => { setMotivo(x); v.cambio('motivo') }} marcador="p. ej. metrado corregido por el residente" {...v.campo('motivo')} /></div>
         </div>
         {nueva > 0 && nueva !== l.cantidad && (
           <p className="small text-body-secondary">
@@ -91,16 +96,20 @@ function AgregarInsumo({ yaPlanificados, enCerrar, enListo }: { yaPlanificados: 
   const codigo = texto.split(' · ')[0].trim()
   const elegido = insumos.find((i) => i.codigo === codigo)
   const disponibles = useMemo(() => insumos.filter((i) => !yaPlanificados.has(i.codigo)), [insumos, yaPlanificados])
-  const cant = Number(cantidad.replace(',', '.'))
-  const pre = Number((precio || '0').replace(',', '.'))
+  const cant = aNumero(cantidad)
+  const pre = precio.trim() ? aNumero(precio) : 0
+  const v = useEnVivo({
+    insumo: !elegido
+      ? 'Elige un insumo de la lista del catálogo. Si no existe, regístralo primero en «Catálogo de insumos».'
+      : yaPlanificados.has(elegido.codigo) ? 'Ese insumo ya está planificado: usa «Ajustar» en su línea.' : null,
+    cantidad: cantidadPositiva(cantidad),
+    precio: importeNoNegativo(precio),
+    motivo: minimo(motivo, 3, 'Sin motivo no se agrega: escribe por qué hace falta (mínimo 3 letras).'),
+  })
 
   const guardar = async () => {
     setError('')
-    if (!elegido) { setError('Elige un insumo del catálogo. Si no existe, regístralo primero en «Catálogo de insumos».'); return }
-    if (yaPlanificados.has(elegido.codigo)) { setError('Ese insumo ya está planificado: usa «Ajustar» en su línea.'); return }
-    if (!(cant > 0)) { setError('La cantidad debe ser mayor que cero.'); return }
-    if (!(pre >= 0)) { setError('El precio no puede ser negativo.'); return }
-    if (motivo.trim().length < 3) { setError('Sin motivo no se agrega: escribe por qué hace falta.'); return }
+    if (v.alGuardar() || !elegido) return
     setGuardando(true)
     try { await api.agregar(elegido.codigo, cant, pre, motivo); enListo() }
     catch (e) { setError(e instanceof ErrorApi ? e.message : 'No se pudo agregar.') }
@@ -115,17 +124,20 @@ function AgregarInsumo({ yaPlanificados, enCerrar, enListo }: { yaPlanificados: 
         </p>
         <div>
           <label htmlFor="r-ins" className="small fw-semibold text-body-secondary">Insumo del catálogo</label>
-          <input id="r-ins" list="r-catalogo" className="form-control w-100 mt-2" value={texto} onChange={(e) => setTexto(e.target.value)}
+          <input id="r-ins" list="r-catalogo" value={texto} onChange={(e) => { setTexto(e.target.value); v.cambio('insumo') }} onBlur={() => v.salir('insumo')}
+            className={`form-control w-100 mt-2${v.errores.insumo ? ' is-invalid' : v.campo('insumo').valido ? ' is-valid' : ''}`}
+            aria-invalid={!!v.errores.insumo} aria-describedby={v.errores.insumo ? 'r-ins-error' : undefined}
             placeholder="Escribe código o nombre…"  style={{ height: 44 }} />
+          {v.errores.insumo && <div id="r-ins-error" className="invalid-feedback d-block" aria-live="polite">{v.errores.insumo}</div>}
           <datalist id="r-catalogo">
             {disponibles.map((i) => <option key={i.id} value={`${i.codigo} · ${i.descripcion}`} />)}
           </datalist>
         </div>
         <div className="d-flex flex-wrap gap-3 align-items-end">
-          <div style={{ flex: '1 1 140px' }}><Campo id="r-acant" etiqueta="Cantidad (unidad del S10)" valor={cantidad} enCambio={setCantidad} marcador="0" /></div>
-          <div style={{ flex: '1 1 140px' }}><Campo id="r-apre" etiqueta="Precio unitario (S/)" valor={precio} enCambio={setPrecio} marcador="0.00" /></div>
+          <div style={{ flex: '1 1 140px' }}><Campo id="r-acant" etiqueta="Cantidad (unidad del S10)" valor={cantidad} enCambio={(x) => { setCantidad(x); v.cambio('cantidad') }} marcador="0" modoTeclado="decimal" {...v.campo('cantidad')} /></div>
+          <div style={{ flex: '1 1 140px' }}><Campo id="r-apre" etiqueta="Precio unitario (S/)" valor={precio} enCambio={(x) => { setPrecio(x); v.cambio('precio') }} marcador="0.00" modoTeclado="decimal" {...v.campo('precio')} /></div>
         </div>
-        <Campo id="r-amot" etiqueta="Motivo" valor={motivo} enCambio={setMotivo} marcador="p. ej. partida adicional aprobada por el residente" />
+        <Campo id="r-amot" etiqueta="Motivo" valor={motivo} enCambio={(x) => { setMotivo(x); v.cambio('motivo') }} marcador="p. ej. partida adicional aprobada por el residente" {...v.campo('motivo')} />
         {elegido && cant > 0 && pre >= 0 && (
           <p className="small text-body-secondary">
             Costo planificado: <strong>S/ {(cant * pre).toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong>

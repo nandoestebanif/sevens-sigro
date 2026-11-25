@@ -21,6 +21,8 @@
    cómodo, la tabla los muestra en caja amable y el detalle enseña el nombre
    normalizado exacto.
    ───────────────────────────────────────────────────────────────────────── */
+import { useEnVivo } from '../formularios/enVivo'
+import { aNumero, cantidadPositiva, minimo } from '../formularios/reglas'
 import { puedo } from '../api/permisos'
 import { fechaHoraLima } from '../api/horaLima'
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
@@ -126,15 +128,21 @@ function ModalFactor({ insumo, enCerrar, enGuardado }: {
     cargarHistorial()
   }, [cargarHistorial])
 
-  const factorNum = Number(factor)
+  const factorNum = aNumero(factor)
   const valido = Number.isFinite(factorNum) && factorNum > 0
+  // validación en vivo con las reglas del servidor (FactorIn: factor > 0 con hasta 6 decimales; motivo de 3 a 300)
+  const v = useEnVivo({
+    factor: cantidadPositiva(factor, 'Escribe el factor.') ?? (factorNum === factorActual ? 'Ese ya es el factor vigente.' : null),
+    motivo: minimo(motivo, 3, 'Escribe el motivo del cambio (mínimo 3 letras).') ?? (motivo.trim().length > 300 ? 'Máximo 300 caracteres.' : null),
+  })
 
   const guardar = async () => {
+    if (v.alGuardar()) return
     setGuardando(true)
     setError('')
     try {
       const actualizado = await api.cambiarFactorConversion(insumo.codigo, factorNum, motivo)
-      setMotivo('')
+      setMotivo(''); v.reiniciar()
       avisar(`Factor actualizado: 1 ${uCompra} = ${factorNum.toLocaleString('es-PE', { maximumFractionDigits: 6 })} ${uS10}.`)
       cargarHistorial()
       enGuardado(actualizado)
@@ -159,9 +167,11 @@ function ModalFactor({ insumo, enCerrar, enGuardado }: {
           id="factor-valor"
           etiqueta={`Factor (${uS10} por cada ${uCompra})`}
           valor={factor}
-          enCambio={setFactor}
+          enCambio={(x) => { setFactor(x); v.cambio('factor') }}
           marcador="p. ej. 7.12"
           autoFoco
+          modoTeclado="decimal"
+          {...v.campo('factor')}
         />
 
         {valido && (
@@ -179,12 +189,15 @@ function ModalFactor({ insumo, enCerrar, enGuardado }: {
           <textarea
             id="factor-motivo"
             value={motivo}
-            onChange={(e) => setMotivo(e.target.value)}
+            onChange={(e) => { setMotivo(e.target.value); v.cambio('motivo') }}
+            onBlur={() => v.salir('motivo')}
             placeholder="p. ej. Acero corrugado 1/2&quot; × 9 m: 7.12 kg por varilla según ficha técnica"
             rows={2}
-            className="form-control py-2"
+            className={`form-control py-2${v.errores.motivo ? ' is-invalid' : v.campo('motivo').valido ? ' is-valid' : ''}`}
+            aria-invalid={!!v.errores.motivo} aria-describedby={v.errores.motivo ? 'factor-motivo-error' : undefined}
              style={{ height: 'auto', resize: 'vertical' }}
           />
+          {v.errores.motivo && <div id="factor-motivo-error" className="invalid-feedback d-block" aria-live="polite">{v.errores.motivo}</div>}
         </div>
 
         <p className="small text-body-secondary">
@@ -243,8 +256,16 @@ function AltaInsumo({ editando, enCerrar, enListo }: {
   const [error, setError] = useState<{ campo: string; texto: string } | null>(null)
   const [guardando, setGuardando] = useState(false)
   const porVerificar = editando?.estado === 'por_verificar'
+  // validación en vivo con los límites del servidor (InsumoIn): material de 3 a 200; medida, norma y marca hasta 80
+  const largo = (t: string) => (t.trim().length > 80 ? 'Máximo 80 caracteres.' : null)
+  const v = useEnVivo({
+    nombre: minimo(nombre, 3, 'Escribe el material (mínimo 3 letras).') ?? (nombre.trim().length > 200 ? 'Máximo 200 caracteres.' : null),
+    medida: largo(medida), norma: largo(norma), marca: largo(marca),
+  })
+  const servidor = (campo: string) => (error?.campo === campo ? error.texto : undefined)
 
   const guardar = async (verificar = false) => {
+    if (v.alGuardar()) return
     setGuardando(true)
     setError(null)
     try {
@@ -269,20 +290,21 @@ function AltaInsumo({ editando, enCerrar, enListo }: {
           id="ins-nombre"
           etiqueta="Material"
           valor={nombre}
-          enCambio={setNombre}
+          enCambio={(x) => { setNombre(x); v.cambio('nombre'); setError(null) }}
           marcador="p. ej. IMPERMEABILIZANTE PARA CISTERNA"
           autoFoco
-          error={error?.campo === 'nombre' ? error.texto : undefined}
+          {...v.campo('nombre')}
+          error={servidor('nombre') ?? v.errores.nombre}
         />
         <div className="d-flex flex-wrap gap-3">
           <div className="min-w-0" style={{ flex: '1 1 160px' }}>
-            <Campo id="ins-medida" etiqueta="Medida (si el tipo la lleva)" valor={medida} enCambio={setMedida} marcador="p. ej. 1/2¨ x 9 m" deshabilitado={!!editando} />
+            <Campo id="ins-medida" etiqueta="Medida (si el tipo la lleva)" valor={medida} enCambio={(x) => { setMedida(x); v.cambio('medida') }} marcador="p. ej. 1/2¨ x 9 m" deshabilitado={!!editando} error={v.errores.medida} enSalir={() => v.salir('medida')} />
           </div>
           <div className="min-w-0" style={{ flex: '1 1 160px' }}>
-            <Campo id="ins-norma" etiqueta="Norma (opcional)" valor={norma} enCambio={setNorma} marcador="p. ej. NTP 399.003 · ASTM A615" deshabilitado={!!editando} />
+            <Campo id="ins-norma" etiqueta="Norma (opcional)" valor={norma} enCambio={(x) => { setNorma(x); v.cambio('norma') }} marcador="p. ej. NTP 399.003 · ASTM A615" deshabilitado={!!editando} error={v.errores.norma} enSalir={() => v.salir('norma')} />
           </div>
           <div className="min-w-0" style={{ flex: '1 1 160px' }}>
-            <Campo id="ins-marca" etiqueta="Marca (opcional)" valor={marca} enCambio={setMarca} marcador="p. ej. SIKA" />
+            <Campo id="ins-marca" etiqueta="Marca (opcional)" valor={marca} enCambio={(x) => { setMarca(x); v.cambio('marca') }} marcador="p. ej. SIKA" error={v.errores.marca} enSalir={() => v.salir('marca')} />
           </div>
         </div>
         <div>
