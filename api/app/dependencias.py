@@ -20,7 +20,7 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from app import contexto, internos
-from app.db import obtener_sesion
+from app.db import SesionPorPeticion
 from app.errores import ErrorSigro
 from app.permisos import ACCIONES
 from app.seguridad import leer_token
@@ -52,8 +52,8 @@ def _autorizar_remoto(usuario_id: int, obra_id: int | None = None, roles: frozen
 
 
 def usuario_autenticado(
+    s: SesionPorPeticion,
     cred: HTTPAuthorizationCredentials | None = Depends(_bearer),
-    s: Session = Depends(obtener_sesion, scope="function"),
 ) -> Actor:
     """El token identifica; el dueño de la identidad decide si esa persona sigue activa (una baja corta el acceso al instante)."""
     if cred is None:

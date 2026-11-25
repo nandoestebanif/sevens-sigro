@@ -61,7 +61,7 @@ import kotlin.test.assertTrue
 
 /** Servidor falso por ruta; `null` = sin señal. Anota rutas y cuerpos. */
 private class Banco(
-    ajustes: Map<String, String> = mapOf("servidor" to "http://api.prueba", "usuario_id" to "5", "nombre" to "Nicolás Almacenero"),
+    ajustes: Map<String, String> = mapOf("servidor" to "https://api.prueba", "usuario_id" to "5", "nombre" to "Nicolás Almacenero"),
     val responder: (ruta: String, metodo: String, n: Int) -> Pair<HttpStatusCode, String>?,
 ) {
     val rutas = mutableListOf<String>()
@@ -366,7 +366,7 @@ class ArreglosPruebaTest {
     fun laDireccionDelGatewayRetiradoSeCambiaSola() = runTest {
         assertEquals(Servidores.PRUEBAS, Servidores.migrar("https://sigro-gateway.onrender.com"))
         assertEquals(Servidores.PRUEBAS, Servidores.migrar("https://SIGRO-GATEWAY.onrender.com/"))
-        assertEquals("http://10.0.2.2:8000", Servidores.migrar("http://10.0.2.2:8000"))
+        assertEquals("http://10.0.2.2:8000", Servidores.migrar("http://10.0.2.2:8000"))  // NOSONAR kotlin:S1313: la dirección del emulador de Android es justo lo que esta prueba verifica
 
         val b = Banco(mapOf("servidor" to "https://sigro-gateway.onrender.com")) { _, _, _ -> HttpStatusCode.OK to "[]" }
         assertEquals("https://sigro-api.onrender.com", b.sesion.servidorGuardado(), "lo que ve la pantalla «Entrar»")

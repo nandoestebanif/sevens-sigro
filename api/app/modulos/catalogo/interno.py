@@ -7,9 +7,8 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
-from sqlalchemy.orm import Session
 
-from app.db import obtener_sesion
+from app.db import SesionPorPeticion
 from app.internos import exigir_servicio
 from app.sql import filas
 
@@ -25,7 +24,7 @@ class BuscarIn(BaseModel):
 
 
 @interno.post("/insumos/buscar")
-def buscar(d: BuscarIn, s: Session = Depends(obtener_sesion, scope="function")):
+def buscar(d: BuscarIn, s: SesionPorPeticion):
     """Insumos por id o por código (sin distinguir mayúsculas). Lo que no existe simplemente no viene."""
     if not d.ids and not d.codigos:
         return []

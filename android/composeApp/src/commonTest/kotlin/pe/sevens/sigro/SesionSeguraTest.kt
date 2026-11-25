@@ -37,7 +37,7 @@ private class Pedido(val ruta: String, val autorizacion: String?)
 
 /** Arma la app de datos completa (como Koin) sobre un servidor falso que responde según la ruta. */
 private class Mundo(
-    ajustesIniciales: Map<String, String> = mapOf("servidor" to "http://api.prueba"),
+    ajustesIniciales: Map<String, String> = mapOf("servidor" to "https://api.prueba"),
     seguroInicial: Map<String, String> = emptyMap(),
     val responder: (ruta: String) -> Pair<HttpStatusCode, String>,
 ) {
@@ -69,7 +69,7 @@ class SesionSeguraTest {
     @Test
     fun alEntrarElTokenVaAlAlmacenCifradoYNoAAjuste() = runTest {
         val m = Mundo { HttpStatusCode.OK to sesionJson("tkn-1") }
-        m.sesion.iniciarSesion("http://api.prueba", "alm", "x")
+        m.sesion.iniciarSesion("https://api.prueba", "alm", "x")
         assertEquals("tkn-1", m.seguro.m[BovedaSesion.CLAVE_TOKEN])
         assertFalse("token" in m.ajustes.m.value, "la tabla ajuste no guarda el token")
         assertEquals("tkn-1", m.sesion.sesion.first()?.token)
@@ -78,7 +78,7 @@ class SesionSeguraTest {
     @Test
     fun elTokenDeUnaVersionAnteriorSeMudaYSeBorraDeAjuste() = runTest {
         val m = Mundo(
-            ajustesIniciales = mapOf("servidor" to "http://api.prueba", "token" to "viejo", "usuario_id" to "5", "nombre" to "Alm"),
+            ajustesIniciales = mapOf("servidor" to "https://api.prueba", "token" to "viejo", "usuario_id" to "5", "nombre" to "Alm"),
         ) { HttpStatusCode.OK to "[]" }
         val s = m.sesion.sesion.first()
         assertEquals("viejo", s?.token, "la sesión sigue abierta tras actualizar la app")
@@ -89,7 +89,7 @@ class SesionSeguraTest {
     @Test
     fun siYaHabiaTokenCifradoElViejoSoloSeBorra() = runTest {
         val m = Mundo(
-            ajustesIniciales = mapOf("servidor" to "http://api.prueba", "token" to "viejo", "usuario_id" to "5"),
+            ajustesIniciales = mapOf("servidor" to "https://api.prueba", "token" to "viejo", "usuario_id" to "5"),
             seguroInicial = mapOf(BovedaSesion.CLAVE_TOKEN to "nuevo"),
         ) { HttpStatusCode.OK to "[]" }
         assertEquals("nuevo", m.boveda.token())
@@ -99,7 +99,7 @@ class SesionSeguraTest {
     @Test
     fun elPluginPoneElBearerYElLoginNoLlevaToken() = runTest {
         val m = Mundo { ruta -> if (ruta.endsWith("/auth/login")) HttpStatusCode.OK to sesionJson("tkn-1") else HttpStatusCode.OK to ALMACENES }
-        m.sesion.iniciarSesion("http://api.prueba", "alm", "x")
+        m.sesion.iniciarSesion("https://api.prueba", "alm", "x")
         m.obra.almacenes(1)
         assertNull(m.pedidos[0].autorizacion, "el login no manda token")
         assertEquals("/api/v1/obras/1/almacenes", m.pedidos[1].ruta)
@@ -110,11 +110,11 @@ class SesionSeguraTest {
     fun alVolverAEntrarSeUsaElTokenNuevo() = runTest {
         var token = "tkn-1"
         val m = Mundo { ruta -> if (ruta.endsWith("/auth/login")) HttpStatusCode.OK to sesionJson(token) else HttpStatusCode.OK to ALMACENES }
-        m.sesion.iniciarSesion("http://api.prueba", "alm", "x")
+        m.sesion.iniciarSesion("https://api.prueba", "alm", "x")
         m.obra.almacenes(1)
         m.sesion.cerrarSesion()
         token = "tkn-2"
-        m.sesion.iniciarSesion("http://api.prueba", "alm", "x")
+        m.sesion.iniciarSesion("https://api.prueba", "alm", "x")
         m.obra.almacenes(1)
         assertEquals("Bearer tkn-2", m.pedidos.last().autorizacion, "Ktor no se queda con el token anterior")
     }
@@ -124,7 +124,7 @@ class SesionSeguraTest {
         val m = Mundo(seguroInicial = mapOf(BovedaSesion.CLAVE_TOKEN to "tkn-1")) {
             HttpStatusCode.Unauthorized to """{"codigo":"credenciales_invalidas","mensaje":"Usuario o clave incorrectos."}"""
         }
-        val e = assertFailsWith<ErrorSigro> { m.sesion.iniciarSesion("http://api.prueba", "alm", "mala") }
+        val e = assertFailsWith<ErrorSigro> { m.sesion.iniciarSesion("https://api.prueba", "alm", "mala") }
         assertEquals("Usuario o clave incorrectos.", e.message)
         assertEquals("tkn-1", m.seguro.m[BovedaSesion.CLAVE_TOKEN], "un 401 del login no es «sesión vencida»")
     }
@@ -135,7 +135,7 @@ class SesionSeguraTest {
             if (ruta.endsWith("/auth/login")) HttpStatusCode.OK to sesionJson("tkn-1")
             else HttpStatusCode.Unauthorized to """{"codigo":"token_invalido","mensaje":"La sesión venció."}"""
         }
-        m.sesion.iniciarSesion("http://api.prueba", "alm", "x")
+        m.sesion.iniciarSesion("https://api.prueba", "alm", "x")
         val dispositivo = m.cred.identificadorDispositivo()
         val s = m.salidas.registrar(NuevaSalida(1, Insumo(7, "C-1", "Cemento", "bls"), "2", "Losa", "Juan Pérez", null, 3))
         assertNotNull(m.sesion.sesion.first())
@@ -149,7 +149,7 @@ class SesionSeguraTest {
         val fila = m.salidasDao.una(s.uuidCliente)
         assertEquals("PENDIENTE", fila.estado, "la cola NO se borra: se envía al volver a entrar")
         assertTrue(fila.nota!!.contains("vuelve a ingresar"))
-        assertEquals("http://api.prueba", m.ajustes.m.value["servidor"], "el servidor se conserva para volver a entrar")
+        assertEquals("https://api.prueba", m.ajustes.m.value["servidor"], "el servidor se conserva para volver a entrar")
         assertEquals(dispositivo, m.cred.identificadorDispositivo(), "el código del celular no cambia (HU-15)")
 
         // Sin sesión no se insiste: el siguiente envío ni siquiera llama al servidor.

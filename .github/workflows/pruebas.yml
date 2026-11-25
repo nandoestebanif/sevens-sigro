@@ -115,6 +115,8 @@ jobs:
             --obra "Multifamiliar Flores" --inicio 2026-10-19 --fin 2027-10-17
       - name: Construir api/Dockerfile.pruebas
         run: docker build -f api/Dockerfile.pruebas -t sigro-api .
+      - name: Construir la imagen podada de un servicio (api/Dockerfile, dependencias con hash)
+        run: docker build --build-arg SERVICIO=compras -t sigro-compras api
       - name: Arrancar con 512 MB, como Render gratis
         run: |
           H=127.0.0.1:5432/sigro
