@@ -2,6 +2,7 @@
    sale de esta lista; el saldo de cada uno lo calcula el servidor. */
 import { TablaDatos } from '../../ui/TablaDatos'
 import { useState } from 'react'
+import { useEnVivo } from '../../formularios/enVivo'
 import { administracion, type TipoAlmacen } from '../../api/administracion'
 import { Boton, Campo, Chip, Tarjeta } from '../../ui/base'
 import { AvisoBien, AvisoError, Estado, Selector, useCarga } from './comun'
@@ -11,21 +12,21 @@ export function Almacenes({ obraId, obraNombre }: { obraId: string; obraNombre: 
   const { datos, error, recargar } = useCarga(() => administracion.almacenes(obraId), [obraId])
   const [nombre, setNombre] = useState('')
   const [tipo, setTipo] = useState<TipoAlmacen>('frente')
-  const [errorNombre, setErrorNombre] = useState<string | null>(null)
   const [aviso, setAviso] = useState<string | null>(null)
   const [hecho, setHecho] = useState<string | null>(null)
   const [ocupado, setOcupado] = useState(false)
 
+  const n = nombre.trim()
+  const v = useEnVivo({ nombre: !n ? 'Escribe el nombre del almacén.' : n.length > 80 ? 'El nombre admite como máximo 80 caracteres.' : null })
+
   const crear = async () => {
     setAviso(null); setHecho(null)
-    const n = nombre.trim()
-    if (!n) { setErrorNombre('Escribe el nombre del almacén.'); return }
-    if (n.length > 80) { setErrorNombre('El nombre admite como máximo 80 caracteres.'); return }
+    if (v.alGuardar()) return
     setOcupado(true)
     try {
       const a = await administracion.crearAlmacen(obraId, { nombre: n, tipo })
       setHecho(`Se registró el almacén «${a.nombre}» en ${obraNombre}.`)
-      setNombre('')
+      setNombre(''); v.reiniciar()
       await recargar()
     } catch (x) {
       setAviso(mensajeParaPersona(x))
@@ -40,7 +41,7 @@ export function Almacenes({ obraId, obraNombre }: { obraId: string; obraNombre: 
         <div className="d-flex flex-column gap-3">
           <div className="fw-bold">Nuevo almacén en {obraNombre}</div>
           <div className="gap-2 align-items-start" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))' }}>
-            <Campo id="almacen-nombre" etiqueta="Nombre" valor={nombre} marcador="Ej.: Almacén torre B" enCambio={(v) => { setNombre(v); setErrorNombre(null) }} error={errorNombre ?? undefined} />
+            <Campo id="almacen-nombre" etiqueta="Nombre" valor={nombre} marcador="Ej.: Almacén torre B" enCambio={(x) => { setNombre(x); v.cambio('nombre') }} {...v.campo('nombre')} />
             <Selector id="almacen-tipo" etiqueta="Tipo" valor={tipo} opciones={TIPOS_ALMACEN} enCambio={setTipo} />
           </div>
           <div><Boton enClic={crear} deshabilitado={ocupado}>{ocupado ? 'Guardando…' : 'Registrar almacén'}</Boton></div>

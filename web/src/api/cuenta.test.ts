@@ -12,9 +12,9 @@ describe('avisos', () => {
 describe('cambiar contraseña', () => {
   it('valida lo evidente antes de ir al servidor', () => {
     expect(errorCambioClave('', 'Nueva123', 'Nueva123')).toMatch(/actual/)
-    expect(errorCambioClave('a', 'corta', 'corta')).toMatch(/8 caracteres/)
-    expect(errorCambioClave('Igual1234', 'Igual1234', 'Igual1234')).toMatch(/distinta/)
-    expect(errorCambioClave('Vieja1234', 'Nueva1234', 'Nueva12345')).toMatch(/no coinciden/)
-    expect(errorCambioClave('Vieja1234', 'Nueva1234', 'Nueva1234')).toBeNull()
+    expect(errorCambioClave('a', 'corta', 'corta')).toMatch(/10 caracteres/)
+    expect(errorCambioClave('Igual12345', 'Igual12345', 'Igual12345')).toMatch(/distinta/)
+    expect(errorCambioClave('Vieja12345', 'Nueva12345', 'Nueva123456')).toMatch(/no coinciden/)
+    expect(errorCambioClave('Vieja12345', 'Nueva12345', 'Nueva12345')).toBeNull()
   })
 })

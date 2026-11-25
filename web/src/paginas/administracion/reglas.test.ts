@@ -61,12 +61,13 @@ describe('celulares (HU-15)', () => {
 })
 
 describe('usuarios (HU-13)', () => {
-  it('revisa nombre y usuario antes de enviar; la clave la juzga el servidor', () => {
+  it('revisa nombre, usuario y la clave con la misma regla que el servidor', () => {
     expect(validarAltaUsuario({ nombre: '', usuario: 'j perez', clave: '' })).toEqual({
       nombre: expect.any(String), usuario: expect.any(String), clave: 'Escribe una clave temporal.',
     })
-    // cualquier clave no vacía pasa aquí: si es débil, lo dice la API (clave_debil)
-    expect(validarAltaUsuario({ nombre: 'Juan Pérez', usuario: 'jperez', clave: 'x' })).toEqual({})
+    // la clave débil se avisa al escribirla, con el mismo texto que daría la API (clave_debil)
+    expect(validarAltaUsuario({ nombre: 'Juan Pérez', usuario: 'jperez', clave: 'x' })).toEqual({ clave: 'La contraseña debe tener al menos 10 caracteres.' })
+    expect(validarAltaUsuario({ nombre: 'Juan Pérez', usuario: 'jperez', clave: 'Temporal2026' })).toEqual({})
   })
 
   it('el mensaje de clave débil de la API va bajo el campo de la clave, tal cual', () => {
