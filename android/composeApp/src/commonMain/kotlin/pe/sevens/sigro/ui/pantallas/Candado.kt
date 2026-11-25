@@ -308,7 +308,9 @@ fun BoxScope.CapaCandado(vm: CandadoViewModel, sesion: Sesion?, obra: ObraAsigna
     LaunchedEffect(vm) { while (true) { delay(CandadoViewModel.REVISAR_CADA_MS); vm.revisar() } }
 
     val disponible = remember(e.usuarioId) { biometria.disponibilidad() }
-    val ofrecer = e.listo && puedeOfrecer && !e.bloqueada && sesion != null && ReglaCandado.ofrecer(e.ajuste, disponible)
+    // ya tenía la huella solo como candado y acaba de escribir su contraseña: se le ofrece guardar el acceso
+    val completar = !e.entraConHuella && biometria.guardaClaves() && vm.hayClaveReciente()
+    val ofrecer = e.listo && puedeOfrecer && !e.bloqueada && sesion != null && ReglaCandado.ofrecer(e.ajuste, disponible, completar)
     AnimatedVisibility(ofrecer, enter = fadeIn(), exit = fadeOut()) {
         Box(Modifier.fillMaxSize().background(Color(0x8C0A0A0A)).clickable(remember { MutableInteractionSource() }, null) { vm.ahoraNo() })
     }
@@ -527,6 +529,7 @@ fun SeccionSeguridad(vm: CandadoViewModel, biometria: Biometria) {
         if (e.ajuste.activa) {
             Text(
                 if (e.entraConHuella) "✓ También entras con tu huella aunque cierres sesión."
+                else if (!biometria.guardaClaves()) "En este celular (Android 10 o menos) la huella solo desbloquea la app: tras cerrar sesión se entra con contraseña."
                 else "Desbloquea la app. Para entrar con huella tras cerrar sesión, apágala y vuelve a activarla con tu contraseña.",
                 fontSize = 12.sp, lineHeight = 17.sp, color = if (e.entraConHuella) Paleta.EnviadoTexto else Paleta.Texto3,
             )

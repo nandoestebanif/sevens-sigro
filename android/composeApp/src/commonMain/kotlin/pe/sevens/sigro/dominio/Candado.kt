@@ -131,9 +131,13 @@ object ReglaCandado {
         return ahoraMs - ultimoUsoMs >= ajuste.minutos * 60_000L
     }
 
-    /** Se ofrece una sola vez, si el celular puede y la persona aún no la tiene. */
-    fun ofrecer(ajuste: AjusteHuella, disponible: DisponibilidadHuella): Boolean =
-        !ajuste.activa && !ajuste.ofrecida && disponible == DisponibilidadHuella.DISPONIBLE
+    /**
+     * Se ofrece una sola vez, si el celular puede y la persona aún no la tiene. [completar]: ya la tenía solo como
+     * candado (activada en una versión anterior o desde Perfil sin contraseña) y ahora puede guardar el acceso para
+     * entrar con huella tras cerrar sesión (acaba de escribir la contraseña): se vuelve a ofrecer para completarlo.
+     */
+    fun ofrecer(ajuste: AjusteHuella, disponible: DisponibilidadHuella, completar: Boolean = false): Boolean =
+        disponible == DisponibilidadHuella.DISPONIBLE && ((!ajuste.activa && !ajuste.ofrecida) || (ajuste.activa && completar))
 
     /** Minutos válidos: si llega otro valor (ajuste viejo o editado), se usa el de siempre. */
     fun minutosValidos(m: Int): Int = if (m in MINUTOS_BLOQUEO) m else MINUTOS_POR_DEFECTO

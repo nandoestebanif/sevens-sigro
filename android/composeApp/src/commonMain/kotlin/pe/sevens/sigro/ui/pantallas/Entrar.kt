@@ -115,11 +115,23 @@ class EntrarViewModel(
 
     init {
         viewModelScope.launch { _estado.update { it.copy(servidor = sesiones.servidorGuardado()) } }
+    }
+
+    /**
+     * Cada vez que aparece la pantalla (al abrir la app y al volver tras «cerrar sesión»): ¿hay una cuenta que entra con
+     * huella? El ViewModel vive mientras la app esté abierta, así que no basta con mirarlo una vez al crearlo.
+     */
+    fun recargar() {
         viewModelScope.launch {
             val c = runCatching { candado?.cuenta() }.getOrNull()
             // desde el candado pidió «entrar con mi contraseña»: formulario directo, con su usuario puesto
             val conContrasena = claveReciente?.tomarPreferirContrasena() == true
-            _estado.update { it.copy(cuentaHuella = c, conFormulario = conContrasena, usuario = if (conContrasena) c?.usuario ?: it.usuario else it.usuario) }
+            _estado.update {
+                it.copy(
+                    cuentaHuella = c, conFormulario = conContrasena, clave = "", error = null, cargando = false,
+                    usuario = if (conContrasena) c?.usuario ?: it.usuario else it.usuario,
+                )
+            }
         }
     }
 
@@ -140,8 +152,8 @@ class EntrarViewModel(
             is ResultadoSecreto.Ok -> {
                 _estado.update { it.copy(cargando = true, error = null) }
                 try {
-                    sesiones.iniciarSesion(c.servidor, c.usuario, r.valor)
-                    claveReciente?.guardar(c.usuario, r.valor)
+                    val s = sesiones.iniciarSesion(c.servidor, c.usuario, r.valor)
+                    claveReciente?.guardar(s.usuario, r.valor)
                     _estado.update { it.copy(cargando = false) }
                 } catch (x: ErrorSigro) {
                     if (x is ErrorSigro.SesionVencida) {
@@ -178,12 +190,16 @@ class EntrarViewModel(
         _estado.update { it.copy(cargando = true, error = null) }
         viewModelScope.launch {
             try {
-                sesiones.iniciarSesion(e.servidor, e.usuario, e.clave)
-                // solo en memoria y por unos minutos: si activa la huella al entrar, se cifra con ella
+                // solo en memoria y por unos minutos: si activa la huella al entrar, se cifra con ella. Se guarda ANTES de
+                // entrar (la oferta puede salir apenas hay sesión) y con el usuario que devuelve el servidor, que puede
+                // no ser lo que se escribió (mayúsculas, correo o DNI).
                 claveReciente?.guardar(e.usuario, e.clave)
+                val s = sesiones.iniciarSesion(e.servidor, e.usuario, e.clave)
+                claveReciente?.guardar(s.usuario, e.clave)
                 // La raíz cambia sola de pantalla al ver la sesión guardada.
                 _estado.update { it.copy(cargando = false, clave = "") }
             } catch (x: ErrorSigro) {
+                claveReciente?.olvidar()
                 _estado.update { it.copy(cargando = false, error = x.message) }
             }
         }
@@ -201,6 +217,7 @@ fun PantallaEntrar(vm: EntrarViewModel = koinViewModel(), biometria: Biometria =
     val alcance = rememberCoroutineScope()
     val cuenta = e.cuentaHuella
     val conHuella = cuenta != null && !e.conFormulario && biometria.guardaClaves()
+    LaunchedEffect(Unit) { vm.recargar() }
     var verClave by remember { mutableStateOf(false) }
     var verServidor by remember { mutableStateOf(false) }
 

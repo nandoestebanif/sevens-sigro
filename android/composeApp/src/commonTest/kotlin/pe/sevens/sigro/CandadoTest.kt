@@ -275,7 +275,8 @@ class CandadoTest {
             if (sinSenal) throw pe.sevens.sigro.dominio.ErrorSigro("sin_conexion", "Sin señal", null)
             if (!acepta) throw pe.sevens.sigro.dominio.ErrorSigro("credenciales", "Usuario o clave incorrectos.", 401)
             entro = Triple(servidor, usuario, clave)
-            return Sesion(servidor, "t", 7, "Adiel", usuario, emptyList())
+            // el servidor devuelve su usuario de siempre aunque se haya escrito con mayúsculas o espacios
+            return Sesion(servidor, "t", 7, "Adiel", usuario.trim().lowercase(), emptyList())
         }
         override suspend fun elegirObra(obra: ObraAsignada) {}
         override suspend fun cambiarDeObra() {}
@@ -288,7 +289,7 @@ class CandadoTest {
     fun conLaHuellaEntraComoSiempreSinEscribirLaContrasena() = runTest(principal) {
         val entradas = Entradas(); val guardado = Guardado().apply { cuentaGuardada = cuenta }
         val vm = EntrarViewModel(entradas, guardado, ClaveReciente({ 0 }))
-        advanceUntilIdle()
+        vm.recargar(); advanceUntilIdle()
         assertEquals(cuenta, vm.estado.value.cuentaHuella, "la pantalla ofrece «Entrar como Adiel»")
         vm.entrarConHuella(HuellaFalsa()); advanceUntilIdle()
         assertEquals(Triple(cuenta.servidor, "adiel", "Clave2026x"), entradas.entro, "el servidor verifica la contraseña de siempre")
@@ -298,7 +299,7 @@ class CandadoTest {
     fun siLaContrasenaCambioSeOlvidaLaHuellaYSePideEscrita() = runTest(principal) {
         val guardado = Guardado().apply { cuentaGuardada = cuenta }
         val vm = EntrarViewModel(Entradas(acepta = false), guardado, ClaveReciente({ 0 }))
-        advanceUntilIdle()
+        vm.recargar(); advanceUntilIdle()
         val huella = HuellaFalsa()
         vm.entrarConHuella(huella); advanceUntilIdle()
         assertNull(guardado.cuentaGuardada); assertTrue(huella.olvidoClave)
@@ -311,7 +312,7 @@ class CandadoTest {
     fun sinSenalLaHuellaSeQuedaParaElSiguienteIntento() = runTest(principal) {
         val guardado = Guardado().apply { cuentaGuardada = cuenta }
         val vm = EntrarViewModel(Entradas(sinSenal = true), guardado, ClaveReciente({ 0 }))
-        advanceUntilIdle()
+        vm.recargar(); advanceUntilIdle()
         vm.entrarConHuella(HuellaFalsa()); advanceUntilIdle()
         assertEquals(cuenta, guardado.cuentaGuardada)
         assertEquals("Sin señal", vm.estado.value.error)
@@ -321,7 +322,7 @@ class CandadoTest {
     fun unaHuellaNuevaEnElCelularObligaAEscribirLaContrasena() = runTest(principal) {
         val guardado = Guardado().apply { cuentaGuardada = cuenta }
         val vm = EntrarViewModel(Entradas(), guardado, ClaveReciente({ 0 }))
-        advanceUntilIdle()
+        vm.recargar(); advanceUntilIdle()
         vm.entrarConHuella(HuellaFalsa(alDescifrar = { ResultadoSecreto.HuellaNueva })); advanceUntilIdle()
         assertNull(guardado.cuentaGuardada)
         assertTrue(vm.estado.value.error!!.contains("huella nueva"))
@@ -331,7 +332,7 @@ class CandadoTest {
     fun entrarConContrasenaLaDejaEnMemoriaParaActivarLaHuella() = runTest(principal) {
         val clave = ClaveReciente({ 0 })
         val vm = EntrarViewModel(Entradas(), Guardado(), clave)
-        advanceUntilIdle()
+        vm.recargar(); advanceUntilIdle()
         vm.usuario("adiel"); vm.clave("Clave2026x"); vm.entrar(); advanceUntilIdle()
         assertTrue(clave.hay("adiel"))
         assertEquals("", vm.estado.value.clave, "la pantalla no la conserva")
@@ -341,7 +342,7 @@ class CandadoTest {
     fun siNoPuedePonerLaHuellaEntraConSuContrasena() = runTest(principal) {
         val guardado = Guardado().apply { cuentaGuardada = cuenta }
         val vm = EntrarViewModel(Entradas(), guardado, ClaveReciente({ 0 }))
-        advanceUntilIdle()
+        vm.recargar(); advanceUntilIdle()
         vm.conContrasena()
         assertTrue(vm.estado.value.conFormulario)
         assertEquals("adiel", vm.estado.value.usuario, "su usuario ya puesto: solo escribe la contraseña")
@@ -360,11 +361,11 @@ class CandadoTest {
         assertTrue(sesiones.cerro)
         assertEquals(cuenta, guardado.cuentaGuardada, "la huella no se borra: solo esta vez va con contraseña")
         val entrar = EntrarViewModel(Entradas(), guardado, clave)
-        advanceUntilIdle()
+        entrar.recargar(); advanceUntilIdle()
         assertTrue(entrar.estado.value.conFormulario)
         assertEquals("adiel", entrar.estado.value.usuario)
         val otraVez = EntrarViewModel(Entradas(), guardado, clave)
-        advanceUntilIdle()
+        otraVez.recargar(); advanceUntilIdle()
         assertFalse(otraVez.estado.value.conFormulario, "la preferencia vale una sola vez")
     }
 
@@ -372,11 +373,40 @@ class CandadoTest {
     fun siElCelularNoPuedeAbrirLaHuellaSeDiceYSeQuedaEnLaPantalla() = runTest(principal) {
         val guardado = Guardado().apply { cuentaGuardada = cuenta }
         val vm = EntrarViewModel(Entradas(), guardado, ClaveReciente({ 0 }))
-        advanceUntilIdle()
+        vm.recargar(); advanceUntilIdle()
         vm.entrarConHuella(HuellaFalsa(alDescifrar = { ResultadoSecreto.Fallo("Demasiados intentos. Prueba más tarde.") })); advanceUntilIdle()
         assertEquals("Demasiados intentos. Prueba más tarde.", vm.estado.value.error)
         assertEquals(cuenta, guardado.cuentaGuardada, "un fallo del sensor no borra la huella")
         vm.entrarConHuella(HuellaFalsa(alDescifrar = { ResultadoSecreto.Cancelada })); advanceUntilIdle()
         assertFalse(vm.estado.value.conFormulario, "cancelar el diálogo deja la pantalla de la huella")
+    }
+
+    @Test
+    fun alVolverTrasCerrarSesionLaPantallaVeLaHuellaRecienGuardada() = runTest(principal) {
+        // el error que vio Adiel: la pantalla de entrar es la misma de antes (vive mientras la app esté abierta)
+        val guardado = Guardado()
+        val vm = EntrarViewModel(Entradas(), guardado, ClaveReciente({ 0 }))
+        vm.recargar(); advanceUntilIdle()
+        assertNull(vm.estado.value.cuentaHuella, "al abrir la app todavía no tenía huella")
+        guardado.cuentaGuardada = cuenta // entró, activó la huella y cerró sesión
+        vm.recargar(); advanceUntilIdle()
+        assertEquals(cuenta, vm.estado.value.cuentaHuella, "al volver a aparecer ofrece «Entrar como Adiel»")
+    }
+
+    @Test
+    fun laContrasenaSeGuardaConElUsuarioDelServidor() = runTest(principal) {
+        val clave = ClaveReciente({ 0 })
+        val vm = EntrarViewModel(Entradas(), Guardado(), clave)
+        vm.recargar(); advanceUntilIdle()
+        vm.usuario("  ADIEL "); vm.clave("Clave2026x"); vm.entrar(); advanceUntilIdle()
+        assertTrue(clave.hay("adiel"), "aunque se haya escrito distinto, vale para la sesión que abrió")
+    }
+
+    @Test
+    fun siYaTeniaElCandadoSeLeOfreceCompletarElAcceso() {
+        val soloCandado = AjusteHuella(activa = true, ofrecida = true)
+        assertFalse(ReglaCandado.ofrecer(soloCandado, DisponibilidadHuella.DISPONIBLE), "sin contraseña a mano no hay qué completar")
+        assertTrue(ReglaCandado.ofrecer(soloCandado, DisponibilidadHuella.DISPONIBLE, completar = true))
+        assertFalse(ReglaCandado.ofrecer(AjusteHuella(ofrecida = true), DisponibilidadHuella.DISPONIBLE, completar = true), "si dijo «ahora no», no se insiste")
     }
 }
