@@ -55,6 +55,7 @@ const Compras = lazy(() => import('./paginas/Compras').then((m) => ({ default: m
 const Importar = lazy(() => import('./paginas/Importar').then((m) => ({ default: m.Importar })))
 const Movimientos = lazy(() => import('./paginas/Movimientos').then((m) => ({ default: m.Movimientos })))
 const Semana = lazy(() => import('./paginas/Semana').then((m) => ({ default: m.Semana })))
+const ManoDeObra = lazy(() => import('./paginas/ManoDeObra').then((m) => ({ default: m.ManoDeObra })))
 const Requerimiento = lazy(() => import('./paginas/Requerimiento').then((m) => ({ default: m.Requerimiento })))
 const Obras = lazy(() => import('./paginas/Obra').then((m) => ({ default: m.Obras })))
 const Parametros = lazy(() => import('./paginas/Parametros').then((m) => ({ default: m.Parametros })))
@@ -78,6 +79,7 @@ const ICONOS = {
   compras: 'M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z|M3 6h18|M16 10a4 4 0 0 1-8 0',
   proveedores: 'M5 18H3V6h12v12H9|M19 18h2v-5l-3-4h-4v9h1|M7.5 20a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3|M17.5 20a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3',
   inventario: 'M3 7l9-4 9 4-9 4-9-4|M3 7v10l9 4 9-4V7|M12 11v10',
+  personal: 'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2|M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8|M22 21v-2a4 4 0 0 0-3-3.87|M16 3.13a4 4 0 0 1 0 7.75',
   movimientos: 'M8 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2h-3|M12 17V7|M8 10l4-4 4 4',
   catalogo: 'M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z|M3.3 7 12 12l8.7-5|M12 22V12',
   importar: 'M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4|M7 8l5-5 5 5|M12 3v12',
@@ -112,6 +114,7 @@ const GRUPOS: { rotulo: string; items: { ruta: string; nombre: string; icono: ke
       { ruta: '/tablero', nombre: 'Gasto en recursos', icono: 'tablero' },
       { ruta: '/reposicion', nombre: 'Reposición', icono: 'reposicion' },
       { ruta: '/parametros', nombre: 'Reposición: parámetros', icono: 'parametros' },
+      { ruta: '/mano-de-obra', nombre: 'Mano de obra', icono: 'personal' },
     ],
   },
   {
@@ -393,6 +396,7 @@ function Sistema({ preparando = false, nombreObra = '', alTerminar }: {
                     <Route path="/catalogo" element={<Catalogo />} />
                     <Route path="/movimientos" element={<Movimientos />} />
                     <Route path="/semana" element={<Semana />} />
+                    <Route path="/mano-de-obra" element={<ManoDeObra />} />
                     <Route path="/requerimiento" element={<Requerimiento />} />
                     <Route path="/importar" element={<Importar />} />
                     <Route path="/obra" element={<Obras />} />
