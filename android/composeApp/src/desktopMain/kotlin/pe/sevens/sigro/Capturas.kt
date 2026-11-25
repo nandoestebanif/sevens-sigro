@@ -190,6 +190,9 @@ private object TrabajadoresFalsos : RepositorioTrabajadores {
     override fun deObra(obraId: Int) = lista
     override suspend fun actualizar(obraId: Int) = lista.value.size
     override suspend fun registrar(obraId: Int, nuevo: NuevoTrabajador) = lista.value.first()
+    override suspend fun darDeBaja(obraId: Int, trabajadorId: Int, fechaSalida: String) =
+        lista.value.first { it.id == trabajadorId }.copy(fechaSalida = fechaSalida)
+    override suspend fun horas(obraId: Int): List<pe.sevens.sigro.dominio.HorasTrabajador> = emptyList()
 }
 
 /** Lecturas de obra de ejemplo: el proveedor y la otra obra son [marcador]; los insumos, del catálogo real. */
