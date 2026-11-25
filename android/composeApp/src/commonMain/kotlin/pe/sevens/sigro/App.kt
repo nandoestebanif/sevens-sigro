@@ -1,7 +1,6 @@
 package pe.sevens.sigro
 
 import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -17,8 +16,6 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -31,7 +28,8 @@ import pe.sevens.sigro.ui.tema.ModoTema
 import org.koin.compose.viewmodel.koinViewModel
 import pe.sevens.sigro.plataforma.ManejarAtras
 import pe.sevens.sigro.ui.pantallas.Destino
-import pe.sevens.sigro.ui.pantallas.PantallaEntrando
+import pe.sevens.sigro.ui.pantallas.CapaEntrando
+import pe.sevens.sigro.ui.pantallas.obrasDe
 import pe.sevens.sigro.dominio.ObraAsignada
 import pe.sevens.sigro.ui.pantallas.EstadoRaiz
 import pe.sevens.sigro.ui.pantallas.PantallaAsistencia
@@ -75,8 +73,6 @@ fun App() {
             val raiz: RaizViewModel = koinViewModel()
             val estado by raiz.estado.collectAsState()
             val entrando by raiz.entrando.collectAsState()
-            var ultimaEntrada by remember { mutableStateOf<ObraAsignada?>(null) }
-            if (entrando != null) ultimaEntrada = entrando
             Box(Modifier.fillMaxSize()) {
             // Al entrar, la capa «el plano se dibuja» de PantallaEntrar se desvanece y crece 6 % (0,6 s)
             // dejando ver la pantalla siguiente, que va debajo.
@@ -102,13 +98,7 @@ fun App() {
                     is EstadoRaiz.Dentro -> Navegacion(e, alElegirObra = raiz::elegir)
                 }
             }
-            // «Entrando a …» tapa el cambio de obra (al entrar o al cambiar desde el inicio)
-            AnimatedVisibility(entrando != null, enter = fadeIn(tween(150)), exit = fadeOut(tween(350))) {
-                ultimaEntrada?.let { o ->
-                    val obras = (estado as? EstadoRaiz.Dentro)?.sesion?.obras ?: (estado as? EstadoRaiz.ElegirObra)?.sesion?.obras.orEmpty()
-                    PantallaEntrando(o, obras.indexOfFirst { it.id == o.id }.coerceAtLeast(0))
-                }
-            }
+            CapaEntrando(entrando, obrasDe(estado)) // «Entrando a …» tapa el cambio de obra
             }
         }
     }

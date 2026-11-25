@@ -18,7 +18,10 @@ import pe.sevens.sigro.dominio.RepositorioSesion
 import pe.sevens.sigro.dominio.Sesion
 import pe.sevens.sigro.ui.pantallas.CelularEnObra
 import pe.sevens.sigro.ui.pantallas.ENTRANDO_MS
+import pe.sevens.sigro.ui.pantallas.EstadoRaiz
 import pe.sevens.sigro.ui.pantallas.RaizViewModel
+import pe.sevens.sigro.ui.pantallas.indiceDeObra
+import pe.sevens.sigro.ui.pantallas.obrasDe
 import pe.sevens.sigro.ui.pantallas.avisoColaAlCambiar
 import pe.sevens.sigro.ui.pantallas.colorCelular
 import pe.sevens.sigro.ui.pantallas.colorDeObra
@@ -85,6 +88,16 @@ class CambiarObraTest {
         CelularEnObra.entries.forEach { c ->
             assertTrue(contraste(colorCelular(c), negro) >= 4.5, "${c.name} pasa AA sobre la etiqueta negra")
         }
+    }
+
+    @Test
+    fun entrandoTomaElColorDeLaObraEnCualquierEstado() {
+        val sesion = Sesion("https://api.prueba", "t", 1, "Adiel Luján", "adiel", obras)
+        assertEquals(obras, obrasDe(EstadoRaiz.ElegirObra(sesion)), "al entrar")
+        assertEquals(obras, obrasDe(EstadoRaiz.Dentro(sesion, obras[0])), "al cambiar desde el inicio")
+        assertEquals(emptyList(), obrasDe(EstadoRaiz.SinSesion))
+        assertEquals(2, indiceDeObra(obras, obras[2]))
+        assertEquals(0, indiceDeObra(emptyList(), obras[2]), "si no está en la lista, el primer color (no revienta)")
     }
 
     @Test
