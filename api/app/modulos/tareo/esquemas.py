@@ -6,7 +6,7 @@ from decimal import Decimal
 from typing import Literal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 Categoria = Literal["operario", "oficial", "peon"]
 EstadoJornada = Literal["presente", "ausente", "permiso"]
@@ -16,18 +16,44 @@ class Estricto(BaseModel):
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
 
 
+def _limpio(t: str | None) -> str | None:
+    """Sin espacios de más; vacío cuenta como no escrito."""
+    return " ".join(t.split()) or None if t else None
+
+
 class TrabajadorIn(Estricto):
-    nombre: str = Field(min_length=3, max_length=120)
+    """Nombres y apellidos por separado (0020). La app 1.0.0 todavía manda solo «nombre»: se sigue aceptando."""
+    nombres: str | None = Field(None, min_length=2, max_length=80)
+    apellido_paterno: str | None = Field(None, min_length=1, max_length=60)
+    apellido_materno: str | None = Field(None, max_length=60)
+    nombre: str | None = Field(None, min_length=3, max_length=120)
     tipo_documento: Literal["DNI", "CE", "PASAPORTE"] = "DNI"
     documento: str = Field(min_length=6, max_length=20)
     categoria: Categoria
     cuadrilla: str = Field(min_length=1, max_length=60)
     fecha_ingreso: date
 
+    @model_validator(mode="after")
+    def _nombre_completo(self) -> "TrabajadorIn":
+        self.nombres, self.apellido_paterno, self.apellido_materno = (
+            _limpio(self.nombres), _limpio(self.apellido_paterno), _limpio(self.apellido_materno),
+        )
+        if self.nombres or self.apellido_paterno:
+            if not (self.nombres and self.apellido_paterno):
+                raise ValueError("Escribe los nombres y al menos el apellido paterno.")
+            apellidos = " ".join(x for x in (self.apellido_paterno, self.apellido_materno) if x)
+            self.nombre = f"{apellidos}, {self.nombres}"
+        elif not self.nombre:
+            raise ValueError("Escribe los nombres y apellidos del trabajador.")
+        return self
+
 
 class TrabajadorOut(BaseModel):
     id: int
     nombre: str
+    nombres: str | None = None
+    apellido_paterno: str | None = None
+    apellido_materno: str | None = None
     tipo_documento: str
     documento: str
     categoria: str
@@ -85,3 +111,11 @@ class HorasOut(BaseModel):
     horas_normales: Decimal
     horas_extra: Decimal
     ultima_jornada: date | None = Field(None, description="HU-64: fecha de la última jornada considerada en la suma")
+
+
+class DniReniecOut(BaseModel):
+    """Lo que RENIEC dice de un DNI (vía integraciones), para llenar el registro del trabajador sin errores."""
+    dni: str
+    nombres: str
+    apellido_paterno: str
+    apellido_materno: str

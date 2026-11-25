@@ -279,3 +279,56 @@ def test_el_gerente_no_ve_jornadas_ni_trabajadores_solo_horas(mundo, eq):
     assert get(mundo, f"/obras/{eq['proyecto']}/jornadas", eq["gerente"]).status_code == 403
     assert get(mundo, f"/obras/{eq['proyecto']}/trabajadores", eq["gerente"]).status_code == 403
     assert get(mundo, f"/obras/{eq['proyecto']}/horas-acumuladas", eq["gerente"]).status_code == 200
+
+
+# ─────────────────────────────── nombres y apellidos por separado y consulta de DNI (HU-62, migración 0020)
+def test_nombres_y_apellidos_por_separado_arman_el_nombre_para_mostrar(mundo, eq):
+    r = nuevo_trabajador(mundo, eq, nombre=None, nombres="  Juan   Carlos ", apellido_paterno="Quispe", apellido_materno="Huamán")
+    assert r.status_code == 201, r.text
+    t = r.json()
+    assert (t["nombres"], t["apellido_paterno"], t["apellido_materno"]) == ("Juan Carlos", "Quispe", "Huamán")
+    assert t["nombre"] == "Quispe Huamán, Juan Carlos"
+    lista = get(mundo, f"/obras/{eq['proyecto']}/trabajadores", eq["residente"]).json()
+    assert lista[0]["apellido_paterno"] == "Quispe"
+
+
+def test_con_un_solo_apellido_tambien_se_registra(mundo, eq):
+    r = nuevo_trabajador(mundo, eq, nombre=None, nombres="Rosa", apellido_paterno="Mamani")
+    assert r.status_code == 201 and r.json()["nombre"] == "Mamani, Rosa" and r.json()["apellido_materno"] is None
+
+
+def test_sin_apellido_paterno_o_sin_nombre_se_rechaza(mundo, eq):
+    assert nuevo_trabajador(mundo, eq, nombre=None, nombres="Rosa").status_code == 422
+    assert nuevo_trabajador(mundo, eq, nombre=None, apellido_paterno="Mamani").status_code == 422
+    assert nuevo_trabajador(mundo, eq, nombre=None).status_code == 422
+
+
+def test_la_app_anterior_que_manda_solo_nombre_sigue_funcionando(mundo, eq):
+    r = nuevo_trabajador(mundo, eq)
+    assert r.status_code == 201 and r.json()["nombre"] == "Juan Quispe Huamán" and r.json()["nombres"] is None
+
+
+def test_la_consulta_de_dni_trae_nombres_y_apellidos_de_reniec(mundo, eq, monkeypatch):
+    from app import integraciones
+
+    pedidos = []
+
+    def falso(dni, cliente=None):
+        pedidos.append(dni)
+        return integraciones.DniReniec(dni=dni, nombres="JUAN CARLOS", apellido_paterno="QUISPE", apellido_materno="HUAMAN")
+
+    monkeypatch.setattr(integraciones, "consultar_dni", falso)
+    r = get(mundo, f"/obras/{eq['proyecto']}/trabajadores/consulta-dni/45678912", eq["almacenero"])
+    assert r.status_code == 200 and r.json() == {
+        "dni": "45678912", "nombres": "JUAN CARLOS", "apellido_paterno": "QUISPE", "apellido_materno": "HUAMAN"}
+    assert get(mundo, f"/obras/{eq['proyecto']}/trabajadores/consulta-dni/4567891", eq["almacenero"]).status_code == 422
+    assert get(mundo, f"/obras/{eq['proyecto']}/trabajadores/consulta-dni/45678912", eq["residente"]).status_code == 403
+    assert pedidos == ["45678912"]          # ni el DNI mal escrito ni el rol sin permiso llegan a RENIEC
+
+
+def test_si_reniec_no_responde_se_escribe_a_mano(mundo, eq, monkeypatch):
+    from app import integraciones
+
+    monkeypatch.setattr(integraciones, "consultar_dni", lambda dni, cliente=None: None)
+    r = get(mundo, f"/obras/{eq['proyecto']}/trabajadores/consulta-dni/45678912", eq["ssoma"])
+    assert r.status_code == 404 and r.json()["codigo"] == "reniec_sin_respuesta"
