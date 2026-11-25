@@ -4,8 +4,8 @@
    Igual que en ui/base.tsx: las pantallas usan estos nombres y aquí se decide
    qué componente de Bootstrap va debajo.
    ───────────────────────────────────────────────────────────────────────── */
-import type { CSSProperties, ReactNode } from 'react'
-import { Alert, Button, ButtonGroup, Card, Form, InputGroup, Nav, Stack } from 'react-bootstrap'
+import { Children, isValidElement, type CSSProperties, type ReactNode } from 'react'
+import { Alert, Button, ButtonGroup, Card, Form, InputGroup, Nav, OverlayTrigger, Popover, Stack } from 'react-bootstrap'
 import { Ayuda, type Clave } from './Glosario'
 import { DibujoObra, type Ilustracion } from './Ilustraciones'
 
@@ -146,9 +146,31 @@ export function Segmentado<T extends string | number | boolean>({ opciones, valo
   )
 }
 
-/** Fila de etiquetas bajo el encabezado (qué dato es real y cuál es de ejemplo). */
+/**
+ * Etiquetas bajo el encabezado. Para que la pantalla no se llene de texto, solo quedan a la vista las que
+ * piden atención (tono «aviso» o «grave»); las explicativas se juntan en «ⓘ Sobre estos datos» (Popover).
+ */
 export function Chips({ children }: { children: ReactNode }) {
-  return <Stack direction="horizontal" gap={2} className="flex-wrap">{children}</Stack>
+  const todas = Children.toArray(children).filter(isValidElement) as { props: { tono?: string; children?: ReactNode } }[]
+  const atencion = todas.filter((c) => c.props.tono === 'aviso' || c.props.tono === 'grave')
+  const notas = todas.filter((c) => !atencion.includes(c))
+  if (!todas.length) return null
+  const pop = (
+    <Popover style={{ maxWidth: 360 }}>
+      <Popover.Header as="h3">Sobre estos datos</Popover.Header>
+      <Popover.Body><ul className="ps-3 mb-0 d-flex flex-column gap-1">{notas.map((c, i) => <li key={i}>{c.props.children}</li>)}</ul></Popover.Body>
+    </Popover>
+  )
+  return (
+    <Stack direction="horizontal" gap={2} className="flex-wrap">
+      {atencion as ReactNode[]}
+      {notas.length > 0 && (
+        <OverlayTrigger trigger="click" placement="bottom-start" overlay={pop} rootClose>
+          <Button variant="link" size="sm" className="p-0 text-body-secondary text-decoration-none small">ⓘ Sobre estos datos</Button>
+        </OverlayTrigger>
+      )}
+    </Stack>
+  )
 }
 
 /** Campo con etiqueta: el control (Form.Control, Form.Select…) va como hijo. */

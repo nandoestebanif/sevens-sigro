@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { alternarOrden, numerosDePagina, ordenar, paginar } from './tablas'
+import { alternarOrden, filtrarTexto, normalizar, numerosDePagina, ordenar, paginar } from './tablas'
 
 const filas = [
   { codigo: '10', nombre: 'Árido', valor: 30 },
@@ -49,4 +49,18 @@ describe('paginar', () => {
     expect(numerosDePagina(6, 20)).toEqual([1, null, 4, 5, 6, 7, 8, null, 20])
     expect(numerosDePagina(1, 3)).toEqual([1, 2, 3])
   })
+})
+
+
+describe('buscar en una tabla', () => {
+  const xs = ['Juan Pérez · Peón', 'Rosa Gil · Oficial', 'CEMENTO PORTLAND TIPO I']
+  it('ignora tildes y mayúsculas', () => {
+    expect(normalizar('  Peón ')).toBe('peon')
+    expect(filtrarTexto(xs, 'perez', (x) => x)).toEqual(['Juan Pérez · Peón'])
+  })
+  it('cada palabra debe estar, en cualquier orden', () => {
+    expect(filtrarTexto(xs, 'tipo cemento', (x) => x)).toEqual(['CEMENTO PORTLAND TIPO I'])
+    expect(filtrarTexto(xs, 'rosa peon', (x) => x)).toEqual([])
+  })
+  it('sin búsqueda devuelve todo', () => { expect(filtrarTexto(xs, '   ', (x) => x)).toHaveLength(3) })
 })

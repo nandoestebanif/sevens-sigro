@@ -357,33 +357,32 @@ function Sistema({ preparando = false, nombreObra = '', alTerminar }: {
             <div className="sigro-panel">
               <div className="d-flex align-items-start justify-content-between">
                 <NavLink to="/tablero" aria-label="SIGRO · inicio" className="d-block px-2 pt-1" onClick={() => setMenuAbierto(false)}>
-                  <img src={logoBlanco} alt="SEVEN'S Ingenieros SAC" height={54} />
+                  <img src={logoBlanco} alt="SEVEN'S Ingenieros SAC" height={44} />
                 </NavLink>
                 <button type="button" className="btn-close btn-close-white d-lg-none" aria-label="Cerrar menú" onClick={() => setMenuAbierto(false)} />
               </div>
-              {sesion && (
-                <div className="sigro-perfil">
-                  <span className="avatar" aria-hidden="true">{iniciales(sesion.usuario.nombre)}</span>
-                  <div className="min-w-0">
-                    {rol && <div className="rol">{ROLES[rol] ?? rol}</div>}
-                    <div className="nombre text-truncate">{sesion.usuario.nombre}</div>
-                  </div>
-                </div>
-              )}
-              <div className="sigro-rotulo">Menú</div>
               <MenuSecciones grupos={grupos} alNavegar={() => setMenuAbierto(false)} />
               {/* la API decide quién registra compras (compra.registrar); aquí solo se ofrece el atajo */}
               {(!rol || ['almacenero', 'residente', 'administrador'].includes(rol)) && (
                 <div className="sigro-llamado">
                   <div className="titulo">¿Llegó una compra?</div>
-                  <p>Regístrala con su comprobante y queda en el libro.</p>
                   <NavLink to="/compras" className="btn btn-primary w-100" onClick={() => setMenuAbierto(false)}>+ Registrar compra</NavLink>
                 </div>
               )}
-              {usaApiReal && sesion && (
-                <button type="button" className="sigro-item border-0 bg-transparent w-100 mt-2" onClick={cerrarSesion}>
-                  <Icono d={ICONOS.salir} tam={20} />Cerrar sesión
-                </button>
+              {/* perfil abajo, con su botón de salir: el menú entra entero en una laptop (1366×768) sin barra propia */}
+              {sesion && (
+                <div className="sigro-perfil">
+                  <span className="avatar" aria-hidden="true">{iniciales(sesion.usuario.nombre)}</span>
+                  <div className="min-w-0 flex-grow-1">
+                    <div className="nombre text-truncate">{sesion.usuario.nombre}</div>
+                    {rol && <div className="rol">{ROLES[rol] ?? rol}</div>}
+                  </div>
+                  {usaApiReal && (
+                    <button type="button" className="sigro-salir" onClick={cerrarSesion} aria-label="Cerrar sesión" title="Cerrar sesión">
+                      <Icono d={ICONOS.salir} tam={20} />
+                    </button>
+                  )}
+                </div>
               )}
             </div>
           </Offcanvas.Body>

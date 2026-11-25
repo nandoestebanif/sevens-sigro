@@ -45,3 +45,13 @@ export function numerosDePagina(actual: number, paginas: number, alrededor = 2):
   }
   return out
 }
+
+/** Para buscar sin que importen tildes ni mayúsculas: «Peón» encuentra «peon». */
+export const normalizar = (t: string) => t.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim()
+
+/** Filtra por texto: cada palabra buscada debe aparecer en el texto de la fila (en cualquier orden). */
+export function filtrarTexto<T>(lista: readonly T[], busqueda: string, texto: (item: T) => string): T[] {
+  const palabras = normalizar(busqueda).split(/\s+/).filter(Boolean)
+  if (!palabras.length) return [...lista]
+  return lista.filter((x) => { const t = normalizar(texto(x)); return palabras.every((p) => t.includes(p)) })
+}
