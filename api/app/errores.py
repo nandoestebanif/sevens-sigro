@@ -40,6 +40,8 @@ AMIGABLES = {
     "uq_dispositivo_activo_por_usuario": "Esa persona ya tiene un dispositivo autorizado en esta obra; revócalo antes de autorizar otro.",
     "uq_dispositivo_activo_identificador": "Ese dispositivo ya está autorizado en esta obra.",
     "uq_usuario_usuario": "Ese nombre de usuario ya existe.",
+    "uq_usuario_dni": "Ya hay un usuario con ese DNI.",
+    "uq_usuario_correo": "Ya hay un usuario con ese correo.",
     "uq_proyecto_nombre": "Ya existe una obra con ese nombre.",
     "uq_almacen_proyecto_nombre": "Ya existe un almacén con ese nombre en esta obra.",
     "uq_asignacion_vigente": "Esa persona ya tiene una asignación vigente en esta obra; retírala antes de cambiar su rol.",

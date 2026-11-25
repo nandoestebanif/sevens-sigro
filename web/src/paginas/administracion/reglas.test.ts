@@ -4,7 +4,7 @@ import type { Asignacion, Dispositivo, Usuario } from '../../api/administracion'
 import { ErrorApi } from '../../api/error'
 import {
   CODIGO_YA_TIENE_CELULAR, asignables, campoDelError, celularAnterior, esAdministrador, fechaLima, mensajeParaPersona,
-  ordenarCelulares, ordenarUsuarios, puedeAutorizar, puedeRevocar, validarAltaUsuario, validarMotivo,
+  ordenarCelulares, ordenarUsuarios, puedeAutorizar, puedeRevocar, validarAltaUsuario, validarContacto, validarMotivo,
 } from './reglas'
 
 const celular = (id: number, usuarioId: number, estado: Dispositivo['estado'], nombre = `Persona ${usuarioId}`): Dispositivo => ({
@@ -110,5 +110,21 @@ describe('fechas', () => {
     expect(fechaLima('2026-11-05T17:20:31+00:00')).toBe('05/11/2026 12:20')
     expect(fechaLima(null)).toBe('—')
     expect(fechaLima('no es fecha')).toBe('—')
+  })
+})
+
+describe('contacto del usuario (migración 0021)', () => {
+  it('todo vacío vale: los tres son opcionales', () => {
+    expect(validarContacto({ dni: '', correo: '', celular: '' })).toEqual({})
+  })
+  it('revisa el formato de cada uno y acepta espacios en el DNI y el celular', () => {
+    expect(validarContacto({ dni: '4567 8912', correo: 'ana@sevens.pe', celular: '987 654 321' })).toEqual({})
+    expect(Object.keys(validarContacto({ dni: '1234567', correo: 'ana@', celular: '812345678' })).sort())
+      .toEqual(['celular', 'correo', 'dni'])
+  })
+  it('los errores del servidor van a su campo', () => {
+    expect(campoDelError('uq_usuario_dni')).toBe('dni')
+    expect(campoDelError('uq_usuario_correo')).toBe('correo')
+    expect(campoDelError('ck_usuario_celular')).toBe('celular')
   })
 })

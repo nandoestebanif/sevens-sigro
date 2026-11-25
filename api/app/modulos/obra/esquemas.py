@@ -56,9 +56,37 @@ class CambiarClaveIn(Estricto):
 
 
 # --- usuarios
-class UsuarioIn(Estricto):
+_DNI = r"^\d{8}$"
+_CELULAR = r"^9\d{8}$"
+_CORREO = r"^[^@\s]+@[^@\s]+\.[^@\s]+$"
+
+
+class ContactoIn(Estricto):
+    """DNI, correo y celular (0021): opcionales; vacío cuenta como no escrito."""
+    dni: str | None = Field(None, pattern=_DNI)
+    correo: str | None = Field(None, max_length=120, pattern=_CORREO)
+    celular: str | None = Field(None, pattern=_CELULAR)
+
+    @model_validator(mode="before")
+    @classmethod
+    def _vacios_y_formato(cls, d):
+        if isinstance(d, dict):
+            d = dict(d)
+            for k in ("dni", "correo", "celular"):
+                v = d.get(k)
+                if isinstance(v, str):
+                    v = v.strip().replace(" ", "") if k != "correo" else v.strip().lower()
+                    d[k] = v or None
+        return d
+
+
+class UsuarioIn(ContactoIn):
     nombre: str = Field(min_length=1, max_length=120)
     usuario: str = Field(pattern=r"^[A-Za-z0-9._-]{3,40}$")
+    clave: str = Field(max_length=200)
+
+
+class ClaveTemporalIn(Estricto):
     clave: str = Field(max_length=200)
 
 
@@ -68,6 +96,18 @@ class UsuarioOut(BaseModel):
     usuario: str
     estado: str
     creado_en: datetime
+    fecha_baja: datetime | None = None
+    dni: str | None = None
+    correo: str | None = None
+    celular: str | None = None
+
+
+class DniReniecOut(BaseModel):
+    dni: str
+    nombres: str
+    apellido_paterno: str
+    apellido_materno: str
+    nombre_completo: str
 
 
 # --- proyecto
