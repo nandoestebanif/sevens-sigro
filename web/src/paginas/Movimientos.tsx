@@ -15,6 +15,7 @@
    - El saldo se recalcula considerando ambos movimientos (lo hace la capa API).
    - La consulta permite ver el movimiento anulado y el que lo anuló.
    ───────────────────────────────────────────────────────────────────────── */
+import { puedo } from '../api/permisos'
 import { diaHoraLima } from '../api/horaLima'
 import { usaApiReal } from '../api/http'
 import { useEffect, useState, useMemo } from 'react'
@@ -267,7 +268,7 @@ export function Movimientos() {
                         S/ {importe.toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </td>
                       <td className="text-end">
-                        {m.tipo !== 'reverso' && !anulado && (
+                        {m.tipo !== 'reverso' && !anulado && puedo('movimiento.revertir') && (
                           <Pildora tipo="secundario" chica enClic={() => setCorrigiendo(m)}>Corregir</Pildora>
                         )}
                       </td>

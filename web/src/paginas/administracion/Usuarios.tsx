@@ -1,10 +1,11 @@
 /* HU-13 · Usuarios de la empresa. Alta con clave temporal (la regla de clave la aplica y la explica el
    servidor) y baja: nada se borra (regla 10), la persona queda «de baja» y pierde el acceso al instante. */
+import { AccionesFila, TablaDatos } from '../../ui/TablaDatos'
 import { useState } from 'react'
 import { ErrorApi } from '../../api/error'
 import { administracion, type Usuario } from '../../api/administracion'
 import { Boton, Campo, Chip, Modal, Tarjeta } from '../../ui/base'
-import { AvisoBien, AvisoError, Confirmar, Estado, Tabla, estiloCelda, estiloCeldaSuave, filaTabla, useCarga } from './comun'
+import { AvisoBien, AvisoError, Confirmar, Estado, useCarga } from './comun'
 import { campoDelError, estaDeBaja, fechaLima, mensajeParaPersona, ordenarUsuarios, validarAltaUsuario } from './reglas'
 
 export function Usuarios({ usuarioSesionId }: { usuarioSesionId: number | null }) {
@@ -31,25 +32,25 @@ export function Usuarios({ usuarioSesionId }: { usuarioSesionId: number | null }
           {(lista) => {
             const filas = ordenarUsuarios(lista)
             return (
-              <Tabla etiqueta="Usuarios" titulos={['Nombre', 'Usuario', 'Estado', 'Alta', '']}>
-                {filas.map((u, i) => (
-                  <tr key={u.id} style={filaTabla(i === filas.length - 1)}>
-                    <td style={{ ...estiloCelda, fontWeight: 600, color: estaDeBaja(u) ? 'var(--tinta-3)' : undefined }}>{u.nombre}</td>
-                    <td className="n" style={estiloCeldaSuave}>{u.usuario}</td>
-                    <td style={estiloCelda}>
-                      {estaDeBaja(u)
-                        ? <Chip tono="neutro">{u.fechaBaja ? `De baja desde ${fechaLima(u.fechaBaja)}` : 'De baja'}</Chip>
-                        : <Chip tono="bien">Activo</Chip>}
-                    </td>
-                    <td className="n" style={estiloCeldaSuave}>{fechaLima(u.creadoEn)}</td>
-                    <td style={{ ...estiloCelda, textAlign: 'right' }}>
-                      {!estaDeBaja(u) && u.id !== usuarioSesionId && (
-                        <Boton tipo="secundario" enClic={() => { setHecho(null); setBaja(u) }}>Dar de baja</Boton>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </Tabla>
+              <TablaDatos
+                etiqueta="Usuarios"
+                filas={filas}
+                clave={(u) => u.id}
+                buscar={(u) => `${u.nombre} ${u.usuario}`}
+                marcadorBusqueda="Buscar por nombre o usuario…"
+                vacio={{ titulo: 'Sin usuarios', detalle: 'Registra al primero con «Registrar usuario».' }}
+                columnas={[
+                  { clave: 'nombre', titulo: 'Nombre', valor: (u) => u.nombre, celda: (u) => <strong className={estaDeBaja(u) ? 'text-body-secondary' : ''}>{u.nombre}</strong> },
+                  { clave: 'usuario', titulo: 'Usuario', valor: (u) => u.usuario, celda: (u) => <span className="text-body-secondary">{u.usuario}</span> },
+                  { clave: 'estado', titulo: 'Estado', valor: (u) => (estaDeBaja(u) ? 'b' : 'a'), celda: (u) => estaDeBaja(u)
+                    ? <Chip tono="neutro">{u.fechaBaja ? `De baja desde ${fechaLima(u.fechaBaja)}` : 'De baja'}</Chip>
+                    : <Chip tono="bien">Activo</Chip> },
+                  { clave: 'alta', titulo: 'Alta', numerica: true, valor: (u) => u.creadoEn, celda: (u) => <span className="text-nowrap">{fechaLima(u.creadoEn)}</span> },
+                ]}
+                acciones={(u) => !estaDeBaja(u) && u.id !== usuarioSesionId
+                  ? <AccionesFila de={u.nombre} acciones={[{ texto: 'Dar de baja', peligro: true, enClic: () => { setHecho(null); setBaja(u) } }]} />
+                  : null}
+              />
             )
           }}
         </Estado>

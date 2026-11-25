@@ -1,9 +1,11 @@
 /* HU-14 · Quién trabaja en la obra activa y con qué rol (regla 9: el permiso vive junto a la obra).
    Asignar y retirar; un retiro no borra: queda con su fecha. La obra no se queda sin administrador (lo cuida la API). */
+import { AccionesFila, TablaDatos } from '../../ui/TablaDatos'
 import { useState } from 'react'
 import { administracion, type Asignacion, type Rol, type Usuario } from '../../api/administracion'
 import { Boton, Tarjeta } from '../../ui/base'
-import { AvisoBien, AvisoError, Confirmar, Estado, Selector, Tabla, estiloCelda, estiloCeldaSuave, filaTabla, useCarga } from './comun'
+import { AvisoBien, AvisoError, Confirmar, Estado, Selector, useCarga } from './comun'
+import { Chip } from '../../ui/base'
 import { ROLES, asignables, fechaLima, mensajeParaPersona, textoRol } from './reglas'
 
 export function Asignaciones({ obraId, obraNombre }: { obraId: string; obraNombre: string }) {
@@ -82,20 +84,23 @@ export function Asignaciones({ obraId, obraNombre }: { obraId: string; obraNombr
           vacio={{ titulo: 'Nadie asignado todavía', detalle: `Asigna a las personas que trabajan en ${obraNombre}.` }}
         >
           {(xs) => (
-            <Tabla etiqueta={`Asignaciones de ${obraNombre}`} titulos={['Persona', 'Usuario', 'Rol', 'Desde', 'Hasta', '']}>
-              {xs.map((a, i) => (
-                <tr key={a.id} style={filaTabla(i === xs.length - 1)}>
-                  <td style={{ ...estiloCelda, fontWeight: 600, color: a.fechaRetiro ? 'var(--tinta-3)' : undefined }}>{a.usuarioNombre}</td>
-                  <td className="n" style={estiloCeldaSuave}>{a.usuario}</td>
-                  <td style={estiloCelda}>{textoRol(a.rol)}</td>
-                  <td className="n" style={estiloCeldaSuave}>{fechaLima(a.fechaAsignacion)}</td>
-                  <td className="n" style={estiloCeldaSuave}>{a.fechaRetiro ? fechaLima(a.fechaRetiro) : 'vigente'}</td>
-                  <td style={{ ...estiloCelda, textAlign: 'right' }}>
-                    {!a.fechaRetiro && <Boton tipo="secundario" enClic={() => { setHecho(null); setAviso(null); setRetirando(a) }}>Retirar</Boton>}
-                  </td>
-                </tr>
-              ))}
-            </Tabla>
+            <TablaDatos
+              etiqueta={`Asignaciones de ${obraNombre}`}
+              filas={xs}
+              clave={(a) => a.id}
+              buscar={(a) => `${a.usuarioNombre} ${a.usuario} ${textoRol(a.rol)}`}
+              marcadorBusqueda="Buscar por persona o rol…"
+              vacio={{ titulo: 'Nadie asignado', detalle: 'Asigna a una persona con su rol en esta obra.' }}
+              columnas={[
+                { clave: 'persona', titulo: 'Persona', valor: (a) => a.usuarioNombre, celda: (a) => <><strong className={a.fechaRetiro ? 'text-body-secondary' : ''}>{a.usuarioNombre}</strong><div className="small text-body-secondary">{a.usuario}</div></> },
+                { clave: 'rol', titulo: 'Rol', valor: (a) => textoRol(a.rol), celda: (a) => textoRol(a.rol) },
+                { clave: 'desde', titulo: 'Desde', numerica: true, valor: (a) => a.fechaAsignacion, celda: (a) => <span className="text-nowrap">{fechaLima(a.fechaAsignacion)}</span> },
+                { clave: 'hasta', titulo: 'Hasta', numerica: true, valor: (a) => a.fechaRetiro, celda: (a) => a.fechaRetiro ? <span className="text-nowrap">{fechaLima(a.fechaRetiro)}</span> : <Chip tono="bien">Vigente</Chip> },
+              ]}
+              acciones={(a) => !a.fechaRetiro
+                ? <AccionesFila de={a.usuarioNombre} acciones={[{ texto: 'Retirar de la obra', peligro: true, enClic: () => { setHecho(null); setAviso(null); setRetirando(a) } }]} />
+                : null}
+            />
           )}
         </Estado>
       </Tarjeta>

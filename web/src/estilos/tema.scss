@@ -153,8 +153,8 @@ h1, .h1, h2, .h2, h3, .h3 { letter-spacing: -0.02em; }
   .sigro-menu {
     flex: 0 0 19rem;
     width: 19rem;
-    position: sticky; top: 0; height: 100vh;
-    padding: 1rem 0.25rem 1rem 1rem;
+    position: sticky; top: 0; height: 100vh; height: 100dvh;
+    padding: 0.75rem 0.25rem 0.75rem 0.75rem;
     background: transparent !important;
     border: 0 !important;
   }
@@ -167,17 +167,19 @@ h1, .h1, h2, .h2, h3, .h3 { letter-spacing: -0.02em; }
   border-radius: 1.75rem;
   background: var(--sigro-menu-bg);
   color: var(--sigro-menu-texto);
-  padding: 1.25rem 1rem;
-  scrollbar-width: thin;
-  scrollbar-color: #424343 transparent;
+  padding: 1rem 0.85rem;
+  gap: 0.75rem;
+  // si una pantalla muy baja (< 640 px) no alcanza, se desplaza sin mostrar una barra gruesa
+  scrollbar-width: none;
+  &::-webkit-scrollbar { display: none; }
 }
 @include media-breakpoint-down(lg) { .sigro-panel { border-radius: 0; } }
 
 .sigro-perfil {
-  display: flex; align-items: center; gap: 0.85rem;
-  padding: 0.9rem 0.6rem; margin-top: 0.75rem;
-  border-top: 1px solid var(--sigro-menu-item); border-bottom: 1px solid var(--sigro-menu-item);
-  .avatar { width: 2.75rem; height: 2.75rem; flex: none; border-radius: 50%; background: $primary; color: $dark; display: flex; align-items: center; justify-content: center; font-weight: 600; }
+  display: flex; align-items: center; gap: 0.75rem;
+  padding: 0.75rem 0.5rem 0.25rem;
+  border-top: 1px solid var(--sigro-menu-item);
+  .avatar { width: 2.4rem; height: 2.4rem; flex: none; border-radius: 50%; background: $primary; color: $dark; display: flex; align-items: center; justify-content: center; font-weight: 600; }
   .rol { font-size: 0.7rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--sigro-menu-tenue); }
   .nombre { color: #fff; font-weight: 500; }
 }
@@ -186,7 +188,7 @@ h1, .h1, h2, .h2, h3, .h3 { letter-spacing: -0.02em; }
 .sigro-menu .accordion { --bs-accordion-color: var(--sigro-menu-texto); --bs-accordion-btn-color: var(--sigro-menu-texto); --bs-accordion-active-color: #fff; }
 .sigro-menu .accordion-item { background: transparent; border: 0; }
 .sigro-menu .accordion-button {
-  gap: 0.85rem; min-height: 3rem; padding: 0 0.85rem; border-radius: 0.9rem !important;
+  gap: 0.85rem; min-height: 2.6rem; padding: 0 0.85rem; border-radius: 0.9rem !important;
   background: transparent; color: var(--sigro-menu-texto); font-size: 0.9rem; font-weight: 400; box-shadow: none;
   &::after {
     width: 1rem; height: 1rem; background-size: 1rem;
@@ -195,13 +197,13 @@ h1, .h1, h2, .h2, h3, .h3 { letter-spacing: -0.02em; }
   &:hover { background: #242424; color: #fff; }
   &:not(.collapsed) { background: var(--sigro-menu-item); color: #fff; font-weight: 500; svg { color: $primary; } }
 }
-.sigro-menu .accordion-body { padding: 0.35rem 0 0.4rem 2.75rem; }
+.sigro-menu .accordion-body { padding: 0.2rem 0 0.3rem 2.75rem; }
 
 // subpáginas colgando de una línea curva (árbol)
 .sigro-sub {
   display: flex; flex-direction: column; gap: 0.25rem;
   a {
-    position: relative; display: block; padding: 0.55rem 0.85rem; border-radius: 0.65rem;
+    position: relative; display: block; padding: 0.45rem 0.85rem; border-radius: 0.65rem;
     font-size: 0.82rem; color: var(--sigro-menu-tenue);
     &::before { content: ""; position: absolute; left: -1rem; top: -0.4rem; width: 0.75rem; height: calc(50% + 0.4rem);
       border-left: 1px solid var(--sigro-menu-linea); border-bottom: 1px solid var(--sigro-menu-linea); border-bottom-left-radius: 0.5rem; }
@@ -211,15 +213,21 @@ h1, .h1, h2, .h2, h3, .h3 { letter-spacing: -0.02em; }
   }
 }
 .sigro-item {
-  display: flex; align-items: center; gap: 0.85rem; min-height: 3rem; padding: 0 0.85rem; border-radius: 0.9rem;
+  display: flex; align-items: center; gap: 0.85rem; min-height: 2.6rem; padding: 0 0.85rem; border-radius: 0.9rem;
   color: var(--sigro-menu-texto); font-size: 0.9rem;
   &:hover { background: #242424; color: #fff; }
   &.active { background: var(--sigro-menu-item); color: #fff; font-weight: 500; svg { color: $primary; } }
 }
 .sigro-llamado {
-  margin-top: 1.25rem; padding: 1.1rem 1rem 1rem; border-radius: 1.25rem; background: #242424; text-align: center;
-  .titulo { color: #fff; font-weight: 600; }
-  p { font-size: 0.8rem; color: var(--sigro-menu-tenue); margin: 0.3rem 0 0.8rem; }
+  margin-top: auto; padding: 0.85rem; border-radius: 1.25rem; background: #242424; text-align: center;
+  .titulo { color: #fff; font-weight: 600; font-size: 0.85rem; margin-bottom: 0.6rem; }
+}
+// en pantallas bajas el atajo queda solo como botón
+@media (max-height: 820px) { .sigro-llamado { padding: 0; background: transparent; .titulo { display: none; } } }
+.sigro-salir {
+  flex: none; width: 2rem; height: 2.2rem; border: 0; border-radius: 0.65rem; background: transparent;
+  color: var(--sigro-menu-tenue); display: flex; align-items: center; justify-content: center;
+  &:hover { background: #242424; color: #fff; }
 }
 .sigro-menu :focus-visible { outline-color: $primary; }
 
@@ -408,3 +416,44 @@ h1, .h1, h2, .h2, h3, .h3 { letter-spacing: -0.02em; }
   --campo-borde: var(--bs-border-color);
   --velo: rgba(0, 0, 0, 0.55);
 }
+
+// ── TablaDatos: números a la derecha y, en el celular, cada fila es una tarjeta «etiqueta: valor» ──
+.tabla-datos {
+  th.n, td.n { text-align: right; }
+  td.acciones { white-space: nowrap; }
+}
+@include media-breakpoint-down(md) {
+  .tabla-datos {
+    thead { display: none; }
+    tbody, tr, td { display: block; width: 100%; }
+    tr { border: 1px solid var(--bs-border-color); border-radius: 1rem; padding: 0.5rem 0.85rem; margin-bottom: 0.75rem; background: var(--bs-body-bg); }
+    td { border: 0; padding: 0.3rem 0; display: flex; justify-content: space-between; gap: 1rem; text-align: right; }
+    td.n { text-align: right; }
+    td::before { content: attr(data-label); font-weight: 600; color: var(--bs-secondary-color); text-align: left; flex: none; max-width: 45%; }
+    td[data-label=""]::before { display: none; }
+    td:first-child { justify-content: flex-start; text-align: left; font-size: 1.02rem; }
+    td:first-child::before { display: none; }
+    td.acciones { justify-content: flex-end; padding-top: 0.5rem; border-top: 1px solid var(--bs-border-color); margin-top: 0.35rem; }
+    td.solo-escritorio { display: none; }
+  }
+}
+.tabla-datos td.principal { min-width: 14rem; }
+.sin-flecha::after { display: none !important; }
+.sin-flecha { min-width: 2.25rem; font-weight: 700; letter-spacing: 0.05em; }
+.tabla-datos thead th { white-space: nowrap; font-size: 0.85rem; }
+.tabla-datos td.acciones, .tabla-datos th:last-child { width: 1%; }
+.matriz-permisos {
+  .grupo th { background: var(--bs-tertiary-bg); font-size: 0.75rem; letter-spacing: 0.08em; text-transform: uppercase; padding-top: 0.6rem; }
+  .si { color: var(--bs-success); font-weight: 700; font-size: 1.05rem; }
+  .no { color: var(--bs-tertiary-color); }
+  .mi-rol { background: rgba(250, 216, 93, 0.12); }
+  thead th { white-space: nowrap; }
+}
+.matriz-permisos code { color: var(--bs-secondary-color); font-size: 0.72rem; }
+.sigro-campana { color: var(--bs-body-color); border-radius: 999px; background: var(--sigro-tarjeta); width: 2.6rem; height: 2.6rem; display: inline-flex; align-items: center; justify-content: center; padding: 0; }
+@include media-breakpoint-down(md) {
+  .tabla-datos td.acciones { width: 100% !important; }
+  .tabla-datos td.principal, .tabla-datos td:first-child { display: block; min-width: 0; }
+  .tabla-datos .acciones .btn { min-height: 2.4rem; }
+}
+@include media-breakpoint-up(lg) { .sigro-menu.compacto .sigro-perfil { flex-direction: column; gap: 0.4rem; } }

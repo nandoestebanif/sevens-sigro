@@ -19,7 +19,6 @@
    conectarla con /costo/desviacion y /avance (T-214, T-093) y lo dice.
    ───────────────────────────────────────────────────────────────────────── */
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
 import { api } from '../api/cliente'
 import { fechaCorte, type OrdenDesviacion } from '../api/costo'
 import { usaApiReal } from '../api/http'
@@ -74,9 +73,8 @@ export function Tablero() {
         <Encabezado
           titulo="Gasto en recursos"
           sub={usaApiReal
-            ? 'Cuánto se compró, se recibió, se consumió y queda en stock en la obra, al mismo corte y con su definición.'
+            ? 'Comprado, recibido, consumido y en stock, al mismo corte.'
             : `Presupuesto 2701006 del S10 · semana ${r.semana} de ${r.semanasTotales} · lo consumido contra lo planificado en el reporte de recursos`}
-          acciones={<Link to="/compras" className="btn btn-primary">+ Registrar compra</Link>}
         />
 
         {usaApiReal ? (

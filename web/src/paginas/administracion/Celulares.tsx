@@ -1,11 +1,12 @@
 /* HU-15 · Celulares autorizados de la obra (regla 5: uno por responsable, hasta dos por obra).
    Autorizar un pendiente; revocar uno autorizado, siempre con motivo. Si la persona ya tiene otro
    celular autorizado, la API responde 409 y aquí se ofrece revocar el anterior y autorizar el nuevo. */
+import { AccionesFila, TablaDatos } from '../../ui/TablaDatos'
 import { useState } from 'react'
 import { ErrorApi } from '../../api/error'
 import { administracion, type Dispositivo } from '../../api/administracion'
 import { Boton, Chip, Modal, Tarjeta } from '../../ui/base'
-import { AvisoBien, AvisoError, Estado, Tabla, estiloCelda, estiloCeldaSuave, filaTabla, useCarga } from './comun'
+import { AvisoBien, AvisoError, Estado, useCarga } from './comun'
 import {
   CODIGO_YA_TIENE_CELULAR, ESTADO_CELULAR, celularAnterior, fechaLima, mensajeParaPersona, ordenarCelulares,
   puedeAutorizar, puedeRevocar, validarMotivo,
@@ -70,33 +71,32 @@ export function Celulares({ obraId }: { obraId: string }) {
           {(lista) => {
             const filas = ordenarCelulares(lista)
             return (
-              <Tabla etiqueta="Celulares de la obra" titulos={['Persona', 'Código del celular', 'Estado', 'Fechas', '']}>
-                {filas.map((d, i) => (
-                  <tr key={d.id} style={filaTabla(i === filas.length - 1)}>
-                    <td style={{ ...estiloCelda, fontWeight: 600 }}>{d.usuarioNombre}</td>
-                    <td className="n" style={{ ...estiloCeldaSuave, wordBreak: 'break-all', maxWidth: 260 }}>{d.identificador}</td>
-                    <td style={estiloCelda}><Chip tono={ESTADO_CELULAR[d.estado]?.tono ?? 'neutro'}>{ESTADO_CELULAR[d.estado]?.texto ?? d.estado}</Chip></td>
-                    <td className="n" style={{ ...estiloCeldaSuave, lineHeight: 1.6 }}>
+              <TablaDatos
+                etiqueta="Celulares de la obra"
+                filas={filas}
+                clave={(d) => d.id}
+                buscar={(d) => `${d.usuarioNombre} ${d.identificador}`}
+                marcadorBusqueda="Buscar por persona o código…"
+                vacio={{ titulo: 'Sin celulares', detalle: 'El almacenero o el SSOMA piden la autorización desde la app.' }}
+                columnas={[
+                  { clave: 'persona', titulo: 'Persona', valor: (d) => d.usuarioNombre, celda: (d) => <><strong>{d.usuarioNombre}</strong><div className="small text-body-secondary text-break" style={{ maxWidth: 260 }}>{d.identificador}</div></> },
+                  { clave: 'estado', titulo: 'Estado', valor: (d) => ESTADO_CELULAR[d.estado]?.texto ?? d.estado, celda: (d) => <Chip tono={ESTADO_CELULAR[d.estado]?.tono ?? 'neutro'}>{ESTADO_CELULAR[d.estado]?.texto ?? d.estado}</Chip> },
+                  { clave: 'fechas', titulo: 'Fechas', valor: (d) => d.solicitadoEn, celda: (d) => (
+                    <div className="small text-body-secondary" style={{ lineHeight: 1.6 }}>
                       <div>Pedido: {fechaLima(d.solicitadoEn)}</div>
                       {d.fechaAutorizacion && <div>Autorizado: {fechaLima(d.fechaAutorizacion)}</div>}
                       {d.fechaRevocacion && <div>Revocado: {fechaLima(d.fechaRevocacion)}</div>}
                       {d.motivoRevocacion && <div>Motivo: {d.motivoRevocacion}</div>}
-                    </td>
-                    <td style={{ ...estiloCelda, textAlign: 'right', whiteSpace: 'nowrap' }}>
-                      {puedeAutorizar(d) && (
-                        <Boton enClic={() => autorizar(d)} deshabilitado={ocupado !== null}>
-                          {ocupado === d.id ? 'Autorizando…' : 'Autorizar'}
-                        </Boton>
-                      )}
-                      {puedeRevocar(d) && (
-                        <Boton tipo="secundario" enClic={() => { setHecho(null); setAviso(null); setRevocando({ d }) }} deshabilitado={ocupado !== null}>
-                          Revocar
-                        </Boton>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </Tabla>
+                    </div>
+                  ) },
+                ]}
+                acciones={(d) => (
+                  <AccionesFila de={d.usuarioNombre} acciones={[
+                    puedeAutorizar(d) && { texto: ocupado === d.id ? 'Autorizando…' : 'Autorizar', deshabilitado: ocupado !== null, enClic: () => autorizar(d) },
+                    puedeRevocar(d) && { texto: 'Revocar', peligro: true, deshabilitado: ocupado !== null, enClic: () => { setHecho(null); setAviso(null); setRevocando({ d }) } },
+                  ]} />
+                )}
+              />
             )
           }}
         </Estado>

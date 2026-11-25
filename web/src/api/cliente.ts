@@ -625,7 +625,7 @@ export class ClienteSimulado implements ClienteSigro {
     if (!['application/pdf', 'image/jpeg', 'image/png'].includes(archivo.type)) {
       throw new ErrorApi('tipo_archivo', 'Solo se admiten archivos PDF, JPG o PNG.')
     }
-    if (archivo.size > 5 * 1024 * 1024) throw new ErrorApi('tamano_archivo', 'El archivo supera los 5 MB permitidos.')
+    if (archivo.size > 10 * 1024 * 1024) throw new ErrorApi('tamano_archivo', 'El archivo supera los 10 MB permitidos (HU-34).')
     const id = String(Date.now())
     const item: ComprobanteCompra = {
       id, compraId, nombre: archivo.name, tipoMime: archivo.type as ComprobanteCompra['tipoMime'],
@@ -947,7 +947,35 @@ export class ClienteSimulado implements ClienteSigro {
    (catálogo, compras con insumos, almacén, costo, reposición) sigue simulado
    hasta que exista su endpoint. Cada método que pasa al servidor se mueve aquí
    sin tocar ninguna pantalla. */
-class ClienteHttp extends ClienteSimulado {
+export class ClienteHttp extends ClienteSimulado {
+  /* HU-26/27 con el servidor: antes esta función NO se sobrescribía y en modo real mezclaba el stock real con la
+     configuración de la DEMO (fases «pisos 5 y 6», «600 kg», «4 040 varillas»): datos inventados en pantalla. Ahora todo
+     sale del servidor: el insumo bajo su punto (stock) y lo que falta por comprar (saldo, en unidad de compra). */
+  override async alertasReposicion(): Promise<AlertaReposicion[]> {
+    const [stock, saldo] = await Promise.all([this.consultarStock(), this.saldoPorComprar().catch(() => [] as AvanceInsumo[])])
+    const porCodigo = new Map(saldo.map((a) => [a.codigo, a]))
+    return stock
+      .filter((s) => s.puntoReposicion !== null && s.bajoPunto)
+      .map((s) => {
+        const a = porCodigo.get(s.insumoId)
+        const falta = a?.saldoPorComprar ?? 0
+        return {
+          insumoId: s.insumoId,
+          descripcion: s.descripcion,
+          unidad: a?.unidadCompra ?? s.unidad,
+          saldo: s.saldoTotal,
+          punto: s.puntoReposicion!,
+          criterioPunto: 'el punto vigente de «Parámetros de reposición»',
+          faltaPorComprar: falta,
+          sugerencia: falta,
+          // HU-27 pide el menor entre lo que falta y lo que exige la fase; las fases llegan con HU-20, aún sin datos
+          criterioSugerencia: 'lo que falta por comprar (la exigencia por fase llega con el requerimiento por fase, HU-20)',
+          estado: 'activa' as const,
+          atendidaPor: null,
+        }
+      })
+  }
+
   override obraActiva() { return obrasHttp.activa() }
   override elegirObra(id: string) { return obrasHttp.elegir(id) }
   override listarObras() { return obrasHttp.listar() }

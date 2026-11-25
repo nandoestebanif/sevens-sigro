@@ -21,6 +21,7 @@ import { Aviso, Chips, Encabezado, Kpi, TituloSeccion, Vidrio } from '../ui/piez
 import { EsqueletoKpis } from '../ui/Esqueleto'
 import { BotonExportar } from '../ui/BotonExportar'
 import { activoEl, categoria, horas, resumirHoras, type FilaHoras } from './mano-de-obra-reglas'
+import { TablaDatos } from '../ui/TablaDatos'
 
 const hoyLima = () => new Date().toLocaleDateString('en-CA', { timeZone: 'America/Lima' })   // AAAA-MM-DD
 const dia = (iso: string | null) => (iso ? `${iso.slice(8, 10)}/${iso.slice(5, 7)}/${iso.slice(0, 4)}` : '—')
@@ -35,7 +36,6 @@ export function ManoDeObra() {
   const [periodo, setPeriodo] = useState<number | null>(null)
   const [vista, setVista] = useState<Vista>('trabajador')
   const [filtro, setFiltro] = useState<Filtro>('activos')
-  const [q, setQ] = useState('')
   const hoy = hoyLima()
   // en la obra = activo hoy o con ingreso programado; si no, de baja
   const enObra = (x: Trabajador) => activoEl(x, hoy) || x.fechaIngreso > hoy
@@ -51,11 +51,8 @@ export function ManoDeObra() {
 
   const r = useMemo(() => resumirHoras(filas ?? [], periodo), [filas, periodo])
   const lista = useMemo(() => {
-    const t = q.trim().toLowerCase()
-    return (trabajadores ?? [])
-      .filter((x) => filtro === 'todos' || (filtro === 'activos' ? enObra(x) : !enObra(x)))
-      .filter((x) => !t || x.nombre.toLowerCase().includes(t) || x.documento.includes(t) || x.cuadrilla.toLowerCase().includes(t))
-  }, [trabajadores, filtro, q, hoy]) // eslint-disable-line react-hooks/exhaustive-deps
+    return (trabajadores ?? []).filter((x) => filtro === 'todos' || (filtro === 'activos' ? enObra(x) : !enObra(x)))
+  }, [trabajadores, filtro, hoy]) // eslint-disable-line react-hooks/exhaustive-deps
   const activos = (trabajadores ?? []).filter(enObra).length
   const filasHoras: FilaHoras[] = vista === 'trabajador' ? r.porTrabajador : r.porCuadrilla
   const textoPeriodo = periodo === null ? 'toda la obra' : `semana ${periodo}`
@@ -68,6 +65,7 @@ export function ManoDeObra() {
         <Chip tono="neutro">Lo registra el celular del almacenero o del SSOMA</Chip>
         <Chip tono="neutro">Horas de la versión vigente de cada jornada</Chip>
         <Chip tono="neutro">Nadie se borra: la baja es una fecha</Chip>
+        <Chip tono="neutro">Son horas, no costo: la valorización por categoría (HU-65) espera la tarifa por hora del S10</Chip>
       </Chips>
 
       {!usaApiReal ? (
@@ -120,35 +118,22 @@ export function ManoDeObra() {
                 />
               </div>
             </div>
-            {filasHoras.length === 0 ? (
-              <Vacio titulo="Aún no hay jornadas enviadas" detalle="Las horas aparecen cuando la asistencia del celular llega al servidor." />
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="table table-hover align-middle mb-0">
-                  <thead>
-                    <tr>
-                      <th className="text-start">{vista === 'trabajador' ? 'Trabajador' : 'Cuadrilla'}</th>
-                      <th className="n">Días presente</th><th className="n">Horas normales</th><th className="n">Horas extra</th>
-                      <th className="n">Última jornada</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filasHoras.map((f) => (
-                      <tr key={f.clave}>
-                        <td><strong>{f.nombre}</strong><div className="small text-body-secondary">{f.detalle}</div></td>
-                        <td className="n">{f.dias}</td>
-                        <td className="n"><strong>{horas(f.normales)}</strong></td>
-                        <td className="n">{f.extra > 0 ? horas(f.extra) : '—'}</td>
-                        <td className="n text-nowrap">{dia(f.ultima)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-            <p className="small text-body-secondary mb-0">
-              Horas registradas en la asistencia, no costo: la valorización por categoría (HU-65) espera la tarifa por hora del S10.
-            </p>
+            <TablaDatos
+              key={vista}
+              etiqueta="Horas acumuladas"
+              filas={filasHoras}
+              clave={(f) => f.clave}
+              buscar={(f) => `${f.nombre} ${f.detalle}`}
+              marcadorBusqueda={vista === 'trabajador' ? 'Buscar trabajador o cuadrilla…' : 'Buscar cuadrilla…'}
+              vacio={{ titulo: 'Aún no hay jornadas enviadas', detalle: 'Las horas aparecen cuando la asistencia del celular llega al servidor.' }}
+              columnas={[
+                { clave: 'nombre', titulo: vista === 'trabajador' ? 'Trabajador' : 'Cuadrilla', valor: (f) => f.nombre, celda: (f) => <><strong>{f.nombre}</strong><div className="small text-body-secondary">{f.detalle}</div></> },
+                { clave: 'dias', titulo: 'Días presente', numerica: true, valor: (f) => f.dias, celda: (f) => f.dias },
+                { clave: 'normales', titulo: 'Horas normales', numerica: true, valor: (f) => f.normales, celda: (f) => <strong>{horas(f.normales)}</strong> },
+                { clave: 'extra', titulo: 'Horas extra', numerica: true, valor: (f) => f.extra, celda: (f) => f.extra > 0 ? horas(f.extra) : '—' },
+                { clave: 'ultima', titulo: 'Última jornada', numerica: true, valor: (f) => f.ultima, celda: (f) => <span className="text-nowrap">{dia(f.ultima)}</span> },
+              ]}
+            />
           </Vidrio>
 
           <Vidrio estilo={{ display: 'flex', flexDirection: 'column', gap: 12 }} etiqueta="Trabajadores">
@@ -163,41 +148,22 @@ export function ManoDeObra() {
                 ))}
               </div>
             </div>
-            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Buscar por nombre, DNI o cuadrilla…"
-              aria-label="Buscar trabajador" className="form-control" />
-            {lista.length === 0 ? (
-              <Vacio titulo="Sin trabajadores para mostrar" detalle="Se registran desde el celular, en «Personal», con su categoría y cuadrilla." />
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="table table-hover align-middle mb-0">
-                  <thead>
-                    <tr>
-                      <th className="text-start">Trabajador</th><th>Categoría</th><th>Cuadrilla</th>
-                      <th className="n">Ingreso</th><th className="n">Estado</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {lista.map((t) => {
-                      const activo = enObra(t)
-                      return (
-                        <tr key={t.id}>
-                          <td><strong className={activo ? '' : 'text-body-secondary'}>{t.nombre}</strong>
-                            <div className="small text-body-secondary">{t.tipoDocumento} {t.documento}</div></td>
-                          <td>{categoria(t.categoria)}</td>
-                          <td>{t.cuadrilla}</td>
-                          <td className="n text-nowrap">{dia(t.fechaIngreso)}</td>
-                          <td className="n">
-                            {activo
-                              ? <Chip tono="bien">Activo</Chip>
-                              : <Chip tono="neutro">De baja desde {dia(t.fechaSalida)}</Chip>}
-                          </td>
-                        </tr>
-                      )
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            )}
+            <TablaDatos
+              etiqueta="Trabajadores"
+              filas={lista}
+              clave={(t) => t.id}
+              buscar={(t) => `${t.nombre} ${t.documento} ${t.cuadrilla} ${categoria(t.categoria)}`}
+              marcadorBusqueda="Buscar por nombre, DNI o cuadrilla…"
+              vacio={{ titulo: 'Sin trabajadores para mostrar', detalle: 'Se registran desde el celular, en «Personal», con su categoría y cuadrilla.' }}
+              columnas={[
+                { clave: 'nombre', titulo: 'Trabajador', valor: (t) => t.nombre, celda: (t) => <><strong className={enObra(t) ? '' : 'text-body-secondary'}>{t.nombre}</strong><div className="small text-body-secondary">{t.tipoDocumento} {t.documento}</div></> },
+                { clave: 'categoria', titulo: 'Categoría', valor: (t) => categoria(t.categoria), celda: (t) => categoria(t.categoria) },
+                { clave: 'cuadrilla', titulo: 'Cuadrilla', valor: (t) => t.cuadrilla, celda: (t) => t.cuadrilla },
+                { clave: 'ingreso', titulo: 'Ingreso', numerica: true, valor: (t) => t.fechaIngreso, celda: (t) => <span className="text-nowrap">{dia(t.fechaIngreso)}</span> },
+                { clave: 'estado', titulo: 'Estado', valor: (t) => (enObra(t) ? 'a' : 'b') + (t.fechaSalida ?? ''), celda: (t) => enObra(t)
+                  ? <Chip tono="bien">Activo</Chip> : <Chip tono="neutro">De baja desde {dia(t.fechaSalida)}</Chip> },
+              ]}
+            />
           </Vidrio>
         </>
       )}

@@ -19,6 +19,8 @@ import type { AlertaReposicion, AvanceInsumo } from '../api/tipos'
 import { Chip, Vacio } from '../ui/base'
 import { Chips, Encabezado, Pildora, Segmentado, TituloSeccion, Vidrio } from '../ui/piezas'
 import { EsqueletoTabla } from '../ui/Esqueleto'
+import { AccionesFila, TablaDatos } from '../ui/TablaDatos'
+import { puedo } from '../api/permisos'
 
 const n2 = (v: number) => v.toLocaleString('es-PE', { maximumFractionDigits: 0 })
 
@@ -74,6 +76,9 @@ export function Reposicion() {
   const [avisoCritico, setAvisoCritico] = useState<{ codigo: string; texto: string } | null>(null)
   // HU-28: solo se ofrece marcar si el servidor ya tiene /criticos (null = aún no desplegado); sin eso el botón no podría guardar
   const [conHu28, setConHu28] = useState(false)
+  const puedeMarcar = puedo('critico.marcar')
+  const [candidatos, setCandidatos] = useState<{ codigo: string; descripcion: string; costo: number; pct: number; critico: boolean }[]>([])
+  useEffect(() => { if (usaApiReal && puedeMarcar) reposicionHttp.candidatosCriticos().then(setCandidatos).catch(() => setCandidatos([])) }, [puedeMarcar])
   useEffect(() => { if (usaApiReal) reposicionHttp.criticos().then((x) => setConHu28(x !== null)).catch(() => setConHu28(false)) }, [])
   // HU-28: marcar o quitar «crítico» (residente y administrador; el servidor decide el permiso)
   const alternarCritico = async (f: AvanceInsumo) => {
@@ -137,6 +142,8 @@ export function Reposicion() {
             ? <Chip tono="bien">Requerido, comprado y stock: del servidor</Chip>
             : <Chip tono="info">Comprado y stock: datos de ejemplo · lo requerido es el S10 real</Chip>}
           <Chip tono="neutro">El requerimiento avisa, no bloquea</Chip>
+          <Chip tono="neutro">Falta por comprar = requerido − comprado, en unidad de compra (el acero en varillas aunque el S10 lo planifique en kilos)</Chip>
+          <Chip tono="neutro">La sugerencia de compra (HU-27) es el menor entre lo que falta y lo que exige la fase en curso</Chip>
         </Chips>
 
         {alertas.map((a) => <Alerta key={a.insumoId} a={a} />)}
@@ -144,9 +151,7 @@ export function Reposicion() {
         <Vidrio estilo={{ display: 'flex', flexDirection: 'column', gap: 14 }} etiqueta="Saldo por comprar">
           <div className="d-flex flex-column gap-1">
             <TituloSeccion>Saldo por comprar</TituloSeccion>
-            <p className="small text-body-secondary">
-              Falta por comprar = requerido − comprado. La base cierta para formular la siguiente solicitud de materiales.
-            </p>
+
           </div>
           <div className="d-flex flex-wrap gap-2 align-items-center">
             <Segmentado
@@ -173,58 +178,68 @@ export function Reposicion() {
             </span>
           )}
 
-          {filas === null ? (
-            <EsqueletoTabla />
-          ) : fallo ? (
+          {filas === null ? <EsqueletoTabla /> : fallo ? (
             <Vacio titulo="No se pudo cargar el saldo por comprar" detalle={fallo} />
-          ) : visibles.length === 0 ? (
-            soloCriticos && !(filas ?? []).some((f) => f.critico)
-              ? <Vacio titulo="Todavía no hay insumos críticos" detalle={conHu28 ? 'Vuelve a «Todos» y usa «Marcar crítico» en el acero, el cemento u otro insumo.' : 'Define el stock de seguridad y el punto de reposición del insumo en «Parámetros de reposición» y aparecerá aquí.'} />
-              : <Vacio titulo="Nada pendiente con este filtro" detalle="Todos los insumos filtrados ya tienen su compra completa." />
+          ) : soloCriticos && !(filas ?? []).some((f) => f.critico) ? (
+            <Vacio titulo="Todavía no hay insumos críticos" detalle={conHu28 ? 'Márcalos abajo, entre los que el sistema sugiere por su peso en el presupuesto.' : 'Define el stock de seguridad y el punto de reposición del insumo en «Parámetros de reposición» y aparecerá aquí.'} />
           ) : (
-            <div className="overflow-x-auto">
-              <table className="table table-hover align-middle mb-0">
-                <thead>
-                  <tr>
-                    <th>Insumo</th><th>Fase</th><th className="n">Requerido (S10)</th><th className="n">Comprado</th><th className="n">Falta por comprar</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {visibles.map((f) => (
-                    <tr key={f.insumoId}>
-                      <td style={{ minWidth: 240 }}>
-                        <div className="d-flex align-items-center gap-2 flex-wrap">
-                          <span className="fw-semibold">{f.descripcion}</span>
-                          {f.critico && <Chip tono="aviso">crítico</Chip>}
-                          {conHu28 && (
-                            <Pildora tipo="secundario" chica enClic={() => void alternarCritico(f)}
-                              etiqueta={f.critico ? `Quitar crítico a ${f.descripcion}` : `Marcar ${f.descripcion} como crítico`}>
-                              {f.critico ? 'Quitar crítico' : '★ Marcar crítico'}
-                            </Pildora>
-                          )}
-                        </div>
-                        <div className="n small text-body-secondary mt-1 text-start">SKU {f.codigo}</div>
-                        {avisoCritico?.codigo === f.codigo && (
-                          <div role="status" className="small text-body-secondary mt-1">{avisoCritico.texto}</div>
-                        )}
-                      </td>
-                      <td className="text-body-secondary">{f.fase}</td>
-                      <td className="n text-nowrap">{n2(f.planificadoCantidad)} {f.unidadS10}</td>
-                      <td className="n text-nowrap">{n2(f.compradoCantidad)} {f.unidadS10} · {f.compradoPct} %</td>
-                      <td className="n fw-bold text-nowrap">{n2(f.saldoPorComprar)} {f.unidadCompra}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <TablaDatos
+              etiqueta="Saldo por comprar"
+              filas={visibles}
+              clave={(f) => f.insumoId}
+              buscar={(f) => `${f.descripcion} ${f.codigo}`}
+              marcadorBusqueda="Buscar insumo…"
+              ordenInicial={{ clave: 'falta', dir: 'desc' }}
+              vacio={{ titulo: 'Nada pendiente con este filtro', detalle: 'Todos los insumos filtrados ya tienen su compra completa.' }}
+              columnas={[
+                { clave: 'insumo', titulo: 'Insumo', valor: (f) => f.descripcion, celda: (f) => (
+                  <>
+                    <div className="d-flex align-items-center gap-2 flex-wrap">
+                      <span className="fw-semibold">{f.descripcion}</span>
+                      {f.critico && <Chip tono="aviso">crítico</Chip>}
+                    </div>
+                    <div className="n small text-body-secondary">SKU {f.codigo}{fases.length > 1 ? ` · ${f.fase}` : ''}</div>
+                    {avisoCritico?.codigo === f.codigo && <div role="status" className="small text-body-secondary mt-1">{avisoCritico.texto}</div>}
+                  </>
+                ) },
+                { clave: 'requerido', titulo: 'Requerido (S10)', numerica: true, valor: (f) => f.planificadoCantidad, celda: (f) => <span className="text-nowrap">{n2(f.planificadoCantidad)} {f.unidadS10}</span> },
+                { clave: 'comprado', titulo: 'Comprado', numerica: true, valor: (f) => f.compradoPct, celda: (f) => <span className="text-nowrap">{n2(f.compradoCantidad)} {f.unidadS10} · {f.compradoPct} %</span> },
+                { clave: 'falta', titulo: 'Falta por comprar', numerica: true, valor: (f) => f.saldoPorComprar, celda: (f) => <strong className="text-nowrap">{n2(f.saldoPorComprar)} {f.unidadCompra}</strong> },
+              ]}
+              acciones={conHu28 && puedeMarcar ? (f) => (
+                <AccionesFila de={f.descripcion} acciones={[{ texto: f.critico ? 'Quitar crítico' : '★ Marcar crítico', enClic: () => void alternarCritico(f) }]} />
+              ) : undefined}
+            />
           )}
         </Vidrio>
 
-        <p className="small text-body-secondary px-1">
-          El faltante se muestra en la <strong>unidad de compra</strong>: el acero se pide en
-          varillas aunque el S10 lo planifique en kilos (factor de conversión del catálogo).
-          La sugerencia de compra (HU-27) aparece en la alerta de arriba: el menor entre lo que falta y lo que exige la fase en curso.
-        </p>
+        {conHu28 && puedeMarcar && candidatos.length > 0 && (
+          <Vidrio estilo={{ display: 'flex', flexDirection: 'column', gap: 10 }} etiqueta="Críticos sugeridos">
+            <div>
+              <TituloSeccion>Sugeridos como críticos</TituloSeccion>
+              <span className="small text-body-secondary">Los que más pesan en el presupuesto. El sistema sugiere; tú decides.</span>
+            </div>
+            <TablaDatos
+              etiqueta="Críticos sugeridos"
+              filas={candidatos}
+              clave={(c) => c.codigo}
+              vacio={{ titulo: 'Sin sugerencias', detalle: 'Importa el requerimiento del S10.' }}
+              columnas={[
+                { clave: 'insumo', titulo: 'Insumo', celda: (c) => <><strong>{c.descripcion}</strong> {c.critico && <Chip tono="aviso">crítico</Chip>}<div className="n small text-body-secondary">SKU {c.codigo}</div></> },
+                { clave: 'costo', titulo: 'Presupuestado', numerica: true, celda: (c) => <span className="text-nowrap">S/ {c.costo.toLocaleString('es-PE', { maximumFractionDigits: 0 })}</span> },
+                { clave: 'pct', titulo: '% del total', numerica: true, celda: (c) => `${c.pct.toLocaleString('es-PE')} %` },
+              ]}
+              acciones={(c) => (
+                <AccionesFila de={c.descripcion} acciones={[{ texto: c.critico ? 'Quitar crítico' : '★ Marcar crítico', enClic: async () => {
+                  await reposicionHttp.marcarCritico(c.codigo, !c.critico).catch(() => undefined)
+                  setCandidatos((xs) => xs.map((x) => x.codigo === c.codigo ? { ...x, critico: !c.critico } : x))
+                  setFilas((xs) => (xs ?? []).map((x) => (x.codigo === c.codigo ? { ...x, critico: !c.critico } : x)))
+                } }]} />
+              )}
+            />
+          </Vidrio>
+        )}
+
       </div>
     </>
   )
