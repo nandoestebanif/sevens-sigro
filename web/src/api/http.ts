@@ -63,12 +63,11 @@ function convertir(v: unknown, f: (k: string) => string): unknown {
 }
 
 function construirErrorHttp(r: Response, texto: string): ErrorApi {
-  type CuerpoError = { codigo?: string; mensaje?: unknown }
-  let datos: (CuerpoError & { detail?: CuerpoError }) | null = null
+  let datos: any = null
   try {
     datos = texto ? JSON.parse(texto) : null
   } catch { /* el 502 de Render mientras un servicio despierta es HTML */ }
-  const d: CuerpoError = (datos && (datos.codigo ? datos : datos.detail)) || {}
+  const d = (datos && (datos.codigo ? datos : datos.detail)) || {}
   // Pydantic antepone «Value error, » a las validaciones propias: al usuario le basta el mensaje
   const mensaje = typeof d.mensaje === 'string' ? d.mensaje.replace(/^([a-z_]+: )?Value error, /, '') : null
   return new ErrorApi(d.codigo ?? `http_${r.status}`, mensaje ?? 'El servidor rechazó la operación.', r.status)

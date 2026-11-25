@@ -30,8 +30,7 @@ export const textoSeguro = (v: string) => (/^[=+\-@]/.test(v) ? `'${v}` : v)
 
 export async function exportarExcel<T>(titulo: string, columnas: ColumnaExport<T>[], filas: T[]) {
   const { default: escribir } = await import('write-excel-file/browser')
-  // encabezado negro con letras amarillas: los colores de la marca (rediseño 24/11)
-  const encabezado = columnas.map((c) => ({ value: c.titulo, fontWeight: 'bold' as const, color: '#FAD85D', backgroundColor: '#161717' }))
+  const encabezado = columnas.map((c) => ({ value: c.titulo, fontWeight: 'bold' as const, backgroundColor: '#FFEDD5' }))
   const cuerpo = filas.map((f) => columnas.map((c) => {
     const v = c.valor(f)
     if (v === null || v === '') return null
@@ -44,39 +43,19 @@ export async function exportarExcel<T>(titulo: string, columnas: ColumnaExport<T
   }).toFile(nombreArchivo(titulo, 'xlsx'))
 }
 
-/** El logo de SEVEN'S como data URL para jsPDF; si no se puede leer, el PDF sale sin logo (nunca falla por esto). */
-async function cargarLogo(): Promise<string | null> {
-  try {
-    const { default: url } = await import('../assets/sevens-logo.png')
-    const blob = await (await fetch(url)).blob()
-    return await new Promise<string>((ok, mal) => {
-      const r = new FileReader()
-      r.onload = () => ok(String(r.result)); r.onerror = mal
-      r.readAsDataURL(blob)
-    })
-  } catch { return null }
-}
-
 export async function exportarPdf<T>(titulo: string, subtitulo: string, columnas: ColumnaExport<T>[], filas: T[]) {
   const [{ jsPDF }, { autoTable }] = await Promise.all([import('jspdf'), import('jspdf-autotable')])
   const doc = new jsPDF({ orientation: columnas.length > 5 ? 'landscape' : 'portrait', unit: 'pt', format: 'a4' })
   const fmt = (v: string | number | null, c: ColumnaExport<T>) => v === null ? '—'
     : typeof v === 'number' ? v.toLocaleString('es-PE', c.formato === 'soles' ? { minimumFractionDigits: 2, maximumFractionDigits: 2 } : { maximumFractionDigits: 3 }) : v
-  // cabecera de la marca: franja negra con filete amarillo y el logo de SEVEN'S a la derecha
-  const ancho = doc.internal.pageSize.getWidth()
-  doc.setFillColor(22, 23, 23); doc.rect(0, 0, ancho, 6, 'F')
-  doc.setFillColor(250, 216, 93); doc.rect(0, 6, ancho, 3, 'F')
-  const logo = await cargarLogo()
-  if (logo) doc.addImage(logo, 'PNG', ancho - 40 - 54, 18, 54, 38)
-  doc.setFont('helvetica', 'bold'); doc.setFontSize(15); doc.setTextColor(22, 23, 23); doc.text(titulo, 40, 40)
-  doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(100); doc.text(`${subtitulo} · SIGRO · SEVENS INGENIEROS SAC · generado el ${hoy()}`, 40, 56)
+  doc.setFontSize(14); doc.text(titulo, 40, 40)
+  doc.setFontSize(9); doc.setTextColor(100); doc.text(`${subtitulo} · SIGRO · SEVENS INGENIEROS SAC · generado el ${hoy()}`, 40, 56)
   autoTable(doc, {
     startY: 70,
     head: [columnas.map((c) => c.titulo)],
     body: filas.map((f) => columnas.map((c) => fmt(c.valor(f), c))),
-    styles: { fontSize: 8, cellPadding: 5, lineColor: [226, 226, 221] },
-    headStyles: { fillColor: [22, 23, 23], textColor: [250, 216, 93], fontStyle: 'bold' }, // negro y amarillo de la marca
-    alternateRowStyles: { fillColor: [246, 246, 243] },
+    styles: { fontSize: 8, cellPadding: 4 },
+    headStyles: { fillColor: [194, 65, 12] }, // naranja de la marca
     columnStyles: Object.fromEntries(columnas.map((c, i) => [i, { halign: c.formato ? 'right' : 'left' }])),
     didDrawPage: () => {
       const n = doc.getNumberOfPages()

@@ -6,8 +6,7 @@
   "type": "module",
   "scripts": {
     "test": "playwright test",
-    "instalar-navegador": "playwright install chromium",
-    "visual": "playwright test -c visual.config.ts"
+    "instalar-navegador": "playwright install chromium"
   },
   "devDependencies": {
     "@playwright/test": "^1.56.0",

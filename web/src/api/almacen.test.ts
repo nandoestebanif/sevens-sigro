@@ -3,7 +3,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { almacenHttp, avanceHttp, idMovimiento, recepcionHttp, semanaHttp } from './http'
 
-type Pedido = { url: string; metodo: string; cuerpo: Record<string, unknown> }
+type Pedido = { url: string; metodo: string; cuerpo: any }
 let pedidos: Pedido[] = []
 
 const INSUMOS = [

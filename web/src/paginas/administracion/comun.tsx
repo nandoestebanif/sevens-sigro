@@ -12,9 +12,7 @@ export function useCarga<T>(cargar: () => Promise<T>, deps: unknown[]) {
   const recargar = useCallback(async () => {
     setError(null)
     try { setDatos(await cargar()) } catch (e) { setError(mensajeParaPersona(e)); setDatos(null) }
-    // a propósito: las dependencias son las de quien llama (obra, filtros), no la función `cargar`, que se
-    // crea en cada render del que llama y haría consultar al servidor sin parar
-  }, deps) // eslint-disable-line react-hooks/exhaustive-deps
+  }, deps)
   useEffect(() => { setDatos(null); recargar() }, [recargar])
   return { datos, error, recargar, setDatos }
 }

@@ -48,8 +48,7 @@ export function BuscarOpcion({ id, etiqueta, opciones, valor, enCambio, marcador
 
   const elegir = (o: Opcion) => { enCambio(o.valor); setTexto(o.texto); setAbierta(false) }
   // si el valor llega desde fuera (p. ej. «+ Nuevo» proveedor), el campo muestra su texto
-  // a propósito solo [valor, texto]: con el objeto `elegida` (nuevo en cada render) se pisaría lo que la persona escribe
-  useEffect(() => { if (elegida) setTexto(elegida.texto) }, [valor, elegida?.texto]) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (elegida) setTexto(elegida.texto) }, [valor, elegida?.texto])
 
   const teclas = (e: KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'ArrowDown') { e.preventDefault(); setAbierta(true); setActiva((i) => Math.min(i + 1, visibles.length - 1)) }

@@ -24,10 +24,7 @@ export function Vidrio({ children, fuerte, estilo, etiqueta }: {
   estilo?: CSSProperties
   etiqueta?: string
 }) {
-  // Rediseño: la franja gruesa a la izquierda (borderLeft) pasa a un borde fino alrededor, del mismo color
-  const { borderLeft, ...resto } = estilo ?? {}
-  const color = typeof borderLeft === 'string' ? borderLeft.replace(/^\s*\d+px\s+solid\s+/, '') : undefined
-  const [fuera, dentro] = partirEstilo(color ? { ...resto, border: `1px solid ${color}` } : resto)
+  const [fuera, dentro] = partirEstilo(estilo)
   return (
     <Card as="section" aria-label={etiqueta} className={fuerte ? 'shadow' : 'shadow-sm'} style={{ minWidth: 0, ...fuera }}>
       <Card.Body style={dentro}>{children}</Card.Body>
