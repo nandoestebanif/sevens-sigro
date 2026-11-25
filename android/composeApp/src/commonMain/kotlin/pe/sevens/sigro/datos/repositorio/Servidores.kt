@@ -6,8 +6,9 @@ package pe.sevens.sigro.datos.repositorio
  * sola, sin pedirle nada al almacenero.
  */
 object Servidores {
-    const val PRUEBAS = "https://sigro-api.onrender.com"
-    private val retirados = setOf("sigro-gateway.onrender.com")
+    /** 25/11: el servicio pasó a Spring Boot (`sevens-sigro`); `sigro-api` (Python) queda solo para el relevo de eventos. */
+    const val PRUEBAS = "https://sevens-sigro.onrender.com"
+    private val retirados = setOf("sigro-gateway.onrender.com", "sigro-api.onrender.com")
 
     /** La dirección vigente para `url`: la misma, o la de pruebas si apuntaba a un servidor retirado. */
     fun migrar(url: String): String {
