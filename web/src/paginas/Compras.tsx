@@ -15,6 +15,8 @@
    Lienzo W6 «Compras» (estilo vidrio): la lista a la izquierda, el registro a la derecha.
    ───────────────────────────────────────────────────────────────────────── */
 import { useEffect, useMemo, useState } from 'react'
+import { useEnVivo } from '../formularios/enVivo'
+import { aNumero, cantidadPositiva, minimo } from '../formularios/reglas'
 import { useSearchParams } from 'react-router-dom'
 import { ErrorApi, api } from '../api/cliente'
 import type { Compra, ComprobanteCompra, EstadoCompra, InsumoCatalogo, LineaCompra, LineaRecepcion, Proveedor, TipoComprobante, VerificacionRecepcion } from '../api/tipos'
@@ -184,9 +186,12 @@ const celdaForm = (crecer: number, base: number): React.CSSProperties => ({
 const acorta = (texto: string, max = 44) =>
   texto.length > max ? `${texto.slice(0, max - 1)}…` : texto
 
+/** Lo que mide una etiqueta de campo (small × 1.5 + margen): los botones de una fila de campos bajan esto. */
+const ALTURA_ETIQUETA = { paddingTop: 'calc(0.875rem * 1.5 + 0.5rem)' }
+
 function Etiqueta({ htmlFor, children }: { htmlFor: string; children: string }) {
   return (
-    <label htmlFor={htmlFor} className="small fw-semibold text-body-secondary">
+    <label htmlFor={htmlFor} className="form-label d-block small fw-semibold text-body-secondary">
       {children}
     </label>
   )
@@ -200,8 +205,9 @@ function AnularCompra({ compra, enCerrar, enListo }: { compra: Compra; enCerrar:
   const [error, setError] = useState('')
   const [guardando, setGuardando] = useState(false)
   const conRecepcion = compra.estado === 'recibida' || compra.estado === 'recibida_parcial'
+  const v = useEnVivo({ motivo: minimo(motivo, 5, 'Escribe por qué se anula la compra (mínimo 5 caracteres).') })
   const confirmar = async () => {
-    if (motivo.trim().length < 5) { setError('Escribe por qué se anula la compra (mínimo 5 caracteres).'); return }
+    if (v.alGuardar()) return
     setGuardando(true); setError('')
     try {
       enListo(await api.anularCompra(compra.id, motivo))
@@ -224,8 +230,8 @@ function AnularCompra({ compra, enCerrar, enListo }: { compra: Compra; enCerrar:
             con «Corregir» en Ingresos y salidas.
           </Aviso>
         )}
-        <Campo id="motivo-anular-compra" etiqueta="Motivo (mínimo 5 caracteres)" valor={motivo} enCambio={setMotivo}
-          marcador="p. ej. Compra de prueba registrada por error" />
+        <Campo id="motivo-anular-compra" etiqueta="Motivo (mínimo 5 caracteres)" valor={motivo} enCambio={(x) => { setMotivo(x); v.cambio('motivo') }}
+          marcador="p. ej. Compra de prueba registrada por error" {...v.campo('motivo')} />
         {error && <div role="alert" className="small text-danger">{error}</div>}
         <div className="d-flex gap-2 justify-content-end">
           <Pildora tipo="secundario" enClic={enCerrar} deshabilitado={guardando}>Cancelar</Pildora>
@@ -425,7 +431,7 @@ export function Compras() {
     }).catch(() => { /* sin referencia no se compara: no se inventa */ })
     return () => { vivo = false }
   }, [insumoId])
-  const desvio = desvioPct(Number(String(precio).replace(',', '.')), ref?.promedio ?? null)
+  const desvio = desvioPct(aNumero(precio), ref?.promedio ?? null)
   const fuera = desvio !== null && ref !== null && Math.abs(desvio) > ref.limitePct
 
   const [error, setError] = useState<string | null>(null)
@@ -450,14 +456,23 @@ export function Compras() {
   const total = useMemo(() => lineas.reduce((s, l) => s + l.cantidad * l.precioUnitario, 0), [lineas])
   const base = total / 1.18
 
+  // validación en vivo: la línea que se arma (insumo, cantidad, precio) y la cabecera de la compra
+  const vl = useEnVivo({
+    insumo: insumoId ? null : insumoTexto.trim() ? 'Elige un insumo de la lista (código · nombre).' : 'Elige el insumo.',
+    cantidad: cantidadPositiva(cantidad),
+    precio: cantidadPositiva(precio, 'Escribe el precio unitario.'),
+  })
+  const vc = useEnVivo({
+    proveedor: proveedorId ? null : 'Elige el proveedor (o regístralo con «+ Nuevo»).',
+    numero: minimo(numero, 1, 'Escribe el número del comprobante.'),
+    fecha: !fecha ? 'Elige la fecha del comprobante.' : fecha > hoyLima() ? 'La fecha no puede ser futura.' : null,
+  })
+
   const agregarLinea = () => {
     const ins = insumos.find((i) => i.id === insumoId)
-    const cant = Number(cantidad)
-    const prec = Number(precio)
-    if (!ins || !(cant > 0) || !(prec > 0)) {
-      setError('La línea necesita insumo, cantidad y precio mayores a cero.')
-      return
-    }
+    const cant = aNumero(cantidad)
+    const prec = aNumero(precio)
+    if (vl.alGuardar() || !ins) return
     setError(null)
     setLineas((ls) => [...ls, {
       insumoId: ins.id, descripcion: ins.descripcion, unidadCompra: ins.unidadCompra,
@@ -469,9 +484,12 @@ export function Compras() {
     setInsumoTexto('')
     setCantidad('')
     setPrecio('')
+    vl.reiniciar()
   }
 
   const registrar = async () => {
+    if (vc.alGuardar()) return
+    if (!lineas.length) { setError('Agrega al menos una línea (insumo, cantidad y precio) antes de registrar.'); return }
     setGuardando(true)
     setError(null)
     setExito(null)
@@ -493,7 +511,7 @@ export function Compras() {
       irA('lista')
       avisar(`Compra ${compra.numeroComprobante} registrada. El stock no se movió: se moverá con la recepción, desde la app.`)
       setLineas([])
-      setNumero('')
+      setNumero(''); vc.reiniciar()
       setArchivoComprobante(null)
       setInputArchivoClave((k) => k + 1)
       cargar()
@@ -535,15 +553,15 @@ export function Compras() {
           </div>
 
           {/* cabecera · flex con envoltura: en angosto los campos bajan de fila en vez de desbordarse */}
-          <div className="d-flex flex-wrap gap-3 align-items-end">
+          <div className="d-flex flex-wrap gap-3 align-items-start">
             <div style={celdaForm(3, 220)}>
               <BuscarOpcion
-                id="c-prov" etiqueta="Proveedor" valor={proveedorId} enCambio={setProveedorId}
+                id="c-prov" etiqueta="Proveedor" valor={proveedorId} enCambio={(x) => { setProveedorId(x); vc.salir('proveedor') }} error={vc.errores.proveedor}
                 opciones={opcionesProveedor} marcador="Escribe la razón social o el RUC"
                 sinResultados="Ningún proveedor coincide con"
               />
             </div>
-            <div className="flex-shrink-0">
+            <div className="flex-shrink-0" style={ALTURA_ETIQUETA}>
               <Pildora tipo="secundario" enClic={() => setAltaAbierta(true)}>+ Nuevo</Pildora>
             </div>
             <div style={celdaForm(1, 110)}>
@@ -554,30 +572,36 @@ export function Compras() {
               </select>
             </div>
             <div style={celdaForm(1, 150)}>
-              <Campo id="c-numero" etiqueta="N.º de comprobante" valor={numero} enCambio={setNumero} marcador="F001-4512" />
+              <Campo id="c-numero" etiqueta="N.º de comprobante" valor={numero} enCambio={(x) => { setNumero(x); vc.cambio('numero') }} marcador="F001-4512" {...vc.campo('numero')} />
             </div>
             <div style={celdaForm(1, 150)}>
               <Etiqueta htmlFor="c-fecha">Fecha</Etiqueta>
-              <input className="form-control" id="c-fecha" type="date" value={fecha} max={hoyLima()} onChange={(e) => setFecha(e.target.value)} />
+              <input className={`form-control${vc.errores.fecha ? ' is-invalid' : ''}`} id="c-fecha" type="date" value={fecha} max={hoyLima()}
+                onChange={(e) => { setFecha(e.target.value); vc.salir('fecha') }} aria-invalid={!!vc.errores.fecha} aria-describedby={vc.errores.fecha ? 'c-fecha-error' : undefined} />
+              {vc.errores.fecha && <div id="c-fecha-error" className="invalid-feedback d-block" aria-live="polite">{vc.errores.fecha}</div>}
             </div>
           </div>
 
           {/* línea en edición · misma envoltura */}
-          <div className="d-flex flex-wrap gap-3 align-items-end pt-3 border-top" >
+          <div className="d-flex flex-wrap gap-3 align-items-start pt-3 border-top" >
             <div style={celdaForm(3, 220)}>
               <Etiqueta htmlFor="c-insumo">Insumo (busca entre los 237 del S10)</Etiqueta>
-              <input className="form-control"
-                id="c-insumo"
+              <input className={`form-control${vl.errores.insumo ? ' is-invalid' : vl.campo('insumo').valido ? ' is-valid' : ''}`}
+                id="c-insumo" aria-invalid={!!vl.errores.insumo} aria-describedby={vl.errores.insumo ? 'c-insumo-error' : undefined}
+                onBlur={() => vl.salir('insumo')}
                 list="catalogo-insumos"
                 value={insumoTexto}
                 onChange={(e) => {
                   setInsumoTexto(e.target.value)
                   const cod = e.target.value.split(' · ')[0]
-                  setInsumoId(insumos.some((i) => i.codigo === cod) ? cod : '')
+                  const elegido = insumos.some((i) => i.codigo === cod)
+                  setInsumoId(elegido ? cod : '')
+                  if (elegido) vl.salir('insumo'); else vl.cambio('insumo') // elegir de la lista se revisa al momento
                 }}
                 placeholder="Escribe código o nombre…"
 
               />
+              {vl.errores.insumo && <div id="c-insumo-error" className="invalid-feedback d-block" aria-live="polite">{vl.errores.insumo}</div>}
               <datalist id="catalogo-insumos">
                 {insumos.map((i) => (
                   <option key={i.id} value={`${i.codigo} · ${i.descripcion}`} />
@@ -585,12 +609,12 @@ export function Compras() {
               </datalist>
             </div>
             <div style={celdaForm(1, 120)}>
-              <Campo id="c-cant" etiqueta={`Cantidad${insumoId ? ` (${insumos.find((i) => i.id === insumoId)?.unidadCompra})` : ''}`} valor={cantidad} enCambio={setCantidad} marcador="0" />
+              <Campo id="c-cant" etiqueta={`Cantidad${insumoId ? ` (${insumos.find((i) => i.id === insumoId)?.unidadCompra})` : ''}`} valor={cantidad} enCambio={(x) => { setCantidad(x); vl.cambio('cantidad') }} marcador="0" modoTeclado="decimal" {...vl.campo('cantidad')} />
             </div>
             <div style={celdaForm(1, 150)}>
-              <Campo id="c-precio" etiqueta="Precio unit. S/ (con IGV)" valor={precio} enCambio={setPrecio} marcador="0.00" />
+              <Campo id="c-precio" etiqueta="Precio unit. S/ (con IGV)" valor={precio} enCambio={(x) => { setPrecio(x); vl.cambio('precio') }} marcador="0.00" modoTeclado="decimal" {...vl.campo('precio')} />
             </div>
-            <div className="flex-shrink-0">
+            <div className="flex-shrink-0" style={ALTURA_ETIQUETA}>
               <Pildora tipo="secundario" enClic={agregarLinea}>Agregar</Pildora>
             </div>
           </div>
