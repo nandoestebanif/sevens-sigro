@@ -4,6 +4,7 @@
    usan las pantallas (Tarjeta, Boton, Chip…). Así las pantallas no repiten
    props de Bootstrap y, si mañana cambia el diseño, se cambia aquí y nada más.
    ───────────────────────────────────────────────────────────────────────── */
+import { filtrarNumero, type Limite } from '../formularios/reglas'
 import type { CSSProperties, ReactNode } from 'react'
 import { Badge, Button, Card, Form, Modal as ModalBs, ProgressBar } from 'react-bootstrap'
 import { partirEstilo } from './piezas'
@@ -55,7 +56,7 @@ export function Chip({ tono, children }: { tono: TonoChip; children: ReactNode }
  * Campo de texto con su etiqueta y su mensaje de error (Form.Group + Form.Control). Con validación en vivo
  * (formularios/enVivo.ts): `enSalir` al perder el foco y `valido` pone el ✓ de Bootstrap.
  */
-export function Campo({ etiqueta, valor, enCambio, marcador, error, autoFoco, id, deshabilitado, valido, enSalir, ayuda, tipo = 'text', modoTeclado }: {
+export function Campo({ etiqueta, valor, enCambio, marcador, error, autoFoco, id, deshabilitado, valido, enSalir, ayuda, tipo = 'text', modoTeclado, limite, maxLargo }: {
   etiqueta: string
   valor: string
   enCambio: (v: string) => void
@@ -69,6 +70,10 @@ export function Campo({ etiqueta, valor, enCambio, marcador, error, autoFoco, id
   ayuda?: string
   tipo?: 'text' | 'password' | 'email'
   modoTeclado?: 'decimal' | 'numeric' | 'text'
+  /** Tope numérico del servidor: lo que lo pase no entra mientras se escribe. */
+  limite?: Limite
+  /** Largo máximo de texto (motivos: 300). */
+  maxLargo?: number
 }) {
   return (
     <Form.Group controlId={id}>
@@ -83,7 +88,8 @@ export function Campo({ etiqueta, valor, enCambio, marcador, error, autoFoco, id
         isValid={!!valido && !error}
         inputMode={modoTeclado}
         aria-describedby={error ? `${id}-error` : ayuda ? `${id}-ayuda` : undefined}
-        onChange={(e) => enCambio(e.target.value)}
+        maxLength={maxLargo}
+        onChange={(e) => enCambio(limite ? filtrarNumero(valor, e.target.value, limite) : e.target.value)}
         onBlur={enSalir}
       />
       {error

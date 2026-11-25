@@ -22,6 +22,7 @@ import { BuscarOpcion } from '../ui/BuscarOpcion'
 import { Boton, Chip, Modal, Vacio } from '../ui/base'
 import { type ErroresParametros, leerCantidad, validarParametros } from './parametros-reglas'
 import { EsqueletoTabla } from '../ui/Esqueleto'
+import { filtrarNumero } from '../formularios/reglas'
 
 const n = (v: number) => v.toLocaleString('es-PE', { maximumFractionDigits: 2 })
 const fecha = (iso: string) => new Date(iso).toLocaleString('es-PE', { dateStyle: 'short', timeStyle: 'short' })
@@ -36,7 +37,7 @@ function CampoCantidad({ id, etiqueta, valor, enCambio, unidad, error, ayuda }: 
       {/* input-group de Bootstrap: el número y su unidad quedan pegados en una sola caja */}
       <div className={`input-group${error ? ' has-validation' : ''}`}>
         <input
-          id={id} value={valor} inputMode="decimal" autoComplete="off" onChange={(e) => enCambio(e.target.value)}
+          id={id} value={valor} inputMode="decimal" autoComplete="off" onChange={(e) => enCambio(filtrarNumero(valor, e.target.value))}
           aria-invalid={error ? true : undefined} aria-describedby={`${id}-msj`}
           className={`form-control${error ? ' is-invalid' : ''}`}
         />

@@ -46,7 +46,7 @@ class ValidacionEnVivoTest {
     fun loCorregidoDejaDeMarcarseAlInstante() = runTest {
         val f = Formulario(this)
         f.escribirCantidad("abc"); advanceUntilIdle()
-        assertEquals("Solo números, con hasta 6 decimales", f.visto.errores["cantidad"])
+        assertEquals("Solo números, con hasta 4 decimales", f.visto.errores["cantidad"])
         f.escribirCantidad("12")
         runCurrent() // sin esperar la pausa
         assertFalse("cantidad" in f.visto.errores, "premiar pronto: al corregir, el rojo se va ya")

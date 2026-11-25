@@ -111,7 +111,7 @@ function AmpliarPlazo({ obra, enListo }: { obra: Obra; enListo: () => void }) {
             {v.campo('fecha').error && <div id={`amp-${obra.id}-error`} className="invalid-feedback d-block">{v.campo('fecha').error}</div>}
           </div>
           <div className="d-flex flex-column gap-2 min-w-0"  style={{ flex: '2 1 240px' }}>
-            <Campo id={`amp-m-${obra.id}`} etiqueta="Motivo de la ampliación" valor={motivo} enCambio={(x) => { setMotivo(x); v.cambio('motivo') }} marcador="p. ej. adenda aprobada por el cliente" {...v.campo('motivo')} />
+            <Campo id={`amp-m-${obra.id}`} etiqueta="Motivo de la ampliación" valor={motivo} enCambio={(x) => { setMotivo(x); v.cambio('motivo') }} marcador="p. ej. adenda aprobada por el cliente" maxLargo={500} {...v.campo('motivo')} />
           </div>
           <div className="d-flex gap-2">
             <Boton tipo="secundario" enClic={() => { setAbierto(false); setError('') }}>Cancelar</Boton>
