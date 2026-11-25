@@ -137,7 +137,8 @@ fun PantallaStock(obraId: Int, alVolver: () -> Unit, vm: StockViewModel = koinVi
     val e by vm.estado.collectAsState()
     LaunchedEffect(obraId) { vm.cargar(obraId) }
 
-    PantallaVidrio("Stock", plano = { planoStock(it) }, alVolver = alVolver, subtitulo = "Por almacén y de toda la obra", modulo = Modulo.STOCK) {
+    PantallaVidrio("Stock", plano = { planoStock(it) }, alVolver = alVolver, subtitulo = "Por almacén y de toda la obra", modulo = Modulo.STOCK,
+        actualizando = e.cargando, alActualizar = { vm.cargar(obraId) }) {
         val s = e.stock
         TarjetaVidrio(Modifier.semantics(mergeDescendants = true) {}) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {

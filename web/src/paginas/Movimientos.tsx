@@ -18,7 +18,7 @@
 import { puedo } from '../api/permisos'
 import { diaHoraLima } from '../api/horaLima'
 import { usaApiReal } from '../api/http'
-import { useEffect, useState, useMemo } from 'react'
+import { useRef, useState, useMemo } from 'react'
 import { ErrorApi, api } from '../api/cliente'
 import type { Movimiento, StockInsumo } from '../api/tipos'
 import { Chip, Modal } from '../ui/base'
@@ -31,6 +31,7 @@ import { EsqueletoTabla } from '../ui/Esqueleto'
 import { BotonExportar } from '../ui/BotonExportar'
 import { TablaDatos } from '../ui/TablaDatos'
 import { Form } from 'react-bootstrap'
+import { EnVivo, nuevos, useActualizacion } from '../ui/Actualizacion'
 
 const n = (v: number) => v.toLocaleString('es-PE')
 const hora = (iso: string) => diaHoraLima(iso) // en hora de Lima, no en la UTC del servidor
@@ -119,13 +120,18 @@ export function Movimientos() {
   const [corrigiendo, setCorrigiendo] = useState<Movimiento | null>(null)
   const avisar = useAvisos()
 
-  const cargar = () => {
-    api.consultarStock().then(setStock)
-    api.listarMovimientos().then(setKardex)
-  }
-  useEffect(() => {
-    cargar()
-  }, [])
+  const previo = useRef<Movimiento[] | null>(null)
+  // En vivo: lo registrado en el celular aparece aquí solo (cada 30 s y al volver a la pestaña)
+  const vivo = useActualizacion(() => Promise.all([
+    api.consultarStock().then(setStock),
+    api.listarMovimientos().then((k) => {
+      const n = nuevos(previo.current, k)
+      if (n > 0) avisar(n === 1 ? 'Llegó 1 movimiento nuevo.' : `Llegaron ${n} movimientos nuevos.`)
+      previo.current = k
+      setKardex(k)
+    }),
+  ]))
+  const cargar = vivo.actualizar
 
   const corte = kardex?.[0]?.fechaServidor
   const [soloBajos, setSoloBajos] = useState(false)
@@ -144,6 +150,7 @@ export function Movimientos() {
     <div className="d-flex flex-column gap-3 pb-4">
       <Encabezado
         titulo="Ingresos y salidas"
+        acciones={usaApiReal ? <EnVivo {...vivo} /> : undefined}
         sub={`El movimiento es un libro que no se borra: corregir es registrar un reverso. ${corte ? `Último movimiento considerado: ${hora(corte)} (hora del servidor).` : ''}`}
       />
 

@@ -123,6 +123,7 @@ import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.ui.draw.clip
+import pe.sevens.sigro.ui.componentes.DeslizarParaActualizar
 import pe.sevens.sigro.ui.componentes.Ilustracion
 import pe.sevens.sigro.ui.componentes.Ticket
 import pe.sevens.sigro.recursos.Res
@@ -272,51 +273,53 @@ fun PantallaInicio(
     ManejarAtras(activo = conMas || cambiandoObra, alVolver = { conMas = false; cambiandoObra = false })
 
     FondoPlano(plano = { planoInicio(it) }) {
-        Column(
-            Modifier.fillMaxSize().verticalScroll(rememberScrollState()).statusBarsPadding()
-                .padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 120.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp),
-        ) {
-            // Rediseño v2: cabecera grande con la obra, el estado de la cola y la grúa
-            CabeceraInicio(sesion, obra, resumen, pendientes, alCambiarObra = { cambiandoObra = true })
-            CifrasDeHoy(resumen, alVerRegistros = { irA(Destino.Pendientes) }, alVerRechazados = { irA(Destino.Rechazados) })
-            AvisosCola(resumen, pendientes, e.enviando, alEnviar = vm::enviarAhora, alVerRegistros = { irA(Destino.Pendientes) })
-            // Accesos en mosaico: Salida (lo que más se usa) grande; Entrada e Ingreso al lado; Personal abajo
-            Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                Acceso(Icons.Filled.ArrowUpward, "Salida", "Registrar lo que sale", Modulo.SALIDA, grande = true,
-                    modifier = Modifier.weight(1.15f).fillMaxHeight()) { irA(Destino.Salida) }
-                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Acceso(Icons.Filled.ArrowDownward, "Entrada", "Lo que llegó de una compra", Modulo.ENTRADA) { irA(Destino.Entrada) }
-                    Acceso(Icons.Filled.MoveDown, "Ingreso", "Devoluciones y préstamos", Modulo.INGRESO) { irA(Destino.IngresoSinCompra) }
-                }
-            }
-            Acceso(Icons.Filled.Groups, "Personal", "Trabajadores y asistencia de hoy", Modulo.PERSONAL, ancho = true) { irA(Destino.Trabajadores) }
-            OutlinedButton(
-                onClick = { conMas = true }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp), shape = RoundedCornerShape(16.dp),
+        DeslizarParaActualizar(e.enviando, { vm.enviarAhora(); vm.actualizarCatalogo(silencioso = true) }, Modifier.fillMaxSize()) {
+            Column(
+                Modifier.fillMaxSize().verticalScroll(rememberScrollState()).statusBarsPadding()
+                    .padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 120.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp),
             ) {
-                Icon(Icons.Filled.MoreHoriz, contentDescription = null, tint = Paleta.Tinta, modifier = Modifier.size(20.dp))
-                Spacer(Modifier.width(8.dp))
-                Text("Más · Catálogo, Stock y lo que viene", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Paleta.Tinta)
-            }
-            Row(Modifier.fillMaxWidth().padding(start = 4.dp, top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    "Hoy en la obra", fontSize = 18.sp, fontWeight = FontWeight.ExtraBold, color = Paleta.Tinta,
-                    modifier = Modifier.weight(1f).semantics { heading() },
-                )
-                TextButton(onClick = { irA(Destino.Pendientes) }) {
-                    Text("Ver todo", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Paleta.Naranja)
+                // Rediseño v2: cabecera grande con la obra, el estado de la cola y la grúa
+                CabeceraInicio(sesion, obra, resumen, pendientes, alCambiarObra = { cambiandoObra = true })
+                CifrasDeHoy(resumen, alVerRegistros = { irA(Destino.Pendientes) }, alVerRechazados = { irA(Destino.Rechazados) })
+                AvisosCola(resumen, pendientes, e.enviando, alEnviar = vm::enviarAhora, alVerRegistros = { irA(Destino.Pendientes) })
+                // Accesos en mosaico: Salida (lo que más se usa) grande; Entrada e Ingreso al lado; Personal abajo
+                Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Acceso(Icons.Filled.ArrowUpward, "Salida", "Registrar lo que sale", Modulo.SALIDA, grande = true,
+                        modifier = Modifier.weight(1.15f).fillMaxHeight()) { irA(Destino.Salida) }
+                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Acceso(Icons.Filled.ArrowDownward, "Entrada", "Lo que llegó de una compra", Modulo.ENTRADA) { irA(Destino.Entrada) }
+                        Acceso(Icons.Filled.MoveDown, "Ingreso", "Devoluciones y préstamos", Modulo.INGRESO) { irA(Destino.IngresoSinCompra) }
+                    }
                 }
-            }
-            Column(Modifier.fillMaxWidth().vidrio(RoundedCornerShape(26.dp))) {
-                if (resumen.ultimas.isEmpty()) {
+                Acceso(Icons.Filled.Groups, "Personal", "Trabajadores y asistencia de hoy", Modulo.PERSONAL, ancho = true) { irA(Destino.Trabajadores) }
+                OutlinedButton(
+                    onClick = { conMas = true }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp), shape = RoundedCornerShape(16.dp),
+                ) {
+                    Icon(Icons.Filled.MoreHoriz, contentDescription = null, tint = Paleta.Tinta, modifier = Modifier.size(20.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text("Más · Catálogo, Stock y lo que viene", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = Paleta.Tinta)
+                }
+                Row(Modifier.fillMaxWidth().padding(start = 4.dp, top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                     Text(
-                        "Todavía no hay registros en esta obra.",
-                        fontSize = 15.sp, lineHeight = 21.sp, color = Paleta.Texto2, modifier = Modifier.padding(16.dp),
+                        "Hoy en la obra", fontSize = 18.sp, fontWeight = FontWeight.ExtraBold, color = Paleta.Tinta,
+                        modifier = Modifier.weight(1f).semantics { heading() },
                     )
+                    TextButton(onClick = { irA(Destino.Pendientes) }) {
+                        Text("Ver todo", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Paleta.Naranja)
+                    }
                 }
-                resumen.ultimas.forEachIndexed { i, s ->
-                    if (i > 0) Box(Modifier.fillMaxWidth().height(1.dp).background(Paleta.Separador))
-                    FilaUltimo(s) { irA(Destino.Pendientes) }
+                Column(Modifier.fillMaxWidth().vidrio(RoundedCornerShape(26.dp))) {
+                    if (resumen.ultimas.isEmpty()) {
+                        Text(
+                            "Todavía no hay registros en esta obra.",
+                            fontSize = 15.sp, lineHeight = 21.sp, color = Paleta.Texto2, modifier = Modifier.padding(16.dp),
+                        )
+                    }
+                    resumen.ultimas.forEachIndexed { i, s ->
+                        if (i > 0) Box(Modifier.fillMaxWidth().height(1.dp).background(Paleta.Separador))
+                        FilaUltimo(s) { irA(Destino.Pendientes) }
+                    }
                 }
             }
         }

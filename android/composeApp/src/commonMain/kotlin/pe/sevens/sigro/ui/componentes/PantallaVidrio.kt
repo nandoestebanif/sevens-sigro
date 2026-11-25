@@ -72,6 +72,9 @@ fun PantallaVidrio(
     encima: @Composable BoxScope.() -> Unit = {},
     /** Rediseño v2: con un módulo, la barra superior es la cabecera de su color con su ilustración. */
     modulo: Modulo? = null,
+    /** Con [alActualizar], deslizar hacia abajo desde arriba vuelve a cargar la pantalla; [actualizando] muestra el giro. */
+    actualizando: Boolean = false,
+    alActualizar: (() -> Unit)? = null,
     contenido: @Composable ColumnScope.() -> Unit,
 ) {
     FondoPlano(plano = plano) {
@@ -83,16 +86,18 @@ fun PantallaVidrio(
             containerColor = Color.Transparent, // deja ver la cuadrícula de plano de FondoPlano
         ) { margen ->
             // `margen` es el espacio que ocupan la barra superior y las del sistema: el contenido empieza debajo.
-            Column(
-                Modifier.fillMaxSize().padding(margen).imePadding().verticalScroll(rememberScrollState())
-                    .padding(start = 16.dp, end = 16.dp, top = if (modulo != null) 16.dp else 8.dp, bottom = 24.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
+            DeslizarParaActualizar(actualizando, alActualizar, Modifier.fillMaxSize().padding(margen)) {
                 Column(
-                    Modifier.widthIn(max = 560.dp).fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
-                    content = contenido,
-                )
+                    Modifier.fillMaxSize().imePadding().verticalScroll(rememberScrollState())
+                        .padding(start = 16.dp, end = 16.dp, top = if (modulo != null) 16.dp else 8.dp, bottom = 24.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    Column(
+                        Modifier.widthIn(max = 560.dp).fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                        content = contenido,
+                    )
+                }
             }
         }
         encima()
