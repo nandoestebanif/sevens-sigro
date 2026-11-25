@@ -40,6 +40,8 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import pe.sevens.sigro.ui.tema.Paleta
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
 import pe.sevens.sigro.ui.tema.Apariencia
 import pe.sevens.sigro.ui.tema.TemaSigro
 
@@ -63,8 +65,18 @@ fun FondoPlano(
     contenido: @Composable BoxScope.() -> Unit,
 ) {
     TemaSigro(oscuro = Apariencia.oscuro) {
-        Box(modifier.fillMaxSize().background(MaterialTheme.colorScheme.background), content = contenido)
+        Box(modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).drawBehind { cuadriculaDePlano() }, content = contenido)
     }
+}
+
+/** Rediseño v2: cuadrícula de plano muy tenue (cada 24 dp) detrás de todo, para darle identidad de obra sin ensuciar. */
+private fun DrawScope.cuadriculaDePlano() {
+    val linea = (if (Apariencia.oscuro) Color.White else Color.Black).copy(alpha = 0.035f)
+    val paso = 24.dp.toPx()
+    var x = 0f
+    while (x < size.width) { drawLine(linea, Offset(x, 0f), Offset(x, size.height), 1f); x += paso }
+    var y = 0f
+    while (y < size.height) { drawLine(linea, Offset(0f, y), Offset(size.width, y), 1f); y += paso }
 }
 
 /**
