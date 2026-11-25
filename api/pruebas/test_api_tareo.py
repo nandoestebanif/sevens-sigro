@@ -39,9 +39,13 @@ def test_el_almacenero_y_el_ssoma_registran_trabajadores(mundo, eq):
     assert nuevo_trabajador(mundo, eq, quien="ssoma", documento="45678913", nombre="Rosa Mamani Cruz").status_code == 201
 
 
-def test_el_residente_el_admin_y_el_gerente_no_registran_trabajadores(mundo, eq):
-    for rol in ("residente", "admin", "gerente"):
+def test_el_residente_y_el_gerente_no_registran_trabajadores(mundo, eq):
+    for rol in ("residente", "gerente"):
         assert nuevo_trabajador(mundo, eq, quien=rol).status_code == 403, rol
+
+
+def test_el_administrador_tambien_registra_trabajadores_desde_la_oficina(mundo, eq):
+    assert nuevo_trabajador(mundo, eq, quien="admin").status_code == 201
 
 
 def test_un_trabajador_no_se_repite_en_la_misma_obra_pero_si_en_otra(mundo, eq):
@@ -332,3 +336,19 @@ def test_si_reniec_no_responde_se_escribe_a_mano(mundo, eq, monkeypatch):
     monkeypatch.setattr(integraciones, "consultar_dni", lambda dni, cliente=None: None)
     r = get(mundo, f"/obras/{eq['proyecto']}/trabajadores/consulta-dni/45678912", eq["ssoma"])
     assert r.status_code == 404 and r.json()["codigo"] == "reniec_sin_respuesta"
+
+
+# ─────────────────────────────────────────────── corregir un trabajador (25/11, migración 0022)
+def test_se_corrigen_nombres_categoria_y_cuadrilla_pero_no_el_documento(mundo, eq):
+    t = nuevo_trabajador(mundo, eq, nombre=None, nombres="Juan", apellido_paterno="Quispe").json()["id"]
+    ruta = f"/obras/{eq['proyecto']}/trabajadores/{t}/datos"
+    r = post(mundo, ruta, eq["admin"], nombres="Juan Carlos", apellido_paterno="Quispe", apellido_materno="Huamán")
+    assert r.status_code == 200, r.text
+    assert r.json()["nombre"] == "Quispe Huamán, Juan Carlos" and r.json()["apellido_materno"] == "Huamán"
+    r = post(mundo, ruta, eq["ssoma"], categoria="oficial", cuadrilla="Cuadrilla 2")
+    assert (r.json()["categoria"], r.json()["cuadrilla"], r.json()["nombres"]) == ("oficial", "Cuadrilla 2", "Juan Carlos")
+    assert post(mundo, ruta, eq["admin"], documento="99999999").status_code == 422      # el documento no se envía
+    assert post(mundo, ruta, eq["admin"]).status_code == 422
+    assert post(mundo, ruta, eq["admin"], nombres="Solo nombre").status_code == 422
+    assert post(mundo, ruta, eq["residente"], cuadrilla="X").status_code == 403
+    assert post(mundo, f"/obras/{eq['proyecto']}/trabajadores/999999/datos", eq["admin"], cuadrilla="X").status_code == 404

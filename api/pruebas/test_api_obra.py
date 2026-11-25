@@ -311,3 +311,17 @@ def test_la_consulta_de_dni_del_usuario_arma_el_nombre(mundo, eq, monkeypatch):
     assert get(mundo, "/usuarios/consulta-dni/45678912", eq["residente"]).status_code == 403
     monkeypatch.setattr(integraciones, "consultar_dni", lambda dni, cliente=None: None)
     assert get(mundo, "/usuarios/consulta-dni/45678912", eq["admin"]).json()["codigo"] == "reniec_sin_respuesta"
+
+
+
+# ──────────────────────────────────────────── cerrar la obra sin borrar nada (25/11)
+def test_el_administrador_cierra_la_obra_y_nada_se_borra(mundo, eq):
+    p = eq["proyecto"]
+    assert post(mundo, f"/obras/{p}/cerrar", eq["residente"]).status_code == 403
+    r = post(mundo, f"/obras/{p}/cerrar", eq["admin"])
+    assert r.status_code == 200 and r.json()["estado"] == "cerrado"
+    assert post(mundo, f"/obras/{p}/cerrar", eq["admin"]).json()["codigo"] == "obra_ya_cerrada"
+    assert get(mundo, f"/obras/{p}/periodos", eq["residente"]).status_code == 200      # se sigue consultando
+    assert post(mundo, f"/obras/{p}/ampliar-plazo", eq["residente"], nueva_fecha_fin="2027-12-27", motivo="Lluvias").status_code >= 400
+    obras = get(mundo, "/obras", eq["admin"]).json()
+    assert next(o for o in obras if o["id"] == p)["estado"] == "cerrado"

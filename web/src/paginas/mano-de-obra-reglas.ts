@@ -42,3 +42,32 @@ export function resumirHoras(filas: HorasFila[], periodo: number | null): Resume
 }
 
 export const horas = (h: number) => `${h.toLocaleString('es-PE', { maximumFractionDigits: 1 })} h`
+
+/* ── registrar, corregir y dar de baja desde la web (25/11) · las mismas reglas que el servidor ── */
+export interface DatosTrabajador {
+  nombres: string; apellidoPaterno: string; apellidoMaterno: string
+  tipoDocumento: 'DNI' | 'CE' | 'PASAPORTE'; documento: string; categoria: string; cuadrilla: string; fechaIngreso: string
+}
+
+/** Errores por campo; `soloNombre` es para corregir (documento e ingreso no se tocan). */
+export function validarTrabajador(d: DatosTrabajador, soloNombre = false): Partial<Record<keyof DatosTrabajador, string>> {
+  const e: Partial<Record<keyof DatosTrabajador, string>> = {}
+  if (d.nombres.trim().length < 2) e.nombres = 'Escribe los nombres.'
+  if (!d.apellidoPaterno.trim()) e.apellidoPaterno = 'Escribe al menos el apellido paterno.'
+  if (!CATEGORIAS[d.categoria]) e.categoria = 'Elige la categoría.'
+  if (!d.cuadrilla.trim()) e.cuadrilla = 'Escribe la cuadrilla.'
+  if (soloNombre) return e
+  const doc = d.documento.trim()
+  if (d.tipoDocumento === 'DNI' ? !/^\d{8}$/.test(doc) : !/^[A-Za-z0-9]{6,20}$/.test(doc)) {
+    e.documento = d.tipoDocumento === 'DNI' ? 'El DNI tiene 8 dígitos.' : 'Entre 6 y 20 letras o números.'
+  }
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(d.fechaIngreso)) e.fechaIngreso = 'Elige la fecha de ingreso.'
+  return e
+}
+
+/** La baja: una fecha de salida no anterior al ingreso (lo demás —jornadas, plazo— lo verifica el servidor). */
+export function errorBaja(t: Trabajador, fecha: string): string | null {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha)) return 'Elige la fecha de salida.'
+  if (fecha < t.fechaIngreso) return 'La salida no puede ser antes del ingreso.'
+  return null
+}

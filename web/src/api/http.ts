@@ -30,7 +30,7 @@ const CLAVE = 'sigro-sesion'
 export interface Sesion {
   token: string
   usuario: { id: number; nombre: string; usuario: string }
-  obras: { id: number; nombre: string; rol: string }[]
+  obras: { id: number; nombre: string; rol: string; estado?: string }[]
 }
 let sesionMem: Sesion | null = null
 export function sesionActual(): Sesion | null {
@@ -143,7 +143,7 @@ async function aObra(o: ObraApi): Promise<Obra> {
     id: String(o.id), nombre: o.nombre,
     presupuesto: '', // la API aún no guarda el código del presupuesto del S10 (pedido a Adiel)
     inicio: o.fechaInicio, fin: o.fechaFin,
-    estado: o.estado === 'cerrada' ? 'cerrada' : 'en_ejecucion',
+    estado: o.estado === 'cerrado' || o.estado === 'cerrada' ? 'cerrada' : 'en_ejecucion',
     semanas: periodos.map((p) => aSemana(p, hoy)),
   }
 }
@@ -175,6 +175,10 @@ export const obrasHttp = {
     obraActivaId = id
     try { sessionStorage.setItem(CLAVE_OBRA, id) } catch { /* nada */ }
     return obrasHttp.activa()
+  },
+  /** Fase 2 (25/11): cerrar la obra (solo el administrador). No borra nada y NO se reabre. */
+  async cerrar(id: string): Promise<Obra> {
+    return aObra(await pedir<ObraApi>('POST', `/obras/${id}/cerrar`))
   },
   async crear(datos: { nombre: string; inicio: string; fin: string }): Promise<Obra> {
     if (!datos.nombre.trim()) throw new ErrorApi('nombre', 'Escribe el nombre de la obra.')
@@ -634,6 +638,8 @@ interface MovimientoApi {
   quienRetira: string | null; origen: string | null; origenDetalle?: string | null; recepcionId: number | null; revierteAId: number | null
   registradoPor: number; fechaServidor: string; revertidoPorId?: number | null; recepcionMotivoExceso?: string | null
   periodoId?: number | null; semanaNumero?: number | null
+  /** kárdex: el saldo y el promedio que dejó el movimiento */
+  saldoDespues?: string | null; promedioDespues?: string | null
 }
 function diaLimaDe(iso: string): string | null {
   const d = new Date(iso)
@@ -705,6 +711,7 @@ async function aMovimiento(
     cantidad, costoUnitario,
     importe: Number((cantidad * costoUnitario).toFixed(2)),
     semana: semanaDeMovimiento(m, periodos),
+    saldoDespues: m.saldoDespues == null ? undefined : num(m.saldoDespues),
     motivo: motivoDe(m),
     // T-345: quién lo registró (nombre si la obra lo deja ver) — la hora es la del servidor (fechaServidor)
     autor: personas.get(m.registradoPor) ?? (yo && yo.id === m.registradoPor ? yo.nombre : `Usuario ${m.registradoPor}`),

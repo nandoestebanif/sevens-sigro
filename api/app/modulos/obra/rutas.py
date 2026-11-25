@@ -28,8 +28,8 @@ obras = APIRouter(prefix="/obras", tags=["obra"])
 def _obras_de(s: Session, usuario_id: int) -> list[dict]:
     return filas(
         s,
-        "SELECT p.id, p.nombre, a.rol FROM obra.asignacion a JOIN obra.proyecto p ON p.id = a.proyecto_id "
-        "WHERE a.usuario_id = :u AND a.fecha_retiro IS NULL ORDER BY p.nombre",
+        "SELECT p.id, p.nombre, a.rol, p.estado FROM obra.asignacion a JOIN obra.proyecto p ON p.id = a.proyecto_id "
+        "WHERE a.usuario_id = :u AND a.fecha_retiro IS NULL ORDER BY (p.estado <> 'en_ejecucion'), p.nombre",
         u=usuario_id,
     )
 
@@ -213,7 +213,7 @@ def listar_obras(a: Actor = Depends(usuario_autenticado)):
         "           CASE WHEN current_date < min(fecha_inicio) THEN 0 ELSE count(*) END) AS actual "
         "  FROM obra.periodo WHERE proyecto_id = p.id"
         ") per ON true "
-        "WHERE a.usuario_id = :u AND a.fecha_retiro IS NULL ORDER BY p.nombre",
+        "WHERE a.usuario_id = :u AND a.fecha_retiro IS NULL ORDER BY (p.estado <> 'en_ejecucion'), p.nombre",
         u=a.usuario_id,
     )
 
@@ -236,6 +236,18 @@ def crear_obra(datos: e.ObraIn, a: Actor = Depends(exigir_en_alguna_obra("proyec
 
 @obras.get("/{obra_id}", response_model=e.ObraOut)
 def ver_obra(a: Actor = Depends(exigir("proyecto.consultar"))):
+    return _obra_out(a.sesion, a.obra_id, a.rol)
+
+
+@obras.post("/{obra_id}/cerrar", response_model=e.ObraOut)
+def cerrar_obra(a: Actor = Depends(exigir("proyecto.cerrar"))):
+    """Cerrar la obra no borra nada (R10): sus datos, compras y movimientos se conservan y se siguen consultando.
+    La obra pasa a «cerrada»: va al final de la lista y ya no se le amplía el plazo. NO se reabre: lo impide la base
+    (obra.tg_proyecto_cambios, desde la 0001), por eso la web pide confirmarlo."""
+    r = fila(a.sesion, "UPDATE obra.proyecto SET estado = 'cerrado' WHERE id = :p AND estado = 'en_ejecucion' RETURNING id",
+             p=a.obra_id)
+    if r is None:
+        raise ErrorSigro(409, "obra_ya_cerrada", "Esta obra ya estaba cerrada.")
     return _obra_out(a.sesion, a.obra_id, a.rol)
 
 

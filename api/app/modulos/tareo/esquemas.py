@@ -48,6 +48,34 @@ class TrabajadorIn(Estricto):
         return self
 
 
+class TrabajadorEditarIn(Estricto):
+    """Lo que se corrige de un trabajador (25/11). Documento y fecha de ingreso NO: los protege la base (SIGRO-T5).
+    La categoría puede cambiar (ascenso): las jornadas pasadas conservan la suya (D-T1)."""
+    nombres: str | None = Field(None, min_length=2, max_length=80)
+    apellido_paterno: str | None = Field(None, min_length=1, max_length=60)
+    apellido_materno: str | None = Field(None, max_length=60)
+    categoria: Categoria | None = None
+    cuadrilla: str | None = Field(None, min_length=1, max_length=60)
+
+    @model_validator(mode="after")
+    def _algo_y_completo(self) -> "TrabajadorEditarIn":
+        self.nombres, self.apellido_paterno, self.apellido_materno = (
+            _limpio(self.nombres), _limpio(self.apellido_paterno), _limpio(self.apellido_materno),
+        )
+        if (self.nombres is None) != (self.apellido_paterno is None):
+            raise ValueError("Para corregir el nombre envía los nombres y al menos el apellido paterno.")
+        if not any((self.nombres, self.categoria, self.cuadrilla)):
+            raise ValueError("Envía al menos el nombre, la categoría o la cuadrilla.")
+        return self
+
+    @property
+    def nombre(self) -> str | None:
+        if not self.nombres:
+            return None
+        apellidos = " ".join(x for x in (self.apellido_paterno, self.apellido_materno) if x)
+        return f"{apellidos}, {self.nombres}"
+
+
 class TrabajadorOut(BaseModel):
     id: int
     nombre: str
