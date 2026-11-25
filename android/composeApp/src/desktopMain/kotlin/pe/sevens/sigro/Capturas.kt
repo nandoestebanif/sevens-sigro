@@ -3,6 +3,10 @@ package pe.sevens.sigro
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.ImageComposeScene
 import androidx.compose.ui.unit.Density
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.fillMaxSize
+import pe.sevens.sigro.ui.pantallas.HojaCambiarObra
+import pe.sevens.sigro.ui.pantallas.PantallaEntrando
 import androidx.compose.ui.use
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -156,6 +160,19 @@ private object DispositivoFalso : RepositorioDispositivo {
     override suspend fun solicitarAutorizacion(obraId: Int) = estado(obraId)
 }
 
+/** Para «Elegir / cambiar de obra»: el celular en un estado distinto en cada obra. */
+private object DispositivoPorObra : RepositorioDispositivo {
+    override suspend fun identificador() = DispositivoFalso.identificador()
+    override suspend fun estado(obraId: Int) = EstadoDispositivo(identificador(), when (obraId) { 1, 4 -> "autorizado"; 2 -> "pendiente"; else -> null })
+    override suspend fun solicitarAutorizacion(obraId: Int) = estado(obraId)
+}
+
+private val obraAdmin = ObraAsignada(1, "Multifamiliar Flores", "administrador")
+private val sesionAdmin = Sesion(
+    "https://sigro-api.onrender.com", "x", 2, "Adiel Luján", "adiel",
+    listOf(obraAdmin, ObraAsignada(2, "Obra de ejemplo 2", "residente"), ObraAsignada(3, "Obra de ejemplo 3", "administrador"), ObraAsignada(4, "Almacén de ejemplo", "administrador")),
+)
+
 /** Cola general de ejemplo: una asistencia por enviar y un ingreso que espera al servicio almacén. */
 private class RegistrosFalsos : RepositorioRegistros {
     private val ahora = System.currentTimeMillis()
@@ -302,6 +319,20 @@ fun main(args: Array<String>) {
     }) { PantallaSalida(1, {}, vm = llenaOsc) }
     capturar(dir, "32-oscuro-registros", oscuro = true) { PantallaPendientes(1, {}, vm = PendientesViewModel(salidas, registros)) }
     capturar(dir, "33-oscuro-perfil", oscuro = true) { PantallaPerfil(sesionEjemplo, obra, {}, {}, PerfilViewModel(SesionFalsa(), CatalogoFalso, DispositivoFalso)) }
+    // rediseño v3: elegir obra (administrador con cuatro obras), la hoja «Cambiar de obra» y «Entrando a …»
+    capturar(dir, "34-oscuro-elegir-obra", oscuro = true, alto = 1180) {
+        PantallaObras(sesionAdmin, {}, {}, ObrasViewModel(DispositivoPorObra, salidas, registros))
+    }
+    capturar(dir, "35-oscuro-cambiar-obra", oscuro = true, alto = 1180) {
+        androidx.compose.foundation.layout.Box(androidx.compose.ui.Modifier.fillMaxSize()) {
+            PantallaInicio(sesionAdmin, obraAdmin, {}, InicioViewModel(SesionFalsa(), salidas, registros, CatalogoFalso, sinProgramar))
+            androidx.compose.foundation.layout.Box(androidx.compose.ui.Modifier.fillMaxSize().background(androidx.compose.ui.graphics.Color(0x8C0A0A0A)))
+            androidx.compose.foundation.layout.Box(androidx.compose.ui.Modifier.align(androidx.compose.ui.Alignment.BottomCenter)) {
+                HojaCambiarObra(sesionAdmin, obraAdmin, {}, {}, ObrasViewModel(DispositivoPorObra, salidas, registros))
+            }
+        }
+    }
+    capturar(dir, "36-entrando-a-la-obra", ms = 2000) { PantallaEntrando(sesionAdmin.obras[1], 1) }
     capturar(dir, "10-mi-celular") { PantallaDispositivo(1, {}, "Multifamiliar Flores", DispositivoViewModel(DispositivoFalso)) }
     val cat = CatalogoViewModel(InsumosFalsos)
     capturar(dir, "11-catalogo-buscar", preparar = { cat.buscar("fierro corrugado") }) { PantallaCatalogo({}, {}, {}, cat) }
