@@ -61,6 +61,7 @@ kotlin {
         }
         androidMain.dependencies {
             implementation(libs.androidx.activity.compose)
+            implementation(libs.androidx.biometric) // entrar con huella (BiometricPrompt)
             implementation(libs.coroutines.android)
             implementation(libs.ktor.client.okhttp)
             implementation(libs.koin.android)

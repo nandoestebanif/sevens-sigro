@@ -54,6 +54,22 @@ import org.jetbrains.compose.resources.painterResource
 import org.koin.compose.viewmodel.koinViewModel
 import pe.sevens.sigro.dominio.ErrorSigro
 import pe.sevens.sigro.dominio.RepositorioSesion
+import pe.sevens.sigro.dominio.Biometria
+import pe.sevens.sigro.dominio.ClaveReciente
+import pe.sevens.sigro.dominio.CuentaConHuella
+import pe.sevens.sigro.dominio.RepositorioCandado
+import pe.sevens.sigro.dominio.ResultadoSecreto
+import pe.sevens.sigro.plataforma.rememberBiometria
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.material.icons.filled.Fingerprint
+import androidx.compose.material.icons.filled.Key
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.layout.size
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.semantics.Role
 import pe.sevens.sigro.recursos.Res
 import pe.sevens.sigro.ui.componentes.BotonNegro
 import pe.sevens.sigro.ui.componentes.CampoVidrio
@@ -83,14 +99,70 @@ data class EstadoEntrar(
     val clave: String = "",
     val cargando: Boolean = false,
     val error: String? = null,
+    /** La cuenta que entra con huella en este celular (si la hay): se ofrece «Entrar como … con tu huella». */
+    val cuentaHuella: CuentaConHuella? = null,
+    /** Eligió «Entrar con otra cuenta»: se ve el formulario aunque haya cuenta con huella. */
+    val conFormulario: Boolean = false,
 )
 
-class EntrarViewModel(private val sesiones: RepositorioSesion) : ViewModel() {
+class EntrarViewModel(
+    private val sesiones: RepositorioSesion,
+    private val candado: RepositorioCandado? = null,
+    private val claveReciente: ClaveReciente? = null,
+) : ViewModel() {
     private val _estado = MutableStateFlow(EstadoEntrar())
     val estado = _estado.asStateFlow()
 
     init {
         viewModelScope.launch { _estado.update { it.copy(servidor = sesiones.servidorGuardado()) } }
+        viewModelScope.launch {
+            val c = runCatching { candado?.cuenta() }.getOrNull()
+            // desde el candado pidió «entrar con mi contraseña»: formulario directo, con su usuario puesto
+            val conContrasena = claveReciente?.tomarPreferirContrasena() == true
+            _estado.update { it.copy(cuentaHuella = c, conFormulario = conContrasena, usuario = if (conContrasena) c?.usuario ?: it.usuario else it.usuario) }
+        }
+    }
+
+    /** «No soy …»: el formulario vacío, para otra cuenta. */
+    fun otraCuenta() = _estado.update { it.copy(conFormulario = true, usuario = "", clave = "", error = null) }
+
+    /** No puede poner la huella (guantes, dedo herido, sensor sucio): su usuario puesto y que escriba la contraseña. */
+    fun conContrasena() = _estado.update { s -> s.copy(conFormulario = true, usuario = s.cuentaHuella?.usuario ?: s.usuario, clave = "", error = null) }
+    fun volverAHuella() = _estado.update { it.copy(conFormulario = false, error = null) }
+
+    /**
+     * Entrar con la huella: abre la contraseña cifrada y entra como siempre (el servidor la verifica). Si la contraseña
+     * cambió o se agregó una huella al celular, se olvida el acceso con huella y se pide la contraseña escrita.
+     */
+    suspend fun entrarConHuella(bio: Biometria) {
+        val c = _estado.value.cuentaHuella ?: return
+        when (val r = bio.descifrar("Entra a SIGRO", "${c.nombre} · @${c.usuario}", c.sobre)) {
+            is ResultadoSecreto.Ok -> {
+                _estado.update { it.copy(cargando = true, error = null) }
+                try {
+                    sesiones.iniciarSesion(c.servidor, c.usuario, r.valor)
+                    claveReciente?.guardar(c.usuario, r.valor)
+                    _estado.update { it.copy(cargando = false) }
+                } catch (x: ErrorSigro) {
+                    if (x is ErrorSigro.SesionVencida) {
+                        // la contraseña cambió (en la web o el administrador la renovó): la guardada ya no sirve
+                        olvidarHuella(bio, "Tu contraseña cambió. Escríbela una vez y vuelve a activar la huella.", c.usuario)
+                    } else {
+                        _estado.update { it.copy(cargando = false, error = x.message) } // sin señal: el acceso con huella queda
+                    }
+                }
+            }
+            ResultadoSecreto.Cancelada -> Unit
+            is ResultadoSecreto.Fallo -> _estado.update { it.copy(error = r.mensaje) }
+            ResultadoSecreto.HuellaNueva -> olvidarHuella(bio, "Se agregó una huella nueva en el celular. Por seguridad, entra con tu contraseña.", c.usuario)
+            ResultadoSecreto.NoSoportado -> _estado.update { it.copy(conFormulario = true) }
+        }
+    }
+
+    private suspend fun olvidarHuella(bio: Biometria, mensaje: String, usuario: String) {
+        bio.olvidarClave()
+        runCatching { candado?.olvidarCuenta() }
+        _estado.update { it.copy(cargando = false, cuentaHuella = null, conFormulario = true, usuario = usuario, error = mensaje) }
     }
 
     fun servidor(v: String) = _estado.update { it.copy(servidor = v, error = null) }
@@ -107,6 +179,8 @@ class EntrarViewModel(private val sesiones: RepositorioSesion) : ViewModel() {
         viewModelScope.launch {
             try {
                 sesiones.iniciarSesion(e.servidor, e.usuario, e.clave)
+                // solo en memoria y por unos minutos: si activa la huella al entrar, se cifra con ella
+                claveReciente?.guardar(e.usuario, e.clave)
                 // La raíz cambia sola de pantalla al ver la sesión guardada.
                 _estado.update { it.copy(cargando = false, clave = "") }
             } catch (x: ErrorSigro) {
@@ -122,8 +196,11 @@ class EntrarViewModel(private val sesiones: RepositorioSesion) : ViewModel() {
  * No guarda estado propio salvo «ver clave» y «ver servidor»: lo demás vive en el ViewModel (MVVM).
  */
 @Composable
-fun PantallaEntrar(vm: EntrarViewModel = koinViewModel()) {
+fun PantallaEntrar(vm: EntrarViewModel = koinViewModel(), biometria: Biometria = rememberBiometria()) {
     val e by vm.estado.collectAsState()
+    val alcance = rememberCoroutineScope()
+    val cuenta = e.cuentaHuella
+    val conHuella = cuenta != null && !e.conFormulario && biometria.guardaClaves()
     var verClave by remember { mutableStateOf(false) }
     var verServidor by remember { mutableStateOf(false) }
 
@@ -162,6 +239,13 @@ fun PantallaEntrar(vm: EntrarViewModel = koinViewModel()) {
                             modifier = Modifier.padding(top = 36.dp).background(Paleta.TicketAmarillo, RoundedCornerShape(12.dp)).padding(horizontal = 12.dp, vertical = 6.dp),
                         )
                     }
+                }
+                if (conHuella && cuenta != null) {
+                    EntrarConHuella(
+                        cuenta, e.cargando, e.error, alEntrar = { alcance.launch { vm.entrarConHuella(biometria) } },
+                        alContrasena = vm::conContrasena, alOtraCuenta = vm::otraCuenta,
+                    )
+                    return@Column
                 }
                 Card(
                     Modifier.widthIn(max = 480.dp).fillMaxWidth(),
@@ -207,6 +291,12 @@ fun PantallaEntrar(vm: EntrarViewModel = koinViewModel()) {
                             }
                         }
                         BotonNegro("Entrar", vm::entrar, cargando = e.cargando)
+                        if (cuenta != null && e.conFormulario && biometria.guardaClaves()) {
+                            TextButton(onClick = vm::volverAHuella, modifier = Modifier.fillMaxWidth()) {
+                                Icon(Icons.Filled.Fingerprint, contentDescription = null, tint = Paleta.Naranja)
+                                Text("  Entrar como ${cuenta.primerNombre} con tu huella", fontWeight = FontWeight.SemiBold, color = Paleta.Naranja)
+                            }
+                        }
                         Text(
                             "¿No tienes usuario? Pídelo al administrador de la obra",
                             style = MaterialTheme.typography.bodySmall,
@@ -230,6 +320,57 @@ fun PantallaEntrar(vm: EntrarViewModel = koinViewModel()) {
                     )
                 }
             }
+        }
+    }
+}
+
+/**
+ * «Entrar como Adiel con tu huella»: quién es, la huella grande y «otra cuenta». El diálogo de la huella se abre solo
+ * al aparecer (es a lo que viene).
+ */
+@Composable
+private fun EntrarConHuella(
+    c: CuentaConHuella, cargando: Boolean, error: String?, alEntrar: () -> Unit, alContrasena: () -> Unit, alOtraCuenta: () -> Unit,
+) {
+    LaunchedEffect(c.usuarioId) { alEntrar() }
+    Card(
+        Modifier.widthIn(max = 480.dp).fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        shape = RoundedCornerShape(24.dp),
+    ) {
+        Column(Modifier.fillMaxWidth().padding(22.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Box(Modifier.size(60.dp).background(Paleta.TicketAmarillo, CircleShape), contentAlignment = Alignment.Center) {
+                Text(iniciales(c.nombre), fontSize = 21.sp, fontWeight = FontWeight.Bold, color = Paleta.SobreTicket)
+            }
+            Text("Hola de nuevo,", fontSize = 14.sp, color = Paleta.Texto3)
+            Text(c.nombre, fontSize = 22.sp, fontWeight = FontWeight.Bold, color = Paleta.Tinta, textAlign = TextAlign.Center, modifier = Modifier.semantics { heading() })
+            Text("@${c.usuario}", fontSize = 13.sp, color = Paleta.Texto3)
+            Box(
+                Modifier.padding(top = 6.dp).size(120.dp).clip(CircleShape)
+                    .clickable(enabled = !cargando, role = Role.Button, onClickLabel = "Entrar con tu huella", onClick = alEntrar),
+                contentAlignment = Alignment.Center,
+            ) {
+                Box(Modifier.fillMaxSize().background(Brush.radialGradient(listOf(Paleta.TicketAmarillo.copy(alpha = 0.3f), Color.Transparent)), CircleShape))
+                Box(Modifier.size(88.dp).background(Paleta.TicketAmarillo, CircleShape), contentAlignment = Alignment.Center) {
+                    if (cargando) CircularProgressIndicator(Modifier.size(34.dp), color = Paleta.SobreTicket, strokeWidth = 3.dp)
+                    else Icon(Icons.Filled.Fingerprint, contentDescription = null, tint = Paleta.SobreTicket, modifier = Modifier.size(48.dp))
+                }
+            }
+            error?.let {
+                Text(it, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.error, textAlign = TextAlign.Center,
+                    modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite })
+            }
+            BotonNegro("Entrar con tu huella", alEntrar, icono = Icons.Filled.Fingerprint, cargando = cargando)
+            // si no puede poner la huella: su contraseña (o el PIN del celular, en el mismo diálogo de la huella)
+            BotonNegro("Entrar con mi contraseña", alContrasena, icono = Icons.Filled.Key, contorno = true, habilitado = !cargando)
+            TextButton(onClick = alOtraCuenta) {
+                Text("No soy ${c.primerNombre} · entrar con otra cuenta", color = Paleta.Texto2)
+            }
+            Text(
+                "Tu contraseña se guarda cifrada con tu huella: sin ella no se puede usar.",
+                fontSize = 12.sp, color = Paleta.Texto3, textAlign = TextAlign.Center,
+            )
         }
     }
 }

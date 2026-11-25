@@ -29,6 +29,13 @@ import org.koin.compose.viewmodel.koinViewModel
 import pe.sevens.sigro.plataforma.ManejarAtras
 import pe.sevens.sigro.ui.pantallas.Destino
 import pe.sevens.sigro.ui.pantallas.CapaEntrando
+import pe.sevens.sigro.ui.pantallas.CandadoViewModel
+import pe.sevens.sigro.ui.pantallas.CapaCandado
+import pe.sevens.sigro.ui.pantallas.SeccionSeguridad
+import pe.sevens.sigro.ui.pantallas.medirUso
+import pe.sevens.sigro.ui.pantallas.sesionDe
+import pe.sevens.sigro.plataforma.rememberBiometria
+import pe.sevens.sigro.plataforma.CicloDeVida
 import pe.sevens.sigro.ui.pantallas.obrasDe
 import pe.sevens.sigro.dominio.ObraAsignada
 import pe.sevens.sigro.ui.pantallas.EstadoRaiz
@@ -73,7 +80,11 @@ fun App() {
             val raiz: RaizViewModel = koinViewModel()
             val estado by raiz.estado.collectAsState()
             val entrando by raiz.entrando.collectAsState()
-            Box(Modifier.fillMaxSize()) {
+            // entrar con huella: el candado mide el uso (toques) y la salida/vuelta de la app
+            val candado: CandadoViewModel = koinViewModel()
+            val biometria = rememberBiometria()
+            CicloDeVida(alSalir = candado::alSalir, alVolver = candado::revisar)
+            Box(Modifier.fillMaxSize().medirUso(candado)) {
             // Al entrar, la capa «el plano se dibuja» de PantallaEntrar se desvanece y crece 6 % (0,6 s)
             // dejando ver la pantalla siguiente, que va debajo.
             AnimatedContent(
@@ -95,10 +106,11 @@ fun App() {
                     ) { CircularProgressIndicator() }
                     EstadoRaiz.SinSesion -> PantallaEntrar()
                     is EstadoRaiz.ElegirObra -> PantallaObras(e.sesion, alElegir = raiz::elegir, alSalir = raiz::salir)
-                    is EstadoRaiz.Dentro -> Navegacion(e, alElegirObra = raiz::elegir)
+                    is EstadoRaiz.Dentro -> Navegacion(e, alElegirObra = raiz::elegir, seguridad = { SeccionSeguridad(candado, biometria) })
                 }
             }
             CapaEntrando(entrando, obrasDe(estado)) // «Entrando a …» tapa el cambio de obra
+            CapaCandado(candado, sesionDe(estado), (estado as? EstadoRaiz.Dentro)?.obra, puedeOfrecer = estado is EstadoRaiz.Dentro && entrando == null, biometria)
             }
         }
     }
@@ -109,7 +121,7 @@ fun App() {
  * otra y `volver` para cerrarse; el botón atrás del sistema hace lo mismo.
  */
 @Composable
-private fun Navegacion(e: EstadoRaiz.Dentro, alElegirObra: (ObraAsignada) -> Unit) {
+private fun Navegacion(e: EstadoRaiz.Dentro, alElegirObra: (ObraAsignada) -> Unit, seguridad: @Composable () -> Unit) {
     val pila = remember(e.obra.id) { mutableStateListOf<Destino>(Destino.Inicio) }
     val actual = pila.last()
     val volver: () -> Unit = { if (pila.size > 1) pila.removeAt(pila.lastIndex) }
@@ -123,7 +135,7 @@ private fun Navegacion(e: EstadoRaiz.Dentro, alElegirObra: (ObraAsignada) -> Uni
             is Destino.SalidaDe -> PantallaSalida(e.obra.id, alVolver = volver, base = d.base)
             Destino.Pendientes -> PantallaPendientes(e.obra.id, alVolver = volver, alCorregir = { irA(Destino.SalidaDe(it)) })
             Destino.Rechazados -> PantallaPendientes(e.obra.id, alVolver = volver, soloRechazados = true, alCorregir = { irA(Destino.SalidaDe(it)) })
-            Destino.Perfil -> PantallaPerfil(e.sesion, e.obra, alVolver = volver, alCelular = { irA(Destino.Dispositivo) })
+            Destino.Perfil -> PantallaPerfil(e.sesion, e.obra, alVolver = volver, alCelular = { irA(Destino.Dispositivo) }, seguridad = seguridad)
             Destino.Dispositivo -> PantallaDispositivo(e.obra.id, alVolver = volver, obraNombre = e.obra.nombre)
             Destino.Catalogo -> PantallaCatalogo(alVolver = volver, alAbrir = { irA(Destino.Ficha(it)) }, alNuevo = { irA(Destino.InsumoNuevo) })
             is Destino.Ficha -> PantallaFichaInsumo(d.insumo, alVolver = volver, alVerStock = { irA(Destino.Stock) })

@@ -6,6 +6,11 @@ import androidx.compose.ui.unit.Density
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.fillMaxSize
 import pe.sevens.sigro.ui.pantallas.HojaCambiarObra
+import pe.sevens.sigro.ui.pantallas.PantallaBloqueada
+import pe.sevens.sigro.ui.pantallas.HojaActivarHuella
+import pe.sevens.sigro.ui.pantallas.SeccionSeguridad
+import pe.sevens.sigro.ui.pantallas.CandadoViewModel
+import pe.sevens.sigro.dominio.DisponibilidadHuella
 import pe.sevens.sigro.ui.pantallas.PantallaEntrando
 import androidx.compose.ui.use
 import kotlinx.coroutines.flow.Flow
@@ -173,6 +178,25 @@ private val sesionAdmin = Sesion(
     listOf(obraAdmin, ObraAsignada(2, "Obra de ejemplo 2", "residente"), ObraAsignada(3, "Obra de ejemplo 3", "administrador"), ObraAsignada(4, "Almacén de ejemplo", "administrador")),
 )
 
+/** Huella de mentira para las capturas: el celular sí puede. */
+private object HuellaLista : pe.sevens.sigro.dominio.Biometria {
+    override fun disponibilidad() = DisponibilidadHuella.DISPONIBLE
+    override suspend fun verificar(titulo: String, detalle: String) = pe.sevens.sigro.dominio.ResultadoHuella.Ok
+    override fun guardaClaves() = true
+    // en la captura el diálogo «se cierra»: la pantalla queda esperando la huella
+    override suspend fun descifrar(titulo: String, detalle: String, sobre: String) = pe.sevens.sigro.dominio.ResultadoSecreto.Cancelada
+}
+
+private object CandadoGuardado : pe.sevens.sigro.dominio.RepositorioCandado {
+    override suspend fun ajuste(usuarioId: Int) = pe.sevens.sigro.dominio.AjusteHuella(activa = true, minutos = 15, ofrecida = true)
+    override suspend fun guardar(usuarioId: Int, ajuste: pe.sevens.sigro.dominio.AjusteHuella) {}
+    override suspend fun ultimoUso(): Long? = System.currentTimeMillis()
+    override suspend fun guardarUltimoUso(ms: Long) {}
+    override suspend fun cuenta() = pe.sevens.sigro.dominio.CuentaConHuella(2, "adiel", "Adiel Luján", "https://sigro-api.onrender.com", "iv:cifrado")
+    override suspend fun guardarCuenta(c: pe.sevens.sigro.dominio.CuentaConHuella) {}
+    override suspend fun olvidarCuenta() {}
+}
+
 /** Cola general de ejemplo: una asistencia por enviar y un ingreso que espera al servicio almacén. */
 private class RegistrosFalsos : RepositorioRegistros {
     private val ahora = System.currentTimeMillis()
@@ -333,6 +357,23 @@ fun main(args: Array<String>) {
         }
     }
     capturar(dir, "36-entrando-a-la-obra", ms = 2000) { PantallaEntrando(sesionAdmin.obras[1], 1) }
+    // entrar con huella (v4): la app bloqueada, la oferta tras entrar y Perfil › Seguridad
+    capturar(dir, "39-oscuro-app-bloqueada", oscuro = true) {
+        PantallaBloqueada("Adiel Luján", "Administrador", "Multifamiliar Flores", porEnviar = 4, minutos = 15,
+            disponible = DisponibilidadHuella.DISPONIBLE, mensaje = null, alDesbloquear = {}, alCerrarSesion = {}, pedirAlAbrir = false)
+    }
+    capturar(dir, "40-oscuro-activar-huella", oscuro = true) {
+        androidx.compose.foundation.layout.Box(androidx.compose.ui.Modifier.fillMaxSize()) {
+            PantallaInicio(sesionAdmin, obraAdmin, {}, InicioViewModel(SesionFalsa(), salidas, registros, CatalogoFalso, sinProgramar))
+            androidx.compose.foundation.layout.Box(androidx.compose.ui.Modifier.fillMaxSize().background(androidx.compose.ui.graphics.Color(0x8C0A0A0A)))
+            androidx.compose.foundation.layout.Box(androidx.compose.ui.Modifier.align(androidx.compose.ui.Alignment.BottomCenter)) { HojaActivarHuella({}, {}) }
+        }
+    }
+    capturar(dir, "42-oscuro-entrar-con-huella", oscuro = true) { PantallaEntrar(EntrarViewModel(SesionFalsa(), CandadoGuardado), HuellaLista) }
+    val candadoActivo = CandadoViewModel(SesionFalsa(), CandadoGuardado)
+    capturar(dir, "41-oscuro-perfil-seguridad", oscuro = true, alto = 1100) {
+        PantallaPerfil(sesionEjemplo, obra, {}, {}, PerfilViewModel(SesionFalsa(), CatalogoFalso, DispositivoFalso), seguridad = { SeccionSeguridad(candadoActivo, HuellaLista) })
+    }
     capturar(dir, "10-mi-celular") { PantallaDispositivo(1, {}, "Multifamiliar Flores", DispositivoViewModel(DispositivoFalso)) }
     val cat = CatalogoViewModel(InsumosFalsos)
     capturar(dir, "11-catalogo-buscar", preparar = { cat.buscar("fierro corrugado") }) { PantallaCatalogo({}, {}, {}, cat) }
