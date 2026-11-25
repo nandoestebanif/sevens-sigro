@@ -1,4 +1,5 @@
 /* SIGRO · armazón de la web de oficina con React-Bootstrap: Navbar arriba, menú lateral (Offcanvas + Accordion), obra activa y rutas. */
+import { CambiarClave, Campana } from './ui/Cuenta'
 import { puede } from './api/permisos'
 import { Component, Suspense, lazy, useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { HashRouter, NavLink, Navigate, Route, Routes, useLocation } from 'react-router-dom'
@@ -81,6 +82,7 @@ const ICONOS = {
   compras: 'M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z|M3 6h18|M16 10a4 4 0 0 1-8 0',
   proveedores: 'M5 18H3V6h12v12H9|M19 18h2v-5l-3-4h-4v9h1|M7.5 20a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3|M17.5 20a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3',
   inventario: 'M3 7l9-4 9 4-9 4-9-4|M3 7v10l9 4 9-4V7|M12 11v10',
+  llave: 'M15.5 7.5a3.5 3.5 0 1 1-4.95 4.95 3.5 3.5 0 0 1 4.95-4.95|M10.5 12.5L3 20|M6 17l2 2|M8 15l2 2',
   solicitudes: 'M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2|M9 5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v0a2 2 0 0 1-2 2h-2a2 2 0 0 1-2-2|M9 12h6|M9 16h4',
   personal: 'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2|M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8|M22 21v-2a4 4 0 0 0-3-3.87|M16 3.13a4 4 0 0 1 0 7.75',
   movimientos: 'M8 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2h-3|M12 17V7|M8 10l4-4 4 4',
@@ -357,6 +359,7 @@ function Sistema({ preparando = false, nombreObra = '', alTerminar }: {
   const grupos = usaApiReal && esAdministrador(sesion, obra?.id) ? [...visibles, GRUPO_ADMINISTRACION] : visibles
 
   const [menuAbierto, setMenuAbierto] = useState(false)
+  const [cambiandoClave, setCambiandoClave] = useState(false)
 
   return (
     <HashRouter>
@@ -397,6 +400,11 @@ function Sistema({ preparando = false, nombreObra = '', alTerminar }: {
                     {rol && <div className="rol">{ROLES[rol] ?? rol}</div>}
                   </div>
                   {usaApiReal && (
+                    <button type="button" className="sigro-salir" onClick={() => setCambiandoClave(true)} aria-label="Cambiar mi contraseña" title="Cambiar mi contraseña">
+                      <Icono d={ICONOS.llave} tam={19} />
+                    </button>
+                  )}
+                  {usaApiReal && (
                     <button type="button" className="sigro-salir" onClick={cerrarSesion} aria-label="Cerrar sesión" title="Cerrar sesión">
                       <Icono d={ICONOS.salir} tam={20} />
                     </button>
@@ -424,6 +432,7 @@ function Sistema({ preparando = false, nombreObra = '', alTerminar }: {
               {obra && <Badge pill>{obra.semana === 0 ? 'aún no inicia' : `semana ${obra.semana} de ${obra.semanasTotales}`}</Badge>}
             </div>
             <Nav className="ms-auto align-items-center">
+              {usaApiReal && sesion && <Campana />}
               <AjustesPantalla />
             </Nav>
           </header>
@@ -458,6 +467,7 @@ function Sistema({ preparando = false, nombreObra = '', alTerminar }: {
           </main>
         </div>
       </div>
+      {cambiandoClave && <CambiarClave enCerrar={() => setCambiandoClave(false)} />}
     </HashRouter>
   )
 }

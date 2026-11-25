@@ -225,7 +225,7 @@ h1, .h1, h2, .h2, h3, .h3 { letter-spacing: -0.02em; }
 // en pantallas bajas el atajo queda solo como botón
 @media (max-height: 820px) { .sigro-llamado { padding: 0; background: transparent; .titulo { display: none; } } }
 .sigro-salir {
-  flex: none; width: 2.4rem; height: 2.4rem; border: 0; border-radius: 0.75rem; background: transparent;
+  flex: none; width: 2rem; height: 2.2rem; border: 0; border-radius: 0.65rem; background: transparent;
   color: var(--sigro-menu-tenue); display: flex; align-items: center; justify-content: center;
   &:hover { background: #242424; color: #fff; }
 }
@@ -369,3 +369,4 @@ h1, .h1, h2, .h2, h3, .h3 { letter-spacing: -0.02em; }
   thead th { white-space: nowrap; }
 }
 .matriz-permisos code { color: var(--bs-secondary-color); font-size: 0.72rem; }
+.sigro-campana { color: var(--bs-body-color); border-radius: 999px; background: var(--sigro-tarjeta); width: 2.6rem; height: 2.6rem; display: inline-flex; align-items: center; justify-content: center; padding: 0; }
