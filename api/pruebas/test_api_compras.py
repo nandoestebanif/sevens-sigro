@@ -427,12 +427,13 @@ def test_el_cliente_no_elige_el_numero_ni_el_estado_de_la_solicitud(mundo, eq):
         assert r.status_code == 422, extra
 
 
-def test_solo_el_residente_emite_y_otros_roles_consultan(mundo, eq):
+def test_emiten_el_residente_y_el_administrador_y_otros_roles_consultan(mundo, eq):
     assert solicitar(mundo, eq, [sl()], quien="residente").status_code == 201
-    for rol in ("almacenero", "ssoma", "admin", "gerente"):
+    assert solicitar(mundo, eq, [sl()], quien="admin").status_code == 201   # 25/11: el administrador puede todo
+    for rol in ("almacenero", "ssoma", "gerente"):
         assert solicitar(mundo, eq, [sl()], quien=rol).status_code == 403, rol
     for rol in ("residente", "admin", "gerente"):
-        assert len(get(mundo, f"/obras/{eq['proyecto']}/solicitudes", eq[rol]).json()) == 1
+        assert len(get(mundo, f"/obras/{eq['proyecto']}/solicitudes", eq[rol]).json()) == 2
     for rol in ("almacenero", "ssoma"):
         assert get(mundo, f"/obras/{eq['proyecto']}/solicitudes", eq[rol]).status_code == 403
 
@@ -499,7 +500,7 @@ def test_anular_solicitud_exige_motivo_y_queda_anulada(mundo, eq):
     r = post(mundo, ruta, eq["residente"], motivo="Cambió el requerimiento")
     assert r.status_code == 200 and r.json()["estado"] == "anulada" and r.json()["motivo_anulacion"] == "Cambió el requerimiento"
     assert post(mundo, ruta, eq["residente"], motivo="Otra vez").status_code == 409
-    assert post(mundo, ruta, eq["admin"], motivo="El admin no anula").status_code == 403
+    assert post(mundo, ruta, eq["admin"], motivo="El admin también puede, pero ya está anulada").status_code == 409
 
 
 def test_una_solicitud_ajena_es_404_para_otra_obra(mundo, eq):
