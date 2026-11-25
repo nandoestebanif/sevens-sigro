@@ -246,6 +246,14 @@ function AnularCompra({ compra, enCerrar, enListo }: { compra: Compra; enCerrar:
   )
 }
 
+/** Cómo se muestra un comprobante: PDF en un visor, JPG/PNG como imagen; si el tipo no vino, por la extensión. */
+export function tipoVista(mime: string, nombre: string): 'pdf' | 'imagen' | 'otro' {
+  const ext = nombre.toLowerCase().split('.').pop() ?? ''
+  if (mime === 'application/pdf' || ext === 'pdf') return 'pdf'
+  if (mime.startsWith('image/') || ['jpg', 'jpeg', 'png'].includes(ext)) return 'imagen'
+  return 'otro'
+}
+
 function ComprobantesCompra({ compra, enCerrar, enCambio }: {
   compra: Compra
   enCerrar: () => void
@@ -280,6 +288,19 @@ function ComprobantesCompra({ compra, enCerrar, enCambio }: {
     }
   }
 
+  // Ver el comprobante aquí mismo (PDF o imagen), sin descargarlo
+  const [viendo, setViendo] = useState<{ nombre: string; url: string; tipo: 'pdf' | 'imagen' | 'otro' } | null>(null)
+  const ver = async (c: ComprobanteCompra) => {
+    setError('')
+    try {
+      const blob = await api.descargarComprobante(compra.id, c.id)
+      if (!blob) { avisar('En modo demostración solo se ven archivos subidos en esta sesión.', 'info'); return }
+      setViendo({ nombre: c.nombre, url: URL.createObjectURL(blob), tipo: tipoVista(blob.type, c.nombre) })
+    } catch (e) {
+      setError(e instanceof ErrorApi ? e.message : 'No se pudo abrir el comprobante.')
+    }
+  }
+  const cerrarVista = () => { if (viendo) URL.revokeObjectURL(viendo.url); setViendo(null) }
   const descargar = async (c: ComprobanteCompra) => {
     setError('')
     try {
@@ -316,6 +337,22 @@ function ComprobantesCompra({ compra, enCerrar, enCambio }: {
     ? `${(bytes / (1024 * 1024)).toFixed(2)} MB`
     : `${Math.max(1, Math.round(bytes / 1024))} KB`
 
+  if (viendo) {
+    return (
+      <Modal titulo={`${viendo.nombre} · ${compra.numeroComprobante}`} enCerrar={() => { cerrarVista(); enCerrar() }} ancho={960}>
+        <div className="d-flex flex-column gap-2">
+          <div className="d-flex justify-content-between align-items-center gap-2 flex-wrap">
+            <Pildora tipo="secundario" chica enClic={cerrarVista}>← Volver a los comprobantes</Pildora>
+            <a className="small fw-semibold" href={viendo.url} download={viendo.nombre}>Descargar</a>
+          </div>
+          {viendo.tipo === 'imagen' && <img src={viendo.url} alt={`Comprobante ${viendo.nombre}`} className="img-fluid rounded-3 mx-auto d-block" style={{ maxHeight: '75vh' }} />}
+          {viendo.tipo === 'pdf' && <iframe src={viendo.url} title={`Comprobante ${viendo.nombre}`} className="w-100 rounded-3 border-0" style={{ height: '75vh' }} />}
+          {viendo.tipo === 'otro' && <p className="mb-0">Este tipo de archivo no se puede mostrar aquí: descárgalo para abrirlo.</p>}
+        </div>
+      </Modal>
+    )
+  }
+
   return (
     <Modal titulo={`Comprobantes · ${compra.numeroComprobante}`} enCerrar={enCerrar}>
       <div className="d-flex flex-column gap-3">
@@ -350,6 +387,7 @@ function ComprobantesCompra({ compra, enCerrar, enCambio }: {
                   <div className="small text-danger">Motivo de anulación: {c.motivoAnulacion}</div>
                 )}
                 <div className="d-flex gap-2 flex-wrap justify-content-end">
+                  <Pildora chica enClic={() => void ver(c)} etiqueta={`Ver ${c.nombre}`}>Ver</Pildora>
                   <Pildora tipo="secundario" chica enClic={() => void descargar(c)}>Descargar</Pildora>
                   {c.estado === 'vigente' && anulandoId !== c.id && (
                     <Pildora tipo="secundario" chica enClic={() => { setAnulandoId(c.id); setMotivoAnulacion(''); setError('') }}>Anular</Pildora>
