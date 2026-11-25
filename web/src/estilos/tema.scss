@@ -223,6 +223,33 @@ h1, .h1, h2, .h2, h3, .h3 { letter-spacing: -0.02em; }
 }
 .sigro-menu :focus-visible { outline-color: $primary; }
 
+// botón circular al borde del panel para contraer / expandir
+.sigro-contraer {
+  position: absolute; right: 0.75rem; top: 1.4rem; z-index: 2; width: 2rem; height: 2rem; padding: 0;
+  border-radius: 50%; border: 1px solid #424343; background: #242424; color: #d2d3d3;
+  align-items: center; justify-content: center;
+  &:hover { color: #fff; border-color: #6d6e6e; }
+}
+
+// menú contraído: solo íconos; los textos quedan para el lector de pantalla (no se esconden con display:none)
+@include media-breakpoint-up(lg) {
+  .sigro-menu.compacto {
+    flex-basis: 6.5rem; width: 6.5rem;
+    .sigro-panel { padding: 4.25rem 0.75rem 1rem; align-items: stretch; }
+    .sigro-contraer { right: 50%; margin-right: -1rem; top: 1rem; }
+    .txt { position: absolute !important; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+    .sigro-rotulo { margin: 1rem 0 0.4rem; height: 1px; background: var(--sigro-menu-item); }
+    .sigro-perfil { justify-content: center; padding: 0.9rem 0; }
+    .accordion-button, .sigro-item { justify-content: center; padding: 0; gap: 0; }
+    .accordion-button::after { display: none; }
+    .accordion-collapse { display: none !important; }
+    .sigro-llamado { padding: 0.5rem; background: transparent; .btn { padding: 0.5rem 0; font-size: 1.2rem; line-height: 1; } }
+    a[aria-label="SIGRO · inicio"] { padding: 0 !important; display: flex !important; justify-content: center; width: 100%; }
+  }
+}
+.sigro-menu { transition: flex-basis 0.2s ease, width 0.2s ease; }
+@media (prefers-reduced-motion: reduce) { .sigro-menu { transition: none; } }
+
 // ── Tarjetas «ticket» de cifra: color de fondo, franja de luz, muescas e ilustración ──
 .sigro-ticket {
   position: relative; overflow: hidden; min-width: 0;
