@@ -61,5 +61,7 @@ final class Contratos {
                 if (!"bueno".equals(d.texto("estado")) && (n == null || n.strip().isEmpty()))
                     throw error("Si vuelve dañada o se perdió, escribe qué pasó: queda como constancia.");
             });
-    static final Esquema CONTEO_LINEA = de(entero("insumo_id").ge(1), decimal("cantidad_contada").ge(0).digitos(18, 4), texto("motivo").opcional().max(300));
+    /** «unidad» opcional: la app cuenta en la unidad de compra (bolsas) y el servidor la pasa a la del S10 con el factor. */
+    static final Esquema CONTEO_LINEA = de(entero("insumo_id").ge(1), decimal("cantidad_contada").ge(0).digitos(18, 4), texto("motivo").opcional().max(300),
+            texto("unidad").opcional().max(20));
 }
