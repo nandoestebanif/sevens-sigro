@@ -103,7 +103,7 @@ private class RegistrosFalsos : RepositorioRegistros {
         guardados += registro
         return RegistroLocal("u1", obraId, registro.tipo, "", "", 1L, EstadoEnvio.PENDIENTE, null, null, 0)
     }
-    override suspend fun sincronizar() = ResultadoSincronizacion(0, 0, 0)
+    override suspend fun sincronizar(manual: Boolean) = ResultadoSincronizacion(0, 0, 0)
 }
 
 class EntradaExcesoTest {

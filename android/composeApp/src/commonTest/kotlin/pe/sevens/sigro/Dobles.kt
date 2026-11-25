@@ -33,7 +33,7 @@ class SalidasDePrueba : pe.sevens.sigro.datos.local.SalidaDao {
     val filas = kotlinx.coroutines.flow.MutableStateFlow<List<pe.sevens.sigro.datos.local.SalidaLocalEntity>>(emptyList())
     override suspend fun insertar(s: pe.sevens.sigro.datos.local.SalidaLocalEntity) { filas.value = filas.value + s }
     override fun observarDeObra(obraId: Int) = kotlinx.coroutines.flow.flow { filas.collect { l -> emit(l.filter { it.obraId == obraId }) } }
-    override suspend fun pendientes() = filas.value.filter { it.estado == "PENDIENTE" }.sortedBy { it.horaDispositivoMs }
+    override suspend fun pendientes(maxIntentos: Int) = filas.value.filter { it.estado == "PENDIENTE" && it.intentos < maxIntentos }.sortedBy { it.horaDispositivoMs }
     override fun contarPendientes() = kotlinx.coroutines.flow.flow { filas.collect { l -> emit(l.count { it.estado == "PENDIENTE" }) } }
     override suspend fun marcar(uuid: String, estado: String, motivoRechazo: String?, nota: String?, ahora: Long) {
         filas.value = filas.value.map {
@@ -51,8 +51,8 @@ class RegistrosDePrueba : pe.sevens.sigro.datos.local.RegistroDao {
     val filas = kotlinx.coroutines.flow.MutableStateFlow<List<pe.sevens.sigro.datos.local.RegistroLocalEntity>>(emptyList())
     override suspend fun insertar(r: pe.sevens.sigro.datos.local.RegistroLocalEntity) { filas.value = filas.value + r }
     override fun observarDeObra(obraId: Int) = kotlinx.coroutines.flow.flow { filas.collect { l -> emit(l.filter { it.obraId == obraId }) } }
-    override suspend fun pendientes(tipos: List<String>) =
-        filas.value.filter { it.estado == "PENDIENTE" && it.tipo in tipos }.sortedBy { it.horaDispositivoMs }
+    override suspend fun pendientes(tipos: List<String>, maxIntentos: Int) =
+        filas.value.filter { it.estado == "PENDIENTE" && it.intentos < maxIntentos && it.tipo in tipos }.sortedBy { it.horaDispositivoMs }
     override fun contarPendientes(tipos: List<String>) =
         kotlinx.coroutines.flow.flow { filas.collect { l -> emit(l.count { it.estado == "PENDIENTE" && it.tipo in tipos }) } }
     override suspend fun clavesVigentes(obraId: Int, prefijo: String) =
