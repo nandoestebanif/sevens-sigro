@@ -347,6 +347,16 @@ fun main(args: Array<String>) {
     capturar(dir, "15-trabajador-nuevo", preparar = { tn.documento("1234567"); tn.nombre("Trabajador 08 (ejemplo)") }) {
         PantallaTrabajadorNuevo(1, {}, tn, TrabajadoresViewModel(TrabajadoresFalsos, registros))
     }
+    // validación en vivo (25/11): lo bien escrito lleva ✓ y lo que está mal se marca mientras se escribe
+    val tnVivo = TrabajadorNuevoViewModel(TrabajadoresFalsos)
+    capturar(dir, "37-oscuro-validacion-en-vivo", oscuro = true, alto = 1000, preparar = {
+        tnVivo.documento("45879632"); tnVivo.nombre("Juan Quispe Mamani"); tnVivo.categoria(pe.sevens.sigro.dominio.Categoria.OFICIAL)
+        tnVivo.fechaIngreso("2026-02-30"); tnVivo.salirDe("fechaIngreso")
+    }) { PantallaTrabajadorNuevo(1, {}, tnVivo, TrabajadoresViewModel(TrabajadoresFalsos, registros)) }
+    val ingVivo = IngresoSinCompraViewModel(CatalogoFalso, ObraFalsa, registros, sinProgramar)
+    capturar(dir, "38-oscuro-ingreso-en-vivo", oscuro = true, alto = 1000, preparar = {
+        ingVivo.elegir(insumo("ARENA GRUESA")); ingVivo.cantidad("1,5"); ingVivo.salirDe("cantidad"); ingVivo.costo("45,abc"); ingVivo.salirDe("costo")
+    }) { PantallaIngresoSinCompra(1, {}, ingVivo) }
     val asis = AsistenciaViewModel(TrabajadoresFalsos, registros, sinProgramar, object : pe.sevens.sigro.dominio.RepositorioJornadas {
         override suspend fun corregir(obraId: Int, fecha: String, marca: pe.sevens.sigro.dominio.MarcaAsistencia, motivo: String) =
             pe.sevens.sigro.dominio.JornadaCorregida(2, 1)
