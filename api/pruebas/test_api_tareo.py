@@ -248,6 +248,7 @@ def test_horas_acumuladas_por_periodo_y_visibles_para_todos_los_roles(mundo, eq)
     jornada(mundo, eq, t, fecha="2026-10-27")                                # periodo 2
     todos = get(mundo, f"/obras/{eq['proyecto']}/horas-acumuladas", eq["almacenero"]).json()
     assert sorted(x["periodo_numero"] for x in todos) == [1, 2]
+    assert sorted(x["ultima_jornada"] for x in todos) == ["2026-10-20", "2026-10-27"]       # HU-64 c3
     p2 = [x["periodo_id"] for x in todos if x["periodo_numero"] == 2][0]
     solo = get(mundo, f"/obras/{eq['proyecto']}/horas-acumuladas?periodo_id={p2}", eq["ssoma"]).json()
     assert [x["periodo_numero"] for x in solo] == [2]

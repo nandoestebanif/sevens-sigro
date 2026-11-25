@@ -768,6 +768,19 @@
       "type": "string",
       "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
       "title": "Horas Extra"
+     },
+     "ultima_jornada": {
+      "anyOf": [
+       {
+        "type": "string",
+        "format": "date"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "title": "Ultima Jornada",
+      "description": "HU-64: fecha de la última jornada considerada en la suma"
      }
     },
     "type": "object",

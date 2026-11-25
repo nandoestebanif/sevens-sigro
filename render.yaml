@@ -80,6 +80,27 @@ services:
       # https://sigro-api.onrender.com y volver a desplegar la web (la API ya acepta ese origen por SIGRO_CORS).
       - key: VITE_API_URL
         value: https://sigro-web.onrender.com
+    # Cabeceras de seguridad (revisión del 24/11/2026). La web solo habla con su propio dominio (Render reescribe /api/*),
+    # así que la CSP permite «self» y nada más; 'unsafe-inline' en estilos lo exigen React-Bootstrap y Chart.js (estilos en línea).
+    headers:
+      - path: /*
+        name: Content-Security-Policy
+        value: "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' https://sigro-api.onrender.com; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
+      - path: /*
+        name: X-Frame-Options
+        value: DENY
+      - path: /*
+        name: X-Content-Type-Options
+        value: nosniff
+      - path: /*
+        name: Referrer-Policy
+        value: strict-origin-when-cross-origin
+      - path: /*
+        name: Permissions-Policy
+        value: "camera=(), microphone=(), geolocation=(), payment=()"
+      - path: /*
+        name: Strict-Transport-Security
+        value: max-age=31536000; includeSubDomains
     routes:                                # en orden: lo específico antes que el comodín de la SPA
       - type: rewrite
         source: /api/*

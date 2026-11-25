@@ -198,3 +198,27 @@ def test_un_429_con_retry_after_largo_se_respeta(red, monkeypatch):
     reloj[0] = 121
     _cliente().get("/salud/servicios")
     assert red["pedidos"].count(("tareo", "/salud")) == 2
+
+
+# ── Cabeceras de seguridad (revisión del 24/11/2026) ─────────────────────────────────────────────────────────────
+
+def test_toda_respuesta_lleva_cabeceras_de_seguridad(red):
+    for ruta in ("/salud", "/salud/servicios", "/api/v1/obras"):
+        r = _cliente().get(ruta)
+        assert r.headers["x-content-type-options"] == "nosniff", ruta
+        assert r.headers["x-frame-options"] == "DENY", ruta
+        assert r.headers["referrer-policy"] == "no-referrer", ruta
+        assert r.headers["cache-control"] == "no-store", ruta
+        assert "strict-transport-security" not in r.headers, ruta      # en http local no se anuncia HSTS
+
+
+def test_hsts_solo_detras_de_https(red):
+    r = _cliente().get("/api/v1/obras", headers={"X-Forwarded-Proto": "https"})
+    assert r.headers["strict-transport-security"] == "max-age=31536000; includeSubDomains"
+
+
+def test_no_pisa_la_cabecera_que_manda_el_servicio(red):
+    red["cabeceras"]["obras"] = {"Cache-Control": "private, max-age=60"}
+    r = _cliente().get("/api/v1/obras")
+    assert r.headers["cache-control"] == "private, max-age=60"
+    assert r.headers["x-content-type-options"] == "nosniff"

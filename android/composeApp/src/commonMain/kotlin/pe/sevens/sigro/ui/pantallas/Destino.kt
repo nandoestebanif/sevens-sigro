@@ -23,6 +23,8 @@ sealed interface Destino {
     data object Trabajadores : Destino
     data object TrabajadorNuevo : Destino
     data object Asistencia : Destino
+    /** HU-64 · horas acumuladas por trabajador y cuadrilla. */
+    data object Horas : Destino
     // Almacén: se guarda en el celular y se envía cuando exista el servicio almacén
     data object Entrada : Destino
     data object IngresoSinCompra : Destino
