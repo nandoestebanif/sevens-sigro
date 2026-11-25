@@ -9,6 +9,7 @@ import { filtrarNumero, MAX_MOTIVO } from '../formularios/reglas'
 import { Boton, Campo, Chip, Modal } from '../ui/base'
 import { TituloSeccion, Vidrio } from '../ui/piezas'
 import { useActualizacion, EnVivo } from '../ui/Actualizacion'
+import { BotonExportar } from '../ui/BotonExportar'
 import type { Existencia } from './existencias-reglas'
 
 const dia = (iso: string | null) => (iso ? new Date(iso.length === 10 ? `${iso}T12:00:00` : iso).toLocaleDateString('es-PE', { timeZone: 'America/Lima' }) : '—')
@@ -54,6 +55,22 @@ export function PanelPrestamos({ herramientas }: { herramientas: readonly Existe
             <input className="form-check-input" type="checkbox" id="prest-todos" checked={verTodos} onChange={(e) => setVerTodos(e.target.checked)} />
             <label className="form-check-label small" htmlFor="prest-todos">Ver también los devueltos</label>
           </div>
+          <BotonExportar
+            titulo="Préstamos de herramientas"
+            subtitulo={`${abiertos.length} sin devolver${atrasados ? ` · ${atrasados} atrasados` : ''}`}
+            filas={visibles}
+            columnas={[
+              { titulo: 'Código', valor: (p) => p.insumoCodigo, ancho: 14 },
+              { titulo: 'Herramienta', valor: (p) => p.descripcion, ancho: 34 },
+              { titulo: 'Almacén', valor: (p) => p.almacen, ancho: 18 },
+              { titulo: 'Cantidad', valor: (p) => p.cantidad, formato: 'decimal' },
+              { titulo: 'Quién la tiene', valor: (p) => p.responsable, ancho: 26 },
+              { titulo: 'Desde', valor: (p) => dia(p.prestadoEn) },
+              { titulo: 'Devolver el', valor: (p) => dia(p.devolverEl) },
+              { titulo: 'Estado', valor: (p) => (p.devueltoEn ? `${TEXTO_DEVOLUCION[p.estadoDevolucion!]} (${dia(p.devueltoEn)})` : p.atrasado ? 'Atrasada' : 'Prestada'), ancho: 22 },
+              { titulo: 'Nota', valor: (p) => p.notaDevolucion ?? p.nota ?? '', ancho: 30 },
+            ]}
+          />
           {puedePrestar && <Boton enClic={() => { setAviso(''); setPrestando(true) }}>+ Prestar herramienta</Boton>}
         </div>
       </div>
