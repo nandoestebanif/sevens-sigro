@@ -208,3 +208,8 @@ def mundo(base_pruebas):
         transaccion.rollback()
         conn.close()
         motor.dispose()
+
+
+# Paridad con el backend Spring Boot: con SIGRO_SPRING_URL, el mismo `mundo` habla por HTTP con ese backend.
+if os.environ.get("SIGRO_SPRING_URL"):
+    from pruebas.paridad_spring import integraciones_falsas, mundo, pytest_collection_modifyitems  # noqa: E402,F401,F811

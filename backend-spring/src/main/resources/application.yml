@@ -1,0 +1,44 @@
+# SIGRO · backend Spring Boot. Ningún secreto vive aquí: todo llega por variables de entorno.
+server:
+  port: ${PORT:8000}
+  error:
+    whitelabel:
+      enabled: false
+spring:
+  application:
+    name: sigro-backend
+  main:
+    banner-mode: "off"
+  web:
+    resources:
+      add-mappings: false
+  mvc:
+    problemdetails:
+      enabled: false
+  servlet:
+    multipart:
+      max-file-size: 20MB
+      max-request-size: 21MB
+sigro:
+  db:
+    # Cadena común (postgresql://usuario:clave@host/base?sslmode=require). Cada módulo actúa con SU rol.
+    url: ${SIGRO_DB_URL:${SIGRO_APP_DATABASE_URL:}}
+    pool-maximo: ${POOL_MAX:3}
+    con-rol: ${SIGRO_DB_CON_ROL:true}
+    modulos:
+      obras: ${SIGRO_DB_OBRAS:}
+      catalogo: ${SIGRO_DB_CATALOGO:}
+      compras: ${SIGRO_DB_COMPRAS:}
+      tareo: ${SIGRO_DB_TAREO:}
+      almacen: ${SIGRO_DB_ALMACEN:}
+      costo: ${SIGRO_DB_COSTO:}
+  cors: ${SIGRO_CORS:http://localhost:5173}
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+logging:
+  level:
+    root: WARN
+    pe.sevens.sigro: INFO
