@@ -311,6 +311,12 @@ h1, .h1, h2, .h2, h3, .h3 { letter-spacing: -0.02em; }
 @keyframes sigro-izar { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
 @media (prefers-reduced-motion: reduce) { .sigro-capa .grua svg { animation: none; } }
 
+// ── Estado vacío: la ilustración en un círculo suave sobre el texto ──
+.sigro-vacio .dibujo {
+  display: inline-flex; align-items: center; justify-content: center; width: 7rem; height: 7rem; border-radius: 50%;
+  background: var(--bs-tertiary-bg);
+}
+
 // ── Ingresar ──
 .sigro-portada { background: #161717; color: #fff; border-radius: 2rem; .text-primary { color: #fad85d !important; } h1 { color: #fff; } }
 
