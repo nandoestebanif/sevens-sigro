@@ -31,11 +31,13 @@ def crear_servicio(nombre: str, descripcion: str, publicos: Iterable[APIRouter],
     app = FastAPI(title=f"SIGRO · servicio {nombre}", version="0.2.0", description=descripcion)
     app.state.servicio = nombre
     origenes = [o for o in os.environ.get("SIGRO_CORS", "http://localhost:5173").split(",") if o]
+    app.add_middleware(_MarcaServicio, nombre=nombre)
+    app.add_middleware(medicion.MedirPeticion, nombre=nombre)
+    # CORS al final = el más externo: también las respuestas de error y las preflight (OPTIONS) llevan sus
+    # cabeceras, y nada de adentro puede quitárselas (Sonar python:S8414).
     app.add_middleware(
         CORSMiddleware, allow_origins=origenes, allow_methods=["GET", "POST"], allow_headers=["Authorization", "Content-Type"]
     )
-    app.add_middleware(_MarcaServicio, nombre=nombre)
-    app.add_middleware(medicion.MedirPeticion, nombre=nombre)   # el último agregado es el más externo: mide todo
     errores.instalar(app)
 
     @app.get("/salud", tags=["sistema"])

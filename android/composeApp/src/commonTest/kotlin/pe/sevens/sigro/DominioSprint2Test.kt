@@ -64,7 +64,7 @@ class DominioSprint2Test {
         val e = ValidarTrabajador.errores(ok.copy(nombre = "", categoria = null, cuadrilla = " ", documento = "123"), emptyList())
         assertEquals(setOf("nombre", "categoria", "cuadrilla", "documento"), e.keys)
         val repetido = ValidarTrabajador.errores(ok, listOf(t(3, "12345678")))
-        assertTrue(repetido["documento"]!!.contains("Trabajador 03"), "no dos veces en la misma obra")
+        assertTrue(assertNotNull(repetido["documento"]).contains("Trabajador 03"), "no dos veces en la misma obra")
     }
 
     @Test
