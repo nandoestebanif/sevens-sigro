@@ -63,6 +63,7 @@ import pe.sevens.sigro.plataforma.rememberBiometria
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.material.icons.filled.Fingerprint
+import androidx.compose.material.icons.filled.Key
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.shape.CircleShape
@@ -116,11 +117,17 @@ class EntrarViewModel(
         viewModelScope.launch { _estado.update { it.copy(servidor = sesiones.servidorGuardado()) } }
         viewModelScope.launch {
             val c = runCatching { candado?.cuenta() }.getOrNull()
-            _estado.update { it.copy(cuentaHuella = c) }
+            // desde el candado pidió «entrar con mi contraseña»: formulario directo, con su usuario puesto
+            val conContrasena = claveReciente?.tomarPreferirContrasena() == true
+            _estado.update { it.copy(cuentaHuella = c, conFormulario = conContrasena, usuario = if (conContrasena) c?.usuario ?: it.usuario else it.usuario) }
         }
     }
 
-    fun otraCuenta() = _estado.update { it.copy(conFormulario = true, error = null) }
+    /** «No soy …»: el formulario vacío, para otra cuenta. */
+    fun otraCuenta() = _estado.update { it.copy(conFormulario = true, usuario = "", clave = "", error = null) }
+
+    /** No puede poner la huella (guantes, dedo herido, sensor sucio): su usuario puesto y que escriba la contraseña. */
+    fun conContrasena() = _estado.update { s -> s.copy(conFormulario = true, usuario = s.cuentaHuella?.usuario ?: s.usuario, clave = "", error = null) }
     fun volverAHuella() = _estado.update { it.copy(conFormulario = false, error = null) }
 
     /**
@@ -234,7 +241,10 @@ fun PantallaEntrar(vm: EntrarViewModel = koinViewModel(), biometria: Biometria =
                     }
                 }
                 if (conHuella && cuenta != null) {
-                    EntrarConHuella(cuenta, e.cargando, e.error, alEntrar = { alcance.launch { vm.entrarConHuella(biometria) } }, alOtraCuenta = vm::otraCuenta)
+                    EntrarConHuella(
+                        cuenta, e.cargando, e.error, alEntrar = { alcance.launch { vm.entrarConHuella(biometria) } },
+                        alContrasena = vm::conContrasena, alOtraCuenta = vm::otraCuenta,
+                    )
                     return@Column
                 }
                 Card(
@@ -319,7 +329,9 @@ fun PantallaEntrar(vm: EntrarViewModel = koinViewModel(), biometria: Biometria =
  * al aparecer (es a lo que viene).
  */
 @Composable
-private fun EntrarConHuella(c: CuentaConHuella, cargando: Boolean, error: String?, alEntrar: () -> Unit, alOtraCuenta: () -> Unit) {
+private fun EntrarConHuella(
+    c: CuentaConHuella, cargando: Boolean, error: String?, alEntrar: () -> Unit, alContrasena: () -> Unit, alOtraCuenta: () -> Unit,
+) {
     LaunchedEffect(c.usuarioId) { alEntrar() }
     Card(
         Modifier.widthIn(max = 480.dp).fillMaxWidth(),
@@ -350,6 +362,8 @@ private fun EntrarConHuella(c: CuentaConHuella, cargando: Boolean, error: String
                     modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite })
             }
             BotonNegro("Entrar con tu huella", alEntrar, icono = Icons.Filled.Fingerprint, cargando = cargando)
+            // si no puede poner la huella: su contraseña (o el PIN del celular, en el mismo diálogo de la huella)
+            BotonNegro("Entrar con mi contraseña", alContrasena, icono = Icons.Filled.Key, contorno = true, habilitado = !cargando)
             TextButton(onClick = alOtraCuenta) {
                 Text("No soy ${c.primerNombre} · entrar con otra cuenta", color = Paleta.Texto2)
             }

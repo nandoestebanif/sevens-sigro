@@ -336,4 +336,47 @@ class CandadoTest {
         assertTrue(clave.hay("adiel"))
         assertEquals("", vm.estado.value.clave, "la pantalla no la conserva")
     }
+
+    @Test
+    fun siNoPuedePonerLaHuellaEntraConSuContrasena() = runTest(principal) {
+        val guardado = Guardado().apply { cuentaGuardada = cuenta }
+        val vm = EntrarViewModel(Entradas(), guardado, ClaveReciente({ 0 }))
+        advanceUntilIdle()
+        vm.conContrasena()
+        assertTrue(vm.estado.value.conFormulario)
+        assertEquals("adiel", vm.estado.value.usuario, "su usuario ya puesto: solo escribe la contraseña")
+        assertEquals(cuenta, guardado.cuentaGuardada, "la huella se queda para la próxima")
+        vm.otraCuenta()
+        assertEquals("", vm.estado.value.usuario, "otra cuenta: el formulario vacío")
+    }
+
+    @Test
+    fun desdeElCandadoEntrarConContrasenaAbreElFormularioSinPedirHuella() = runTest(principal) {
+        val clave = ClaveReciente({ 0 })
+        val sesiones = Sesiones(7); val guardado = Guardado(mutableMapOf(7 to activa)).apply { cuentaGuardada = cuenta }
+        val candado = CandadoViewModel(sesiones, guardado, reloj = { 0 }, clave = clave)
+        advanceUntilIdle()
+        candado.entrarConContrasena(); advanceUntilIdle()
+        assertTrue(sesiones.cerro)
+        assertEquals(cuenta, guardado.cuentaGuardada, "la huella no se borra: solo esta vez va con contraseña")
+        val entrar = EntrarViewModel(Entradas(), guardado, clave)
+        advanceUntilIdle()
+        assertTrue(entrar.estado.value.conFormulario)
+        assertEquals("adiel", entrar.estado.value.usuario)
+        val otraVez = EntrarViewModel(Entradas(), guardado, clave)
+        advanceUntilIdle()
+        assertFalse(otraVez.estado.value.conFormulario, "la preferencia vale una sola vez")
+    }
+
+    @Test
+    fun siElCelularNoPuedeAbrirLaHuellaSeDiceYSeQuedaEnLaPantalla() = runTest(principal) {
+        val guardado = Guardado().apply { cuentaGuardada = cuenta }
+        val vm = EntrarViewModel(Entradas(), guardado, ClaveReciente({ 0 }))
+        advanceUntilIdle()
+        vm.entrarConHuella(HuellaFalsa(alDescifrar = { ResultadoSecreto.Fallo("Demasiados intentos. Prueba más tarde.") })); advanceUntilIdle()
+        assertEquals("Demasiados intentos. Prueba más tarde.", vm.estado.value.error)
+        assertEquals(cuenta, guardado.cuentaGuardada, "un fallo del sensor no borra la huella")
+        vm.entrarConHuella(HuellaFalsa(alDescifrar = { ResultadoSecreto.Cancelada })); advanceUntilIdle()
+        assertFalse(vm.estado.value.conFormulario, "cancelar el diálogo deja la pantalla de la huella")
+    }
 }
