@@ -51,6 +51,15 @@ import pe.sevens.sigro.ui.componentes.TarjetaVidrio
 import pe.sevens.sigro.ui.componentes.planoRegistros
 import pe.sevens.sigro.ui.tema.Paleta
 import pe.sevens.sigro.dominio.casosdeuso.SincronizarCola
+import pe.sevens.sigro.ui.componentes.Ticket
+import androidx.compose.material3.Icon
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Button
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.Spacer
 
 /*
  * 2.5 · Mis registros (lienzo Registros.dc.html, HU-37 / HU-38): todo lo registrado en esta obra desde
@@ -173,7 +182,26 @@ fun PantallaPendientes(
         "Mis registros", plano = { planoRegistros(it) }, alVolver = alVolver,
         subtitulo = if (porEnviar > 0) "$porEnviar por enviar" else "Todo enviado",
     ) {
-        if (porEnviar > 0) BotonNegro("Enviar ahora", vm::enviarAhora, icono = Icons.Filled.CloudUpload, colorIcono = Paleta.NaranjaVivo, cargando = enviando)
+        // Rediseño: el resumen de la cola es un ticket menta con su botón negro, como en la web
+        if (porEnviar > 0) {
+            Ticket(Paleta.TicketMenta, Modifier.fillMaxWidth()) {
+                Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Column(Modifier.weight(1f)) {
+                        Text("$porEnviar por enviar", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = Paleta.SobreTicket)
+                        Text("Se envían solos cuando hay señal", fontSize = 12.sp, color = Paleta.SobreTicket.copy(alpha = 0.8f))
+                    }
+                    Button(
+                        onClick = vm::enviarAhora, enabled = !enviando, modifier = Modifier.heightIn(min = 48.dp), shape = RoundedCornerShape(14.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = Paleta.SobreTicket, contentColor = Paleta.TicketMenta),
+                    ) {
+                        if (enviando) CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp, color = Paleta.TicketMenta)
+                        else Icon(Icons.Filled.CloudUpload, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Text(if (enviando) "Enviando…" else "Enviar ahora", fontWeight = FontWeight.SemiBold)
+                    }
+                }
+            }
+        }
         if (lista.isNotEmpty()) Opciones(FiltroRegistros.entries, filtro, { it.texto }, { filtro = it })
         if (visibles.isEmpty()) {
             TarjetaVidrio {
