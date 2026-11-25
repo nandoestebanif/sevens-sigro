@@ -9,6 +9,7 @@ import uuid
 from collections.abc import Iterable
 from datetime import date, datetime, timedelta, timezone
 from decimal import ROUND_HALF_UP, Decimal
+from zoneinfo import ZoneInfo
 
 LIMA = timezone(timedelta(hours=-5))          # Perú no tiene horario de verano
 D4 = Decimal("0.0001")
@@ -58,6 +59,11 @@ def fecha_del_hecho(hora_dispositivo_ms: int | None, ahora: datetime) -> date:
     return momento.astimezone(LIMA).date()
 
 
+def hoy_lima() -> date:
+    """«Hoy» en hora de Lima: el servidor y el CI corren en UTC, pero la obra cuenta los días en Lima."""
+    return datetime.now(ZoneInfo("America/Lima")).date()
+
+
 def periodo_de(periodos: list[dict], dia: date) -> dict | None:
     for p in periodos:
         if _a_fecha(p["fecha_inicio"]) <= dia <= _a_fecha(p["fecha_fin"]):
@@ -88,6 +94,8 @@ def resolver_periodo(periodos: list[dict], dia: date, es_reverso: bool) -> dict:
             f"La fecha del movimiento ({dia}) está fuera del plazo de la obra ({inicio} al {fin}).",
         )
     exigir_periodo_abierto(p, es_reverso)
+    if dia > hoy_lima():
+        raise ReglaAlmacen(422, "fecha_futura", f"La fecha del movimiento ({dia}) es futura: un ingreso o salida se registra cuando ocurre.")
     return p
 
 
