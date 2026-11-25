@@ -125,6 +125,8 @@ h1, .h1, h2, .h2, h3, .h3 { letter-spacing: -0.02em; }
 .card.shadow-sm, .card.shadow { box-shadow: none !important; }
 [data-bs-theme="light"] .card.shadow-sm, [data-bs-theme="light"] .card.shadow { box-shadow: 0 1px 2px rgba(22, 23, 23, 0.05) !important; }
 .table > thead th { color: var(--bs-secondary-color); white-space: nowrap; }
+// los botones de una fila no se parten en varias líneas (p. ej. «Validar de nuevo» en Proveedores)
+.table td .btn, .table td .sigro-chip { white-space: nowrap; }
 .btn-outline-secondary { --bs-btn-color: var(--bs-body-color); --bs-btn-border-color: var(--bs-border-color); --bs-btn-hover-bg: var(--bs-tertiary-bg); --bs-btn-hover-color: var(--bs-body-color); --bs-btn-hover-border-color: var(--bs-secondary-color); }
 .btn-outline-primary { --bs-btn-color: var(--bs-body-color); --bs-btn-border-color: var(--bs-border-color); --bs-btn-hover-bg: #{$primary}; --bs-btn-hover-color: #{$dark}; --bs-btn-hover-border-color: #{$primary}; --bs-btn-active-color: #{$dark}; }
 .form-control, .form-select { border-radius: var(--bs-border-radius); }
