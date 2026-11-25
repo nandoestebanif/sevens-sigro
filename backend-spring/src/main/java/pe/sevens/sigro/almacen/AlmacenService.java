@@ -477,10 +477,11 @@ public class AlmacenService {
             long insumoId = d.entero("insumo_id");
             if (AlmacenService.<Map<String, Object>>filasDe(c.get("lineas")).stream().anyMatch(x -> l(x.get("insumo_id")) == insumoId))
                 throw new ErrorSigro(409, "insumo_ya_contado", "Ese insumo ya se contó en este conteo.");
-            insumos(List.of(insumoId), true);
-            if (!documentos.insertarLineaConteo(conteoId, insumoId, d.decimal("cantidad_contada"), vacioANulo(d.texto("motivo")))) {
+            var ins = insumos(List.of(insumoId), true).get(insumoId);
+            BigDecimal contada = Reglas.aUnidadS10(d.decimal("cantidad_contada"), d.texto("unidad"), ins);
+            if (!documentos.insertarLineaConteo(conteoId, insumoId, contada, vacioANulo(d.texto("motivo")))) {
                 BigDecimal teorico = movimientos.saldo(l(c.get("almacen_id")), insumoId);
-                throw new ErrorSigro(422, "diferencia_sin_motivo", "El sistema tiene " + teorico + " y se contó " + d.decimal("cantidad_contada") + ": toda diferencia exige un motivo.");
+                throw new ErrorSigro(422, "diferencia_sin_motivo", "El sistema tiene " + teorico + " y se contó " + contada + ": toda diferencia exige un motivo.");
             }
             return conteo(obraId, conteoId);
         });
