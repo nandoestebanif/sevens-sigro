@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { desvioPct, nombresDeLaObra, olvidarNombres, plazo, precios, proveedores, requerimiento } from './oficina'
 import { rucValido } from './sunat'
 
-let pedidos: { url: string; metodo: string; cuerpo: Record<string, unknown> }[] = []
+let pedidos: { url: string; metodo: string; cuerpo: any }[] = []
 function servidor(rutas: Record<string, unknown>) {
   vi.stubGlobal('fetch', vi.fn(async (url: string, init: RequestInit = {}) => {
     const metodo = init.method ?? 'GET'

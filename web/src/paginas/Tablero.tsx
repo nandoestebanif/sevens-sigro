@@ -156,7 +156,7 @@ export function Tablero() {
             <Vidrio estilo={{ display: 'flex', flexDirection: 'column', gap: 18 }} etiqueta="Por familia de recurso">
               <div className="d-flex flex-wrap justify-content-between gap-2 align-items-baseline">
                 <TituloSeccion>Por familia de recurso</TituloSeccion>
-                <span className="small text-body-secondary">La marca vertical señala el avance del plazo</span>
+                <span className="small text-body-secondary">La línea negra marca el avance del plazo</span>
               </div>
               {r.familias.map((fam) => (
                 <div key={fam.familia} className="d-flex flex-column gap-2">

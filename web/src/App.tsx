@@ -1,7 +1,7 @@
 /* SIGRO · armazón de la web de oficina con React-Bootstrap: Navbar arriba, menú lateral (Offcanvas + Accordion), obra activa y rutas. */
 import { Component, Suspense, lazy, useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { HashRouter, NavLink, Navigate, Route, Routes, useLocation } from 'react-router-dom'
-import { grupoDeRuta, iniciales } from './menu'
+import { grupoDeRuta } from './menu'
 import { api } from './api/cliente'
 import { cerrarSesion, sesionActual, usaApiReal } from './api/http'
 import { ElegirObra } from './paginas/ElegirObra'
@@ -95,6 +95,7 @@ const ICONO_GRUPO: Record<string, keyof typeof ICONOS> = {
   Almacén: 'inventario', Catálogo: 'catalogo', Administración: 'administracion',
 }
 
+const iniciales = (nombre: string) => nombre.trim().split(/\s+/).slice(0, 2).map((p) => p[0]?.toUpperCase() ?? '').join('')
 
 /* Solo para el administrador de la obra activa (HU-13, HU-14, HU-15). Esconderla es comodidad:
    la API verifica el rol en cada petición y responde 403 si no corresponde. */
@@ -194,13 +195,7 @@ function AjustesPantalla() {
 /* Menú lateral en acordeón (Accordion de Bootstrap): un área abierta a la vez y, al entrar,
    abierta la de la pantalla actual. Cada opción es un Nav.Link que usa el NavLink del router,
    así Bootstrap pinta como «active» la pantalla abierta. */
-function MenuSecciones({ grupos, alNavegar, compacto, alExpandir }: {
-  grupos: typeof GRUPOS
-  alNavegar?: () => void
-  /** menú contraído (solo íconos): abrir un área lo vuelve a expandir */
-  compacto?: boolean
-  alExpandir?: () => void
-}) {
+function MenuSecciones({ grupos, alNavegar }: { grupos: typeof GRUPOS; alNavegar?: () => void }) {
   const { pathname } = useLocation()
   const actual = grupoDeRuta(grupos, pathname)
   const [abierto, setAbierto] = useState<string | null>(actual)
@@ -208,24 +203,21 @@ function MenuSecciones({ grupos, alNavegar, compacto, alExpandir }: {
   useEffect(() => { if (actual) setAbierto(actual) }, [actual])
 
   return (
-    <Accordion as="nav" aria-label="Secciones" activeKey={abierto} onSelect={(k) => {
-      if (compacto) { alExpandir?.(); setAbierto(typeof k === 'string' ? k : abierto); return }
-      setAbierto(typeof k === 'string' ? k : null)
-    }}>
+    <Accordion as="nav" aria-label="Secciones" activeKey={abierto} onSelect={(k) => setAbierto(typeof k === 'string' ? k : null)}>
       {grupos.map((g) => {
         const icono = ICONOS[ICONO_GRUPO[g.rotulo] ?? g.items[0].icono]
         // un área de una sola pantalla no se despliega: es un enlace directo
         if (g.items.length === 1) {
           const s = g.items[0]
           return (
-            <NavLink key={g.rotulo} to={s.ruta} onClick={alNavegar} className="sigro-item" title={compacto ? s.nombre : undefined}>
-              <Icono d={icono} tam={20} /><span className="txt">{s.nombre}</span>
+            <NavLink key={g.rotulo} to={s.ruta} onClick={alNavegar} className="sigro-item">
+              <Icono d={icono} tam={20} />{s.nombre}
             </NavLink>
           )
         }
         return (
           <Accordion.Item key={g.rotulo} eventKey={g.rotulo}>
-            <Accordion.Header title={compacto ? g.rotulo : undefined}><Icono d={icono} tam={20} /><span className="txt">{g.rotulo}</span></Accordion.Header>
+            <Accordion.Header><Icono d={icono} tam={20} />{g.rotulo}</Accordion.Header>
             <Accordion.Body>
               {/* subpáginas colgando de una línea curva; NavLink marca «active» la pantalla abierta */}
               <div className="sigro-sub">
@@ -346,13 +338,6 @@ function Sistema({ preparando = false, nombreObra = '', alTerminar }: {
   const grupos = usaApiReal && esAdministrador(sesion, obra?.id) ? [...GRUPOS, GRUPO_ADMINISTRACION] : GRUPOS
 
   const [menuAbierto, setMenuAbierto] = useState(false)
-  // menú contraído (solo íconos), como en el diseño; se guarda en este dispositivo
-  const [compacto, setCompacto] = useState(() => {
-    try { return localStorage.getItem('sigro-menu-compacto') === '1' } catch { return false }
-  })
-  useEffect(() => {
-    try { localStorage.setItem('sigro-menu-compacto', compacto ? '1' : '0') } catch { /* sin almacenamiento */ }
-  }, [compacto])
 
   return (
     <HashRouter>
@@ -367,44 +352,37 @@ function Sistema({ preparando = false, nombreObra = '', alTerminar }: {
       )}
       <div ref={marco} className="sigro-armazon">
         {/* Menú flotante (Offcanvas «responsive»): a partir de lg se ve fijo a la izquierda; en pantallas chicas se abre con ☰ */}
-        <Offcanvas show={menuAbierto} onHide={() => setMenuAbierto(false)} responsive="lg" className={`sigro-menu${compacto ? ' compacto' : ''}`} aria-label="Menú">
+        <Offcanvas show={menuAbierto} onHide={() => setMenuAbierto(false)} responsive="lg" className="sigro-menu" aria-label="Menú">
           <Offcanvas.Body className="d-block p-0">
             <div className="sigro-panel">
               <div className="d-flex align-items-start justify-content-between">
                 <NavLink to="/tablero" aria-label="SIGRO · inicio" className="d-block px-2 pt-1" onClick={() => setMenuAbierto(false)}>
-                  <img src={logoBlanco} alt="SEVEN'S Ingenieros SAC" height={compacto ? 34 : 54} />
+                  <img src={logoBlanco} alt="SEVEN'S Ingenieros SAC" height={54} />
                 </NavLink>
                 <button type="button" className="btn-close btn-close-white d-lg-none" aria-label="Cerrar menú" onClick={() => setMenuAbierto(false)} />
               </div>
-              {/* contraer / expandir el menú (desde lg); se recuerda en este dispositivo */}
-              <button type="button" className="sigro-contraer d-none d-lg-flex" onClick={() => setCompacto(!compacto)}
-                aria-label={compacto ? 'Expandir menú' : 'Contraer menú'} aria-pressed={compacto}>
-                <Icono d={compacto ? 'M9 6l6 6-6 6' : 'M15 6l-6 6 6 6'} tam={16} />
-              </button>
               {sesion && (
                 <div className="sigro-perfil">
                   <span className="avatar" aria-hidden="true">{iniciales(sesion.usuario.nombre)}</span>
-                  <div className="min-w-0 txt">
+                  <div className="min-w-0">
                     {rol && <div className="rol">{ROLES[rol] ?? rol}</div>}
                     <div className="nombre text-truncate">{sesion.usuario.nombre}</div>
                   </div>
                 </div>
               )}
-              <div className="sigro-rotulo"><span className="txt">Menú</span></div>
-              <MenuSecciones grupos={grupos} alNavegar={() => setMenuAbierto(false)} compacto={compacto} alExpandir={() => setCompacto(false)} />
+              <div className="sigro-rotulo">Menú</div>
+              <MenuSecciones grupos={grupos} alNavegar={() => setMenuAbierto(false)} />
               {/* la API decide quién registra compras (compra.registrar); aquí solo se ofrece el atajo */}
               {(!rol || ['almacenero', 'residente', 'administrador'].includes(rol)) && (
                 <div className="sigro-llamado">
-                  <div className="titulo txt">¿Llegó una compra?</div>
-                  <p className="txt">Regístrala con su comprobante y queda en el libro.</p>
-                  <NavLink to="/compras" className="btn btn-primary w-100" onClick={() => setMenuAbierto(false)} title={compacto ? 'Registrar compra' : undefined}>
-                    +<span className="txt"> Registrar compra</span>
-                  </NavLink>
+                  <div className="titulo">¿Llegó una compra?</div>
+                  <p>Regístrala con su comprobante y queda en el libro.</p>
+                  <NavLink to="/compras" className="btn btn-primary w-100" onClick={() => setMenuAbierto(false)}>+ Registrar compra</NavLink>
                 </div>
               )}
               {usaApiReal && sesion && (
                 <button type="button" className="sigro-item border-0 bg-transparent w-100 mt-2" onClick={cerrarSesion}>
-                  <Icono d={ICONOS.salir} tam={20} /><span className="txt">Cerrar sesión</span>
+                  <Icono d={ICONOS.salir} tam={20} />Cerrar sesión
                 </button>
               )}
             </div>

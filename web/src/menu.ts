@@ -13,8 +13,3 @@ export function grupoDeRuta(grupos: GrupoMenu[], ruta: string): string | null {
 export function alternarGrupo(abierto: string | null, rotulo: string): string | null {
   return abierto === rotulo ? null : rotulo
 }
-
-/** Iniciales del avatar del menú: las dos primeras palabras del nombre («Adiel Luján» → «AL»). */
-export function iniciales(nombre: string): string {
-  return nombre.trim().split(/\s+/).filter(Boolean).slice(0, 2).map((p) => p[0]?.toLocaleUpperCase('es-PE') ?? '').join('')
-}

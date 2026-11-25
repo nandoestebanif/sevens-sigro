@@ -11,9 +11,7 @@
    Con el cliente simulado (sin VITE_API_URL) no hay servidor que esperar.
    ───────────────────────────────────────────────────────────────────────── */
 import { useEffect, useRef, useState, type ReactNode, type RefObject } from 'react'
-import { Button, ProgressBar } from 'react-bootstrap'
-import logo from '../assets/sevens-logo-blanco.webp'
-import { DibujoObra } from './Ilustraciones'
+import { Button, ProgressBar, Spinner } from 'react-bootstrap'
 import { sesionActual, usaApiReal } from '../api/http'
 import { AVISO_MS, esperarServidor, type EstadoArranque } from '../api/salud'
 
@@ -49,12 +47,10 @@ export function CapaPlano({ titulo, detalle, progreso, saliendo, alDibujarse, ac
       className="position-fixed top-0 start-0 w-100 h-100 bg-body d-flex align-items-center justify-content-center"
       style={{ zIndex: 2000 }}
     >
-      {/* tarjeta negra de la marca, igual en los dos modos: logo, la grúa trabajando y el avance */}
-      <div className="sigro-capa text-center" aria-live="polite">
-        <img src={logo} alt="SEVEN'S Ingenieros SAC" height={52} className="mb-4" />
-        <div className="grua mx-auto mb-3"><DibujoObra cual="grua" ancho={120} /></div>
+      <div className="text-center px-3" style={{ maxWidth: 420 }} aria-live="polite">
+        <Spinner animation="border" variant="primary" className="mb-3" />
         <h1 className="h5">{titulo}</h1>
-        {detalle && <p className="small mb-3">{detalle}</p>}
+        {detalle && <p className="text-body-secondary small">{detalle}</p>}
         <ProgressBar now={pct} label={`${pct} %`} visuallyHidden aria-label="Avance de la conexión" className="mb-3" />
         {acciones}
       </div>

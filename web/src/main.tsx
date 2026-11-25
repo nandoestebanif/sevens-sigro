@@ -3,10 +3,10 @@ import { createRoot } from 'react-dom/client'
 import App from './App'
 import { ProveedorAvisos } from './ui/Avisos'
 // Poppins va en el paquete (sin depender de internet: también funciona en la PWA)
-import '@fontsource/poppins/latin-400.css'
-import '@fontsource/poppins/latin-500.css'
-import '@fontsource/poppins/latin-600.css'
-import '@fontsource/poppins/latin-700.css'
+import '@fontsource/poppins/400.css'
+import '@fontsource/poppins/500.css'
+import '@fontsource/poppins/600.css'
+import '@fontsource/poppins/700.css'
 // Bootstrap 5 personalizado con los colores de SEVEN'S (ver estilos/tema.scss)
 import './estilos/tema.scss'
 

@@ -12,23 +12,25 @@ export function EsqueletoTabla({ filas = 6, columnas = 5 }: { filas?: number; co
     <div aria-busy="true" aria-label="Cargando…" className="d-flex flex-column gap-3 py-2">
       {Array.from({ length: filas }, (_, f) => (
         <Placeholder key={f} as="div" animation="glow" className="d-flex gap-3">
-          {Array.from({ length: columnas }, (_, c) => <Placeholder key={c} xs={c === 1 ? 4 : 2} className="rounded-pill" />)}
+          {Array.from({ length: columnas }, (_, c) => <Placeholder key={c} xs={c === 1 ? 4 : 2} className="rounded-2" />)}
         </Placeholder>
       ))}
     </div>
   )
 }
 
-/** Tarjetas de cifra (KPI) que todavía no llegaron: la silueta del ticket, sin color hasta que llegue la cifra. */
+/** Tarjetas de cifra (KPI) que todavía no llegaron. */
 export function EsqueletoKpis({ cuantas = 4 }: { cuantas?: number }) {
   return (
     <div aria-busy="true" aria-label="Cargando cifras…" className="d-flex flex-wrap gap-3">
       {Array.from({ length: cuantas }, (_, i) => (
-        <div key={i} className="sigro-ticket sigro-ticket-esqueleto" style={{ flex: '1 1 200px' }}>
-          <Placeholder as="div" animation="glow"><Placeholder xs={6} size="sm" className="rounded-pill" /></Placeholder>
-          <Placeholder as="div" animation="glow" className="mt-5 mb-2"><Placeholder xs={8} size="lg" className="rounded-pill" /></Placeholder>
-          <Placeholder as="div" animation="glow"><Placeholder xs={10} size="xs" className="rounded-pill" /></Placeholder>
-        </div>
+        <Card key={i} className="shadow-sm" style={{ flex: '1 1 200px' }}>
+          <Card.Body>
+            <Placeholder as="div" animation="glow"><Placeholder xs={6} size="sm" /></Placeholder>
+            <Placeholder as="div" animation="glow" className="my-2"><Placeholder xs={8} size="lg" /></Placeholder>
+            <Placeholder as="div" animation="glow"><Placeholder xs={10} size="xs" /></Placeholder>
+          </Card.Body>
+        </Card>
       ))}
     </div>
   )
@@ -41,7 +43,7 @@ export function EsqueletoPagina() {
       <Placeholder as="h1" animation="glow" className="h3"><Placeholder xs={4} /></Placeholder>
       <Placeholder as="p" animation="glow"><Placeholder xs={7} size="sm" /></Placeholder>
       <EsqueletoKpis />
-      <Card><Card.Body><EsqueletoTabla /></Card.Body></Card>
+      <Card className="shadow-sm"><Card.Body><EsqueletoTabla /></Card.Body></Card>
     </div>
   )
 }

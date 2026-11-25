@@ -7,7 +7,6 @@
 import type { CSSProperties, ReactNode } from 'react'
 import { Badge, Button, Card, Form, Modal as ModalBs, ProgressBar } from 'react-bootstrap'
 import { partirEstilo } from './piezas'
-import { DibujoObra, type Ilustracion } from './Ilustraciones'
 
 /** Tarjeta de Bootstrap (Card). Sin relleno, para tablas que van de borde a borde. */
 export function Tarjeta({ children, relleno = true, estilo }: {
@@ -114,12 +113,11 @@ export function Titulo({ children, sub }: { children: ReactNode; sub?: ReactNode
   )
 }
 
-export function Vacio({ titulo, detalle, dibujo = 'casco' }: { titulo: string; detalle: string; dibujo?: Ilustracion }) {
+export function Vacio({ titulo, detalle }: { titulo: string; detalle: string }) {
   return (
-    <div className="sigro-vacio text-center text-body-secondary py-5 px-3">
-      <span className="dibujo" aria-hidden="true"><DibujoObra cual={dibujo} ancho={76} /></span>
-      <div className="fw-semibold text-body mt-3">{titulo}</div>
-      <div className="small mt-1 mx-auto" style={{ maxWidth: 520 }}>{detalle}</div>
+    <div className="text-center text-body-secondary py-5 px-3">
+      <div className="fw-semibold">{titulo}</div>
+      <div className="small mt-1">{detalle}</div>
     </div>
   )
 }
