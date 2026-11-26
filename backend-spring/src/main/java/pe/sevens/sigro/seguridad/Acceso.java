@@ -29,8 +29,20 @@ public class Acceso {
     static ErrorSigro noAutenticado() { return new ErrorSigro(401, "no_autenticado", "Inicia sesión para continuar."); }
     static ErrorSigro sinPermiso() { return new ErrorSigro(403, "sin_permiso", "No tienes permiso para esta operación en esta obra."); }
 
-    /** Acciones del panel de administración: si el usuario configuró su PIN, también lo exigen (cabecera X-SIGRO-PIN). */
-    public static final Set<String> CON_PIN = Set.of("usuario.crear", "usuario.consultar", "asignacion.escribir", "dispositivo.autorizar", "bitacora.consultar");
+    /**
+     * Acciones que, si la persona configuró su PIN, también lo exigen (cabecera X-SIGRO-PIN):
+     * el panel de administración y lo irreversible o que cambia el plan de la obra (26/11, decisión del equipo).
+     * «compra.anular» no es una acción de la matriz: el permiso es compra.registrar y aquí solo se marca que pide PIN.
+     */
+    public static final Set<String> CON_PIN = Set.of("usuario.crear", "usuario.consultar", "asignacion.escribir", "dispositivo.autorizar", "bitacora.consultar",
+            "periodo.cerrar", "proyecto.cerrar", "proyecto.ampliar_plazo", "proyecto.recortar_plazo", "compra.anular", "requerimiento.ajustar", "insumo.factor");
+
+    /** Roles que tienen alguna acción con PIN: solo ellos pueden crear o usar un PIN. */
+    public static Set<String> rolesConPin() {
+        var r = new java.util.TreeSet<String>();
+        for (String a : CON_PIN) r.addAll(Permisos.roles("compra.anular".equals(a) ? "compra.registrar" : a));
+        return r;
+    }
 
     private static String cabecera(String nombre) {
         var a = RequestContextHolder.getRequestAttributes();
@@ -42,11 +54,11 @@ public class Acceso {
         return obras.en(() -> obras.escalar("SELECT pin_hash FROM obra.usuario WHERE id = :i", P.de("i", usuarioId))) != null;
     }
 
-    void exigirPin(Actor a, String accion) {
+    public void exigirPin(Actor a, String accion) {
         if (!CON_PIN.contains(accion) || !tienePin(a.usuarioId())) return;
         String t = cabecera("X-SIGRO-PIN");
         Long uid = t == null ? null : tokens.leerPin(t);
-        if (uid == null || uid != a.usuarioId()) throw new ErrorSigro(403, "pin_requerido", "Escribe tu PIN de administrador para continuar.");
+        if (uid == null || uid != a.usuarioId()) throw new ErrorSigro(403, "pin_requerido", "Esta acción pide tu PIN: escríbelo para continuar.");
     }
 
     private static String bearer() {

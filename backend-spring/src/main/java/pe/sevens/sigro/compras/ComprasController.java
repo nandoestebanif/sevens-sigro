@@ -306,6 +306,7 @@ public class ComprasController {
     @PostMapping("/obras/{obra_id}/compras/{compra_id}/anular")
     public Object anularCompra(@PathVariable("obra_id") long obraId, @PathVariable("compra_id") long id, @RequestBody(required = false) JsonNode cuerpo) {
         Actor a = acceso.exigir("compra.registrar", obraId);
+        acceso.exigirPin(a, "compra.anular");   // anular saca la compra del gasto y no se deshace
         Datos d = ANULAR.validar(cuerpo);
         var dest = eventos.destinatariosConRol(obraId, List.of("administrador", "residente"), a.usuarioId());
         return db.en(() -> {
