@@ -68,7 +68,7 @@ def test_toda_accion_de_la_matriz_esta_usada_por_alguna_ruta():
     usadas = {a for _, _, a in RUTAS}
     # El préstamo de herramientas (migración 0023) nació en el backend Spring Boot, que reemplaza a este servicio:
     # sus rutas viven en backend-spring/…/almacen/PrestamoController.java, no aquí.
-    solo_spring = {"herramienta.prestar", "herramienta.consultar"}
+    solo_spring = {"herramienta.prestar", "herramienta.consultar", "bitacora.consultar"}
     sin_usar = set(ACCIONES) - usadas - solo_spring
     assert not sin_usar, f"acciones de la matriz que ningún endpoint exige: {sorted(sin_usar)}"
 

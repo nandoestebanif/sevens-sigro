@@ -46,6 +46,9 @@ class Usuario(Base):
     fecha_baja: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     intentos_fallidos: Mapped[int] = mapped_column(SmallInteger, server_default="0")
     bloqueado_hasta: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    pin_hash: Mapped[str | None] = mapped_column(Text)                       # 0024: PIN del panel de administración
+    pin_intentos: Mapped[int] = mapped_column(Integer, server_default="0")
+    pin_bloqueado_hasta: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     creado_en: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
@@ -166,3 +169,25 @@ class Dispositivo(Base):
     revocado_por: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("obra.usuario.id", name="fk_dispositivo_revocado_por_usuario"))
     fecha_revocacion: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     motivo_revocacion: Mapped[str | None] = mapped_column(Text)
+
+
+class Bitacora(Base):
+    """0024: quién hizo qué y cuándo (la escribe el backend Spring). Sin cuerpos, tokens, claves, IP ni datos personales."""
+    __tablename__ = "bitacora"
+    __table_args__ = (
+        Index("ix_bitacora_proyecto_momento", "proyecto_id", text("momento DESC")),
+        Index("ix_bitacora_momento", text("momento DESC")),
+        CheckConstraint("metodo IN ('GET', 'POST', 'PUT', 'PATCH', 'DELETE')", name="ck_bitacora_metodo"),
+        CheckConstraint("length(ruta) <= 300 AND position('?' in ruta) = 0", name="ck_bitacora_ruta"),
+        CheckConstraint("estado BETWEEN 100 AND 599", name="ck_bitacora_estado"),
+        {"schema": "obra"},
+    )
+
+    id: Mapped[int] = _id()
+    momento: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    usuario_id: Mapped[int | None] = mapped_column(BigInteger)
+    proyecto_id: Mapped[int | None] = mapped_column(BigInteger)
+    metodo: Mapped[str] = mapped_column(Text)
+    ruta: Mapped[str] = mapped_column(Text)
+    estado: Mapped[int] = mapped_column(Integer)
+    duracion_ms: Mapped[int] = mapped_column(Integer, server_default="0")
