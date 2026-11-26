@@ -13,6 +13,7 @@ export const ROLES: Rol[] = ['almacenero', 'ssoma', 'residente', 'administrador'
 export const ACCIONES: Record<string, Rol[]> = {
   'proyecto.crear': ['residente', 'administrador'],
   'proyecto.ampliar_plazo': ['residente', 'administrador'],
+  'proyecto.recortar_plazo': ['administrador'],
   'proyecto.cerrar': ['administrador'],
   'proyecto.consultar': ['almacenero', 'ssoma', 'residente', 'administrador', 'gerente'],
   'periodo.consultar': ['almacenero', 'ssoma', 'residente', 'administrador', 'gerente'],
@@ -68,6 +69,7 @@ export const ACCIONES: Record<string, Rol[]> = {
 export const DESCRIPCION: Record<string, string> = {
   'proyecto.crear': 'Crear una obra',
   'proyecto.ampliar_plazo': 'Ampliar el plazo',
+  'proyecto.recortar_plazo': 'Recortar el plazo (con PIN)',
   'proyecto.cerrar': 'Cerrar la obra (no se reabre)',
   'proyecto.consultar': 'Ver la obra',
   'periodo.consultar': 'Ver las semanas',
@@ -120,7 +122,7 @@ export const DESCRIPCION: Record<string, string> = {
 }
 
 export const GRUPOS_PERMISOS: { grupo: string; acciones: string[] }[] = [
-  { grupo: 'Obra', acciones: ['proyecto.crear', 'proyecto.ampliar_plazo', 'proyecto.cerrar', 'proyecto.consultar', 'periodo.consultar', 'periodo.cerrar', 'almacen.registrar', 'almacen.consultar'] },
+  { grupo: 'Obra', acciones: ['proyecto.crear', 'proyecto.ampliar_plazo', 'proyecto.recortar_plazo', 'proyecto.cerrar', 'proyecto.consultar', 'periodo.consultar', 'periodo.cerrar', 'almacen.registrar', 'almacen.consultar'] },
   { grupo: 'Accesos', acciones: ['usuario.crear', 'usuario.consultar', 'asignacion.escribir', 'asignacion.consultar', 'dispositivo.solicitar', 'dispositivo.autorizar', 'dispositivo.consultar', 'bitacora.consultar'] },
   { grupo: 'Mano de obra', acciones: ['trabajador.registrar', 'trabajador.consultar', 'jornada.registrar', 'horas.consultar'] },
   { grupo: 'Compras', acciones: ['proveedor.registrar', 'proveedor.consultar', 'compra.registrar', 'compra.consultar', 'solicitud.emitir', 'solicitud.consultar', 'requerimiento.importar', 'requerimiento.ajustar', 'requerimiento.agregar', 'requerimiento.consultar', 'partida.importar', 'partida.consultar', 'reposicion.registrar', 'reposicion.consultar', 'critico.marcar', 'avance.consultar'] },
