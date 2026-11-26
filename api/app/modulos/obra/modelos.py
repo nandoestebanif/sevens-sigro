@@ -72,7 +72,7 @@ class Proyecto(Base):
 
 
 class ProyectoPlazoHistorial(Base):
-    """Append-only. Se inserta SOLO a través de obra.ampliar_plazo()."""
+    """Append-only. Se inserta SOLO a través de obra.ampliar_plazo() u obra.recortar_plazo() (0026)."""
 
     __tablename__ = "proyecto_plazo_historial"
     __table_args__ = (

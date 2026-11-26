@@ -69,54 +69,86 @@ function TiraSemanas({ semanas }: { semanas: Semana[] }) {
   )
 }
 
-/* ── HU-02 · T-331: ampliar el plazo; las semanas nuevas se generan solas y las anteriores no se tocan ── */
+/* ── HU-02 · T-331: ampliar el plazo; las semanas nuevas se generan solas y las anteriores no se tocan.
+      26/11 (0026): el administrador también puede RECORTARLO, con su PIN: el nuevo fin es el cierre de una semana
+      que no haya pasado; las semanas siguientes quedan fuera del plazo (no se borran) y vuelven si luego se amplía. ── */
+const hoyLima = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Lima' }).format(new Date())
+
 function AmpliarPlazo({ obra, enListo }: { obra: Obra; enListo: () => void }) {
-  const [abierto, setAbierto] = useState(false)
+  const [modo, setModo] = useState<'ampliar' | 'recortar' | null>(null)
   const [fecha, setFecha] = useState('')
   const [motivo, setMotivo] = useState('')
   const [error, setError] = useState('')
   const [guardando, setGuardando] = useState(false)
   const [historial, setHistorial] = useState<CambioPlazo[] | null>(null)
   useEffect(() => { plazo.historial(obra.id).then(setHistorial).catch(() => setHistorial([])) }, [obra.id, obra.fin])
+  const recorta = modo === 'recortar'
+  // cierres de semana válidos para recortar: desde hoy, antes del fin vigente y sin semanas cerradas después
+  const ultimaCerrada = Math.max(0, ...obra.semanas.filter((s) => s.estado === 'cerrada').map((s) => s.numero))
+  const cortes = obra.semanas.filter((s) => s.fin >= hoyLima() && s.fin < obra.fin && s.numero >= ultimaCerrada).map((s) => s.fin)
   // fase 3: validación en vivo (como en Compras y Usuarios): al escribir, tras la pausa, y al salir
   const v = useEnVivo({
-    fecha: !fecha || fecha <= obra.fin ? `Elige una fecha posterior al fin actual (${f(obra.fin)}).` : undefined,
-    motivo: motivo.trim().length < 3 ? 'Escribe el motivo de la ampliación: queda en el historial.' : undefined,
+    fecha: recorta
+      ? (!fecha || !cortes.includes(fecha) ? 'Elige el cierre de una semana: desde hoy y antes del fin actual.' : undefined)
+      : (!fecha || fecha <= obra.fin ? `Elige una fecha posterior al fin actual (${f(obra.fin)}).` : undefined),
+    motivo: motivo.trim().length < 3 ? `Escribe el motivo ${recorta ? 'del recorte' : 'de la ampliación'}: queda en el historial.` : undefined,
   })
+  const cerrar = () => { setModo(null); setFecha(''); setMotivo(''); setError(''); v.reiniciar() }
 
-  const ampliar = async () => {
+  const guardar = async () => {
     setError('')
     if (v.alGuardar()) return  // true = hay errores (ya quedan a la vista)
     setGuardando(true)
-    try { await plazo.ampliar(obra.id, fecha, motivo); setAbierto(false); setFecha(''); setMotivo(''); v.reiniciar(); enListo() }
-    catch (e) { setError(e instanceof ErrorApi ? e.message : 'No se pudo ampliar el plazo.') }
+    try {
+      await (recorta ? plazo.recortar : plazo.ampliar)(obra.id, fecha, motivo)
+      cerrar(); enListo()
+    }
+    catch (e) { setError(e instanceof ErrorApi ? e.message : `No se pudo ${recorta ? 'recortar' : 'ampliar'} el plazo.`) }
     finally { setGuardando(false) }
   }
 
   return (
     <div className="mt-3 pt-3 d-flex flex-column gap-2 border-top" >
-      {!abierto ? (
+      {!modo ? (
         <div className="d-flex align-items-center justify-content-between gap-2 flex-wrap">
           <span className="small text-body-secondary">
-            ¿Se aprobó una ampliación? El plazo no se pisa: queda el anterior, el nuevo, el motivo y quién lo cambió.
+            ¿Cambió el plazo? No se pisa: queda el anterior, el nuevo, el motivo y quién lo cambió.
           </span>
-          {puedo('proyecto.ampliar_plazo') && <Boton tipo="secundario" enClic={() => setAbierto(true)}>Ampliar plazo</Boton>}
+          <div className="d-flex gap-2">
+            {puedo('proyecto.recortar_plazo') && cortes.length > 0 && <Boton tipo="secundario" enClic={() => setModo('recortar')}>Recortar plazo</Boton>}
+            {puedo('proyecto.ampliar_plazo') && <Boton tipo="secundario" enClic={() => setModo('ampliar')}>Ampliar plazo</Boton>}
+          </div>
         </div>
       ) : (
         <div className="d-flex flex-wrap gap-3 align-items-end">
-          <div className="d-flex flex-column gap-2" style={{ flex: '0 1 170px' }}>
-            <label htmlFor={`amp-${obra.id}`} className="small fw-semibold text-body-secondary">Nuevo fin</label>
-            <Fecha id={`amp-${obra.id}`} min={obra.fin} valor={fecha} alCambiar={(x) => { setFecha(x); v.salir('fecha') }} enSalir={() => v.salir('fecha')}
-              invalido={!!v.campo('fecha').error} valido={v.campo('fecha').valido} describedBy={v.campo('fecha').error ? `amp-${obra.id}-error` : undefined} />
+          <div className="d-flex flex-column gap-2" style={{ flex: '0 1 190px' }}>
+            <label htmlFor={`amp-${obra.id}`} className="small fw-semibold text-body-secondary">{recorta ? 'Nuevo fin (cierre de semana)' : 'Nuevo fin'}</label>
+            {recorta ? (
+              <select id={`amp-${obra.id}`} className={`form-select${v.campo('fecha').error ? ' is-invalid' : ''}`} value={fecha}
+                onChange={(e) => { setFecha(e.target.value); v.salir('fecha') }} onBlur={() => v.salir('fecha')}
+                aria-describedby={v.campo('fecha').error ? `amp-${obra.id}-error` : undefined}>
+                <option value="">Elige…</option>
+                {cortes.map((c) => <option key={c} value={c}>{f(c)}</option>)}
+              </select>
+            ) : (
+              <Fecha id={`amp-${obra.id}`} min={obra.fin} valor={fecha} alCambiar={(x) => { setFecha(x); v.salir('fecha') }} enSalir={() => v.salir('fecha')}
+                invalido={!!v.campo('fecha').error} valido={v.campo('fecha').valido} describedBy={v.campo('fecha').error ? `amp-${obra.id}-error` : undefined} />
+            )}
             {v.campo('fecha').error && <div id={`amp-${obra.id}-error`} className="invalid-feedback d-block">{v.campo('fecha').error}</div>}
           </div>
           <div className="d-flex flex-column gap-2 min-w-0"  style={{ flex: '2 1 240px' }}>
-            <Campo id={`amp-m-${obra.id}`} etiqueta="Motivo de la ampliación" valor={motivo} enCambio={(x) => { setMotivo(x); v.cambio('motivo') }} marcador="p. ej. adenda aprobada por el cliente" maxLargo={500} {...v.campo('motivo')} />
+            <Campo id={`amp-m-${obra.id}`} etiqueta={recorta ? 'Motivo del recorte' : 'Motivo de la ampliación'} valor={motivo} enCambio={(x) => { setMotivo(x); v.cambio('motivo') }}
+              marcador={recorta ? 'p. ej. el cliente adelantó la entrega' : 'p. ej. adenda aprobada por el cliente'} maxLargo={500} {...v.campo('motivo')} />
           </div>
           <div className="d-flex gap-2">
-            <Boton tipo="secundario" enClic={() => { setAbierto(false); setError('') }}>Cancelar</Boton>
-            <Boton enClic={ampliar} deshabilitado={guardando}>{guardando ? 'Ampliando…' : 'Ampliar'}</Boton>
+            <Boton tipo="secundario" enClic={cerrar}>Cancelar</Boton>
+            <Boton enClic={guardar} deshabilitado={guardando}>{guardando ? (recorta ? 'Recortando…' : 'Ampliando…') : (recorta ? 'Recortar' : 'Ampliar')}</Boton>
           </div>
+          {recorta && (
+            <p className="small text-body-secondary m-0 w-100">
+              Pide tu PIN. Las semanas después del nuevo fin quedan fuera del plazo: no admiten registros y no se borran; si luego amplías, vuelven.
+            </p>
+          )}
         </div>
       )}
       {error && <p role="alert" className="small text-danger fw-semibold">{error}</p>}
@@ -124,7 +156,7 @@ function AmpliarPlazo({ obra, enListo }: { obra: Obra; enListo: () => void }) {
         <ul className="m-0 small text-body-secondary ps-3" >
           {historial.map((h, i) => (
             <li key={i}>
-              {f(h.fechaFinAnterior)} → <strong>{f(h.fechaFinNueva)}</strong> · {h.motivo} · {h.autor}, {f(h.fecha.slice(0, 10))}
+              {f(h.fechaFinAnterior)} → <strong>{f(h.fechaFinNueva)}</strong>{h.fechaFinNueva < h.fechaFinAnterior ? ' (recorte)' : ''} · {h.motivo} · {h.autor}, {f(h.fecha.slice(0, 10))}
             </li>
           ))}
         </ul>

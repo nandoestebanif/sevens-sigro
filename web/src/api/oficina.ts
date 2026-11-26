@@ -14,6 +14,10 @@ export const plazo = {
   async ampliar(obra: string, nuevaFechaFin: string, motivo: string): Promise<void> {
     await pedir('POST', `/obras/${obra}/ampliar-plazo`, { nuevaFechaFin, motivo: motivo.trim() })
   },
+  /** 0026: solo el administrador y con PIN. El nuevo fin es el cierre de una semana, desde hoy; las semanas siguientes quedan fuera del plazo. */
+  async recortar(obra: string, nuevaFechaFin: string, motivo: string): Promise<void> {
+    await pedir('POST', `/obras/${obra}/recortar-plazo`, { nuevaFechaFin, motivo: motivo.trim() })
+  },
   async historial(obra: string): Promise<CambioPlazo[]> {
     return pedir<CambioPlazo[]>('GET', `/obras/${obra}/plazo-historial`)
   },

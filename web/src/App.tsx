@@ -16,6 +16,7 @@ import { Accordion, Alert, Badge, Button, Container, Modal, Nav, NavDropdown, Of
 import { SelectorObra } from './ui/SelectorObra'
 import { EsqueletoPagina } from './ui/Esqueleto'
 import { useInstalar } from './ui/instalar'
+import { DialogoPin } from './ui/DialogoPin'
 
 const ROLES: Record<string, string> = {
   residente: 'Residente de obra', administrador: 'Administrador', gerente: 'Gerente',
@@ -525,6 +526,7 @@ function Sistema({ preparando = false, nombreObra = '', alTerminar }: {
         </div>
       </div>
       {cambiandoClave && <CambiarClave enCerrar={() => setCambiandoClave(false)} />}
+      {usaApiReal && <DialogoPin />}
       {eligiendoObra && (
         <Modal show onHide={() => setEligiendoObra(false)} centered>
           <Modal.Header closeButton><Modal.Title as="h2" className="h5">Cambiar de obra</Modal.Title></Modal.Header>
