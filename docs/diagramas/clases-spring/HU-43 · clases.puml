@@ -1,0 +1,147 @@
+@startuml
+skinparam defaultFontName "DejaVu Sans"
+skinparam defaultFontSize 12
+skinparam shadowing false
+skinparam roundCorner 8
+skinparam ArrowColor #1F2A44
+skinparam ActivityBorderColor #1F2A44
+skinparam ActivityBackgroundColor #FFF7ED
+skinparam ActivityDiamondBackgroundColor #FEF3C7
+skinparam ActivityDiamondBorderColor #92400E
+skinparam SwimlaneTitleFontStyle bold
+skinparam SwimlaneTitleFontColor #1F2A44
+skinparam SwimlaneBorderColor #9CA3AF
+skinparam PartitionBorderColor #9CA3AF
+skinparam ParticipantBorderColor #1F2A44
+skinparam ParticipantBackgroundColor #FFF7ED
+skinparam ActorBorderColor #1F2A44
+skinparam ActorBackgroundColor #FFF7ED
+skinparam DatabaseBorderColor #1F2A44
+skinparam DatabaseBackgroundColor #E0E7FF
+skinparam SequenceLifeLineBorderColor #9CA3AF
+skinparam SequenceGroupBorderColor #C2410C
+skinparam SequenceGroupHeaderFontColor #C2410C
+skinparam StateBorderColor #1F2A44
+skinparam StateBackgroundColor #FFF7ED
+skinparam StateStartColor #1F2A44
+skinparam StateEndColor #1F2A44
+skinparam NoteBackgroundColor #F3F4F6
+skinparam NoteBorderColor #9CA3AF
+skinparam TitleFontSize 15
+skinparam TitleFontColor #C2410C
+skinparam ClassBorderColor #1F2A44
+skinparam ClassBackgroundColor #FFF7ED
+skinparam ClassAttributeFontSize 11
+skinparam ClassFontStyle bold
+skinparam ClassStereotypeFontColor #6B7280
+skinparam ClassStereotypeFontSize 10
+skinparam PackageBorderColor #C2410C
+skinparam PackageFontColor #1F2A44
+skinparam PackageStyle rectangle
+skinparam ArrowFontSize 10
+skinparam ArrowFontColor #374151
+skinparam nodesep 40
+skinparam ranksep 50
+hide empty members
+hide circle
+skinparam LegendBackgroundColor #F9FAFB
+skinparam LegendBorderColor #9CA3AF
+skinparam LegendFontSize 12
+title HU-43 · Consulta de stock\nDiagrama de clases
+package "Web de oficina (React + TypeScript)" #EFF6FF {
+class MovimientosPagina <<página>> {
+  archivo : Movimientos.tsx
+}
+}
+package "App del almacenero (Kotlin Multiplatform)" #ECFDF5 {
+class StockViewModel <<ViewModel>> {
+  +cargar(obraId) «sin señal: la última copia con su hora»
+  +buscar(texto)
+}
+interface RepositorioStock {
+  +stock(obraId) : StockObra
+}
+class StockGuardadoEntity <<Room>> {
+  obraId : Int
+  json : String
+  recibidoMs : Long
+}
+}
+package "Seguridad y filtros · Spring Boot (todas las rutas)" #F5F3FF {
+class Filtros <<filtros HTTP>> {
+  CabecerasSeguridad «nosniff, DENY, CSP, HSTS, no-store»
+  BitacoraFiltro «POST y 401/403, sin datos sensibles»
+}
+class Acceso <<seguridad>> {
+  +exigir(accion, obraId) : Actor «401 · 403»
+  +exigirEnAlgunaObra(accion) : Actor
+  -exigirPin(actor, accion) «X-SIGRO-PIN»
+  Permisos.MATRIZ «51 acciones × 5 roles»
+}
+}
+package "Módulo almacén · esquema almacen · rol sigro_svc_almacen" #FFF7ED {
+class AlmacenController <<@RestController>> {
+  +salida() / ingreso() / recepcion()
+  +traslado() / anularTraslado()
+  +reverso()
+  +abrirConteo() / contar() / confirmar()
+  +stock() / kardex() / semana()
+}
+class AlmacenService <<@Service · casos de uso>> {
+  +salida(actor, obraId, datos) : Resultado
+  +ingreso() / recepcion() / traslado()
+  +reverso(motivo)
+  +abrirConteo() / confirmarConteo()
+  -dispositivo() «celular autorizado»
+  -periodo() «abierto»
+  -porUuid() «idempotencia»
+}
+class MovimientoRepository <<interfaz>> {
+  +insertar(movimiento) : long
+  +porId() / porUuid()
+}
+class JdbcMovimientoRepository <<JDBC>> {
+  NamedParameterJdbcTemplate
+  publica el hecho en outbox (misma transacción)
+}
+class Saldo <<vista>> {
+  Σ sentido × cantidad por almacén e insumo
+}
+class Kardex <<vista>> {
+  movimientos con su saldo acumulado
+}
+class Movimiento <<libro, solo INSERT>> {
+  uuid_cliente : uuid «único»
+  tipo : ingreso_compra | ingreso_sin_compra | salida |\n traslado_salida | traslado_ingreso | ajuste_conteo | reverso
+  sentido : +1 | -1
+  cantidad : numeric «> 0»
+  costo_unitario : numeric «congelado»
+  motivo : text
+  quien_retira : text
+  origen : text
+  revierte_a_id : bigint
+  periodo_id : bigint
+  dispositivo_id : bigint
+  fecha_dispositivo : timestamptz
+  fecha_servidor : timestamptz
+}
+}
+Movimiento "0..1" --> "1" Movimiento : revierte_a
+Saldo ..> Movimiento : suma (no hay campo saldo)
+Kardex ..> Movimiento
+AlmacenService ..> Saldo : consulta
+AlmacenService ..> Kardex : consulta
+AlmacenController ..> Acceso : exigir(permiso, obra)
+StockViewModel --> RepositorioStock
+RepositorioStock ..> StockGuardadoEntity : última copia
+Filtros ..> Acceso : cada petición
+AlmacenController --> AlmacenService : delega
+AlmacenService --> MovimientoRepository : usa
+JdbcMovimientoRepository ..|> MovimientoRepository
+JdbcMovimientoRepository ..> Movimiento : INSERT (solo)
+legend bottom left
+<b>Regla que protege:</b> El saldo no es un campo: se suma del libro y lo calcula el servidor. Sin señal la app muestra la
+última copia con su hora.
+<i>Gris: clases de otro módulo o de contexto (se le pide a su clase, nunca a su esquema).</i>
+endlegend
+@enduml

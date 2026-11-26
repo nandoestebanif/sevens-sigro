@@ -13,10 +13,10 @@ persona está asignada.
 
 ## Los cinco roles
 
-- **Almacenero** — está en obra. Único que registra entradas y salidas de material desde el dispositivo autorizado. Registra obreros, asistencia, y entrega y devolución de herramientas.
-- **Ingeniero SSOMA** — responsable de seguridad y salud ocupacional. Registra y da de baja personal obrero, lleva asistencia y controla herramientas y equipos de protección. No interviene en material, compras ni costos.
+- **Almacenero** — está en obra. Registra entradas, salidas, traslados, conteos y el préstamo y devolución de herramientas desde el dispositivo autorizado. **Desde el 25/11 ya no registra personal ni asistencia** (decisión del PO): eso es del SSOMA.
+- **Ingeniero SSOMA** — responsable de seguridad y salud ocupacional. Registra y da de baja personal obrero y lleva la asistencia y las horas. Consulta herramientas y stock. No interviene en material, compras ni costos.
 - **Residente de obra** — conduce la obra. Configura proyecto, catálogo, requerimiento y parámetros de reposición. No registra movimientos: los consulta y autoriza excepciones.
-- **Administrador** — crea usuarios, asigna roles y obras, autoriza dispositivos. Único que cambia quién puede hacer qué.
+- **Administrador** — crea usuarios, asigna roles y obras, autoriza dispositivos y consulta la bitácora. **Desde el 25/11 puede hacer todas las acciones** (decisión del PO); lo de administrar (usuarios, roles, celulares, bitácora) le pide además su **PIN** de 6 dígitos, que valida el servidor.
 - **Gerente** — consulta costo, gasto en recursos y estado de las obras. No registra nada operativo.
 
 ## Matriz
@@ -62,21 +62,87 @@ persona está asignada.
 | Cerrar la obra y transferir el saldo | — | — | R | A | C |
 | **Herramientas y equipos** | | | | | |
 | Registrar el ingreso de herramientas | R | R | C | C | C |
-| Entregar una herramienta a un trabajador | R | R | C | C | — |
-| Registrar la devolución | R | R | C | C | — |
+| Entregar una herramienta a un trabajador (préstamo, 25/11) | R | C | C | R | — |
+| Registrar la devolución | R | C | C | R | — |
 | Consultar quién tiene cada herramienta | C | C | C | C | C |
 | Dar de baja una herramienta | R | C | A | C | C |
 | **Mano de obra** | | | | | |
-| Registrar un trabajador | R | R | C | R | — |
-| Dar de baja a un trabajador | R | R | C | R | — |
-| Corregir nombres, apellidos, categoría o cuadrilla de un trabajador (25/11) | R | R | C | R | — |
-| Registrar asistencia y horas de la jornada | R | R | C | C | — |
+| Registrar un trabajador | — | R | C | R | — |
+| Dar de baja a un trabajador | — | R | C | R | — |
+| Corregir nombres, apellidos, categoría o cuadrilla de un trabajador (25/11) | — | R | C | R | — |
+| Registrar asistencia y horas de la jornada | — | R | C | R | — |
 | Consultar las horas acumuladas | C | C | C | C | C |
+| **Auditoría (25/11)** | | | | | |
+| Consultar la bitácora de operaciones (con PIN) | — | — | — | C | — |
 | **Costo** | | | | | |
 | Consultar el inventario valorizado | — | — | C | C | C |
 | Comparar el consumo contra lo planificado | — | — | C | C | C |
 | Consultar el costo de la mano de obra | — | — | C | C | C |
 | Consultar el gasto en recursos de la obra | — | — | C | C | C |
+
+
+## Matriz que aplica el servidor (fuente única: `backend-spring/…/seguridad/Permisos.java`, 26/11)
+
+La tabla de arriba describe la responsabilidad de cada rol en el negocio. La que **decide** es esta: cada endpoint llama a
+`Acceso.exigir(acción, obra)` y responde 403 si el rol de la persona **en esa obra** no está. La web tiene una copia
+(`web/src/api/permisos.ts`) solo para ocultar botones, y `permisos.test.ts` falla si se desfasan. Con ✓ = permitido;
+🔒 = además pide el PIN del administrador (`Acceso.CON_PIN`).
+
+| Acción | Almacenero | SSOMA | Residente | Admin | Gerente |
+|---|:--:|:--:|:--:|:--:|:--:|
+| `proyecto.crear` | — | — | ✓ | ✓ | — |
+| `proyecto.ampliar_plazo` | — | — | ✓ | ✓ | — |
+| `proyecto.cerrar` | — | — | — | ✓ | — |
+| `proyecto.consultar` | ✓ | ✓ | ✓ | ✓ | ✓ |
+| `periodo.consultar` | ✓ | ✓ | ✓ | ✓ | ✓ |
+| `periodo.cerrar` | — | — | ✓ | ✓ | — |
+| `almacen.registrar` | ✓ | — | ✓ | ✓ | — |
+| `almacen.consultar` | ✓ | — | ✓ | ✓ | ✓ |
+| `usuario.crear` | — | — | — | ✓🔒 | — |
+| `usuario.consultar` | — | — | — | ✓🔒 | — |
+| `asignacion.escribir` | — | — | — | ✓🔒 | — |
+| `asignacion.consultar` | — | — | ✓ | ✓ | — |
+| `dispositivo.solicitar` | ✓ | ✓ | — | ✓ | — |
+| `dispositivo.autorizar` | — | — | — | ✓🔒 | — |
+| `dispositivo.consultar` | — | — | ✓ | ✓ | — |
+| `trabajador.registrar` | — | ✓ | — | ✓ | — |
+| `trabajador.consultar` | ✓ | ✓ | ✓ | ✓ | — |
+| `jornada.registrar` | — | ✓ | — | ✓ | — |
+| `horas.consultar` | ✓ | ✓ | ✓ | ✓ | ✓ |
+| `proveedor.registrar` | ✓ | — | ✓ | ✓ | — |
+| `proveedor.consultar` | ✓ | — | ✓ | ✓ | ✓ |
+| `compra.registrar` | ✓ | — | ✓ | ✓ | — |
+| `compra.consultar` | ✓ | — | ✓ | ✓ | ✓ |
+| `solicitud.emitir` | — | — | ✓ | ✓ | — |
+| `solicitud.consultar` | — | — | ✓ | ✓ | ✓ |
+| `requerimiento.importar` | — | — | ✓ | ✓ | — |
+| `requerimiento.ajustar` | — | — | ✓ | ✓ | — |
+| `requerimiento.agregar` | — | — | ✓ | ✓ | — |
+| `requerimiento.consultar` | — | — | ✓ | ✓ | ✓ |
+| `partida.importar` | — | — | ✓ | ✓ | — |
+| `partida.consultar` | — | — | ✓ | ✓ | ✓ |
+| `reposicion.registrar` | — | — | ✓ | ✓ | — |
+| `reposicion.consultar` | — | — | ✓ | ✓ | ✓ |
+| `critico.marcar` | — | — | ✓ | ✓ | — |
+| `avance.consultar` | — | — | ✓ | ✓ | ✓ |
+| `salida.registrar` | ✓ | — | — | ✓ | — |
+| `ingreso.registrar` | ✓ | — | — | ✓ | — |
+| `recepcion.registrar` | ✓ | — | — | ✓ | — |
+| `traslado.registrar` | ✓ | — | — | ✓ | — |
+| `conteo.registrar` | ✓ | — | — | ✓ | — |
+| `movimiento.revertir` | ✓ | — | ✓ | ✓ | — |
+| `stock.consultar` | ✓ | ✓ | ✓ | ✓ | ✓ |
+| `herramienta.prestar` | ✓ | — | — | ✓ | — |
+| `herramienta.consultar` | ✓ | ✓ | ✓ | ✓ | ✓ |
+| `costo.consultar` | — | — | ✓ | ✓ | ✓ |
+| `insumo.consultar` | ✓ | ✓ | ✓ | ✓ | ✓ |
+| `insumo.registrar` | ✓ | — | ✓ | ✓ | — |
+| `insumo.verificar` | — | — | ✓ | ✓ | — |
+| `insumo.factor` | — | — | ✓ | ✓ | — |
+| `bitacora.consultar` | — | — | — | ✓🔒 | — |
+| `insumo.importar` | — | — | ✓ | ✓ | — |
+
+51 acciones. Pruebas: `api/pruebas/test_api_acceso.py` recorre la matriz completa contra el servidor.
 
 ## Pendiente de confirmar con el cliente
 

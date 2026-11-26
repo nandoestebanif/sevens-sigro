@@ -29,7 +29,7 @@ def esc(t) -> str:
 
 def etiqueta_servicio(esquema: str) -> str:
     s = SERVICIO_DE[esquema]
-    return (f'<<B>microservicio {s}</B>  ·  esquema <B>{esquema}</B>  ·  rol <B>sigro_svc_{s}</B><BR/>'
+    return (f'<<B>módulo {s}</B>  ·  esquema <B>{esquema}</B>  ·  rol <B>sigro_svc_{s}</B><BR/>'
             f'<FONT POINT-SIZE="12">{esc(QUE_HACE[s])}</FONT>>')
 
 
@@ -98,12 +98,12 @@ def leyenda(m: Modelo, global_: bool) -> str:
         f'<FONT COLOR="{ROJO}"><B>FK roja discontinua</B></FONT>  cruza de un servicio a otro. En todo el sistema hay <B>{n_cruzan}</B>; {n_usuario} son de autoría hacia obra.usuario'
         + (" (marcadas en rojo, no dibujadas)" if global_ else "") + '.',
         '   Fase 1 (hoy): se conservan para no perder integridad; el servicio NO puede leer la tabla ajena (sin permiso), solo la referencia.',
-        '   Fase 2 (Sprint 2): se reemplazan por una réplica local alimentada por eventos y la FK se elimina (ADR-09).',
+        '   Con ADR-12 (un desplegable) se conservan: dan integridad y el rol de cada módulo sigue sin poder leer el esquema ajeno.',
         '<FONT COLOR="#7F6000"><B>UNIQUE</B></FONT>  índice único que sostiene una regla del dominio (parcial si trae WHERE)',
         '<B>permisos</B>  lo que el rol de cada servicio puede hacer en la tabla: S select · I insert · U update · D delete. Ningún servicio tiene D.',
         f'<B>Vistas:</B> {esc(", ".join(m.vistas))}',
         f'<B>SECURITY DEFINER</B> (únicas que escriben periodos, plazo y correlativos, o validan contra otro esquema): {esc(", ".join(m.funciones_definer))}',
-        '<B>Despliegue:</B> una sola instancia PostgreSQL, un esquema y un usuario por servicio; ningún servicio puede leer el esquema de otro.',
+        '<B>Despliegue:</B> una instancia PostgreSQL (Neon), un esquema y un rol por módulo (SET ROLE desde Spring); ningún módulo puede leer el esquema de otro.',
     ]
     celdas = "".join(f'<TR><TD ALIGN="LEFT">{f}</TD></TR>' for f in filas)
     return (f'  subgraph cluster_leyenda {{ label=<<B>Cómo leerlo</B>>; fontsize=16; style="rounded"; color="#666666";\n'
@@ -154,14 +154,14 @@ def main() -> None:
     m = leer_modelo()
     sub = (f"PostgreSQL {m.version_pg} · migración {m.migracion} · {len(m.tablas)} tablas, {len(m.fks)} claves foráneas "
            f"({len(m.fks_entre_servicios)} entre servicios) · generado desde la base migrada")
-    dibujar(m, ESQUEMAS, "SIGRO · Modelo físico de datos por microservicio", sub, SALIDA / "diagrama-fisico", con_almacen=True)
+    dibujar(m, ESQUEMAS, "SIGRO · Modelo físico de datos por módulo (esquema y rol propios)", sub, SALIDA / "diagrama-fisico", con_almacen=False)
     (SALIDA / "fisico").mkdir(exist_ok=True)
     for e in ESQUEMAS:
         s = SERVICIO_DE[e]
         tablas = m.de(e)
         sub_s = (f"esquema {e} · rol sigro_svc_{s} · {len(tablas)} tablas · "
                  f"{sum(1 for f in m.fks_entre_servicios if f.origen.startswith(e + '.'))} FK hacia otros servicios · migración {m.migracion}")
-        dibujar(m, [e], f"SIGRO · microservicio {s} · modelo físico", sub_s, SALIDA / "fisico" / s, con_almacen=False)
+        dibujar(m, [e], f"SIGRO · módulo {s} · modelo físico", sub_s, SALIDA / "fisico" / s, con_almacen=False)
     print(f"{len(m.tablas)} tablas, {len(m.fks)} FK ({len(m.fks_entre_servicios)} entre servicios) -> diagrama-fisico.* y fisico/<servicio>.*")
 
 

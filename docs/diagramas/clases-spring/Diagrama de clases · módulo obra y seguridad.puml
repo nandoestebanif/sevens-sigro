@@ -1,0 +1,167 @@
+@startuml
+skinparam defaultFontName "DejaVu Sans"
+skinparam defaultFontSize 12
+skinparam shadowing false
+skinparam roundCorner 8
+skinparam ArrowColor #1F2A44
+skinparam ActivityBorderColor #1F2A44
+skinparam ActivityBackgroundColor #FFF7ED
+skinparam ActivityDiamondBackgroundColor #FEF3C7
+skinparam ActivityDiamondBorderColor #92400E
+skinparam SwimlaneTitleFontStyle bold
+skinparam SwimlaneTitleFontColor #1F2A44
+skinparam SwimlaneBorderColor #9CA3AF
+skinparam PartitionBorderColor #9CA3AF
+skinparam ParticipantBorderColor #1F2A44
+skinparam ParticipantBackgroundColor #FFF7ED
+skinparam ActorBorderColor #1F2A44
+skinparam ActorBackgroundColor #FFF7ED
+skinparam DatabaseBorderColor #1F2A44
+skinparam DatabaseBackgroundColor #E0E7FF
+skinparam SequenceLifeLineBorderColor #9CA3AF
+skinparam SequenceGroupBorderColor #C2410C
+skinparam SequenceGroupHeaderFontColor #C2410C
+skinparam StateBorderColor #1F2A44
+skinparam StateBackgroundColor #FFF7ED
+skinparam StateStartColor #1F2A44
+skinparam StateEndColor #1F2A44
+skinparam NoteBackgroundColor #F3F4F6
+skinparam NoteBorderColor #9CA3AF
+skinparam TitleFontSize 15
+skinparam TitleFontColor #C2410C
+skinparam ClassBorderColor #1F2A44
+skinparam ClassBackgroundColor #FFF7ED
+skinparam ClassAttributeFontSize 11
+skinparam ClassFontStyle bold
+skinparam ClassStereotypeFontColor #6B7280
+skinparam ClassStereotypeFontSize 10
+skinparam PackageBorderColor #C2410C
+skinparam PackageFontColor #1F2A44
+skinparam PackageStyle rectangle
+skinparam ArrowFontSize 10
+skinparam ArrowFontColor #374151
+skinparam nodesep 40
+skinparam ranksep 50
+hide empty members
+hide circle
+skinparam LegendBackgroundColor #F9FAFB
+skinparam LegendBorderColor #9CA3AF
+skinparam LegendFontSize 12
+title SIGRO · Diagrama de clases · módulo obra y seguridad (Spring Boot)
+package "Seguridad y filtros · Spring Boot (todas las rutas)" #F5F3FF {
+class Acceso <<seguridad>> {
+  +exigir(accion, obraId) : Actor «401 · 403»
+  +exigirEnAlgunaObra(accion) : Actor
+  -exigirPin(actor, accion) «X-SIGRO-PIN»
+  Permisos.MATRIZ «51 acciones × 5 roles»
+}
+class Tokens <<seguridad>> {
+  +crear(usuarioId) «JWT HS256, 8 h»
+  +leer(token) : Long
+  +crearPin(usuarioId) «pase de 15 min»
+  Claves.verificar() / hashear() «Argon2id»
+}
+class Filtros <<filtros HTTP>> {
+  CabecerasSeguridad «nosniff, DENY, CSP, HSTS, no-store»
+  BitacoraFiltro «POST y 401/403, sin datos sensibles»
+}
+}
+package "Módulo obra · esquema obra · rol sigro_svc_obras" #FFF7ED {
+class Usuario {
+  id : bigint
+  nombre : text
+  usuario : text «único»
+  hash_clave : text «Argon2id»
+  estado : activo | baja
+  intentos_fallidos : smallint
+  bloqueado_hasta : timestamptz
+  pin_hash : text «Argon2id, admin»
+  pin_intentos : int
+  pin_bloqueado_hasta : timestamptz
+}
+class Proyecto <<obra>> {
+  id : bigint
+  nombre : text
+  fecha_inicio : date
+  fecha_fin : date «≥ inicio»
+  dia_corte : smallint
+  estado : en_ejecucion | cerrado
+}
+class ProyectoPlazoHistorial <<solo INSERT>> {
+  fecha_fin_anterior : date
+  fecha_fin_nueva : date
+  motivo : text
+  autor : bigint
+  fecha : timestamptz
+}
+class Periodo <<semana de control>> {
+  numero : int
+  fecha_inicio : date
+  fecha_fin : date
+  estado : abierto | cerrado
+}
+class Almacen {
+  nombre : text
+  tipo : central | frente
+  estado : activo | inactivo
+}
+class Asignacion {
+  rol : almacenero | ssoma | residente | administrador | gerente
+  fecha_asignacion : timestamptz
+  fecha_retiro : timestamptz
+}
+class Dispositivo {
+  identificador : text
+  estado : pendiente | activo | revocado «2 activos por obra»
+  fecha_autorizacion : timestamptz
+  motivo_revocacion : text
+}
+class ObraController <<@RestController>> {
+  +login()
+  +crearObra() / ampliarPlazo() / cerrarObra()
+  +periodos() / cerrarPeriodo()
+  +crearAlmacen()
+  +crearUsuario() / baja() / claveTemporal()
+  +asignar() / retirar()
+  +solicitarDispositivo() / autorizar() / revocar()
+  +yo() / cambiarClave()
+}
+class PinController <<@RestController>> {
+  +estado()
+  +crear(clave, pin)
+  +verificar(pin) «5 intentos → 10 min»
+}
+class BitacoraController <<@RestController>> {
+  +listar(desde, hasta, usuario, q, solo)
+}
+class Bitacora <<solo INSERT>> {
+  momento : timestamptz
+  usuario_id : bigint
+  proyecto_id : bigint
+  metodo : text
+  ruta : text «sin ?query»
+  estado : int
+  duracion_ms : int
+}
+}
+Proyecto "1" *-- "1..*" Periodo : se divide en
+Proyecto "1" *-- "1..*" Almacen
+Proyecto "1" -- "0..*" ProyectoPlazoHistorial : ampliaciones
+Usuario "1" -- "0..*" Asignacion
+Proyecto "1" -- "0..*" Asignacion
+Usuario "1" -- "0..2" Dispositivo : celular de
+Proyecto "1" -- "0..*" Dispositivo
+ObraController ..> Proyecto : crea
+ObraController ..> Periodo : genera
+ObraController ..> Asignacion : asigna
+ObraController ..> Dispositivo : autoriza / revoca
+ObraController ..> ProyectoPlazoHistorial : registra
+ObraController ..> Usuario : verifica
+ObraController ..> Acceso : exigir(permiso, obra)
+Filtros ..> Acceso : cada petición
+Acceso ..> Tokens : lee el JWT
+Filtros ..> Bitacora : anota (sin datos)
+PinController ..> Usuario : pin_hash
+BitacoraController ..> Bitacora : consulta
+PinController ..> Tokens : crearPin()
+@enduml

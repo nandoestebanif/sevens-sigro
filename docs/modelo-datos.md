@@ -89,6 +89,10 @@ movimientos** y nunca se edita a mano.
 
 Mismo principio: el estado actual se deriva del último evento; los eventos no se borran.
 
+> **Implementado (25/11, migración 0023):** el préstamo quedó en `almacen.prestamo` (la herramienta es un insumo de
+> tipo `equipo` del catálogo, con su stock en el libro de movimientos). Prestar no mueve el saldo: lo disponible es
+> lo que hay menos lo prestado. La devolución se registra una sola vez, con su estado. Ver «Cambios del 25–26/11».
+
 ### Mano de obra
 
 | Tabla | Campos principales | Notas |
@@ -127,3 +131,17 @@ la API decide qué guardar. Así el día que el formato del S10 cambie, se toca 
    `(trabajador_id, fecha)` en jornada, `proveedor.ruc`.
 3. Una nota en `movimiento` diciendo que es append-only y que no hay columna de saldo.
 4. La frontera entre los dos servicios.
+
+## Cambios del 25–26/11 (migraciones 0020–0025)
+
+| Migración | Tabla o columna | Para qué |
+|---|---|---|
+| 0020, 0022 | `tareo.trabajador`: nombres y apellidos por separado; corrección de datos | HU-62, DNI con RENIEC |
+| 0021 | `obra.usuario`: DNI, correo, celular | HU-13, clave temporal |
+| 0023 | `almacen.prestamo` (uuid_cliente, almacén, insumo, cantidad, responsable, devolver_el, prestado_en, devuelto_en, estado de la devolución) | préstamo y devolución de herramientas; no mueve el saldo |
+| 0024 | `obra.bitacora` (momento, usuario_id, proyecto_id, método, ruta sin parámetros, estado, duración) · **solo insertar** | auditoría: quién hizo qué; sin cuerpos, claves, PIN, tokens ni IP |
+| 0024 | `obra.usuario`: `pin_hash` (Argon2id), `pin_intentos`, `pin_bloqueado_hasta` | PIN del panel de administración |
+| 0025 | permisos de `sigro_svc_costo` sobre `outbox.evento` (leer y marcar la entrega) | el relevo de costo dentro del backend Spring |
+
+Todas las columnas nuevas llevan su COMMENT (diccionario de datos, `test_migracion_0019`). El backend que corre es
+Spring Boot (ADR-12) y la base sigue siendo la misma: **Alembic es la fuente del esquema**.

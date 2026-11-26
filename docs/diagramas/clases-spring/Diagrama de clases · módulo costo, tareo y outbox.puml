@@ -1,0 +1,145 @@
+@startuml
+skinparam defaultFontName "DejaVu Sans"
+skinparam defaultFontSize 12
+skinparam shadowing false
+skinparam roundCorner 8
+skinparam ArrowColor #1F2A44
+skinparam ActivityBorderColor #1F2A44
+skinparam ActivityBackgroundColor #FFF7ED
+skinparam ActivityDiamondBackgroundColor #FEF3C7
+skinparam ActivityDiamondBorderColor #92400E
+skinparam SwimlaneTitleFontStyle bold
+skinparam SwimlaneTitleFontColor #1F2A44
+skinparam SwimlaneBorderColor #9CA3AF
+skinparam PartitionBorderColor #9CA3AF
+skinparam ParticipantBorderColor #1F2A44
+skinparam ParticipantBackgroundColor #FFF7ED
+skinparam ActorBorderColor #1F2A44
+skinparam ActorBackgroundColor #FFF7ED
+skinparam DatabaseBorderColor #1F2A44
+skinparam DatabaseBackgroundColor #E0E7FF
+skinparam SequenceLifeLineBorderColor #9CA3AF
+skinparam SequenceGroupBorderColor #C2410C
+skinparam SequenceGroupHeaderFontColor #C2410C
+skinparam StateBorderColor #1F2A44
+skinparam StateBackgroundColor #FFF7ED
+skinparam StateStartColor #1F2A44
+skinparam StateEndColor #1F2A44
+skinparam NoteBackgroundColor #F3F4F6
+skinparam NoteBorderColor #9CA3AF
+skinparam TitleFontSize 15
+skinparam TitleFontColor #C2410C
+skinparam ClassBorderColor #1F2A44
+skinparam ClassBackgroundColor #FFF7ED
+skinparam ClassAttributeFontSize 11
+skinparam ClassFontStyle bold
+skinparam ClassStereotypeFontColor #6B7280
+skinparam ClassStereotypeFontSize 10
+skinparam PackageBorderColor #C2410C
+skinparam PackageFontColor #1F2A44
+skinparam PackageStyle rectangle
+skinparam ArrowFontSize 10
+skinparam ArrowFontColor #374151
+skinparam nodesep 40
+skinparam ranksep 50
+hide empty members
+hide circle
+skinparam LegendBackgroundColor #F9FAFB
+skinparam LegendBorderColor #9CA3AF
+skinparam LegendFontSize 12
+title SIGRO · Diagrama de clases · módulo costo, tareo y outbox (Spring Boot)
+package "Módulo costo · esquema costo · rol sigro_svc_costo" #FFF7ED {
+class Hecho <<modelo de lectura>> {
+  familia : materiales | equipos | mano_de_obra
+  clase : text
+  insumo_codigo : text
+  cantidad : numeric
+  costo_unitario : numeric
+  importe : numeric
+  fecha : date
+}
+class EventoRecibido {
+  evento_id : uuid «deduplica»
+  recibido_en : timestamptz
+}
+class GastoPorObra <<vista>> {
+  gasto por familia de recurso
+}
+class CostoController <<@RestController>> {
+  +gasto(corte) «5 cifras al mismo corte»
+  +inventario(corte)
+  +desviacion()
+  toleranciaRedondeo(hechos)
+}
+class EventosCosto <<@RestController>> {
+  +registrar(evento) «idempotente por evento_id»
+}
+class RelevoCosto <<@Scheduled cada 5 s>> {
+  -uno() «FOR UPDATE SKIP LOCKED»
+  +vuelta() «reintentos 5 s … 1 h»
+}
+}
+package "Módulo tareo · esquema tareo · rol sigro_svc_tareo" #FFF7ED {
+class Trabajador {
+  nombre : text
+  tipo_documento : DNI | CE | PASAPORTE
+  documento : text
+  categoria : operario | oficial | peon
+  cuadrilla : text
+  fecha_ingreso : date
+  fecha_salida : date «baja, no se borra»
+}
+class Jornada <<solo INSERT>> {
+  uuid_cliente : uuid
+  fecha : date
+  estado : presente | ausente | permiso
+  horas_normales : numeric
+  horas_extra : numeric
+  corrige_a_id : bigint
+  motivo_correccion : text
+}
+class JornadaVigente <<vista>> {
+  la última versión de cada jornada
+}
+class HorasAcumuladas <<vista>> {
+  horas por trabajador y periodo
+}
+class TareoController <<@RestController>> {
+  +registrar() / baja()
+  +jornada() / corregir()
+  +jornadas() / horas()
+  +consultarDni()
+}
+class Tareo <<API del módulo>> {
+  +horas(obraId, hasta) «la usa costo»
+}
+}
+package "Outbox · esquema outbox" #FFF7ED {
+class Evento <<outbox>> {
+  tipo : text
+  payload : jsonb
+  destino : text
+  intentos : int
+  siguiente_intento : timestamptz
+  enviado_en : timestamptz
+}
+}
+Trabajador "1" -- "0..*" Jornada
+Jornada "0..1" --> "1" Jornada : corrige_a
+JornadaVigente ..> Jornada
+HorasAcumuladas ..> Jornada
+EventoRecibido "1" -- "0..*" Hecho : evento_id
+GastoPorObra ..> Hecho
+RelevoCosto ..> Evento : lee y marca enviado
+RelevoCosto ..> CostoController : entrega el evento
+CostoController ..> Hecho : registra / suma
+CostoController ..> EventoRecibido : deduplica
+CostoController ..> GastoPorObra : consulta
+CostoController ..> HorasAcumuladas : horas (en proceso, tareo)
+TareoController ..> Trabajador
+TareoController ..> Jornada : inserta / corrige
+TareoController ..> HorasAcumuladas : consulta
+TareoController ..> JornadaVigente : consulta
+RelevoCosto ..> EventosCosto : registrar() en proceso
+CostoController ..> Tareo : horas() en proceso
+@enduml

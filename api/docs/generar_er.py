@@ -23,14 +23,14 @@ from psycopg.rows import dict_row
 BASE = os.environ.get("SIGRO_DB", "sigro_dev")
 DSN = os.environ.get("SIGRO_DSN", f"postgresql://sigro_owner:sigro_owner_dev@localhost:5432/{BASE}")
 SALIDA = Path(__file__).resolve().parent
-ESQUEMAS = ["obra", "catalogo", "compras", "tareo", "outbox"]
+ESQUEMAS = ["obra", "catalogo", "compras", "tareo", "almacen", "costo", "outbox"]
 
 # Tablas que existen por técnica y no son «cosas de la obra»: se explican en la leyenda, no se dibujan.
-TECNICAS = {"compras.solicitud_correlativo"}
+TECNICAS = {"compras.solicitud_correlativo", "compras.compra_adjunto_contenido"}
 
 COLOR = {"obra": ("#1F4E79", "#EAF1F8"), "catalogo": ("#7A4B00", "#FBF3E4"), "compras": ("#2E6B3A", "#EAF5EC"),
-         "tareo": ("#6B2E6B", "#F6ECF6"), "outbox": ("#8A3B12", "#FBEDE6")}
-GRUPO = {"obra": "Obra y accesos", "catalogo": "Catálogo", "compras": "Compras", "tareo": "Mano de obra", "outbox": "Avisos (infraestructura)"}
+         "tareo": ("#6B2E6B", "#F6ECF6"), "almacen": ("#7F6000", "#FFF7E0"), "costo": ("#1F6F6F", "#E6F4F4"), "outbox": ("#8A3B12", "#FBEDE6")}
+GRUPO = {"obra": "Obra y accesos", "catalogo": "Catálogo", "compras": "Compras", "tareo": "Mano de obra", "almacen": "Almacén (libro de movimientos)", "costo": "Costo (modelo de lectura)", "outbox": "Eventos (infraestructura)"}
 
 # tabla -> (nombre de negocio, [(atributo, columna, marca)], regla de negocio)
 #   marca:  "id" identifica a la entidad · "?" es opcional · "" normal
@@ -100,6 +100,36 @@ E = {
     "outbox.evento": ("Evento por avisar", [("Tipo", "tipo", ""), ("Contenido", "payload", ""), ("Creado en", "creado_en", ""),
                                             ("Entregado en", "enviado_en", "?"), ("Intentos", "intentos", ""), ("Último error", "ultimo_error", "?")],
                       "Se escribe en la misma transacción que el hecho"),
+    # ── 26/11: tablas que existían en la base y faltaban en el diagrama (almacén y costo desde la 0010; 0016–0024)
+    "obra.bitacora": ("Registro de bitácora", [("Momento", "momento", ""), ("Método", "metodo", ""), ("Ruta (sin parámetros)", "ruta", ""),
+                                              ("Resultado (código HTTP)", "estado", ""), ("Duración (ms)", "duracion_ms", ""), ("Usuario", "usuario_id", "?"), ("Obra", "proyecto_id", "?")],
+                      "Solo se agrega · sin cuerpos, claves, PIN, tokens ni IP"),
+    "compras.partida": ("Partida del presupuesto", [("Código", "codigo", "id"), ("Descripción", "descripcion", ""), ("Unidad", "unidad", "")], "Viene del APU del S10"),
+    "compras.partida_recurso": ("Recurso de la partida", [("Cantidad por unidad", "cantidad_por_unidad", ""), ("Unidad", "unidad", "")], "Qué insumos consume cada partida"),
+    "compras.insumo_critico": ("Marca de insumo crítico", [("Crítico", "critico", ""), ("Registrado en", "registrado_en", "")], "Historial: la vigente es la última"),
+    "almacen.almacen_ref": ("Almacén (réplica en almacén)", [("Nombre", "nombre", ""), ("Tipo: central / frente", "tipo", ""), ("Estado", "estado", "")],
+                            "Copia local de obra.almacen: almacén no lee el esquema obra"),
+    "almacen.insumo_ref": ("Insumo (réplica en almacén)", [("Código", "codigo", "id"), ("Descripción", "descripcion", ""), ("Unidad", "unidad", ""), ("Tipo", "tipo", "")],
+                           "Copia local del catálogo"),
+    "almacen.movimiento": ("Movimiento", [("Identificador del celular", "uuid_cliente", "id"), ("Tipo", "tipo", ""), ("Sentido: +1 / −1", "sentido", ""),
+                                          ("Cantidad", "cantidad", ""), ("Costo unitario (congelado)", "costo_unitario", ""), ("Motivo", "motivo", "?"),
+                                          ("Quién retira", "quien_retira", "?"), ("Origen", "origen", "?"), ("Hora del celular", "fecha_dispositivo", "?"), ("Hora del servidor", "fecha_servidor", "")],
+                           "Libro: solo se agrega · sin saldo guardado · corregir = reverso"),
+    "almacen.recepcion": ("Recepción de compra", [("Identificador del celular", "uuid_cliente", "id"), ("Compra", "compra_id", ""), ("Motivo del exceso", "motivo_exceso", "?")],
+                          "Genera los ingresos de la compra"),
+    "almacen.traslado": ("Traslado", [("Identificador del celular", "uuid_cliente", "id"), ("Motivo", "motivo", ""), ("Es cierre de obra", "es_cierre", "")],
+                         "Una salida y un ingreso que se anulan juntos"),
+    "almacen.conteo": ("Conteo físico", [("Identificador del celular", "uuid_cliente", "id"), ("Fecha", "fecha", ""), ("Estado: borrador / confirmado", "estado", "")],
+                       "Al confirmarlo, cada diferencia es un ajuste con motivo"),
+    "almacen.conteo_linea": ("Línea del conteo", [("Saldo teórico", "saldo_teorico", ""), ("Cantidad contada", "cantidad_contada", ""), ("Diferencia", "diferencia", ""), ("Motivo", "motivo", "?")], ""),
+    "almacen.prestamo": ("Préstamo de herramienta", [("Identificador del celular", "uuid_cliente", "id"), ("Cantidad", "cantidad", ""), ("Responsable", "responsable", ""),
+                                                     ("Devolver el", "devolver_el", "?"), ("Prestado en", "prestado_en", ""), ("Devuelto en", "devuelto_en", "?"),
+                                                     ("Estado al volver: bueno / dañado / perdido", "estado_devolucion", "?")],
+                         "No mueve el saldo · no se presta más de lo disponible · se devuelve una vez"),
+    "costo.evento_recibido": ("Evento recibido", [("Evento", "evento_id", "id"), ("Tipo", "tipo", ""), ("Recibido en", "recibido_en", "")], "Deduplica: un evento se aplica una vez"),
+    "costo.hecho": ("Hecho de costo", [("Familia: material / mano de obra / equipo", "familia", ""), ("Clase", "clase", ""), ("Insumo (código)", "insumo_codigo", ""),
+                                       ("Cantidad", "cantidad", ""), ("Costo unitario", "costo_unitario", ""), ("Importe", "importe", ""), ("Fecha", "fecha", "")],
+                    "Llega de almacén por el outbox (RelevoCosto)"),
 }
 
 # (hijo, padre, columnas del hijo [None = todas las FK a ese padre], etiqueta, cardinalidad del padre, del hijo)
@@ -133,6 +163,26 @@ R = [
     ("tareo.jornada", "obra.periodo", "proyecto_id,periodo_id", "cae en", "1"),
     ("tareo.jornada", "tareo.jornada", "trabajador_id,fecha,corrige_a_id", "corrige a", "0..1"),
     ("outbox.evento", "obra.proyecto", "proyecto_id", "avisa sobre", "1"),
+    ("compras.partida", "obra.proyecto", "proyecto_id", "se presupuesta con", "1"),
+    ("compras.partida_recurso", "compras.partida", "partida_id", "consume", "1"),
+    ("compras.partida_recurso", "catalogo.insumo", "insumo_id", "es de", "1"),
+    ("compras.insumo_critico", "obra.proyecto", "proyecto_id", "marca en", "1"),
+    ("compras.insumo_critico", "catalogo.insumo", "insumo_id", "es de", "1"),
+    ("almacen.movimiento", "almacen.almacen_ref", "almacen_id,proyecto_id", "se guarda en", "1"),
+    ("almacen.movimiento", "almacen.insumo_ref", "insumo_id", "mueve a", "1"),
+    ("almacen.movimiento", "almacen.recepcion", "recepcion_id,proyecto_id", "ingresa por", "0..1"),
+    ("almacen.movimiento", "almacen.traslado", "traslado_id", "se mueve por", "0..1"),
+    ("almacen.movimiento", "almacen.conteo", "conteo_id", "se ajusta por", "0..1"),
+    ("almacen.movimiento", "almacen.movimiento", "revierte_a_id", "revierte a", "0..1"),
+    ("almacen.recepcion", "almacen.almacen_ref", "almacen_id,proyecto_id", "se recibe en", "1"),
+    ("almacen.traslado", "almacen.almacen_ref", "origen_almacen_id,origen_proyecto_id", "sale de", "1"),
+    ("almacen.traslado", "almacen.almacen_ref", "destino_almacen_id,destino_proyecto_id", "llega a", "1"),
+    ("almacen.conteo", "almacen.almacen_ref", "almacen_id,proyecto_id", "se cuenta en", "1"),
+    ("almacen.conteo_linea", "almacen.conteo", "conteo_id", "se compone de", "1"),
+    ("almacen.conteo_linea", "almacen.insumo_ref", "insumo_id", "cuenta a", "1"),
+    ("almacen.prestamo", "almacen.almacen_ref", "almacen_id,proyecto_id", "sale de", "1"),
+    ("almacen.prestamo", "almacen.insumo_ref", "insumo_id", "presta", "1"),
+    ("costo.hecho", "costo.evento_recibido", "evento_id", "llega en", "1"),
 ]
 # Valores que el diagrama escribe a mano y la base fija con CHECK: se comprueban al generar.
 VALORES = {
@@ -142,16 +192,15 @@ VALORES = {
     ("obra.asignacion", "rol"): ["almacenero", "ssoma", "residente", "administrador", "gerente"],
     ("obra.dispositivo", "estado"): ["pendiente", "activo", "revocado"],
     ("catalogo.insumo", "tipo"): ["material", "mano_obra", "equipo", "subcontrato"],
-    ("compras.proveedor", "estado_validacion"): ["validado", "sin_validar"], ("compras.proveedor", "estado"): ["activo", "baja"],
+    ("compras.proveedor", "estado_validacion"): ["validado", "sin_validar", "con_alerta_sunat"], ("compras.proveedor", "estado"): ["activo", "baja"],
     ("compras.compra", "moneda"): ["PEN", "USD"], ("compras.compra", "estado"): ["registrada", "anulada"],
     ("compras.solicitud", "estado"): ["emitida", "anulada"],
     ("tareo.trabajador", "tipo_documento"): ["DNI", "CE", "PASAPORTE"], ("tareo.trabajador", "categoria"): ["operario", "oficial", "peon"],
     ("tareo.jornada", "categoria"): ["operario", "oficial", "peon"], ("tareo.jornada", "estado"): ["presente", "ausente", "permiso"],
+    ("almacen.conteo", "estado"): ["borrador", "confirmado"], ("almacen.prestamo", "estado_devolucion"): ["bueno", "danado", "perdido"],
+    ("costo.hecho", "familia"): ["material", "mano_obra", "equipo"],
 }
-FUTURO = [  # la parte de Henry: el contrato que ya fija este esquema
-    ("obra.almacen", "se guarda en"), ("obra.periodo", "cae en"), ("obra.dispositivo", "se registra desde"),
-    ("catalogo.insumo", "mueve a"), ("compras.compra", "se recibe en (solo ingreso)"),
-]
+FUTURO = []  # 26/11: almacén y costo ya están migrados (desde la 0010) y se dibujan desde la base
 CARD = {"1": "teetee", "0..1": "teeodot"}
 
 
@@ -241,7 +290,7 @@ def main() -> None:
     L = ['digraph ER {', '  graph [rankdir=TB, fontname="Helvetica", fontsize=26, labelloc=t, pad=0.4, nodesep=0.55, ranksep=1.0, '
          'splines=true, newrank=true, '
          'label=<<B>SIGRO · Diagrama entidad-relación (modelo lógico)</B><BR/><FONT POINT-SIZE="15">'
-         'Qué cosas existen en la obra y cómo se relacionan · verificado contra la base migrada (0001 a 0006)</FONT>>];',
+         'Qué cosas existen en la obra y cómo se relacionan · verificado contra la base migrada (0001 a 0025 · 26/11/2026)</FONT>>];',
          '  node [shape=plain, fontname="Helvetica", fontsize=11];',
          '  edge [color="#444444", fontname="Helvetica", fontsize=10, arrowsize=1.1, dir=both];']
     for esquema in ESQUEMAS:
@@ -252,15 +301,6 @@ def main() -> None:
             if t.startswith(esquema + "."):
                 L.append(entidad(t))
         L.append("  }")
-    # La parte de Henry
-    L.append('  subgraph cluster_henry { label=<<B>Almacén y costo (Henry) · aún sin migración</B>>; fontsize=17; style="rounded,dashed"; color="#999999";')
-    L.append('    "almacen.movimiento" [label=<<TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="3" COLOR="#999999" STYLE="dashed">'
-             '<TR><TD BGCOLOR="#7F7F7F"><FONT COLOR="white" POINT-SIZE="13"><B>Movimiento</B></FONT></TD></TR>'
-             '<TR><TD ALIGN="LEFT"><U><B>Identificador del celular (único)</B></U></TD></TR>'
-             '<TR><TD ALIGN="LEFT">Tipo · cantidad · costo unitario</TD></TR>'
-             '<TR><TD ALIGN="LEFT" BGCOLOR="#FFF2CC"><FONT POINT-SIZE="9" COLOR="#7F6000"><I>Libro: solo se agrega · sin saldo guardado:<BR/>el saldo se suma desde los movimientos</I></FONT></TD></TR>'
-             '</TABLE>>];')
-    L.append("  }")
 
     for hijo, padre, _cols, verbo, card in R:
         if hijo == padre:       # autorrelación: la corrección apunta a la jornada original
@@ -281,7 +321,7 @@ def main() -> None:
              '<TR><TD ALIGN="LEFT"><B>Asignación</B> es la relación Usuario–Obra con atributo propio (el rol): una persona puede ser almacenero en una obra y nada en otra.</TD></TR>'
              '<TR><TD ALIGN="LEFT">Quién registró, anuló, autorizó o cerró cada hecho (siempre un <B>Usuario</B>) no se dibuja para no saturar; está en el físico.</TD></TR>'
              '<TR><TD ALIGN="LEFT">El contador del correlativo de solicitudes es una tabla técnica y no se dibuja.</TD></TR>'
-             '<TR><TD ALIGN="LEFT">Línea punteada: contrato con el módulo de Henry (aún sin migración).</TD></TR>'
+             '<TR><TD ALIGN="LEFT">Almacén usa réplicas locales del almacén y del insumo: no lee los esquemas obra ni catalogo.</TD></TR>'
              '</TABLE>>];')
     L.append("  }")
     L.append("}")

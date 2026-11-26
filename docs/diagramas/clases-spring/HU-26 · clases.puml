@@ -1,0 +1,108 @@
+@startuml
+skinparam defaultFontName "DejaVu Sans"
+skinparam defaultFontSize 12
+skinparam shadowing false
+skinparam roundCorner 8
+skinparam ArrowColor #1F2A44
+skinparam ActivityBorderColor #1F2A44
+skinparam ActivityBackgroundColor #FFF7ED
+skinparam ActivityDiamondBackgroundColor #FEF3C7
+skinparam ActivityDiamondBorderColor #92400E
+skinparam SwimlaneTitleFontStyle bold
+skinparam SwimlaneTitleFontColor #1F2A44
+skinparam SwimlaneBorderColor #9CA3AF
+skinparam PartitionBorderColor #9CA3AF
+skinparam ParticipantBorderColor #1F2A44
+skinparam ParticipantBackgroundColor #FFF7ED
+skinparam ActorBorderColor #1F2A44
+skinparam ActorBackgroundColor #FFF7ED
+skinparam DatabaseBorderColor #1F2A44
+skinparam DatabaseBackgroundColor #E0E7FF
+skinparam SequenceLifeLineBorderColor #9CA3AF
+skinparam SequenceGroupBorderColor #C2410C
+skinparam SequenceGroupHeaderFontColor #C2410C
+skinparam StateBorderColor #1F2A44
+skinparam StateBackgroundColor #FFF7ED
+skinparam StateStartColor #1F2A44
+skinparam StateEndColor #1F2A44
+skinparam NoteBackgroundColor #F3F4F6
+skinparam NoteBorderColor #9CA3AF
+skinparam TitleFontSize 15
+skinparam TitleFontColor #C2410C
+skinparam ClassBorderColor #1F2A44
+skinparam ClassBackgroundColor #FFF7ED
+skinparam ClassAttributeFontSize 11
+skinparam ClassFontStyle bold
+skinparam ClassStereotypeFontColor #6B7280
+skinparam ClassStereotypeFontSize 10
+skinparam PackageBorderColor #C2410C
+skinparam PackageFontColor #1F2A44
+skinparam PackageStyle rectangle
+skinparam ArrowFontSize 10
+skinparam ArrowFontColor #374151
+skinparam nodesep 40
+skinparam ranksep 50
+hide empty members
+hide circle
+skinparam LegendBackgroundColor #F9FAFB
+skinparam LegendBorderColor #9CA3AF
+skinparam LegendFontSize 12
+title HU-26 · Alerta de reposición\nDiagrama de clases
+package "Web de oficina (React + TypeScript)" #EFF6FF {
+class ReposicionPagina <<página>> {
+  archivo : Reposicion.tsx
+}
+}
+package "Seguridad y filtros · Spring Boot (todas las rutas)" #F5F3FF {
+class Filtros <<filtros HTTP>> {
+  CabecerasSeguridad «nosniff, DENY, CSP, HSTS, no-store»
+  BitacoraFiltro «POST y 401/403, sin datos sensibles»
+}
+class Acceso <<seguridad>> {
+  +exigir(accion, obraId) : Actor «401 · 403»
+  +exigirEnAlgunaObra(accion) : Actor
+  -exigirPin(actor, accion) «X-SIGRO-PIN»
+  Permisos.MATRIZ «51 acciones × 5 roles»
+}
+}
+package "Módulo compras · esquema compras · rol sigro_svc_compras" #FFF7ED {
+class RequerimientoController <<@RestController>> {
+  +importar() / ver() / ajustar() / agregar()
+  +saldo() / avance()
+  +registrarParametro() / parametros()
+  +marcarCritico() / criticos()
+}
+class ParametroReposicionVigente <<vista>> {
+  última vigencia por insumo
+}
+}
+package "Módulo almacén · esquema almacen · rol sigro_svc_almacen" #FFF7ED {
+class Saldo <<vista>> #F3F4F6;line:9CA3AF
+}
+package "Módulo costo · esquema costo · rol sigro_svc_costo" #FFF7ED {
+class RelevoCosto <<@Scheduled cada 5 s>> {
+  -uno() «FOR UPDATE SKIP LOCKED»
+  +vuelta() «reintentos 5 s … 1 h»
+}
+}
+package "Outbox · esquema outbox" #FFF7ED {
+class Evento <<outbox>> {
+  tipo : text
+  payload : jsonb
+  destino : text
+  intentos : int
+  siguiente_intento : timestamptz
+  enviado_en : timestamptz
+}
+}
+RelevoCosto ..> Evento : lee y marca enviado
+RequerimientoController ..> ParametroReposicionVigente : consulta
+RequerimientoController ..> Acceso : exigir(permiso, obra)
+Filtros ..> Acceso : cada petición
+legend bottom left
+<b>Regla que protege:</b> Avisa cuando el saldo baja del punto de reposición: insumo, saldo, punto y cuánto falta por
+comprar.
+<b>Estado:</b> Siguiente iteración: la alerta ya se ve en Reposición; el aviso al residente por el outbox queda pendiente.
+<i>Gris: clases de otro módulo o de contexto (se le pide a su clase, nunca a su esquema).</i>
+endlegend
+@enduml
