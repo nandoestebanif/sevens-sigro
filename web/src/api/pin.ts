@@ -50,3 +50,25 @@ export function consultaBitacora(f: FiltroBitacora = {}): string {
   if (f.solo) p.set('solo', f.solo)
   return p.toString()
 }
+
+/* ── 26/11 · acciones delicadas con PIN (además del panel): cerrar semana u obra, ampliar o recortar el plazo,
+   anular una compra, ajustar el requerimiento y cambiar el factor. pedir() pide el PIN ANTES de mandarlas
+   (si no hay uno vigente) y, si el servidor igual responde «pin_requerido», lo pide una vez más y reintenta. */
+const RUTAS_CON_PIN: RegExp[] = [
+  /^\/obras\/[^/]+\/periodos\/[^/]+\/cerrar$/,
+  /^\/obras\/[^/]+\/cerrar$/,
+  /^\/obras\/[^/]+\/(ampliar|recortar)-plazo$/,
+  /^\/obras\/[^/]+\/compras\/[^/]+\/anular$/,
+  /^\/obras\/[^/]+\/requerimiento\/[^/]+\/ajustar$/,
+  /^\/catalogo\/insumos\/[^/]+\/factor-conversion$/,
+]
+export const rutaPidePin = (metodo: string, ruta: string) => metodo === 'POST' && RUTAS_CON_PIN.some((r) => r.test(ruta.split('?')[0]))
+
+/** Quien muestra la ventana del PIN (DialogoPin, montado una vez en la app). Resuelve true si quedó un PIN vigente. */
+let solicitante: ((motivo: string) => Promise<boolean>) | null = null
+export function registrarSolicitantePin(fn: ((motivo: string) => Promise<boolean>) | null) { solicitante = fn }
+export async function solicitarPin(motivo = 'Esta acción pide tu PIN.'): Promise<boolean> {
+  if (tokenPin()) return true
+  return solicitante ? solicitante(motivo) : false
+}
+export const haySolicitantePin = () => solicitante !== null

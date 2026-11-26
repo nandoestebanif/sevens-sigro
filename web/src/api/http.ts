@@ -20,7 +20,7 @@ import type {
 } from './tipos'
 // importes propios de almacén y semana: en su línea, para no chocar con la lista de arriba
 import type { Movimiento, ReporteSemana, StockInsumo, VerificacionRecepcion } from './tipos'
-import { olvidarPin, tokenPin } from './pin'
+import { haySolicitantePin, olvidarPin, rutaPidePin, solicitarPin, tokenPin } from './pin'
 
 export const API_URL: string = (import.meta.env.VITE_API_URL ?? '').replace(/\/$/, '')
 export const usaApiReal = API_URL !== ''
@@ -76,7 +76,11 @@ function construirErrorHttp(r: Response, texto: string): ErrorApi {
 }
 
 /* ── una petición ── */
-export async function pedir<T>(metodo: 'GET' | 'POST', ruta: string, cuerpo?: object): Promise<T> {
+export async function pedir<T>(metodo: 'GET' | 'POST', ruta: string, cuerpo?: object, reintentoPin = false): Promise<T> {
+  // 26/11: las acciones delicadas piden el PIN antes de salir (el servidor también lo exige)
+  if (!reintentoPin && rutaPidePin(metodo, ruta) && !tokenPin() && haySolicitantePin()) {
+    if (!(await solicitarPin())) throw new ErrorApi('pin_cancelado', 'No se hizo nada: esta acción pide tu PIN.')
+  }
   const s = sesionActual()
   let r: Response
   try {
@@ -85,7 +89,7 @@ export async function pedir<T>(metodo: 'GET' | 'POST', ruta: string, cuerpo?: ob
       headers: {
         ...(cuerpo ? { 'Content-Type': 'application/json' } : {}),
         ...(s ? { Authorization: `Bearer ${s.token}` } : {}),
-        ...(tokenPin() ? { 'X-SIGRO-PIN': tokenPin()! } : {}),   // panel de administración (0024)
+        ...(tokenPin() ? { 'X-SIGRO-PIN': tokenPin()! } : {}),   // panel de administración (0024) y acciones delicadas (26/11)
       },
       body: cuerpo ? JSON.stringify(convertir(cuerpo, aSnake)) : undefined,
     })
@@ -100,7 +104,10 @@ export async function pedir<T>(metodo: 'GET' | 'POST', ruta: string, cuerpo?: ob
   const texto = await r.text()
   if (!r.ok) {
     const e = construirErrorHttp(r, texto)
-    if (e.codigo === 'pin_requerido') olvidarPin()   // venció: el panel vuelve a pedirlo
+    if (e.codigo === 'pin_requerido') {
+      olvidarPin()   // venció: el panel vuelve a pedirlo
+      if (!reintentoPin && rutaPidePin(metodo, ruta) && (await solicitarPin('Tu PIN venció: escríbelo otra vez.'))) return pedir<T>(metodo, ruta, cuerpo, true)
+    }
     throw e
   }
   try {
@@ -150,7 +157,8 @@ async function aObra(o: ObraApi): Promise<Obra> {
     presupuesto: '', // la API aún no guarda el código del presupuesto del S10 (pedido a Adiel)
     inicio: o.fechaInicio, fin: o.fechaFin,
     estado: o.estado === 'cerrado' || o.estado === 'cerrada' ? 'cerrada' : 'en_ejecucion',
-    semanas: periodos.map((p) => aSemana(p, hoy)),
+    // 0026: las semanas que un recorte dejó fuera del plazo no se muestran (siguen en la base, regla 10)
+    semanas: periodos.filter((p) => p.estado !== 'fuera_de_plazo').map((p) => aSemana(p, hoy)),
   }
 }
 
