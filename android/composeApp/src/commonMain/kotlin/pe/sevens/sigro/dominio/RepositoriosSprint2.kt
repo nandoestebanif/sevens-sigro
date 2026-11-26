@@ -23,6 +23,9 @@ interface RepositorioTrabajadores {
     suspend fun darDeBaja(obraId: Int, trabajadorId: Int, fechaSalida: String): Trabajador
     /** HU-64 · horas acumuladas que calcula el servidor; necesita señal. */
     suspend fun horas(obraId: Int): List<HorasTrabajador>
+    /** RENIEC vía el servidor (el token de Factiliza nunca va en el celular). Nombre completo, o null si no hay señal
+        o RENIEC no responde: entonces se escribe a mano. Por defecto null (dobles de prueba y celulares sin red). */
+    suspend fun consultarDni(obraId: Int, dni: String): String? = null
 }
 
 /**

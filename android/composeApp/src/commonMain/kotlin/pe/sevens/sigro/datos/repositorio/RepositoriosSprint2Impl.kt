@@ -95,6 +95,13 @@ class RepositorioTrabajadoresImpl(
         return aDominio(fila)
     }
 
+    override suspend fun consultarDni(obraId: Int, dni: String): String? =
+        try {
+            api.consultarDni(cred.exigir(), obraId, dni).nombreCompleto.ifBlank { null }
+        } catch (e: ErrorSigro) {
+            null   // sin señal, sin permiso o RENIEC caído: se escribe a mano, nunca bloquea el registro
+        }
+
     override suspend fun darDeBaja(obraId: Int, trabajadorId: Int, fechaSalida: String): Trabajador {
         val fila = aLocal(obraId, api.darDeBaja(cred.exigir(), obraId, trabajadorId, BajaIn(fechaSalida.trim())))
         local.guardarTodos(listOf(fila))
