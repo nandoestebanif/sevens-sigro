@@ -1,0 +1,111 @@
+@startuml
+skinparam defaultFontName "DejaVu Sans"
+skinparam defaultFontSize 12
+skinparam shadowing false
+skinparam roundCorner 8
+skinparam ArrowColor #1F2A44
+skinparam ActivityBorderColor #1F2A44
+skinparam ActivityBackgroundColor #FFF7ED
+skinparam ActivityDiamondBackgroundColor #FEF3C7
+skinparam ActivityDiamondBorderColor #92400E
+skinparam SwimlaneTitleFontStyle bold
+skinparam SwimlaneTitleFontColor #1F2A44
+skinparam SwimlaneBorderColor #9CA3AF
+skinparam PartitionBorderColor #9CA3AF
+skinparam ParticipantBorderColor #1F2A44
+skinparam ParticipantBackgroundColor #FFF7ED
+skinparam ActorBorderColor #1F2A44
+skinparam ActorBackgroundColor #FFF7ED
+skinparam DatabaseBorderColor #1F2A44
+skinparam DatabaseBackgroundColor #E0E7FF
+skinparam SequenceLifeLineBorderColor #9CA3AF
+skinparam SequenceGroupBorderColor #C2410C
+skinparam SequenceGroupHeaderFontColor #C2410C
+skinparam StateBorderColor #1F2A44
+skinparam StateBackgroundColor #FFF7ED
+skinparam StateStartColor #1F2A44
+skinparam StateEndColor #1F2A44
+skinparam NoteBackgroundColor #F3F4F6
+skinparam NoteBorderColor #9CA3AF
+skinparam TitleFontSize 15
+skinparam TitleFontColor #C2410C
+skinparam ClassBorderColor #1F2A44
+skinparam ClassBackgroundColor #FFF7ED
+skinparam SequenceBoxBorderColor #9CA3AF
+skinparam SequenceGroupBorderColor #9CA3AF
+skinparam ParticipantPadding 6
+skinparam BoxPadding 8
+skinparam SequenceLifeLineBorderColor #9CA3AF
+skinparam NoteBackgroundColor #FFF7ED
+skinparam NoteBorderColor #C2410C
+skinparam LegendBackgroundColor #F9FAFB
+skinparam LegendFontSize 11
+hide footbox
+autonumber "<b>0."
+title HU-15 · Dispositivo autorizado\nDiagrama de secuencia · App (MVVM) → API Spring Boot (Controller → Service → Repository)
+actor "Almacenero" as U
+box "Vista" #FFF7ED
+participant "PantallaDispositivo\n<<Compose>>" as V
+end box
+box "ViewModel" #FFEDD5
+participant "DispositivoViewModel\n<<ViewModel>>" as VM
+end box
+box "Dominio (reglas puras)" #ECFDF5
+participant "RepositorioDispositivo\n<<interfaz>>" as R
+end box
+box "Datos (app)" #EFF6FF
+participant "RepositorioDispositivoImpl" as RI
+participant "ApiSigro\n<<Ktor>>" as K
+end box
+box "Backend · Spring Boot 3 (monolito modular, ADR-12)" #F3F4F6
+participant "Filtros\nCabecerasSeguridad · BitacoraFiltro" as F
+participant "ObraController\n<<@RestController>>" as S
+participant "Acceso\n<<seguridad>>" as O
+participant "Obras · Claves · Tokens\n<<reglas del módulo obra>>" as SV
+database "PostgreSQL · esquema obra\n(rol sigro_svc_obras)" as PG
+end box
+U -> V : Abre «Mi celular» · «Solicitar autorización»
+V -> VM : solicitar(obraId)
+activate VM
+VM -> R : solicitarAutorizacion(obraId)
+R -> RI : (implementación inyectada por Koin)
+activate RI
+RI -> K : solicitarDispositivo(identificador)
+K -> F : POST /obras/{id}/dispositivos\nAuthorization: Bearer token
+activate F
+F -> F : cabeceras de seguridad (nosniff, DENY, no-store)
+F -> S : solicitarDispositivo(…)
+activate S
+S -> O : exigir("dispositivo.solicitar", obraId)\nToken vigente + Permisos: ¿su rol en ESTA obra?
+O --> S : Actor (o 401/403)
+S -> SV : solicitarDispositivo(actor, obraId, datos)
+activate SV
+SV -> SV : identificador generado en la primera instalación
+SV -> SV : estado = pendiente
+SV -> PG : INSERT obra.dispositivo\n(Modulo.en: transacción con el rol del módulo)
+PG --> SV : filas
+SV --> S : resultado
+S --> F : 201 · pendiente
+deactivate SV
+deactivate S
+F -> F : BitacoraFiltro: quién · obra · ruta · resultado\n(sin cuerpos, claves, PIN ni tokens)
+F --> K : respuesta JSON
+deactivate F
+K --> RI : datos
+RI --> VM : resultado
+deactivate RI
+VM --> V : «Pendiente» → «Autorizado» cuando el administrador lo aprueba
+deactivate VM
+note over V, VM
+El administrador autoriza en la web (autorizar dispositivo):
+uno activo por obra; el anterior pasa a revocado.
+AlmacenService.dispositivo() rechaza un celular no autorizado.
+end note
+legend bottom left
+<b>Arquitectura de la app:</b> Clean Architecture + MVVM (ADR-02) · offline-first (ADR-08).
+Vista = pantalla Compose · ViewModel = estado (StateFlow) y acciones · Dominio = reglas puras sin Android
+Datos = repositorio (interfaz en dominio, implementación en datos) · Room guarda · WorkManager envía · Ktor habla con la API.
+<b>Backend:</b> Spring Boot 3 · monolito modular (ADR-12): @RestController → Acceso.exigir (rol en esa obra) → servicio/reglas → repositorio JDBC
+→ PostgreSQL con el esquema y el rol de base de ESE módulo (ADR-01). Filtros: cabeceras de seguridad y bitácora (sin datos sensibles).
+endlegend
+@enduml

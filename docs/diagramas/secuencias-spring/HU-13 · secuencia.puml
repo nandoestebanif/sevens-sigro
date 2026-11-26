@@ -1,0 +1,104 @@
+@startuml
+skinparam defaultFontName "DejaVu Sans"
+skinparam defaultFontSize 12
+skinparam shadowing false
+skinparam roundCorner 8
+skinparam ArrowColor #1F2A44
+skinparam ActivityBorderColor #1F2A44
+skinparam ActivityBackgroundColor #FFF7ED
+skinparam ActivityDiamondBackgroundColor #FEF3C7
+skinparam ActivityDiamondBorderColor #92400E
+skinparam SwimlaneTitleFontStyle bold
+skinparam SwimlaneTitleFontColor #1F2A44
+skinparam SwimlaneBorderColor #9CA3AF
+skinparam PartitionBorderColor #9CA3AF
+skinparam ParticipantBorderColor #1F2A44
+skinparam ParticipantBackgroundColor #FFF7ED
+skinparam ActorBorderColor #1F2A44
+skinparam ActorBackgroundColor #FFF7ED
+skinparam DatabaseBorderColor #1F2A44
+skinparam DatabaseBackgroundColor #E0E7FF
+skinparam SequenceLifeLineBorderColor #9CA3AF
+skinparam SequenceGroupBorderColor #C2410C
+skinparam SequenceGroupHeaderFontColor #C2410C
+skinparam StateBorderColor #1F2A44
+skinparam StateBackgroundColor #FFF7ED
+skinparam StateStartColor #1F2A44
+skinparam StateEndColor #1F2A44
+skinparam NoteBackgroundColor #F3F4F6
+skinparam NoteBorderColor #9CA3AF
+skinparam TitleFontSize 15
+skinparam TitleFontColor #C2410C
+skinparam ClassBorderColor #1F2A44
+skinparam ClassBackgroundColor #FFF7ED
+skinparam SequenceBoxBorderColor #9CA3AF
+skinparam SequenceGroupBorderColor #9CA3AF
+skinparam ParticipantPadding 6
+skinparam BoxPadding 8
+skinparam SequenceLifeLineBorderColor #9CA3AF
+skinparam NoteBackgroundColor #FFF7ED
+skinparam NoteBorderColor #C2410C
+skinparam LegendBackgroundColor #F9FAFB
+skinparam LegendFontSize 11
+hide footbox
+autonumber "<b>0."
+title HU-13 · Acceso por rol\nDiagrama de secuencia · Web (Vista · ViewModel · Modelo) → API Spring Boot (Controller → Service → Repository)
+actor "Administrador" as U
+box "Vista" #FFF7ED
+participant "AdministracionPagina\n<<página React · Administracion.tsx>>" as V
+end box
+box "ViewModel" #FFEDD5
+participant "Estado de AdministracionPagina\n<<useState / useEffect>>" as VM
+end box
+box "Modelo (web)" #EFF6FF
+participant "administracion.ts\n<<repositorio>>" as C
+participant "pedir()\n<<http.ts>>" as P
+end box
+box "Backend · Spring Boot 3 (monolito modular, ADR-12)" #F3F4F6
+participant "Filtros\nCabecerasSeguridad · BitacoraFiltro" as F
+participant "ObraController\n<<@RestController>>" as S
+participant "Acceso\n<<seguridad>>" as O
+participant "Obras · Claves · Tokens\n<<reglas del módulo obra>>" as SV
+database "PostgreSQL · esquema obra\n(rol sigro_svc_obras)" as PG
+end box
+U -> V : Crea usuario con rol · o «Dar de baja»
+V -> VM : guardar() / darDeBaja()
+activate VM
+VM -> C : crearUsuario(datos) / darDeBaja(id)
+activate C
+C -> P : POST /usuarios · POST /usuarios/{id}/baja
+activate P
+P -> F : POST /usuarios · POST /usuarios/{id}/baja\nAuthorization: Bearer token
+activate F
+F -> F : cabeceras de seguridad (nosniff, DENY, no-store)
+F -> S : crearUsuario(…)
+activate S
+S -> O : exigir("usuario.crear", obraId)\nToken vigente + Permisos: ¿su rol en ESTA obra?
+O --> S : Actor (o 401/403)
+S -> SV : crearUsuario(actor, obraId, datos)
+activate SV
+SV -> SV : rol ∈ {almacenero, residente, administrador, gerente}
+SV -> SV : Claves.hashear(clave) · baja = cambiar estado
+SV -> PG : INSERT obra.usuario · UPDATE estado = 'baja' (nunca DELETE)\n(Modulo.en: transacción con el rol del módulo)
+PG --> SV : filas
+SV --> S : resultado
+S --> F : 201 / 200
+deactivate SV
+deactivate S
+F -> F : BitacoraFiltro: quién · obra · ruta · resultado\n(sin cuerpos, claves, PIN ni tokens)
+F --> P : respuesta JSON
+deactivate F
+P --> C : JSON (snake_case → camelCase) · ó ErrorApi
+deactivate P
+C --> VM : datos
+deactivate C
+VM -> VM : setState(…)
+VM --> V : re-render: lista de usuarios con su rol y estado
+deactivate VM
+legend bottom left
+<b>Arquitectura de la web:</b> SPA React con separación tipo MVVM: Vista = JSX de la página ·
+ViewModel = estado y manejadores del componente (useState/useEffect) · Modelo = cliente xxxHttp (repositorio) + pedir().
+<b>Backend:</b> Spring Boot 3 · monolito modular (ADR-12): @RestController → Acceso.exigir (rol en esa obra) → servicio/reglas → repositorio JDBC
+→ PostgreSQL con el esquema y el rol de base de ESE módulo (ADR-01). Filtros: cabeceras de seguridad y bitácora (sin datos sensibles).
+endlegend
+@enduml

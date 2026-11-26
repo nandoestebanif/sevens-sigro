@@ -1,0 +1,115 @@
+@startuml
+skinparam defaultFontName "DejaVu Sans"
+skinparam defaultFontSize 12
+skinparam shadowing false
+skinparam roundCorner 8
+skinparam ArrowColor #1F2A44
+skinparam ActivityBorderColor #1F2A44
+skinparam ActivityBackgroundColor #FFF7ED
+skinparam ActivityDiamondBackgroundColor #FEF3C7
+skinparam ActivityDiamondBorderColor #92400E
+skinparam SwimlaneTitleFontStyle bold
+skinparam SwimlaneTitleFontColor #1F2A44
+skinparam SwimlaneBorderColor #9CA3AF
+skinparam PartitionBorderColor #9CA3AF
+skinparam ParticipantBorderColor #1F2A44
+skinparam ParticipantBackgroundColor #FFF7ED
+skinparam ActorBorderColor #1F2A44
+skinparam ActorBackgroundColor #FFF7ED
+skinparam DatabaseBorderColor #1F2A44
+skinparam DatabaseBackgroundColor #E0E7FF
+skinparam SequenceLifeLineBorderColor #9CA3AF
+skinparam SequenceGroupBorderColor #C2410C
+skinparam SequenceGroupHeaderFontColor #C2410C
+skinparam StateBorderColor #1F2A44
+skinparam StateBackgroundColor #FFF7ED
+skinparam StateStartColor #1F2A44
+skinparam StateEndColor #1F2A44
+skinparam NoteBackgroundColor #F3F4F6
+skinparam NoteBorderColor #9CA3AF
+skinparam TitleFontSize 15
+skinparam TitleFontColor #C2410C
+skinparam ClassBorderColor #1F2A44
+skinparam ClassBackgroundColor #FFF7ED
+skinparam SequenceBoxBorderColor #9CA3AF
+skinparam SequenceGroupBorderColor #9CA3AF
+skinparam ParticipantPadding 6
+skinparam BoxPadding 8
+skinparam SequenceLifeLineBorderColor #9CA3AF
+skinparam NoteBackgroundColor #FFF7ED
+skinparam NoteBorderColor #C2410C
+skinparam LegendBackgroundColor #F9FAFB
+skinparam LegendFontSize 11
+hide footbox
+autonumber "<b>0."
+title HU-43 · Consulta de stock\nDiagrama de secuencia · App (MVVM) → API Spring Boot (Controller → Service → Repository)
+actor "Almacenero" as U
+box "Vista" #FFF7ED
+participant "PantallaStock\n<<Compose>>" as V
+end box
+box "ViewModel" #FFEDD5
+participant "StockViewModel\n<<ViewModel>>" as VM
+end box
+box "Dominio (reglas puras)" #ECFDF5
+participant "RepositorioStock\n<<interfaz>>" as R
+end box
+box "Datos (app)" #EFF6FF
+participant "RepositorioStockImpl" as RI
+database "StockDao\n<<Room>>" as DB
+participant "ApiSigro\n<<Ktor>>" as K
+end box
+box "Backend · Spring Boot 3 (monolito modular, ADR-12)" #F3F4F6
+participant "Filtros\nCabecerasSeguridad · BitacoraFiltro" as F
+participant "AlmacenController\n<<@RestController>>" as S
+participant "Acceso\n<<seguridad>>" as O
+participant "AlmacenService\n<<@Service · casos de uso>>" as SV
+participant "ConsultaRepository\n<<interfaz>> → JdbcConsultaRepository" as RP
+database "PostgreSQL · esquema almacen\n(rol sigro_svc_almacen)" as PG
+end box
+U -> V : Abre «Stock»
+V -> VM : cargar(obraId)
+activate VM
+VM -> R : stock(obraId)
+R -> RI : (implementación inyectada por Koin)
+activate RI
+RI -> K : stock(obraId)
+alt hay señal
+K -> F : GET /obras/{id}/almacen/stock\nAuthorization: Bearer token
+activate F
+F -> F : cabeceras de seguridad (nosniff, DENY, no-store)
+F -> S : stock(…)
+activate S
+S -> O : exigir("stock.consultar", obraId)\nToken vigente + Permisos: ¿su rol en ESTA obra?
+O --> S : Actor (o 401/403)
+S -> SV : stock(actor, obraId, datos)
+activate SV
+SV -> SV : saldo = Σ movimientos (se deriva, no se guarda)
+SV -> SV : marca los que están bajo el punto de reposición
+SV -> RP : consultar(…)
+RP -> PG : SELECT almacen.movimiento agrupado
+PG --> RP : filas
+RP --> SV : resultado
+SV --> S : resultado
+S --> F : 200 · saldos + hora del último movimiento
+deactivate SV
+deactivate S
+F --> K : respuesta JSON
+deactivate F
+K --> RI : datos
+RI -> DB : guardar(copia, hora)
+else sin señal
+RI -> DB : leer(obraId)
+DB --> RI : última copia + hora
+end
+RI --> VM : resultado
+deactivate RI
+VM --> V : saldos con su hora y alerta de reposición
+deactivate VM
+legend bottom left
+<b>Arquitectura de la app:</b> Clean Architecture + MVVM (ADR-02) · offline-first (ADR-08).
+Vista = pantalla Compose · ViewModel = estado (StateFlow) y acciones · Dominio = reglas puras sin Android
+Datos = repositorio (interfaz en dominio, implementación en datos) · Room guarda · WorkManager envía · Ktor habla con la API.
+<b>Backend:</b> Spring Boot 3 · monolito modular (ADR-12): @RestController → Acceso.exigir (rol en esa obra) → servicio/reglas → repositorio JDBC
+→ PostgreSQL con el esquema y el rol de base de ESE módulo (ADR-01). Filtros: cabeceras de seguridad y bitácora (sin datos sensibles).
+endlegend
+@enduml
