@@ -1,0 +1,103 @@
+@startuml
+skinparam defaultFontName "DejaVu Sans"
+skinparam defaultFontSize 12
+skinparam shadowing false
+skinparam roundCorner 8
+skinparam ArrowColor #1F2A44
+skinparam ActivityBorderColor #1F2A44
+skinparam ActivityBackgroundColor #FFF7ED
+skinparam ActivityDiamondBackgroundColor #FEF3C7
+skinparam ActivityDiamondBorderColor #92400E
+skinparam SwimlaneTitleFontStyle bold
+skinparam SwimlaneTitleFontColor #1F2A44
+skinparam SwimlaneBorderColor #9CA3AF
+skinparam PartitionBorderColor #9CA3AF
+skinparam ParticipantBorderColor #1F2A44
+skinparam ParticipantBackgroundColor #FFF7ED
+skinparam ActorBorderColor #1F2A44
+skinparam ActorBackgroundColor #FFF7ED
+skinparam DatabaseBorderColor #1F2A44
+skinparam DatabaseBackgroundColor #E0E7FF
+skinparam SequenceLifeLineBorderColor #9CA3AF
+skinparam SequenceGroupBorderColor #C2410C
+skinparam SequenceGroupHeaderFontColor #C2410C
+skinparam StateBorderColor #1F2A44
+skinparam StateBackgroundColor #FFF7ED
+skinparam StateStartColor #1F2A44
+skinparam StateEndColor #1F2A44
+skinparam NoteBackgroundColor #F3F4F6
+skinparam NoteBorderColor #9CA3AF
+skinparam TitleFontSize 15
+skinparam TitleFontColor #C2410C
+skinparam ClassBorderColor #1F2A44
+skinparam ClassBackgroundColor #FFF7ED
+skinparam SequenceBoxBorderColor #9CA3AF
+skinparam SequenceGroupBorderColor #9CA3AF
+skinparam ParticipantPadding 6
+skinparam BoxPadding 8
+skinparam SequenceLifeLineBorderColor #9CA3AF
+skinparam NoteBackgroundColor #FFF7ED
+skinparam NoteBorderColor #C2410C
+skinparam LegendBackgroundColor #F9FAFB
+skinparam LegendFontSize 11
+hide footbox
+autonumber "<b>0."
+title HU-29 · Lista de proveedores\nDiagrama de secuencia · Web (Vista · ViewModel · Modelo) → API Spring Boot (Controller → Service → Repository)
+actor "Almacenero" as U
+box "Vista" #FFF7ED
+participant "ProveedoresPagina\n<<página React · Proveedores.tsx>>" as V
+end box
+box "ViewModel" #FFEDD5
+participant "Estado de ProveedoresPagina\n<<useState / useEffect>>" as VM
+end box
+box "Modelo (web)" #EFF6FF
+participant "proveedoresHttp\n<<repositorio>>" as C
+participant "pedir()\n<<http.ts>>" as P
+end box
+box "Backend · Spring Boot 3 (monolito modular, ADR-12)" #F3F4F6
+participant "Filtros\nCabecerasSeguridad · BitacoraFiltro" as F
+participant "ComprasController\n<<@RestController>>" as S
+participant "Acceso\n<<seguridad>>" as O
+participant "Dominio · Compras\n<<reglas del módulo compras>>" as SV
+database "PostgreSQL · esquema compras\n(rol sigro_svc_compras)" as PG
+end box
+U -> V : Escribe razón social o RUC
+V -> VM : cargar(q)
+activate VM
+VM -> C : listar(q)
+activate C
+C -> P : GET /proveedores?q=
+activate P
+P -> F : GET /proveedores?q=\nAuthorization: Bearer token
+activate F
+F -> F : cabeceras de seguridad (nosniff, DENY, no-store)
+F -> S : listarProveedores(…)
+activate S
+S -> O : actor()\nTokens.leer(JWT) ¿vigente?
+O --> S : Actor
+S -> SV : listarProveedores(actor, obraId, datos)
+activate SV
+SV -> SV : busca por RUC o razón social
+SV -> SV : para comprar: solo activos
+SV -> PG : SELECT compras.proveedor\n(Modulo.en: transacción con el rol del módulo)
+PG --> SV : filas
+SV --> S : resultado
+S --> F : 200 · lista
+deactivate SV
+deactivate S
+F --> P : respuesta JSON
+deactivate F
+P --> C : JSON (snake_case → camelCase) · ó ErrorApi
+deactivate P
+C --> VM : datos
+deactivate C
+VM -> VM : setState(…)
+VM --> V : re-render: razón social, RUC y estado
+deactivate VM
+legend bottom left
+<b>Arquitectura de la web:</b> SPA React con separación tipo MVVM: Vista = JSX de la página ·
+ViewModel = estado y manejadores del componente (useState/useEffect) · Modelo = cliente xxxHttp (repositorio) + pedir().
+<b>Backend:</b> Spring Boot 3 · monolito modular (ADR-12): @RestController → Acceso.exigir (rol en esa obra) → servicio/reglas → repositorio JDBC
+→ PostgreSQL con el esquema y el rol de base de ESE módulo (ADR-01). Filtros: cabeceras de seguridad y bitácora (sin datos sensibles).
+endlegend
+@enduml

@@ -1,0 +1,118 @@
+@startuml
+skinparam defaultFontName "DejaVu Sans"
+skinparam defaultFontSize 12
+skinparam shadowing false
+skinparam roundCorner 8
+skinparam ArrowColor #1F2A44
+skinparam ActivityBorderColor #1F2A44
+skinparam ActivityBackgroundColor #FFF7ED
+skinparam ActivityDiamondBackgroundColor #FEF3C7
+skinparam ActivityDiamondBorderColor #92400E
+skinparam SwimlaneTitleFontStyle bold
+skinparam SwimlaneTitleFontColor #1F2A44
+skinparam SwimlaneBorderColor #9CA3AF
+skinparam PartitionBorderColor #9CA3AF
+skinparam ParticipantBorderColor #1F2A44
+skinparam ParticipantBackgroundColor #FFF7ED
+skinparam ActorBorderColor #1F2A44
+skinparam ActorBackgroundColor #FFF7ED
+skinparam DatabaseBorderColor #1F2A44
+skinparam DatabaseBackgroundColor #E0E7FF
+skinparam SequenceLifeLineBorderColor #9CA3AF
+skinparam SequenceGroupBorderColor #C2410C
+skinparam SequenceGroupHeaderFontColor #C2410C
+skinparam StateBorderColor #1F2A44
+skinparam StateBackgroundColor #FFF7ED
+skinparam StateStartColor #1F2A44
+skinparam StateEndColor #1F2A44
+skinparam NoteBackgroundColor #F3F4F6
+skinparam NoteBorderColor #9CA3AF
+skinparam TitleFontSize 15
+skinparam TitleFontColor #C2410C
+skinparam ClassBorderColor #1F2A44
+skinparam ClassBackgroundColor #FFF7ED
+skinparam SequenceBoxBorderColor #9CA3AF
+skinparam SequenceGroupBorderColor #9CA3AF
+skinparam ParticipantPadding 6
+skinparam BoxPadding 8
+skinparam SequenceLifeLineBorderColor #9CA3AF
+skinparam NoteBackgroundColor #FFF7ED
+skinparam NoteBorderColor #C2410C
+skinparam LegendBackgroundColor #F9FAFB
+skinparam LegendFontSize 11
+hide footbox
+autonumber "<b>0."
+title HU-32 · Registro de la compra\nDiagrama de secuencia · Web (Vista · ViewModel · Modelo) → API Spring Boot (Controller → Service → Repository)
+actor "Almacenero" as U
+box "Vista" #FFF7ED
+participant "ComprasPagina\n<<página React · Compras.tsx>>" as V
+end box
+box "ViewModel" #FFEDD5
+participant "Estado de ComprasPagina\n<<useState / useEffect>>" as VM
+end box
+box "Modelo (web)" #EFF6FF
+participant "comprasHttp\n<<repositorio>>" as C
+participant "pedir()\n<<http.ts>>" as P
+end box
+box "Backend · Spring Boot 3 (monolito modular, ADR-12)" #F3F4F6
+participant "Filtros\nCabecerasSeguridad · BitacoraFiltro" as F
+participant "ComprasController\n<<@RestController>>" as S
+participant "Acceso\n<<seguridad>>" as O
+participant "Dominio · Compras\n<<reglas del módulo compras>>" as SV
+database "PostgreSQL · esquema compras\n(rol sigro_svc_compras)" as PG
+end box
+U -> V : Elige proveedor, comprobante, líneas · «Registrar compra»
+V -> VM : registrar()
+activate VM
+VM -> VM : al menos una línea con cantidad y precio
+alt dato inválido
+VM --> V : muestra el error junto al campo
+else válido
+VM -> C : registrar(compra)
+activate C
+C -> P : POST /obras/{id}/compras
+activate P
+P -> F : POST /obras/{id}/compras\nAuthorization: Bearer token
+activate F
+F -> F : cabeceras de seguridad (nosniff, DENY, no-store)
+F -> S : registrarCompra(…)
+activate S
+S -> O : exigir("compra.registrar", obraId)\nToken vigente + Permisos: ¿su rol en ESTA obra?
+O --> S : Actor (o 401/403)
+S -> SV : registrarCompra(actor, obraId, datos)
+activate SV
+SV -> SV : base, IGV 18 % y total (IGV aparte, NIC 2)
+SV -> SV : comprobante único por proveedor (tipo + número)
+alt comprobante repetido
+SV --> S : ErrorSigro · ManejadorErrores
+S --> F : 409 · «ya está registrado»
+else válido
+SV -> PG : INSERT compras.compra + compras.compra_linea (no toca el stock)\n(Modulo.en: transacción con el rol del módulo)
+PG --> SV : filas
+SV --> S : resultado
+S --> F : 201 · compra pendiente de recepción
+end
+deactivate SV
+deactivate S
+F -> F : BitacoraFiltro: quién · obra · ruta · resultado\n(sin cuerpos, claves, PIN ni tokens)
+F --> P : respuesta JSON
+deactivate F
+P --> C : JSON (snake_case → camelCase) · ó ErrorApi
+deactivate P
+C --> VM : datos
+deactivate C
+VM -> VM : setState(…)
+VM --> V : re-render: compra en la lista «Pendiente de recepción»
+end
+deactivate VM
+note over V, VM
+El stock no se mueve aquí:
+se mueve con la recepción (HU-35).
+end note
+legend bottom left
+<b>Arquitectura de la web:</b> SPA React con separación tipo MVVM: Vista = JSX de la página ·
+ViewModel = estado y manejadores del componente (useState/useEffect) · Modelo = cliente xxxHttp (repositorio) + pedir().
+<b>Backend:</b> Spring Boot 3 · monolito modular (ADR-12): @RestController → Acceso.exigir (rol en esa obra) → servicio/reglas → repositorio JDBC
+→ PostgreSQL con el esquema y el rol de base de ESE módulo (ADR-01). Filtros: cabeceras de seguridad y bitácora (sin datos sensibles).
+endlegend
+@enduml

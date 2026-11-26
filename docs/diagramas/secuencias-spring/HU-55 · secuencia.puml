@@ -1,0 +1,111 @@
+@startuml
+skinparam defaultFontName "DejaVu Sans"
+skinparam defaultFontSize 12
+skinparam shadowing false
+skinparam roundCorner 8
+skinparam ArrowColor #1F2A44
+skinparam ActivityBorderColor #1F2A44
+skinparam ActivityBackgroundColor #FFF7ED
+skinparam ActivityDiamondBackgroundColor #FEF3C7
+skinparam ActivityDiamondBorderColor #92400E
+skinparam SwimlaneTitleFontStyle bold
+skinparam SwimlaneTitleFontColor #1F2A44
+skinparam SwimlaneBorderColor #9CA3AF
+skinparam PartitionBorderColor #9CA3AF
+skinparam ParticipantBorderColor #1F2A44
+skinparam ParticipantBackgroundColor #FFF7ED
+skinparam ActorBorderColor #1F2A44
+skinparam ActorBackgroundColor #FFF7ED
+skinparam DatabaseBorderColor #1F2A44
+skinparam DatabaseBackgroundColor #E0E7FF
+skinparam SequenceLifeLineBorderColor #9CA3AF
+skinparam SequenceGroupBorderColor #C2410C
+skinparam SequenceGroupHeaderFontColor #C2410C
+skinparam StateBorderColor #1F2A44
+skinparam StateBackgroundColor #FFF7ED
+skinparam StateStartColor #1F2A44
+skinparam StateEndColor #1F2A44
+skinparam NoteBackgroundColor #F3F4F6
+skinparam NoteBorderColor #9CA3AF
+skinparam TitleFontSize 15
+skinparam TitleFontColor #C2410C
+skinparam ClassBorderColor #1F2A44
+skinparam ClassBackgroundColor #FFF7ED
+skinparam SequenceBoxBorderColor #9CA3AF
+skinparam SequenceGroupBorderColor #9CA3AF
+skinparam ParticipantPadding 6
+skinparam BoxPadding 8
+skinparam SequenceLifeLineBorderColor #9CA3AF
+skinparam NoteBackgroundColor #FFF7ED
+skinparam NoteBorderColor #C2410C
+skinparam LegendBackgroundColor #F9FAFB
+skinparam LegendFontSize 11
+hide footbox
+autonumber "<b>0."
+title HU-55 · Salida valorizada\nDiagrama de secuencia · Web (Vista · ViewModel · Modelo) → API Spring Boot (Controller → Service → Repository)
+actor "Gerente" as U
+box "Vista" #FFF7ED
+participant "MovimientosPagina\n<<página React · Movimientos.tsx>>" as V
+end box
+box "ViewModel" #FFEDD5
+participant "Estado de MovimientosPagina\n<<useState / useEffect>>" as VM
+end box
+box "Modelo (web)" #EFF6FF
+participant "almacenHttp\n<<repositorio>>" as C
+participant "pedir()\n<<http.ts>>" as P
+end box
+box "Backend · Spring Boot 3 (monolito modular, ADR-12)" #F3F4F6
+participant "Filtros\nCabecerasSeguridad · BitacoraFiltro" as F
+participant "AlmacenController\n<<@RestController>>" as S
+participant "Acceso\n<<seguridad>>" as O
+participant "AlmacenService\n<<@Service · casos de uso>>" as SV
+participant "ConsultaRepository\n<<interfaz>> → JdbcConsultaRepository" as RP
+database "PostgreSQL · esquema almacen\n(rol sigro_svc_almacen)" as PG
+end box
+U -> V : Abre el kárdex del insumo
+V -> VM : cargar()
+activate VM
+VM -> C : kardex(insumoId, almacenId)
+activate C
+C -> P : GET /obras/{id}/almacen/kardex
+activate P
+P -> F : GET /obras/{id}/almacen/kardex\nAuthorization: Bearer token
+activate F
+F -> F : cabeceras de seguridad (nosniff, DENY, no-store)
+F -> S : kardex(…)
+activate S
+S -> O : exigir("stock.consultar", obraId)\nToken vigente + Permisos: ¿su rol en ESTA obra?
+O --> S : Actor (o 401/403)
+S -> SV : kardex(actor, obraId, datos)
+activate SV
+SV -> SV : cada fila trae el costo_unitario congelado en su INSERT
+SV -> SV : promedio ponderado (NIC 2) tras cada recepción
+SV -> RP : consultar(…)
+RP -> PG : SELECT almacen.movimiento ORDER BY fecha
+PG --> RP : filas
+RP --> SV : resultado
+SV --> S : resultado
+S --> F : 200 · movimientos con costo
+deactivate SV
+deactivate S
+F --> P : respuesta JSON
+deactivate F
+P --> C : JSON (snake_case → camelCase) · ó ErrorApi
+deactivate P
+C --> VM : datos
+deactivate C
+VM -> VM : setState(…)
+VM --> V : re-render: kárdex con costo, saldo y promedio · criterio NIC 2 declarado
+deactivate VM
+note over V, VM
+El costo se congela al registrar la salida (HU-40, paso
+«promedio ponderado (NIC 2) vigente»): una recepción posterior
+no cambia una salida ya registrada (ADR-05).
+end note
+legend bottom left
+<b>Arquitectura de la web:</b> SPA React con separación tipo MVVM: Vista = JSX de la página ·
+ViewModel = estado y manejadores del componente (useState/useEffect) · Modelo = cliente xxxHttp (repositorio) + pedir().
+<b>Backend:</b> Spring Boot 3 · monolito modular (ADR-12): @RestController → Acceso.exigir (rol en esa obra) → servicio/reglas → repositorio JDBC
+→ PostgreSQL con el esquema y el rol de base de ESE módulo (ADR-01). Filtros: cabeceras de seguridad y bitácora (sin datos sensibles).
+endlegend
+@enduml

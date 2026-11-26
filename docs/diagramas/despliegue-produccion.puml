@@ -1,0 +1,33 @@
+@startuml
+skinparam defaultFontName DejaVu Sans
+skinparam shadowing false
+title Despliegue vigente de SIGRO (26/11/2026)
+node "Celular Android del almacenero" {
+  artifact "SIGRO 1.1.0 (APK/AAB firmado)" as APK
+  database "Room (cola sin señal)" as ROOM
+}
+node "PC de oficina" {
+  artifact "Navegador" as NAV
+}
+cloud "Render" {
+  node "sigro-web\n[sitio estático + PWA]" as SW
+  node "sevens-sigro\n[Docker · Spring Boot 3 · Java 17]" as SS
+  node "sigro-api\n[Python · avisos/notificaciones (ADR-07)]" as SA
+}
+cloud "Neon" {
+  database "PostgreSQL 16\nesquemas: obra, catalogo, compras,\ntareo, almacen, costo, outbox" as PG
+}
+cloud "GitHub" {
+  node "Actions (CI: pruebas, visual, calidad)" as GA
+  node "SonarCloud" as SON
+}
+node "Factiliza / apisperu" as PADRON
+APK --> SS : HTTPS /api/v1
+APK --> ROOM
+NAV --> SW : HTTPS
+SW --> SS : rewrite /api/* y /salud/*
+SS --> PG : JDBC (rol por módulo)
+SS --> PADRON : HTTPS
+SA --> PG : outbox (avisos)
+GA ..> SON
+@enduml

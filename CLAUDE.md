@@ -74,7 +74,18 @@ lo declara.
 - **Insumos críticos (HU-28, migración 0018).** Solo residente y administrador marcan o desmarcan (`critico.marcar`). Cada cambio es una fila nueva en `compras.insumo_critico` (libro solo-agregar: autor y fecha; nada se borra); la vigente es la última. Solo se marca lo que está en el requerimiento de la obra. El sistema propone candidatos por valor presupuestado (`GET /obras/{id}/criticos/candidatos`) y no marca nada solo. `requerimiento` y `avance` traen `critico` y aceptan `solo_criticos=true`.
 - **Insumo agregado a mano (T-340).** Solo residente y administrador, con motivo obligatorio. La línea del requerimiento lleva `origen` (`s10` o `manual`) y `motivo_alta`; no se edita nunca. Si el insumo ya está planificado es un ajuste (409), no un alta.
 
-## Stack y arquitectura
+## Arquitectura vigente (ADR-12 · 26/11/2026)
+
+**Lo que corre en producción es `backend-spring/`**: Spring Boot 3 + Java 17, un solo desplegable (`sevens-sigro`
+en Render), monolito modular con un paquete por dominio (`obra`, `catalogo`, `compras`, `tareo`, `almacen`,
+`costo`) más `seguridad`, `comun` e `integraciones`. Se conservan las reglas que daban el aislamiento:
+cada módulo entra a la base con su rol (`SET ROLE sigro_svc_<módulo>`, `ConfigModulos`), lo de otro módulo se pide
+a su clase (no por SQL), la autorización es `Acceso.exigir(acción, obra)` con la matriz `Permisos` (51 acciones)
+y los hechos de costo salen por outbox y los entrega `RelevoCosto`. Capas: `@RestController` → servicio/reglas →
+repositorio JDBC (explícitas en almacén). **Alembic (`api/migraciones`) sigue siendo la fuente del esquema.**
+El backend Python de abajo queda como referencia del contrato; `api/pruebas` se corre también contra Spring.
+
+## Stack y arquitectura (histórico: microservicios Python, ADR-09/ADR-10)
 
 | Pieza | Tecnología |
 |---|---|

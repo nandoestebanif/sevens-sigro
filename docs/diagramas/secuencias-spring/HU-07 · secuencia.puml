@@ -1,0 +1,113 @@
+@startuml
+skinparam defaultFontName "DejaVu Sans"
+skinparam defaultFontSize 12
+skinparam shadowing false
+skinparam roundCorner 8
+skinparam ArrowColor #1F2A44
+skinparam ActivityBorderColor #1F2A44
+skinparam ActivityBackgroundColor #FFF7ED
+skinparam ActivityDiamondBackgroundColor #FEF3C7
+skinparam ActivityDiamondBorderColor #92400E
+skinparam SwimlaneTitleFontStyle bold
+skinparam SwimlaneTitleFontColor #1F2A44
+skinparam SwimlaneBorderColor #9CA3AF
+skinparam PartitionBorderColor #9CA3AF
+skinparam ParticipantBorderColor #1F2A44
+skinparam ParticipantBackgroundColor #FFF7ED
+skinparam ActorBorderColor #1F2A44
+skinparam ActorBackgroundColor #FFF7ED
+skinparam DatabaseBorderColor #1F2A44
+skinparam DatabaseBackgroundColor #E0E7FF
+skinparam SequenceLifeLineBorderColor #9CA3AF
+skinparam SequenceGroupBorderColor #C2410C
+skinparam SequenceGroupHeaderFontColor #C2410C
+skinparam StateBorderColor #1F2A44
+skinparam StateBackgroundColor #FFF7ED
+skinparam StateStartColor #1F2A44
+skinparam StateEndColor #1F2A44
+skinparam NoteBackgroundColor #F3F4F6
+skinparam NoteBorderColor #9CA3AF
+skinparam TitleFontSize 15
+skinparam TitleFontColor #C2410C
+skinparam ClassBorderColor #1F2A44
+skinparam ClassBackgroundColor #FFF7ED
+skinparam SequenceBoxBorderColor #9CA3AF
+skinparam SequenceGroupBorderColor #9CA3AF
+skinparam ParticipantPadding 6
+skinparam BoxPadding 8
+skinparam SequenceLifeLineBorderColor #9CA3AF
+skinparam NoteBackgroundColor #FFF7ED
+skinparam NoteBorderColor #C2410C
+skinparam LegendBackgroundColor #F9FAFB
+skinparam LegendFontSize 11
+hide footbox
+autonumber "<b>0."
+title HU-07 · Importación del catálogo\nDiagrama de secuencia · Web (Vista · ViewModel · Modelo) → API Spring Boot (Controller → Service → Repository)
+actor "Residente de obra" as U
+box "Vista" #FFF7ED
+participant "ImportarPagina\n<<página React · Importar.tsx>>" as V
+end box
+box "ViewModel" #FFEDD5
+participant "Estado de ImportarPagina\n<<useState / useEffect>>" as VM
+end box
+box "Modelo (web)" #EFF6FF
+participant "importarRelacionS10() · catalogoHttp\n<<repositorio>>" as C
+participant "pedir()\n<<http.ts>>" as P
+end box
+box "Backend · Spring Boot 3 (monolito modular, ADR-12)" #F3F4F6
+participant "Filtros\nCabecerasSeguridad · BitacoraFiltro" as F
+participant "CatalogoController\n<<@RestController>>" as S
+participant "Acceso\n<<seguridad>>" as O
+participant "Catalogo\n<<reglas del módulo catálogo>>" as SV
+database "PostgreSQL · esquema catalogo\n(rol sigro_svc_catalogo)" as PG
+end box
+U -> V : Sube el PDF del S10 · revisa · «Confirmar e importar»
+V -> VM : importar()
+activate VM
+VM -> C : importarRelacionS10(pdf)
+C -> P : POST /catalogo/importaciones-s10 (leer_pdf_s10)
+P --> C : vista previa: 284 filas, total S/ 1 479 338
+C --> VM : filas
+VM --> V : muestra la vista previa antes de grabar
+VM -> C : aplicarS10(filas)
+activate C
+C -> P : POST /catalogo/insumos/importar-s10
+activate P
+P -> F : POST /catalogo/insumos/importar-s10\nAuthorization: Bearer token
+activate F
+F -> F : cabeceras de seguridad (nosniff, DENY, no-store)
+F -> S : importar(…)
+activate S
+S -> O : exigir("insumo.importar", obraId)\nToken vigente + Permisos: ¿su rol en ESTA obra?
+O --> S : Actor (o 401/403)
+S -> SV : importar(actor, obraId, datos)
+activate SV
+SV -> SV : por cada fila: buscar por código S10
+SV -> SV : existe → actualizar · no existe → crear (no duplica)
+SV -> PG : INSERT … ON CONFLICT (codigo) DO UPDATE\n(Modulo.en: transacción con el rol del módulo)
+PG --> SV : filas
+SV --> S : resultado
+S --> F : 200 · {creados, actualizados, fallidos}
+deactivate SV
+deactivate S
+F -> F : BitacoraFiltro: quién · obra · ruta · resultado\n(sin cuerpos, claves, PIN ni tokens)
+F --> P : respuesta JSON
+deactivate F
+P --> C : JSON (snake_case → camelCase) · ó ErrorApi
+deactivate P
+C --> VM : datos
+deactivate C
+VM -> VM : setState(…)
+VM --> V : re-render: resumen 0 nuevos · 284 actualizados · 0 fallidos
+deactivate VM
+note over V, VM
+Repetir la importación no toca el kárdex:
+los saldos viven en el módulo almacén.
+end note
+legend bottom left
+<b>Arquitectura de la web:</b> SPA React con separación tipo MVVM: Vista = JSX de la página ·
+ViewModel = estado y manejadores del componente (useState/useEffect) · Modelo = cliente xxxHttp (repositorio) + pedir().
+<b>Backend:</b> Spring Boot 3 · monolito modular (ADR-12): @RestController → Acceso.exigir (rol en esa obra) → servicio/reglas → repositorio JDBC
+→ PostgreSQL con el esquema y el rol de base de ESE módulo (ADR-01). Filtros: cabeceras de seguridad y bitácora (sin datos sensibles).
+endlegend
+@enduml

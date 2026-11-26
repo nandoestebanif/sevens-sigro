@@ -1,0 +1,128 @@
+@startuml
+skinparam defaultFontName "DejaVu Sans"
+skinparam defaultFontSize 12
+skinparam shadowing false
+skinparam roundCorner 8
+skinparam ArrowColor #1F2A44
+skinparam ActivityBorderColor #1F2A44
+skinparam ActivityBackgroundColor #FFF7ED
+skinparam ActivityDiamondBackgroundColor #FEF3C7
+skinparam ActivityDiamondBorderColor #92400E
+skinparam SwimlaneTitleFontStyle bold
+skinparam SwimlaneTitleFontColor #1F2A44
+skinparam SwimlaneBorderColor #9CA3AF
+skinparam PartitionBorderColor #9CA3AF
+skinparam ParticipantBorderColor #1F2A44
+skinparam ParticipantBackgroundColor #FFF7ED
+skinparam ActorBorderColor #1F2A44
+skinparam ActorBackgroundColor #FFF7ED
+skinparam DatabaseBorderColor #1F2A44
+skinparam DatabaseBackgroundColor #E0E7FF
+skinparam SequenceLifeLineBorderColor #9CA3AF
+skinparam SequenceGroupBorderColor #C2410C
+skinparam SequenceGroupHeaderFontColor #C2410C
+skinparam StateBorderColor #1F2A44
+skinparam StateBackgroundColor #FFF7ED
+skinparam StateStartColor #1F2A44
+skinparam StateEndColor #1F2A44
+skinparam NoteBackgroundColor #F3F4F6
+skinparam NoteBorderColor #9CA3AF
+skinparam TitleFontSize 15
+skinparam TitleFontColor #C2410C
+skinparam ClassBorderColor #1F2A44
+skinparam ClassBackgroundColor #FFF7ED
+skinparam ClassAttributeFontSize 11
+skinparam ClassFontStyle bold
+skinparam ClassStereotypeFontColor #6B7280
+skinparam ClassStereotypeFontSize 10
+skinparam PackageBorderColor #C2410C
+skinparam PackageFontColor #1F2A44
+skinparam PackageStyle rectangle
+skinparam ArrowFontSize 10
+skinparam ArrowFontColor #374151
+skinparam nodesep 40
+skinparam ranksep 50
+hide empty members
+hide circle
+skinparam LegendBackgroundColor #F9FAFB
+skinparam LegendBorderColor #9CA3AF
+skinparam LegendFontSize 12
+title HU-63 · Asistencia de la jornada\nDiagrama de clases
+package "App del almacenero (Kotlin Multiplatform)" #ECFDF5 {
+class AsistenciaViewModel <<ViewModel>> {
+  +guardar(obraId)
+  +empezarCorreccion(trabajadorId)
+  +confirmarCorreccion(obraId)
+}
+interface RepositorioJornadas {
+  +corregir(obraId, fecha, marca, motivo) : JornadaCorregida
+}
+class ApiSigro <<Ktor>> {
+  +iniciarSesion()
+  +enviarSalida()
+  +enviarRegistro()
+  +verificarRecepcion()
+  +estadoRecepcion()
+  +stock()
+  +corregirJornada()
+  +solicitarDispositivo()
+}
+}
+package "Seguridad y filtros · Spring Boot (todas las rutas)" #F5F3FF {
+class Filtros <<filtros HTTP>> {
+  CabecerasSeguridad «nosniff, DENY, CSP, HSTS, no-store»
+  BitacoraFiltro «POST y 401/403, sin datos sensibles»
+}
+class Acceso <<seguridad>> {
+  +exigir(accion, obraId) : Actor «401 · 403»
+  +exigirEnAlgunaObra(accion) : Actor
+  -exigirPin(actor, accion) «X-SIGRO-PIN»
+  Permisos.MATRIZ «51 acciones × 5 roles»
+}
+}
+package "Módulo tareo · esquema tareo · rol sigro_svc_tareo" #FFF7ED {
+class TareoController <<@RestController>> {
+  +registrar() / baja()
+  +jornada() / corregir()
+  +jornadas() / horas()
+  +consultarDni()
+}
+class Jornada <<solo INSERT>> {
+  uuid_cliente : uuid
+  fecha : date
+  estado : presente | ausente | permiso
+  horas_normales : numeric
+  horas_extra : numeric
+  corrige_a_id : bigint
+  motivo_correccion : text
+}
+class JornadaVigente <<vista>> {
+  la última versión de cada jornada
+}
+class Trabajador {
+  nombre : text
+  tipo_documento : DNI | CE | PASAPORTE
+  documento : text
+  categoria : operario | oficial | peon
+  cuadrilla : text
+  fecha_ingreso : date
+  fecha_salida : date «baja, no se borra»
+}
+}
+Trabajador "1" -- "0..*" Jornada
+Jornada "0..1" --> "1" Jornada : corrige_a
+JornadaVigente ..> Jornada
+TareoController ..> Trabajador
+TareoController ..> Jornada : inserta / corrige
+TareoController ..> JornadaVigente : consulta
+TareoController ..> Acceso : exigir(permiso, obra)
+ApiSigro ..> Filtros : HTTPS /api/v1 + JWT
+AsistenciaViewModel --> RepositorioJornadas
+RepositorioJornadas ..> ApiSigro
+Filtros ..> Acceso : cada petición
+legend bottom left
+<b>Regla que protege:</b> Una jornada por trabajador y fecha, con horas normales y extra aparte. Corregir exige motivo y la
+anterior queda como constancia (corrige_a).
+<i>Gris: clases de otro módulo o de contexto (se le pide a su clase, nunca a su esquema).</i>
+endlegend
+@enduml
