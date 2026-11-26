@@ -1,6 +1,6 @@
 /* SIGRO · llamadas del PIN y de la bitácora (el token vive en ./pin, sin depender de http). */
 import { obraId, pedir } from './http'
-import { guardarPin, type FilaBitacora } from './pin'
+import { consultaBitacora, guardarPin, type FilaBitacora, type FiltroBitacora } from './pin'
 
 export const pin = {
   estado: () => pedir<{ configurado: boolean }>('GET', '/auth/pin'),
@@ -15,6 +15,6 @@ export const pin = {
 }
 
 
-export async function bitacora(soloRechazos = false): Promise<FilaBitacora[]> {
-  return pedir<FilaBitacora[]>('GET', `/obras/${await obraId()}/bitacora?limite=300${soloRechazos ? '&solo=rechazos' : ''}`)
+export async function bitacora(f: FiltroBitacora = {}): Promise<FilaBitacora[]> {
+  return pedir<FilaBitacora[]>('GET', `/obras/${await obraId()}/bitacora?${consultaBitacora(f)}`)
 }

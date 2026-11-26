@@ -37,3 +37,16 @@ export function pinAceptable(pin: string): string | null {
 }
 
 export interface FilaBitacora { id: number; momento: string; usuarioId: number | null; usuario: string | null; metodo: string; ruta: string; estado: number; duracionMs: number }
+
+/** Filtros de la bitácora; el servidor los combina (fechas de Lima, inclusive). */
+export interface FiltroBitacora { desde?: string; hasta?: string; usuarioId?: number; q?: string; solo?: '' | 'cambios' | 'rechazos' | 'errores' }
+
+export function consultaBitacora(f: FiltroBitacora = {}): string {
+  const p = new URLSearchParams({ limite: '500' })
+  if (f.desde) p.set('desde', f.desde)
+  if (f.hasta) p.set('hasta', f.hasta)
+  if (f.usuarioId) p.set('usuario_id', String(f.usuarioId))
+  if (f.q?.trim()) p.set('q', f.q.trim().slice(0, 60))
+  if (f.solo) p.set('solo', f.solo)
+  return p.toString()
+}

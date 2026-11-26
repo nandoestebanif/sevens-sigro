@@ -64,6 +64,12 @@ _DEF_COMPRADO = "Valor de las compras registradas hasta la fecha de corte (base 
 _TOLERANCIA = Decimal("0.01")
 
 
+def tolerancia_redondeo(hechos: int) -> Decimal:
+    """Libro y modelo redondean cada importe por su lado: cada hecho puede diferir hasta medio céntimo.
+    Una diferencia dentro de eso es redondeo, no un evento pendiente (25/11: con ~300 movimientos salían 0,02)."""
+    return max(_TOLERANCIA, Decimal("0.005") * hechos)
+
+
 def _texto(v) -> str | None:
     return None if v is None else str(v)
 
@@ -108,10 +114,11 @@ def gasto(corte: str | None = Query(None, description="AAAA-MM-DD o AAAA-MM-DDTH
         if pedido is None:                                                 # contra el modelo de lectura que llega por eventos
             m = fila(a.sesion, "SELECT coalesce(sum(importe) FILTER (WHERE clase = 'ingreso'), 0) AS recibido, "
                                "coalesce(-sum(importe) FILTER (WHERE clase = 'consumo'), 0) AS consumido, "
-                               "coalesce(sum(importe) FILTER (WHERE clase IN ('ingreso', 'consumo', 'traslado', 'ajuste')), 0) AS en_stock "
-                               "FROM costo.hecho WHERE proyecto_id = :p AND moneda = 'PEN' AND familia <> 'mano_obra'", p=a.obra_id)
+                               "coalesce(sum(importe) FILTER (WHERE clase IN ('ingreso', 'consumo', 'traslado', 'ajuste')), 0) AS en_stock, "
+                               "count(*) AS n FROM costo.hecho WHERE proyecto_id = :p AND moneda = 'PEN' AND familia <> 'mano_obra'", p=a.obra_id)
+            tolerancia = tolerancia_redondeo(m["n"])
             for k, nombre in (("recibido", "Recibido"), ("consumido", "Consumido"), ("en_stock", "En stock")):
-                if abs(Decimal(str(lib[k])) - m[k]) > _TOLERANCIA:
+                if abs(Decimal(str(lib[k])) - m[k]) > tolerancia:
                     conciliacion.append(f"{nombre}: el libro de Almacén dice {lib[k]} y el modelo de costo {m[k]}; faltan eventos por entregar.")
     fam = filas(a.sesion, "SELECT familia, coalesce(sum(importe) FILTER (WHERE clase = 'ingreso'), 0) AS recibido, "
                           "coalesce(-sum(importe) FILTER (WHERE clase = 'consumo'), 0) AS consumido, "
