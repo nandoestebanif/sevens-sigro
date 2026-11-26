@@ -28,6 +28,9 @@ public class CostoController {
     static final String CRITERIO = "Materiales y equipos al costo promedio ponderado por almacén (NIC 2), congelado en cada salida; importes sin IGV.";
     static final String DEF_COMPRADO = "Valor de las compras registradas hasta la fecha de corte (base imponible, sin IGV, por fecha del comprobante); las anuladas no cuentan.";
     static final BigDecimal TOLERANCIA = new BigDecimal("0.01");
+
+    /** Libro y modelo redondean cada importe por su lado: cada hecho puede diferir hasta medio céntimo (no es un evento pendiente). */
+    static BigDecimal toleranciaRedondeo(long hechos) { return TOLERANCIA.max(new BigDecimal("0.005").multiply(BigDecimal.valueOf(hechos))); }
     static final ZoneId LIMA = ZoneId.of("America/Lima");
     static final String AVISO = "Lo planificado en el S10 incluye desperdicio y reserva: una desviación moderada es esperable y no es, por sí sola, "
             + "una falla. La comparación se hace por insumo, no por partida.";
@@ -101,10 +104,11 @@ public class CostoController {
         var fam = db.en(() -> {
             if (pedido == null) {
                 var m = db.fila("SELECT coalesce(sum(importe) FILTER (WHERE clase = 'ingreso'), 0) AS recibido, coalesce(-sum(importe) FILTER (WHERE clase = 'consumo'), 0) AS consumido, "
-                        + "coalesce(sum(importe) FILTER (WHERE clase IN ('ingreso', 'consumo', 'traslado', 'ajuste')), 0) AS en_stock "
-                        + "FROM costo.hecho WHERE proyecto_id = :p AND moneda = 'PEN' AND familia <> 'mano_obra'", P.de("p", obraId));
+                        + "coalesce(sum(importe) FILTER (WHERE clase IN ('ingreso', 'consumo', 'traslado', 'ajuste')), 0) AS en_stock, "
+                        + "count(*) AS n FROM costo.hecho WHERE proyecto_id = :p AND moneda = 'PEN' AND familia <> 'mano_obra'", P.de("p", obraId));
+                BigDecimal tolerancia = toleranciaRedondeo(((Number) m.get("n")).longValue());
                 for (String[] k : new String[][]{{"recibido", "Recibido"}, {"consumido", "Consumido"}, {"en_stock", "En stock"}})
-                    if (Interno.dec(lib.get(k[0])).subtract((BigDecimal) m.get(k[0])).abs().compareTo(TOLERANCIA) > 0)
+                    if (Interno.dec(lib.get(k[0])).subtract((BigDecimal) m.get(k[0])).abs().compareTo(tolerancia) > 0)
                         conciliacion.add(k[1] + ": el libro de Almacén dice " + Interno.dec(lib.get(k[0])) + " y el modelo de costo " + m.get(k[0]) + "; faltan eventos por entregar.");
             }
             return db.filas("SELECT familia, coalesce(sum(importe) FILTER (WHERE clase = 'ingreso'), 0) AS recibido, coalesce(-sum(importe) FILTER (WHERE clase = 'consumo'), 0) AS consumido, "
