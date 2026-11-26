@@ -115,6 +115,7 @@ const GRUPO_ADMINISTRACION: (typeof GRUPOS)[number] = {
     { ruta: '/administracion/permisos', nombre: 'Permisos por rol', icono: 'administracion' },
     { ruta: '/administracion/celulares', nombre: 'Celulares autorizados', icono: 'llave' },
     { ruta: '/administracion/almacenes', nombre: 'Almacenes de la obra', icono: 'inventario' },
+    { ruta: '/administracion/bitacora', nombre: 'Bitácora', icono: 'movimientos' },
   ],
 }
 

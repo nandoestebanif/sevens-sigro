@@ -103,6 +103,8 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
 import org.koin.compose.viewmodel.koinViewModel
+import pe.sevens.sigro.dominio.VistaPorRol
+import pe.sevens.sigro.dominio.AccesoApp
 import pe.sevens.sigro.dominio.intentosAgotados
 import pe.sevens.sigro.dominio.MAX_INTENTOS_AUTOMATICOS
 import pe.sevens.sigro.dominio.ErrorSigro
@@ -283,16 +285,32 @@ fun PantallaInicio(
                 CabeceraInicio(sesion, obra, resumen, pendientes, alCambiarObra = { cambiandoObra = true })
                 CifrasDeHoy(resumen, alVerRegistros = { irA(Destino.Pendientes) }, alVerRechazados = { irA(Destino.Rechazados) })
                 AvisosCola(resumen, pendientes, e.enviando, alEnviar = vm::enviarAhora, alVerRegistros = { irA(Destino.Pendientes) })
-                // Accesos en mosaico: Salida (lo que más se usa) grande; Entrada e Ingreso al lado; Personal abajo
-                Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Acceso(Icons.Filled.ArrowUpward, "Salida", "Registrar lo que sale", Modulo.SALIDA, grande = true,
-                        modifier = Modifier.weight(1.15f).fillMaxHeight()) { irA(Destino.Salida) }
-                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                        Acceso(Icons.Filled.ArrowDownward, "Entrada", "Lo que llegó de una compra", Modulo.ENTRADA) { irA(Destino.Entrada) }
-                        Acceso(Icons.Filled.MoveDown, "Ingreso", "Devoluciones y préstamos", Modulo.INGRESO) { irA(Destino.IngresoSinCompra) }
+                // Cada rol ve lo suyo (regla 9; el servidor igual responde 403 a lo que no le toca)
+                val accesos = VistaPorRol.accesos(obra.rol)
+                if (AccesoApp.SALIDA in accesos) {
+                    // Almacenero: Salida (lo que más se usa) grande; Entrada e Ingreso al lado
+                    Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Acceso(Icons.Filled.ArrowUpward, "Salida", "Registrar lo que sale", Modulo.SALIDA, grande = true,
+                            modifier = Modifier.weight(1.15f).fillMaxHeight()) { irA(Destino.Salida) }
+                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                            Acceso(Icons.Filled.ArrowDownward, "Entrada", "Lo que llegó de una compra", Modulo.ENTRADA) { irA(Destino.Entrada) }
+                            Acceso(Icons.Filled.MoveDown, "Ingreso", "Devoluciones y préstamos", Modulo.INGRESO) { irA(Destino.IngresoSinCompra) }
+                        }
                     }
+                    Acceso(Icons.Filled.Build, "Herramientas", "Prestar y recibir herramientas", Modulo.STOCK, ancho = true) { irA(Destino.Herramientas) }
                 }
-                Acceso(Icons.Filled.Groups, "Personal", "Trabajadores y asistencia de hoy", Modulo.PERSONAL, ancho = true) { irA(Destino.Trabajadores) }
+                if (AccesoApp.PERSONAL in accesos) {
+                    // SSOMA: el personal es lo suyo
+                    Acceso(Icons.Filled.Groups, "Personal", "Trabajadores y asistencia de hoy", Modulo.PERSONAL, grande = true, ancho = true) { irA(Destino.Trabajadores) }
+                    Acceso(Icons.Filled.Schedule, "Horas acumuladas", "Horas normales y extra por trabajador", Modulo.REGISTROS, ancho = true) { irA(Destino.Horas) }
+                }
+                if (!VistaPorRol.registra(obra.rol)) {
+                    // Residente, administrador y gerente: consulta (registran el almacenero y el SSOMA)
+                    Text("Desde el celular consultas la obra. Los registros los hacen el almacenero y el SSOMA.", fontSize = 14.sp, color = Paleta.Texto2)
+                    Acceso(Icons.Filled.ViewInAr, "Stock", "Saldo por almacén y de toda la obra", Modulo.STOCK, ancho = true) { irA(Destino.Stock) }
+                    Acceso(Icons.Filled.Build, "Herramientas", "Quién tiene cada herramienta", Modulo.INGRESO, ancho = true) { irA(Destino.Herramientas) }
+                    Acceso(Icons.Filled.Schedule, "Horas acumuladas", "Horas del personal por trabajador", Modulo.PERSONAL, ancho = true) { irA(Destino.Horas) }
+                }
                 OutlinedButton(
                     onClick = { conMas = true }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp), shape = RoundedCornerShape(16.dp),
                 ) {
@@ -345,7 +363,7 @@ fun PantallaInicio(
             enter = slideInVertically { it }, exit = slideOutVertically { it },
             modifier = Modifier.align(Alignment.BottomCenter),
         ) {
-            HojaMas(irA = { conMas = false; irA(it) }, alCerrar = { conMas = false })
+            HojaMas(VistaPorRol.accesos(obra.rol), irA = { conMas = false; irA(it) }, alCerrar = { conMas = false })
         }
 
         // Rediseño v3: «cambiar obra» abre una hoja sobre el inicio (ya no saca a la pantalla de entrada)
@@ -601,7 +619,7 @@ private fun BarraInferior(pendientes: Int, alRegistros: () -> Unit, alStock: () 
  * la siguiente iteración): se ven con «Pronto» en vez de dejar registrar algo que no llegará.
  */
 @Composable
-private fun HojaMas(irA: (Destino) -> Unit, alCerrar: () -> Unit) {
+private fun HojaMas(accesos: Set<AccesoApp>, irA: (Destino) -> Unit, alCerrar: () -> Unit) {
     Column(
         Modifier.fillMaxWidth().navigationBarsPadding().padding(10.dp)
             .vidrio(RoundedCornerShape(32.dp), fuerte = true, sombra = 24.dp)
@@ -616,14 +634,20 @@ private fun HojaMas(irA: (Destino) -> Unit, alCerrar: () -> Unit) {
                 Icon(Icons.Filled.Close, contentDescription = "Cerrar", tint = Paleta.Tinta, modifier = Modifier.size(18.dp))
             }
         }
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            OpcionMas(Icons.Filled.Search, "Catálogo", centrada = true) { irA(Destino.Catalogo) }
-            OpcionMas(Icons.Filled.Groups, "Personal", centrada = true) { irA(Destino.Trabajadores) }
-            OpcionMas(Icons.Filled.ViewInAr, "Stock", centrada = true) { irA(Destino.Stock) }
-            OpcionMas(Icons.Filled.Build, "Herramientas", centrada = true) { irA(Destino.Herramientas) }
+        // Solo lo que su rol puede usar
+        val opciones = buildList<Triple<ImageVector, String, Destino>> {
+            if (AccesoApp.CATALOGO in accesos) add(Triple(Icons.Filled.Search, "Catálogo", Destino.Catalogo))
+            if (AccesoApp.PERSONAL in accesos) add(Triple(Icons.Filled.Groups, "Personal", Destino.Trabajadores))
+            if (AccesoApp.STOCK in accesos) add(Triple(Icons.Filled.ViewInAr, "Stock", Destino.Stock))
+            if (AccesoApp.HERRAMIENTAS in accesos) add(Triple(Icons.Filled.Build, "Herramientas", Destino.Herramientas))
+            if (AccesoApp.CONTEO in accesos) add(Triple(Icons.Filled.FactCheck, "Conteo e incidencias", Destino.Conteo))
+            if (AccesoApp.HORAS in accesos) add(Triple(Icons.Filled.Schedule, "Horas", Destino.Horas))
         }
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            OpcionMas(Icons.Filled.FactCheck, "Conteo e incidencias", centrada = true) { irA(Destino.Conteo) }
+        opciones.chunked(4).forEach { fila ->
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                fila.forEach { (ic, txt, d) -> OpcionMas(ic, txt, centrada = true) { irA(d) } }
+                repeat(4 - fila.size) { Spacer(Modifier.weight(1f)) }
+            }
         }
         Text("PRÓXIMAMENTE", fontSize = 12.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.04.em, color = Paleta.Texto3)
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {

@@ -143,7 +143,7 @@ class HerramientasViewModel(private val repo: RepositorioPrestamos) : ViewModel(
 }
 
 @Composable
-fun PantallaHerramientas(obraId: Int, alVolver: () -> Unit, vm: HerramientasViewModel = koinViewModel()) {
+fun PantallaHerramientas(obraId: Int, alVolver: () -> Unit, puedePrestar: Boolean = true, vm: HerramientasViewModel = koinViewModel()) {
     val e by vm.estado.collectAsState()
     LaunchedEffect(obraId) { vm.cargar(obraId) }
     val volver = if (e.modo == ModoHerramientas.LISTA) alVolver else vm::volver
@@ -159,7 +159,7 @@ fun PantallaHerramientas(obraId: Int, alVolver: () -> Unit, vm: HerramientasView
         e.aviso?.let { Text(it, fontSize = 15.sp, color = Paleta.Tinta, fontWeight = FontWeight.SemiBold) }
         e.error?.let { AvisoRojo(it) }
         when (e.modo) {
-            ModoHerramientas.LISTA -> Lista(e, vm)
+            ModoHerramientas.LISTA -> Lista(e, vm, puedePrestar)
             ModoHerramientas.PRESTAR -> FormPrestar(e, vm, obraId)
             ModoHerramientas.DEVOLVER -> FormDevolver(e, vm, obraId)
         }
@@ -167,9 +167,10 @@ fun PantallaHerramientas(obraId: Int, alVolver: () -> Unit, vm: HerramientasView
 }
 
 @Composable
-private fun Lista(e: EstadoHerramientas, vm: HerramientasViewModel) {
+private fun Lista(e: EstadoHerramientas, vm: HerramientasViewModel, puedePrestar: Boolean) {
     val p = e.panel ?: return
-    BotonNegro("Prestar herramienta", vm::abrirPrestar, icono = Icons.Filled.Build, habilitado = p.herramientas.isNotEmpty())
+    if (puedePrestar) BotonNegro("Prestar herramienta", vm::abrirPrestar, icono = Icons.Filled.Build, habilitado = p.herramientas.isNotEmpty())
+    else Text("Prestar y recibir herramientas lo hace el almacenero; aquí ves quién tiene cada una.", fontSize = 14.sp, color = Paleta.Texto2)
     Text("Prestar no mueve el saldo: la herramienta sigue en la obra. Desliza hacia abajo para actualizar.", fontSize = 13.sp, color = Paleta.Texto2)
     TituloSeccion("Prestadas ahora")
     if (p.sinDevolver.isEmpty()) Text("Todas las herramientas están en el almacén.", fontSize = 15.sp, color = Paleta.Texto2)
@@ -183,7 +184,7 @@ private fun Lista(e: EstadoHerramientas, vm: HerramientasViewModel) {
                         fontSize = 13.sp, color = if (x.atrasado) Paleta.Rojo else Paleta.Texto2, fontWeight = if (x.atrasado) FontWeight.Bold else FontWeight.Normal)
                     if (x.atrasado) Text("Atrasada", fontSize = 13.sp, color = Paleta.Rojo, fontWeight = FontWeight.Bold)
                 }
-                TextButton(onClick = { vm.abrirDevolver(x) }) { Text("Devolver", color = Paleta.Naranja, fontWeight = FontWeight.Bold) }
+                if (puedePrestar) TextButton(onClick = { vm.abrirDevolver(x) }) { Text("Devolver", color = Paleta.Naranja, fontWeight = FontWeight.Bold) }
             }
         }
     }
