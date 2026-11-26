@@ -44,9 +44,17 @@ public class EventosCosto {
     @PostMapping("/interno/eventos")
     public Object recibir(@RequestHeader(value = "X-Servicio-Token", required = false) String t, @RequestBody(required = false) JsonNode cuerpo) {
         exigirServicio(t);
+        return db.en(() -> registrar(cuerpo));
+    }
+
+    /**
+     * Guarda los hechos de un evento una sola vez (deduplica por evento_id). La usan la ruta interna y el relevo dentro del
+     * proceso ({@link RelevoCosto}); debe llamarse dentro de una transacción del módulo costo.
+     */
+    public Object registrar(JsonNode cuerpo) {
         Datos ev = EVENTO.validar(cuerpo);
         List<Datos> hechos = ev.objeto("datos").lista("hechos");
-        return db.en(() -> {
+        {
             Object nuevo = db.escalar("INSERT INTO costo.evento_recibido (evento_id, tipo) VALUES (:i, :t) ON CONFLICT (evento_id) DO NOTHING RETURNING evento_id",
                     P.de("i", ev.entero("evento_id"), "t", ev.texto("tipo")));
             if (nuevo == null) return R.mapa("evento_id", ev.entero("evento_id"), "duplicado", true, "hechos", 0);
@@ -56,6 +64,6 @@ public class EventosCosto {
                         P.de("e", ev.entero("evento_id"), "p", h.entero("proyecto_id"), "f", h.texto("familia"), "c", h.texto("clase"), "ic", h.texto("insumo_codigo"),
                                 "q", h.decimal("cantidad"), "u", h.texto("unidad"), "cu", h.decimal("costo_unitario"), "m", h.texto("moneda"), "fe", h.fecha("fecha"), "r", h.texto("referencia")));
             return R.mapa("evento_id", ev.entero("evento_id"), "duplicado", false, "hechos", hechos.size());
-        });
+        }
     }
 }
