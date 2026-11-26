@@ -29,3 +29,25 @@ describe('bitácora', () => {
     expect(tonoEstado(422)).toBe('aviso')
   })
 })
+
+describe('consultaBitacora', () => {
+  it('solo manda los filtros puestos y recorta el texto', async () => {
+    const { consultaBitacora } = await import('./pin')
+    expect(consultaBitacora()).toBe('limite=500')
+    expect(consultaBitacora({ desde: '2026-11-01', usuarioId: 7, q: '  salidas ', solo: 'rechazos' }))
+      .toBe('limite=500&desde=2026-11-01&usuario_id=7&q=salidas&solo=rechazos')
+    expect(consultaBitacora({ q: 'x'.repeat(80) })).toContain('q=' + 'x'.repeat(60) + '')
+    expect(consultaBitacora({ q: 'x'.repeat(80) })).not.toContain('x'.repeat(61))
+  })
+})
+
+describe('detalle de la bitácora', () => {
+  it('explica el resultado y el ámbito', async () => {
+    const { significado, ambito } = await import('../paginas/administracion/Bitacora')
+    expect(significado(403)).toMatch(/permiso/)
+    expect(significado(201)).toMatch(/creó/)
+    expect(significado(503)).toMatch(/servidor/)
+    expect(ambito('/api/v1/obras/3/almacen/salidas')).toBe('De esta obra')
+    expect(ambito('/api/v1/usuarios')).toMatch(/General/)
+  })
+})
