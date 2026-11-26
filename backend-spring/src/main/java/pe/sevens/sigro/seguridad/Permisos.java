@@ -11,6 +11,7 @@ public final class Permisos {
             Map.entry("proyecto.crear", Set.of("residente", "administrador")),
             Map.entry("proyecto.ampliar_plazo", Set.of("residente", "administrador")),
             Map.entry("proyecto.cerrar", Set.of("administrador")),
+            Map.entry("proyecto.recortar_plazo", Set.of("administrador")),
             Map.entry("proyecto.consultar", Set.of("almacenero", "ssoma", "residente", "administrador", "gerente")),
             Map.entry("periodo.consultar", Set.of("almacenero", "ssoma", "residente", "administrador", "gerente")),
             Map.entry("periodo.cerrar", Set.of("residente", "administrador")),

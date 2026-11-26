@@ -228,7 +228,7 @@ public class ObraController {
     Map<String, Object> obraOut(long obraId, String rol) {
         var p = new LinkedHashMap<>(db.fila("SELECT id, nombre, fecha_inicio, fecha_fin, dia_corte, estado FROM obra.proyecto WHERE id = :i", P.de("i", obraId)));
         var per = db.fila("SELECT count(*) AS total, coalesce(max(numero) FILTER (WHERE current_date BETWEEN fecha_inicio AND fecha_fin), "
-                + "CASE WHEN current_date < min(fecha_inicio) THEN 0 ELSE count(*) END) AS actual FROM obra.periodo WHERE proyecto_id = :i", P.de("i", obraId));
+                + "CASE WHEN current_date < min(fecha_inicio) THEN 0 ELSE count(*) END) AS actual FROM obra.periodo WHERE proyecto_id = :i AND estado <> 'fuera_de_plazo'", P.de("i", obraId));
         p.put("semanas_totales", per.get("total"));
         p.put("semana", per.get("actual"));
         p.put("rol", rol);
@@ -242,7 +242,7 @@ public class ObraController {
                 + "coalesce(per.total, 0) AS semanas_totales, per.actual AS semana "
                 + "FROM obra.asignacion a JOIN obra.proyecto p ON p.id = a.proyecto_id "
                 + "LEFT JOIN LATERAL (SELECT count(*) AS total, coalesce(max(numero) FILTER (WHERE current_date BETWEEN fecha_inicio AND fecha_fin), "
-                + "CASE WHEN current_date < min(fecha_inicio) THEN 0 ELSE count(*) END) AS actual FROM obra.periodo WHERE proyecto_id = p.id) per ON true "
+                + "CASE WHEN current_date < min(fecha_inicio) THEN 0 ELSE count(*) END) AS actual FROM obra.periodo WHERE proyecto_id = p.id AND estado <> 'fuera_de_plazo') per ON true "
                 + "WHERE a.usuario_id = :u AND a.fecha_retiro IS NULL ORDER BY (p.estado <> 'en_ejecucion'), p.nombre", P.de("u", a.usuarioId())), OBRA_OUT));
     }
 
@@ -288,6 +288,17 @@ public class ObraController {
         });
     }
 
+    /** Recortar el plazo (26/11): solo el administrador y con PIN; hasta el fin de una semana, nunca a una fecha pasada (migración 0026). */
+    @PostMapping("/obras/{obra_id}/recortar-plazo")
+    public Object recortarPlazo(@PathVariable("obra_id") long obraId, @RequestBody(required = false) JsonNode cuerpo) {
+        Actor a = acceso.exigir("proyecto.recortar_plazo", obraId);
+        Datos d = AMPLIAR.validar(cuerpo);
+        return db.en(() -> {
+            db.fila("SELECT obra.recortar_plazo(:p, :f, :m, :a)", P.de("p", obraId, "f", d.fecha("nueva_fecha_fin"), "m", d.texto("motivo").strip(), "a", a.usuarioId()));
+            return obraOut(obraId, a.rol());
+        });
+    }
+
     @GetMapping("/obras/{obra_id}/plazo-historial")
     public Object historialPlazo(@PathVariable("obra_id") long obraId) {
         acceso.exigir("proyecto.consultar", obraId);
@@ -306,7 +317,7 @@ public class ObraController {
     public Object cerrarPeriodo(@PathVariable("obra_id") long obraId, @PathVariable long numero) {
         Actor a = acceso.exigir("periodo.cerrar", obraId);
         var p = db.en(() -> db.fila("UPDATE obra.periodo SET estado = 'cerrado', cerrado_en = coalesce(cerrado_en, now()), "
-                + "cerrado_por = coalesce(cerrado_por, :u) WHERE proyecto_id = :p AND numero = :n RETURNING id, numero, fecha_inicio, fecha_fin, estado",
+                + "cerrado_por = coalesce(cerrado_por, :u) WHERE proyecto_id = :p AND numero = :n AND estado <> 'fuera_de_plazo' RETURNING id, numero, fecha_inicio, fecha_fin, estado",
                 P.de("u", a.usuarioId(), "p", obraId, "n", numero)));
         if (p == null) throw new ErrorSigro(404, "no_existe", "La obra no tiene la semana " + numero + ".");
         return p;
