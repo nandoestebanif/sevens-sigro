@@ -21,22 +21,23 @@ def get(mundo, ruta, uid):
     return mundo.http.get(f"{U}{ruta}", headers=mundo.con(uid))
 
 
-def nuevo_trabajador(mundo, eq, quien="almacenero", **kw):
+def nuevo_trabajador(mundo, eq, quien="ssoma", **kw):
     datos = dict(nombre="Juan Quispe Huamán", documento="45678912", categoria="peon", cuadrilla="Cuadrilla 1", fecha_ingreso="2026-10-19")
     datos.update(kw)
     return post(mundo, f"/obras/{eq['proyecto']}/trabajadores", eq[quien], **datos)
 
 
-def jornada(mundo, eq, trabajador, quien="almacenero", **kw):
+def jornada(mundo, eq, trabajador, quien="ssoma", **kw):
     datos = dict(trabajador_id=trabajador, fecha="2026-10-20", estado="presente", horas_normales="8")
     datos.update(kw)
     return post(mundo, f"/obras/{eq['proyecto']}/jornadas", eq[quien], **datos)
 
 
 # ─────────────────────────────────────────── trabajadores (HU-62)
-def test_el_almacenero_y_el_ssoma_registran_trabajadores(mundo, eq):
+def test_el_ssoma_registra_trabajadores_y_el_almacenero_ya_no(mundo, eq):
+    # 25/11 (PO): el personal es del SSOMA; el almacenero solo registra almacén
     assert nuevo_trabajador(mundo, eq).status_code == 201
-    assert nuevo_trabajador(mundo, eq, quien="ssoma", documento="45678913", nombre="Rosa Mamani Cruz").status_code == 201
+    assert nuevo_trabajador(mundo, eq, quien="almacenero", documento="45678913", nombre="Rosa Mamani Cruz").status_code == 403
 
 
 def test_el_residente_y_el_gerente_no_registran_trabajadores(mundo, eq):
@@ -71,9 +72,9 @@ def test_el_documento_de_un_extranjero_admite_letras(mundo, eq):
 def test_baja_de_trabajador_conserva_sus_jornadas(mundo, eq):
     t = nuevo_trabajador(mundo, eq).json()["id"]
     assert jornada(mundo, eq, t).status_code == 201
-    b = post(mundo, f"/obras/{eq['proyecto']}/trabajadores/{t}/baja", eq["almacenero"], fecha_salida="2026-10-23")
+    b = post(mundo, f"/obras/{eq['proyecto']}/trabajadores/{t}/baja", eq["ssoma"], fecha_salida="2026-10-23")
     assert b.status_code == 200 and b.json()["fecha_salida"] == "2026-10-23"
-    assert len(get(mundo, f"/obras/{eq['proyecto']}/jornadas", eq["almacenero"]).json()) == 1
+    assert len(get(mundo, f"/obras/{eq['proyecto']}/jornadas", eq["ssoma"]).json()) == 1
     # después de la baja no se le registra un día posterior…
     assert jornada(mundo, eq, t, fecha="2026-10-27").status_code == 422
     # …y el trabajador sigue existiendo (nada se borra)
@@ -83,13 +84,13 @@ def test_baja_de_trabajador_conserva_sus_jornadas(mundo, eq):
 def test_baja_de_un_trabajador_de_otra_obra_es_404(mundo, eq):
     otra = mundo.f.obra_completa()
     t = nuevo_trabajador(mundo, otra).json()["id"]
-    assert post(mundo, f"/obras/{eq['proyecto']}/trabajadores/{t}/baja", eq["almacenero"], fecha_salida="2026-10-23").status_code == 404
+    assert post(mundo, f"/obras/{eq['proyecto']}/trabajadores/{t}/baja", eq["ssoma"], fecha_salida="2026-10-23").status_code == 404
 
 
 def test_listar_trabajadores_solo_activos(mundo, eq):
     t1 = nuevo_trabajador(mundo, eq).json()["id"]
     nuevo_trabajador(mundo, eq, documento="45678913", nombre="Rosa Mamani Cruz")
-    post(mundo, f"/obras/{eq['proyecto']}/trabajadores/{t1}/baja", eq["almacenero"], fecha_salida="2026-10-20")
+    post(mundo, f"/obras/{eq['proyecto']}/trabajadores/{t1}/baja", eq["ssoma"], fecha_salida="2026-10-20")
     todos = get(mundo, f"/obras/{eq['proyecto']}/trabajadores", eq["admin"]).json()
     activos = get(mundo, f"/obras/{eq['proyecto']}/trabajadores?solo_activos=true", eq["admin"]).json()
     assert len(todos) == 2 and len(activos) == 1
@@ -101,7 +102,7 @@ def test_registrar_jornada_el_servidor_decide_categoria_y_periodo(mundo, eq):
     r = jornada(mundo, eq, t)
     assert r.status_code == 201
     j = r.json()
-    assert j["categoria"] == "operario" and j["periodo_id"] and j["registrado_por"] == eq["almacenero"]
+    assert j["categoria"] == "operario" and j["periodo_id"] and j["registrado_por"] == eq["ssoma"]
     per = mundo.f.c.execute("SELECT numero FROM obra.periodo WHERE id=%s", (j["periodo_id"],)).fetchone()["numero"]
     assert per == 1
 
@@ -176,7 +177,7 @@ def test_no_se_registra_jornada_de_un_trabajador_de_otra_obra(mundo, eq):
 def test_corregir_inserta_otra_jornada_y_deja_la_original_intacta(mundo, eq):
     t = nuevo_trabajador(mundo, eq).json()["id"]
     orig = jornada(mundo, eq, t, horas_normales="8").json()
-    c = post(mundo, f"/obras/{eq['proyecto']}/jornadas/{orig['id']}/correccion", eq["almacenero"],
+    c = post(mundo, f"/obras/{eq['proyecto']}/jornadas/{orig['id']}/correccion", eq["ssoma"],
              estado="presente", horas_normales="6", motivo="Salió temprano por lluvia")
     assert c.status_code == 201
     cj = c.json()
@@ -191,9 +192,9 @@ def test_la_correccion_exige_motivo_y_solo_se_corrige_una_vez(mundo, eq):
     t = nuevo_trabajador(mundo, eq).json()["id"]
     orig = jornada(mundo, eq, t).json()
     ruta = f"/obras/{eq['proyecto']}/jornadas/{orig['id']}/correccion"
-    assert post(mundo, ruta, eq["almacenero"], estado="presente", horas_normales="6", motivo="").status_code == 422
-    assert post(mundo, ruta, eq["almacenero"], estado="presente", horas_normales="6", motivo="Se digitó mal").status_code == 201
-    dos = post(mundo, ruta, eq["almacenero"], estado="presente", horas_normales="7", motivo="Otra vez")
+    assert post(mundo, ruta, eq["ssoma"], estado="presente", horas_normales="6", motivo="").status_code == 422
+    assert post(mundo, ruta, eq["ssoma"], estado="presente", horas_normales="6", motivo="Se digitó mal").status_code == 201
+    dos = post(mundo, ruta, eq["ssoma"], estado="presente", horas_normales="7", motivo="Otra vez")
     assert dos.status_code == 409 and dos.json()["codigo"] == "ya_corregida"
 
 
@@ -211,7 +212,7 @@ def test_corregir_una_jornada_de_otra_obra_es_404(mundo, eq):
     otra = mundo.f.obra_completa()
     t = nuevo_trabajador(mundo, otra).json()["id"]
     j = jornada(mundo, otra, t).json()
-    r = post(mundo, f"/obras/{eq['proyecto']}/jornadas/{j['id']}/correccion", eq["almacenero"], estado="presente", horas_normales="6", motivo="Intento ajeno")
+    r = post(mundo, f"/obras/{eq['proyecto']}/jornadas/{j['id']}/correccion", eq["ssoma"], estado="presente", horas_normales="6", motivo="Intento ajeno")
     assert r.status_code == 404
 
 
@@ -219,7 +220,7 @@ def test_no_existe_forma_de_editar_ni_borrar_una_jornada(mundo, eq):
     t = nuevo_trabajador(mundo, eq).json()["id"]
     j = jornada(mundo, eq, t).json()
     for metodo in ("put", "patch", "delete"):
-        r = getattr(mundo.http, metodo)(f"{U}/obras/{eq['proyecto']}/jornadas/{j['id']}", headers=mundo.con(eq["almacenero"]))
+        r = getattr(mundo.http, metodo)(f"{U}/obras/{eq['proyecto']}/jornadas/{j['id']}", headers=mundo.con(eq["ssoma"]))
         assert r.status_code in (404, 405)      # no hay ruta que lo permita
 
 
@@ -228,7 +229,7 @@ def test_un_periodo_cerrado_no_admite_jornadas_nuevas_pero_si_correcciones(mundo
     j = jornada(mundo, eq, t).json()
     mundo.conn.exec_driver_sql("UPDATE obra.periodo SET estado='cerrado', cerrado_en=now(), cerrado_por=%s WHERE id=%s", (eq["admin"], j["periodo_id"]))
     assert jornada(mundo, eq, t, fecha="2026-10-21").status_code == 422
-    c = post(mundo, f"/obras/{eq['proyecto']}/jornadas/{j['id']}/correccion", eq["almacenero"], estado="presente", horas_normales="7", motivo="Ajuste tras el cierre")
+    c = post(mundo, f"/obras/{eq['proyecto']}/jornadas/{j['id']}/correccion", eq["ssoma"], estado="presente", horas_normales="7", motivo="Ajuste tras el cierre")
     assert c.status_code == 201
 
 
@@ -238,7 +239,7 @@ def test_horas_acumuladas_cuentan_solo_lo_vigente(mundo, eq):
     a = jornada(mundo, eq, t, fecha="2026-10-20", horas_normales="8").json()
     jornada(mundo, eq, t, fecha="2026-10-21", horas_normales="8", horas_extra="2")
     jornada(mundo, eq, t, fecha="2026-10-22", estado="ausente", horas_normales="0")
-    post(mundo, f"/obras/{eq['proyecto']}/jornadas/{a['id']}/correccion", eq["almacenero"], estado="presente", horas_normales="6", motivo="Se fue antes")
+    post(mundo, f"/obras/{eq['proyecto']}/jornadas/{a['id']}/correccion", eq["ssoma"], estado="presente", horas_normales="6", motivo="Se fue antes")
     h = get(mundo, f"/obras/{eq['proyecto']}/horas-acumuladas", eq["gerente"]).json()
     assert len(h) == 1
     x = h[0]
@@ -250,7 +251,7 @@ def test_horas_acumuladas_por_periodo_y_visibles_para_todos_los_roles(mundo, eq)
     t = nuevo_trabajador(mundo, eq).json()["id"]
     jornada(mundo, eq, t, fecha="2026-10-20")
     jornada(mundo, eq, t, fecha="2026-10-27")                                # periodo 2
-    todos = get(mundo, f"/obras/{eq['proyecto']}/horas-acumuladas", eq["almacenero"]).json()
+    todos = get(mundo, f"/obras/{eq['proyecto']}/horas-acumuladas", eq["ssoma"]).json()
     assert sorted(x["periodo_numero"] for x in todos) == [1, 2]
     assert sorted(x["ultima_jornada"] for x in todos) == ["2026-10-20", "2026-10-27"]       # HU-64 c3
     p2 = [x["periodo_id"] for x in todos if x["periodo_numero"] == 2][0]
@@ -322,10 +323,10 @@ def test_la_consulta_de_dni_trae_nombres_y_apellidos_de_reniec(mundo, eq, monkey
         return integraciones.DniReniec(dni=dni, nombres="JUAN CARLOS", apellido_paterno="QUISPE", apellido_materno="HUAMAN")
 
     monkeypatch.setattr(integraciones, "consultar_dni", falso)
-    r = get(mundo, f"/obras/{eq['proyecto']}/trabajadores/consulta-dni/45678912", eq["almacenero"])
+    r = get(mundo, f"/obras/{eq['proyecto']}/trabajadores/consulta-dni/45678912", eq["ssoma"])
     assert r.status_code == 200 and r.json() == {
         "dni": "45678912", "nombres": "JUAN CARLOS", "apellido_paterno": "QUISPE", "apellido_materno": "HUAMAN"}
-    assert get(mundo, f"/obras/{eq['proyecto']}/trabajadores/consulta-dni/4567891", eq["almacenero"]).status_code == 422
+    assert get(mundo, f"/obras/{eq['proyecto']}/trabajadores/consulta-dni/4567891", eq["ssoma"]).status_code == 422
     assert get(mundo, f"/obras/{eq['proyecto']}/trabajadores/consulta-dni/45678912", eq["residente"]).status_code == 403
     assert pedidos == ["45678912"]          # ni el DNI mal escrito ni el rol sin permiso llegan a RENIEC
 
