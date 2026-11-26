@@ -29,7 +29,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { ErrorApi, api } from '../api/cliente'
 import type { HistorialFactor, InsumoMaestro } from '../api/tipos'
 import { Campo, Chip, Modal, Vacio } from '../ui/base'
-import { Aviso, Chips, Encabezado, Pildora, Segmentado, TituloSeccion, Vidrio, Buscador } from '../ui/piezas'
+import { Aviso, Chips, Encabezado, Pildora, Segmentado, Vidrio, Buscador } from '../ui/piezas'
 import { UNIDADES_COMPRA } from '../api/unidades'
 import { useAvisos } from '../ui/Avisos'
 import { Ayuda } from '../ui/Glosario'
@@ -428,32 +428,28 @@ export function Catalogo() {
         <Chip tono="neutro">Código único en todas las obras</Chip>
       </Chips>
 
-      <div className="d-flex flex-wrap gap-3 align-items-start">
-        <Vidrio estilo={{ borderLeft: '4px solid var(--accion)', padding: '14px 20px', flex: '999 1 520px' }} etiqueta="El catálogo y la relación de cada obra">
-          <p className="text-body-secondary">
-            <strong>El catálogo es de la empresa; la relación de insumos es de cada obra.</strong>{' '}
-            Aquí vive el nombre normalizado, el código único y la unidad con que se compra.
-            Lo que cada obra necesita viene de su propio S10 y se empareja contra este
-            catálogo al importarlo. Del catálogo nada se elimina: un insumo mal creado se
-            corrige, y la baja es un estado con fecha.
-          </p>
-        </Vidrio>
-        <aside className="card card-body shadow d-flex flex-column gap-3 min-w-0 rounded-3 py-3 px-4"  style={{ flex: '1 1 300px', boxShadow: 'var(--vidrio-sombra-alta)' }}>
-          <span className="small fw-bold text-uppercase text-body-secondary">Factor de conversión <Ayuda clave="factor de conversión" /></span>
-          <TituloSeccion>La excepción del acero</TituloSeccion>
-          <p className="text-body-secondary">
-            El catálogo lo registra como{' '}
-            <strong>fierro corrugado por diámetro, en unidades de 9 m</strong> (así se compra),
-            mientras el S10 lo planifica como un solo insumo en kilos (36 357 kg). El factor de conversión
-            del catálogo los empareja; nunca se convierte a mano.
-          </p>
-          <div className="d-flex flex-column gap-1 bg-body-tertiary rounded-4 py-2 px-3" >
-            <span className="small text-body-secondary">Ejemplo</span>
-            <span className="n fs-6 fw-bold">1 varilla = [factor] kg</span>
-            <span className="small text-body-secondary">Compara lo requerido, comprado y consumido en la misma unidad.</span>
+      {/* Un solo bloque compacto (antes eran dos tarjetas de distinta altura y dejaban un hueco grande arriba de la tabla). */}
+      <Vidrio estilo={{ borderLeft: '4px solid var(--accion)', padding: '14px 20px' }} etiqueta="El catálogo y la relación de cada obra">
+        <div className="d-flex flex-wrap gap-4 align-items-stretch">
+          <div style={{ flex: '2 1 420px' }}>
+            <p className="text-body-secondary mb-0">
+              <strong>El catálogo es de la empresa; la relación de insumos es de cada obra.</strong>{' '}
+              Aquí vive el nombre normalizado, el código único y la unidad con que se compra.
+              Lo que cada obra necesita viene de su propio S10 y se empareja contra este
+              catálogo al importarlo. Del catálogo nada se elimina: un insumo mal creado se
+              corrige, y la baja es un estado con fecha.
+            </p>
           </div>
-        </aside>
-      </div>
+          <aside className="d-flex flex-column gap-1 min-w-0 ps-md-4" style={{ flex: '1 1 300px', borderLeft: '1px solid var(--bs-border-color)' }} aria-label="Factor de conversión">
+            <span className="small fw-bold text-uppercase text-body-secondary">Factor de conversión <Ayuda clave="factor de conversión" /></span>
+            <p className="text-body-secondary small mb-0">
+              <strong>La excepción del acero:</strong> el catálogo lo registra como fierro corrugado por diámetro, en
+              unidades de 9 m (así se compra); el S10 lo planifica en kilos (36 357 kg). El factor los empareja
+              (<span className="n fw-bold">1 varilla = [factor] kg</span>): nunca se convierte a mano.
+            </p>
+          </aside>
+        </div>
+      </Vidrio>
 
       <div>
         <Vidrio estilo={{ display: 'flex', flexDirection: 'column', gap: 12 }} etiqueta="Insumos del catálogo">
