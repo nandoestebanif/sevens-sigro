@@ -1,0 +1,116 @@
+@startuml
+skinparam defaultFontName "DejaVu Sans"
+skinparam defaultFontSize 12
+skinparam shadowing false
+skinparam roundCorner 8
+skinparam ArrowColor #1F2A44
+skinparam ActivityBorderColor #1F2A44
+skinparam ActivityBackgroundColor #FFF7ED
+skinparam ActivityDiamondBackgroundColor #FEF3C7
+skinparam ActivityDiamondBorderColor #92400E
+skinparam SwimlaneTitleFontStyle bold
+skinparam SwimlaneTitleFontColor #1F2A44
+skinparam SwimlaneBorderColor #9CA3AF
+skinparam PartitionBorderColor #9CA3AF
+skinparam ParticipantBorderColor #1F2A44
+skinparam ParticipantBackgroundColor #FFF7ED
+skinparam ActorBorderColor #1F2A44
+skinparam ActorBackgroundColor #FFF7ED
+skinparam DatabaseBorderColor #1F2A44
+skinparam DatabaseBackgroundColor #E0E7FF
+skinparam SequenceLifeLineBorderColor #9CA3AF
+skinparam SequenceGroupBorderColor #C2410C
+skinparam SequenceGroupHeaderFontColor #C2410C
+skinparam StateBorderColor #1F2A44
+skinparam StateBackgroundColor #FFF7ED
+skinparam StateStartColor #1F2A44
+skinparam StateEndColor #1F2A44
+skinparam NoteBackgroundColor #F3F4F6
+skinparam NoteBorderColor #9CA3AF
+skinparam TitleFontSize 15
+skinparam TitleFontColor #C2410C
+skinparam ClassBorderColor #1F2A44
+skinparam ClassBackgroundColor #FFF7ED
+skinparam ClassAttributeFontSize 11
+skinparam ClassFontStyle bold
+skinparam ClassStereotypeFontColor #6B7280
+skinparam ClassStereotypeFontSize 10
+skinparam PackageBorderColor #C2410C
+skinparam PackageFontColor #1F2A44
+skinparam PackageStyle rectangle
+skinparam ArrowFontSize 10
+skinparam ArrowFontColor #374151
+skinparam nodesep 40
+skinparam ranksep 50
+hide empty members
+hide circle
+skinparam LegendBackgroundColor #F9FAFB
+skinparam LegendBorderColor #9CA3AF
+skinparam LegendFontSize 12
+title HU-24 · Saldo por comprar\nDiagrama de clases
+package "Web de oficina (React + TypeScript)" #EFF6FF {
+class ReposicionPagina <<página>> {
+  archivo : Reposicion.tsx
+}
+class ClienteHttp <<api>> {
+  +pedir() «camelCase ↔ snake_case»
+  +fechaHoraLima() «horaLima.ts»
+}
+}
+package "Seguridad y filtros · Spring Boot (todas las rutas)" #F5F3FF {
+class Filtros <<filtros HTTP>> {
+  CabecerasSeguridad «nosniff, DENY, CSP, HSTS, no-store»
+  BitacoraFiltro «POST y 401/403, sin datos sensibles»
+}
+class Acceso <<seguridad>> {
+  +exigir(accion, obraId) : Actor «401 · 403»
+  +exigirEnAlgunaObra(accion) : Actor
+  -exigirPin(actor, accion) «X-SIGRO-PIN»
+  Permisos.MATRIZ «51 acciones × 5 roles»
+}
+}
+package "Módulo compras · esquema compras · rol sigro_svc_compras" #FFF7ED {
+class RequerimientoController <<@RestController>> {
+  +importar() / ver() / ajustar() / agregar()
+  +saldo() / avance()
+  +registrarParametro() / parametros()
+  +marcarCritico() / criticos()
+}
+class SaldoPorComprar <<vista>> {
+  requerido : numeric
+  comprado : numeric
+  falta_por_comprar : numeric
+}
+class Requerimiento {
+  cantidad_planificada : numeric
+  precio_planificado : numeric
+  origen : s10 | manual
+  motivo_alta : text
+}
+class CompraDetalle {
+  cantidad : numeric
+  unidad : text
+  precio_unitario : numeric
+  precio_referencia : numeric
+  fuera_de_lo_habitual : bool
+  nota_precio : text
+}
+class InsumoCriticoVigente <<vista>> {
+  última marca por obra e insumo
+}
+}
+SaldoPorComprar ..> Requerimiento : requerido
+SaldoPorComprar ..> CompraDetalle : comprado
+RequerimientoController ..> Requerimiento
+RequerimientoController ..> SaldoPorComprar : consulta
+RequerimientoController ..> InsumoCriticoVigente : consulta
+RequerimientoController ..> Acceso : exigir(permiso, obra)
+ReposicionPagina ..> ClienteHttp
+ClienteHttp ..> Filtros : HTTPS /api/v1 + JWT
+Filtros ..> Acceso : cada petición
+legend bottom left
+<b>Regla que protege:</b> Falta por comprar = requerido − comprado (vista, no campo). Filtro «Solo críticos» con la marca
+del residente (HU-28). Se exporta para el pedido.
+<i>Gris: clases de otro módulo o de contexto (se le pide a su clase, nunca a su esquema).</i>
+endlegend
+@enduml

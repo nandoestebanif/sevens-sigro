@@ -91,14 +91,14 @@ def tabla_md(m: Modelo, t: Tabla) -> list[str]:
 def main() -> None:
     m = leer_modelo()
     n_cols = sum(len(t.columnas) for t in m.tablas.values())
-    L = ["# Diccionario de datos · SIGRO (por microservicio)", "",
+    L = ["# Diccionario de datos · SIGRO (por módulo)", "",
          f"> Generado por `api/docs/generar_diccionario.py` desde la base migrada (PostgreSQL {m.version_pg}, migración "
          f"`{m.migracion}`). **No editar a mano:** se regenera. {len(m.tablas)} tablas, {n_cols} columnas, "
          f"{len(m.fks)} claves foráneas ({len(m.fks_entre_servicios)} entre servicios), {len(m.vistas)} vistas.", "",
          "Convenciones: **FK\\*** = clave foránea que apunta a la tabla de otro servicio (deuda de la fase 1, ver al final). "
          "Permisos: S select · I insert · U update · D delete. Ningún servicio tiene D: nada se borra (reglas 1 y 10).", "",
          "## Resumen por servicio", "",
-         "| Microservicio | Esquema | Usuario → rol | Tablas | FK hacia otros servicios | Qué guarda |", "|---|---|---|---|---|---|"]
+         "| Módulo | Esquema | Usuario → rol | Tablas | FK hacia otros servicios | Qué guarda |", "|---|---|---|---|---|---|"]
     for e in ESQUEMAS:
         s = SERVICIO_DE[e]
         L.append(f"| **{s}** | `{e}` | `sigro_{s}` → `sigro_svc_{s}` | {len(m.de(e))} | "
@@ -107,7 +107,7 @@ def main() -> None:
     L.append("")
     for e in ESQUEMAS:
         s = SERVICIO_DE[e]
-        L += [f"## Microservicio `{s}` · esquema `{e}`", "", f"{QUE_HACE[s].capitalize()}.", ""]
+        L += [f"## Módulo `{s}` · esquema `{e}`", "", f"{QUE_HACE[s].capitalize()}.", ""]
         for t in m.de(e):
             L += tabla_md(m, t)
     L += ["## Vistas", ""] + [f"- `{v}`" for v in m.vistas] + [""]
@@ -117,7 +117,7 @@ def main() -> None:
     L += ["## Claves foráneas entre servicios (deuda de la fase 1)", "",
           "Hoy se conservan para no perder integridad mientras todos los esquemas viven en la misma instancia. El servicio "
           "que tiene la FK **no puede leer** la tabla a la que apunta (no tiene permiso): solo la referencia. "
-          "En la fase 2 cada una se reemplaza por una réplica local alimentada por eventos y la FK se elimina (ADR-09).", "",
+          "Con ADR-12 (un desplegable Spring) se conservan: dan integridad y cada rol sigue sin leer el esquema ajeno.", "",
           "| Desde (servicio) | Columnas | Hacia (servicio) |", "|---|---|---|"]
     for f in sorted(m.fks_entre_servicios, key=lambda f: (f.origen, f.destino)):
         L.append(f"| `{f.origen}` ({SERVICIO_DE[f.origen.split('.')[0]]}) | `{', '.join(f.cols)}` | "

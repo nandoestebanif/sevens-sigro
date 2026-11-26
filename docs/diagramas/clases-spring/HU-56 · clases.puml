@@ -1,0 +1,100 @@
+@startuml
+skinparam defaultFontName "DejaVu Sans"
+skinparam defaultFontSize 12
+skinparam shadowing false
+skinparam roundCorner 8
+skinparam ArrowColor #1F2A44
+skinparam ActivityBorderColor #1F2A44
+skinparam ActivityBackgroundColor #FFF7ED
+skinparam ActivityDiamondBackgroundColor #FEF3C7
+skinparam ActivityDiamondBorderColor #92400E
+skinparam SwimlaneTitleFontStyle bold
+skinparam SwimlaneTitleFontColor #1F2A44
+skinparam SwimlaneBorderColor #9CA3AF
+skinparam PartitionBorderColor #9CA3AF
+skinparam ParticipantBorderColor #1F2A44
+skinparam ParticipantBackgroundColor #FFF7ED
+skinparam ActorBorderColor #1F2A44
+skinparam ActorBackgroundColor #FFF7ED
+skinparam DatabaseBorderColor #1F2A44
+skinparam DatabaseBackgroundColor #E0E7FF
+skinparam SequenceLifeLineBorderColor #9CA3AF
+skinparam SequenceGroupBorderColor #C2410C
+skinparam SequenceGroupHeaderFontColor #C2410C
+skinparam StateBorderColor #1F2A44
+skinparam StateBackgroundColor #FFF7ED
+skinparam StateStartColor #1F2A44
+skinparam StateEndColor #1F2A44
+skinparam NoteBackgroundColor #F3F4F6
+skinparam NoteBorderColor #9CA3AF
+skinparam TitleFontSize 15
+skinparam TitleFontColor #C2410C
+skinparam ClassBorderColor #1F2A44
+skinparam ClassBackgroundColor #FFF7ED
+skinparam ClassAttributeFontSize 11
+skinparam ClassFontStyle bold
+skinparam ClassStereotypeFontColor #6B7280
+skinparam ClassStereotypeFontSize 10
+skinparam PackageBorderColor #C2410C
+skinparam PackageFontColor #1F2A44
+skinparam PackageStyle rectangle
+skinparam ArrowFontSize 10
+skinparam ArrowFontColor #374151
+skinparam nodesep 40
+skinparam ranksep 50
+hide empty members
+hide circle
+skinparam LegendBackgroundColor #F9FAFB
+skinparam LegendBorderColor #9CA3AF
+skinparam LegendFontSize 12
+title HU-56 · Inventario valorizado\nDiagrama de clases
+package "Web de oficina (React + TypeScript)" #EFF6FF {
+class InventarioPagina <<página>> {
+  archivo : Inventario.tsx
+}
+class ClienteHttp <<api>> {
+  +pedir() «camelCase ↔ snake_case»
+  +fechaHoraLima() «horaLima.ts»
+}
+}
+package "Seguridad y filtros · Spring Boot (todas las rutas)" #F5F3FF {
+class Filtros <<filtros HTTP>> {
+  CabecerasSeguridad «nosniff, DENY, CSP, HSTS, no-store»
+  BitacoraFiltro «POST y 401/403, sin datos sensibles»
+}
+class Acceso <<seguridad>> {
+  +exigir(accion, obraId) : Actor «401 · 403»
+  +exigirEnAlgunaObra(accion) : Actor
+  -exigirPin(actor, accion) «X-SIGRO-PIN»
+  Permisos.MATRIZ «51 acciones × 5 roles»
+}
+}
+package "Módulo almacén · esquema almacen · rol sigro_svc_almacen" #FFF7ED {
+class Reglas <<reglas puras>> #F3F4F6;line:9CA3AF
+class Movimiento <<libro, solo INSERT>> #F3F4F6;line:9CA3AF
+class AlmacenRef <<réplica de obras>> #F3F4F6;line:9CA3AF
+}
+package "Módulo costo · esquema costo · rol sigro_svc_costo" #FFF7ED {
+class CostoController <<@RestController>> {
+  +gasto(corte) «5 cifras al mismo corte»
+  +inventario(corte)
+  +desviacion()
+  toleranciaRedondeo(hechos)
+}
+class EventosCosto <<@RestController>> {
+  +registrar(evento) «idempotente por evento_id»
+}
+}
+Movimiento "0..1" --> "1" Movimiento : revierte_a
+AlmacenRef "1" -- "0..*" Movimiento
+CostoController ..> Reglas : saldos valorizados (en proceso)
+CostoController ..> Acceso : exigir(permiso, obra)
+InventarioPagina ..> ClienteHttp
+ClienteHttp ..> Filtros : HTTPS /api/v1 + JWT
+Filtros ..> Acceso : cada petición
+legend bottom left
+<b>Regla que protege:</b> Valor = Σ sentido × cantidad × costo hasta la fecha de corte (hora de Lima), por almacén y
+consolidado. Se reconstruye del libro: no hay saldo guardado.
+<i>Gris: clases de otro módulo o de contexto (se le pide a su clase, nunca a su esquema).</i>
+endlegend
+@enduml

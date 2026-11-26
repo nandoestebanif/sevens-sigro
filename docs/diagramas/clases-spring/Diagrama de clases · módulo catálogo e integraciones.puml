@@ -1,0 +1,106 @@
+@startuml
+skinparam defaultFontName "DejaVu Sans"
+skinparam defaultFontSize 12
+skinparam shadowing false
+skinparam roundCorner 8
+skinparam ArrowColor #1F2A44
+skinparam ActivityBorderColor #1F2A44
+skinparam ActivityBackgroundColor #FFF7ED
+skinparam ActivityDiamondBackgroundColor #FEF3C7
+skinparam ActivityDiamondBorderColor #92400E
+skinparam SwimlaneTitleFontStyle bold
+skinparam SwimlaneTitleFontColor #1F2A44
+skinparam SwimlaneBorderColor #9CA3AF
+skinparam PartitionBorderColor #9CA3AF
+skinparam ParticipantBorderColor #1F2A44
+skinparam ParticipantBackgroundColor #FFF7ED
+skinparam ActorBorderColor #1F2A44
+skinparam ActorBackgroundColor #FFF7ED
+skinparam DatabaseBorderColor #1F2A44
+skinparam DatabaseBackgroundColor #E0E7FF
+skinparam SequenceLifeLineBorderColor #9CA3AF
+skinparam SequenceGroupBorderColor #C2410C
+skinparam SequenceGroupHeaderFontColor #C2410C
+skinparam StateBorderColor #1F2A44
+skinparam StateBackgroundColor #FFF7ED
+skinparam StateStartColor #1F2A44
+skinparam StateEndColor #1F2A44
+skinparam NoteBackgroundColor #F3F4F6
+skinparam NoteBorderColor #9CA3AF
+skinparam TitleFontSize 15
+skinparam TitleFontColor #C2410C
+skinparam ClassBorderColor #1F2A44
+skinparam ClassBackgroundColor #FFF7ED
+skinparam ClassAttributeFontSize 11
+skinparam ClassFontStyle bold
+skinparam ClassStereotypeFontColor #6B7280
+skinparam ClassStereotypeFontSize 10
+skinparam PackageBorderColor #C2410C
+skinparam PackageFontColor #1F2A44
+skinparam PackageStyle rectangle
+skinparam ArrowFontSize 10
+skinparam ArrowFontColor #374151
+skinparam nodesep 40
+skinparam ranksep 50
+hide empty members
+hide circle
+skinparam LegendBackgroundColor #F9FAFB
+skinparam LegendBorderColor #9CA3AF
+skinparam LegendFontSize 12
+title SIGRO · Diagrama de clases · módulo catálogo e integraciones (Spring Boot)
+package "Módulo catálogo · esquema catalogo · rol sigro_svc_catalogo" #FFF7ED {
+class Insumo {
+  codigo : text «único en todas las obras»
+  descripcion : text
+  medida : text
+  norma : text
+  marca : text
+  unidad_compra : text
+  factor_conversion : numeric
+  tipo : material | mano_obra | equipo | subcontrato
+  verificado : bool
+}
+class InsumoNombreComercial {
+  nombre : text
+}
+class InsumoFactorHistorial <<solo INSERT>> {
+  factor_anterior : numeric
+  factor_nuevo : numeric
+  motivo : text
+  cambiado_por : bigint
+  cambiado_en : timestamptz
+}
+class CatalogoController <<@RestController>> {
+  +listar()
+  +registrar() «normalizar()»
+  +verificar()
+  +factor() / historial()
+  +leerPdf() / importar() «S10»
+}
+}
+package "Integraciones (S10, SUNAT, RENIEC) · dentro del backend" #FFF7ED {
+class LectorS10 <<componente>> {
+  +leer(pdf) : relación de insumos
+  PDFBox 3
+}
+class LecturaS10 <<valor>> {
+  obra : text
+  subpresupuesto : text
+  fecha : text
+  insumos : list
+  fallidos : list «con su motivo»
+}
+class Padron <<componente>> {
+  +ruc(ruc)
+  +dni(dni)
+  Factiliza | apisperu · caché 24 h
+}
+}
+Insumo "1" -- "0..*" InsumoNombreComercial
+Insumo "1" -- "0..*" InsumoFactorHistorial : historial
+LectorS10 ..> LecturaS10 : devuelve
+CatalogoController ..> Insumo : crea / actualiza
+CatalogoController ..> InsumoFactorHistorial : registra
+CatalogoController ..> LectorS10 : lee el PDF (en proceso)
+CatalogoController ..> InsumoNombreComercial
+@enduml

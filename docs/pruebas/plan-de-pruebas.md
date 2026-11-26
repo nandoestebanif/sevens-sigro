@@ -340,3 +340,19 @@ que coincidía con «Parámetros de reposición». El único comportamiento del 
 | I-4 | Entorno | Docker Desktop no arrancó («unable to start», la VM de WSL quedó trabada) | Se corrió con un PostgreSQL 16 nativo en :5435; `levantar-local.sh` sirve con cualquier PostgreSQL |
 | I-5 | `GET /obras/{id}/parametros-reposicion/{insumo_id}/historial` | Con un insumo que no existe responde **200 `[]`**; las demás rutas con id (factor, ajustes, compras…) responden 404 `no_existe` | Inconsistencia menor: la pantalla no distingue «sin historial» de «insumo equivocado». Se excluyó del 404 genérico (`SIN_404`) hasta que se decida |
 | O-1 | Web · Reposición | «Saldo por comprar» muestra las cantidades redondeadas a enteros (3 492.36 bls → «3,492 bls») | Observación, no incidencia: el servidor guarda los decimales; la prueba acepta ambas formas |
+
+## Niveles de prueba vigentes (26/11/2026, backend Spring · ADR-12)
+
+| Nivel | Qué prueba | Dónde | Último resultado |
+|---|---|---|---|
+| Unidad · dominio de la app | reglas puras (ValidarSalida, PoliticaEnvio, VistaPorRol…) | `android/composeApp/src/commonTest` (desktopTest) | 215 pasan (25/11) · Kover 89 % |
+| Unidad · backend Spring | Reglas, Tokens/PIN, relevo, cabeceras | `backend-spring/src/test` (JUnit 5) | 24 pasan |
+| Unidad y componentes · web | clientes http, permisos (copia = servidor), PIN, bitácora | `web/src/**/*.test.ts` (Vitest) | 237 pasan |
+| API · contrato | cada endpoint con datos reales, permisos 401/403, reglas 409/422, idempotencia | `api/pruebas` (pytest) contra Python | 1018 pasan |
+| API · paridad Spring | las mismas pruebas, por HTTP real contra `backend-spring` | `SIGRO_SPRING_URL=… pytest pruebas/test_api_*.py …` | 372 pasan · 3 no aplican por HTTP |
+| Visual · web | tema, menú, tickets, celular, modo claro | `web/e2e/visual` (Playwright, escritorio y celular) | 10 pasan · 2 se saltan a propósito |
+| Calidad estática | bugs, vulnerabilidades, code smells, cobertura del código nuevo | SonarCloud en cada PR | PR #140: cobertura nueva 84,7 % (Kover) |
+| Aceptación | criterios de cada HU con el PO | `docs/pruebas/SIGRO - Pruebas de aceptación (Sprint 2).xlsx` | — |
+
+Todo corre en GitHub Actions en cada pull request (Definición de Terminado): `pruebas/api`, `calidad/servicio`,
+`calidad/app`, `web`, `visual`.

@@ -1,0 +1,22 @@
+@startuml
+skinparam defaultFontName DejaVu Sans
+skinparam shadowing false
+skinparam rectangleBorderColor #6B7280
+title C4 · Nivel 2 · Contenedores de SIGRO (vigente, ADR-12 · 26/11/2026)
+actor "Almacenero / SSOMA\n(en obra, con o sin señal)" as A1
+actor "Residente · Administrador · Gerente\n(oficina)" as A2
+rectangle "App Android\n[Kotlin Multiplatform · Compose]\nMVVM · Room guarda sin señal · WorkManager envía\nhuella / PIN del celular" as APP #FFF7ED
+rectangle "Web de oficina\n[React + TypeScript + Bootstrap · sitio estático]\nVista · estado (ViewModel) · cliente http\nPIN del panel de administración" as WEB #FFF7ED
+rectangle "API SIGRO\n[Spring Boot 3 · Java 17 · un desplegable]\nmonolito modular: obra · catálogo · compras · tareo · almacén · costo\nseguridad (Acceso, Permisos, JWT, PIN) · filtros (cabeceras, bitácora)\nrelevo de costo (outbox)" as API #F3F4F6
+database "PostgreSQL (Neon)\n[esquema y rol por módulo]\nAlembic 0001–0025 · reglas en la base\n(disparadores, solo-insertar, CHECK)" as DB
+rectangle "Padrón SUNAT / RENIEC\n[Factiliza · apisperu]" as EXT #FFFFFF
+rectangle "S10 (PDF)\n[relación de insumos y APU]" as S10 #FFFFFF
+A1 --> APP
+A2 --> WEB
+APP --> API : HTTPS /api/v1 · JWT · uuid_cliente
+WEB --> API : HTTPS /api/v1 · JWT (+ X-SIGRO-PIN)
+API --> DB : JDBC · SET ROLE sigro_svc_<módulo>
+API --> EXT : HTTPS (RUC, DNI) · caché 24 h
+A2 ..> S10 : sube el PDF
+S10 ..> API : LectorS10 (PDFBox)
+@enduml

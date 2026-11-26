@@ -1,0 +1,17 @@
+@startuml
+!include ../../estilo.iuml
+hide empty description
+title E14 · Estados del PIN del administrador\nmigración 0024 · 25/11/2026
+[*] --> SinPin
+state "Sin PIN" as SinPin
+SinPin : el servidor no lo exige todavía;\nla web pide crearlo antes del panel
+SinPin --> Configurado : crear PIN (pide la contraseña)\n/ hash Argon2id · rechaza 111111, 123456…
+Configurado : usuarios, roles, celulares y bitácora\nexigen el pase X-SIGRO-PIN
+Configurado --> ConPase : verificar PIN correcto\n/ pase de 15 min · intentos = 0
+state "Con pase vigente" as ConPase
+ConPase --> Configurado : vence a los 15 min\no «Cerrar el panel»
+Configurado --> Configurado : PIN incorrecto\n/ intentos + 1 (403 con los que quedan)
+Configurado --> Bloqueado : 5.º intento fallido
+Bloqueado : 429 aunque el PIN sea correcto
+Bloqueado --> Configurado : pasan 10 minutos
+@enduml

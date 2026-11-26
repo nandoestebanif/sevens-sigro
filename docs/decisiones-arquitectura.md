@@ -76,7 +76,7 @@ tres costos: el iPhone solo se compila en una Mac con Xcode; iOS no garantiza el
 segundo plano como WorkManager, así que en iOS la app envía al registrar, al abrirse y con «Enviar ahora»
 hasta registrar la tarea de fondo; y Room KMP exige que las consultas sean `suspend` o `Flow`.
 
-## ADR-09 · Arquitectura de microservicios (reemplaza al ADR-01)
+## ADR-09 · Arquitectura de microservicios (reemplaza al ADR-01) — **el despliegue por servicio lo reemplaza ADR-12 (25/11); sus reglas de aislamiento siguen vigentes**
 **Contexto.** El 28/10 el equipo acordó que SIGRO sea una arquitectura de microservicios en todas sus
 piezas, no un monolito modular con servicios satélite. Los seis módulos ya tenían esquema propio y no se
 consultaban directamente, así que las fronteras existían: faltaba que cada uno fuera un servicio de verdad.
@@ -123,7 +123,7 @@ Un bus de mensajes (RabbitMQ, Kafka): para el volumen de una obra, el outbox con
   por el mismo contrato HTTP; `pruebas/test_microservicios.py` verifica las cinco reglas de arriba.
 
 
-## ADR-10 · Ambiente de pruebas en un solo nodo (03/11/2026)
+## ADR-10 · Ambiente de pruebas en un solo nodo (03/11/2026) — **reemplazado por ADR-12 (25/11)**
 **Contexto.** El ambiente de pruebas (HT-01, ADR-06) corría en Render con **ocho servicios Docker gratuitos**, uno
 por microservicio, y dos problemas que no se arreglan con código:
 - **La red privada no sirve en el plan gratuito.** Un servicio gratuito puede *enviar* tráfico privado pero no

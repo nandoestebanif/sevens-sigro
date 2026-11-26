@@ -1,0 +1,189 @@
+@startuml
+skinparam defaultFontName "DejaVu Sans"
+skinparam defaultFontSize 12
+skinparam shadowing false
+skinparam roundCorner 8
+skinparam ArrowColor #1F2A44
+skinparam ActivityBorderColor #1F2A44
+skinparam ActivityBackgroundColor #FFF7ED
+skinparam ActivityDiamondBackgroundColor #FEF3C7
+skinparam ActivityDiamondBorderColor #92400E
+skinparam SwimlaneTitleFontStyle bold
+skinparam SwimlaneTitleFontColor #1F2A44
+skinparam SwimlaneBorderColor #9CA3AF
+skinparam PartitionBorderColor #9CA3AF
+skinparam ParticipantBorderColor #1F2A44
+skinparam ParticipantBackgroundColor #FFF7ED
+skinparam ActorBorderColor #1F2A44
+skinparam ActorBackgroundColor #FFF7ED
+skinparam DatabaseBorderColor #1F2A44
+skinparam DatabaseBackgroundColor #E0E7FF
+skinparam SequenceLifeLineBorderColor #9CA3AF
+skinparam SequenceGroupBorderColor #C2410C
+skinparam SequenceGroupHeaderFontColor #C2410C
+skinparam StateBorderColor #1F2A44
+skinparam StateBackgroundColor #FFF7ED
+skinparam StateStartColor #1F2A44
+skinparam StateEndColor #1F2A44
+skinparam NoteBackgroundColor #F3F4F6
+skinparam NoteBorderColor #9CA3AF
+skinparam TitleFontSize 15
+skinparam TitleFontColor #C2410C
+skinparam ClassBorderColor #1F2A44
+skinparam ClassBackgroundColor #FFF7ED
+skinparam ClassAttributeFontSize 11
+skinparam ClassFontStyle bold
+skinparam ClassStereotypeFontColor #6B7280
+skinparam ClassStereotypeFontSize 10
+skinparam PackageBorderColor #C2410C
+skinparam PackageFontColor #1F2A44
+skinparam PackageStyle rectangle
+skinparam ArrowFontSize 10
+skinparam ArrowFontColor #374151
+skinparam nodesep 40
+skinparam ranksep 50
+hide empty members
+hide circle
+skinparam LegendBackgroundColor #F9FAFB
+skinparam LegendBorderColor #9CA3AF
+skinparam LegendFontSize 12
+title SIGRO · Diagrama de clases · módulo compras (Spring Boot)
+package "Módulo compras · esquema compras · rol sigro_svc_compras" #FFF7ED {
+class Proveedor {
+  ruc : text «único»
+  razon_social : text
+  estado_validacion : validado | sin_validar
+  alerta_sunat : text
+  consultado_en : timestamptz
+  estado : activo | baja
+}
+class Compra {
+  tipo_comprobante : factura | boleta | nota_venta | otro
+  numero_comprobante : text
+  fecha : date «no futura»
+  moneda : PEN | USD
+  base_imponible : numeric
+  igv : numeric
+  total : numeric
+  estado : registrada | anulada
+  motivo_anulacion : text
+}
+class CompraDetalle {
+  cantidad : numeric
+  unidad : text
+  precio_unitario : numeric
+  precio_referencia : numeric
+  fuera_de_lo_habitual : bool
+  nota_precio : text
+}
+class CompraAdjunto <<comprobante>> {
+  nombre_original : text
+  tipo_mime : application/pdf | image/jpeg | image/png
+  tamano_bytes : int «≤ 10 MB»
+  sha256 : text
+  almacenamiento : bd | s3
+  anulado_en : timestamptz
+  motivo_anulacion : text
+}
+class CompraAdjuntoContenido {
+  contenido : bytea
+}
+class Requerimiento {
+  cantidad_planificada : numeric
+  precio_planificado : numeric
+  origen : s10 | manual
+  motivo_alta : text
+}
+class RequerimientoAjuste <<solo INSERT>> {
+  cantidad_anterior : numeric
+  cantidad_nueva : numeric
+  motivo : text
+  ajustado_por : bigint
+  ajustado_en : timestamptz
+}
+class ParametroReposicion <<solo INSERT>> {
+  stock_seguridad : numeric
+  punto_reposicion : numeric
+  nivel_maximo : numeric «> punto»
+  vigente_desde : timestamptz
+}
+class ParametroReposicionVigente <<vista>> {
+  última vigencia por insumo
+}
+class SaldoPorComprar <<vista>> {
+  requerido : numeric
+  comprado : numeric
+  falta_por_comprar : numeric
+}
+class InsumoCritico <<solo INSERT>> {
+  critico : bool
+  registrado_por : bigint
+  registrado_en : timestamptz
+}
+class InsumoCriticoVigente <<vista>> {
+  última marca por obra e insumo
+}
+class Partida {
+  codigo : text
+  descripcion : text
+  unidad : text
+}
+class PartidaRecurso {
+  cantidad_por_unidad : numeric
+  unidad : text
+}
+class ComprasController <<@RestController>> {
+  +registrarCompra() / anularCompra()
+  +precioReferencia()
+  +listarProveedores() / crearProveedor()
+  +consultarRuc() / validarProveedor() / bajaProveedor()
+  +emitirSolicitud() / anularSolicitud()
+}
+class AdjuntosController <<@RestController>> {
+  +subir() / descargar() / anular()
+}
+class RequerimientoController <<@RestController>> {
+  +importar() / ver() / ajustar() / agregar()
+  +saldo() / avance()
+  +registrarParametro() / parametros()
+  +marcarCritico() / criticos()
+}
+class PartidasController <<@RestController>> {
+  +importar() «APU del S10»
+  +partidas() / recursos()
+}
+class Dominio <<reglas>> {
+  +rucValido(ruc)
+  +referenciaEnUnidadDeCompra()
+  +nombreSeguro()
+}
+class Compras <<API del módulo>> {
+  +comprado(obraId, hasta) «la usa costo»
+}
+}
+Proveedor "1" -- "0..*" Compra
+Compra "1" *-- "1..*" CompraDetalle : líneas
+Compra "1" -- "0..*" CompraAdjunto : comprobantes
+CompraAdjunto "1" -- "1" CompraAdjuntoContenido : bytes
+Requerimiento "1" -- "0..*" RequerimientoAjuste : ajustes
+ParametroReposicionVigente ..> ParametroReposicion : última vigencia
+InsumoCriticoVigente ..> InsumoCritico : última marca
+SaldoPorComprar ..> Requerimiento : requerido
+SaldoPorComprar ..> CompraDetalle : comprado
+Partida "1" *-- "1..*" PartidaRecurso
+ComprasController ..> Proveedor
+ComprasController ..> Dominio : usa
+ComprasController ..> Compra : registra / anula
+ComprasController ..> CompraAdjunto : sube / anula
+ComprasController ..> CompraDetalle
+ComprasController ..> CompraAdjuntoContenido : guarda
+RequerimientoController ..> Requerimiento
+RequerimientoController ..> RequerimientoAjuste : registra
+RequerimientoController ..> ParametroReposicion : registra
+RequerimientoController ..> SaldoPorComprar : consulta
+RequerimientoController ..> InsumoCritico : marca
+RequerimientoController ..> ParametroReposicionVigente : consulta
+RequerimientoController ..> InsumoCriticoVigente : consulta
+PartidasController ..> Partida
+PartidasController ..> PartidaRecurso
+@enduml

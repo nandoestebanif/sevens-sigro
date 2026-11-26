@@ -1,0 +1,220 @@
+@startuml
+skinparam defaultFontName "DejaVu Sans"
+skinparam defaultFontSize 12
+skinparam shadowing false
+skinparam roundCorner 8
+skinparam ArrowColor #1F2A44
+skinparam ActivityBorderColor #1F2A44
+skinparam ActivityBackgroundColor #FFF7ED
+skinparam ActivityDiamondBackgroundColor #FEF3C7
+skinparam ActivityDiamondBorderColor #92400E
+skinparam SwimlaneTitleFontStyle bold
+skinparam SwimlaneTitleFontColor #1F2A44
+skinparam SwimlaneBorderColor #9CA3AF
+skinparam PartitionBorderColor #9CA3AF
+skinparam ParticipantBorderColor #1F2A44
+skinparam ParticipantBackgroundColor #FFF7ED
+skinparam ActorBorderColor #1F2A44
+skinparam ActorBackgroundColor #FFF7ED
+skinparam DatabaseBorderColor #1F2A44
+skinparam DatabaseBackgroundColor #E0E7FF
+skinparam SequenceLifeLineBorderColor #9CA3AF
+skinparam SequenceGroupBorderColor #C2410C
+skinparam SequenceGroupHeaderFontColor #C2410C
+skinparam StateBorderColor #1F2A44
+skinparam StateBackgroundColor #FFF7ED
+skinparam StateStartColor #1F2A44
+skinparam StateEndColor #1F2A44
+skinparam NoteBackgroundColor #F3F4F6
+skinparam NoteBorderColor #9CA3AF
+skinparam TitleFontSize 15
+skinparam TitleFontColor #C2410C
+skinparam ClassBorderColor #1F2A44
+skinparam ClassBackgroundColor #FFF7ED
+skinparam ClassAttributeFontSize 11
+skinparam ClassFontStyle bold
+skinparam ClassStereotypeFontColor #6B7280
+skinparam ClassStereotypeFontSize 10
+skinparam PackageBorderColor #C2410C
+skinparam PackageFontColor #1F2A44
+skinparam PackageStyle rectangle
+skinparam ArrowFontSize 10
+skinparam ArrowFontColor #374151
+skinparam nodesep 40
+skinparam ranksep 50
+hide empty members
+hide circle
+skinparam LegendBackgroundColor #F9FAFB
+skinparam LegendBorderColor #9CA3AF
+skinparam LegendFontSize 12
+title C4 · Nivel 4 (código) · Módulo de almacén · Controller → Service → Repository
+package "Seguridad y filtros · Spring Boot (todas las rutas)" #F5F3FF {
+class Acceso <<seguridad>> #F3F4F6;line:9CA3AF
+}
+package "Módulo obra · esquema obra · rol sigro_svc_obras" #FFF7ED {
+class Periodo <<semana de control>> #F3F4F6;line:9CA3AF
+class Dispositivo #F3F4F6;line:9CA3AF
+}
+package "Módulo compras · esquema compras · rol sigro_svc_compras" #FFF7ED {
+class Compra #F3F4F6;line:9CA3AF
+class Requerimiento #F3F4F6;line:9CA3AF
+}
+package "Módulo almacén · esquema almacen · rol sigro_svc_almacen" #FFF7ED {
+class Movimiento <<libro, solo INSERT>> {
+  uuid_cliente : uuid «único»
+  tipo : ingreso_compra | ingreso_sin_compra | salida |\n traslado_salida | traslado_ingreso | ajuste_conteo | reverso
+  sentido : +1 | -1
+  cantidad : numeric «> 0»
+  costo_unitario : numeric «congelado»
+  motivo : text
+  quien_retira : text
+  origen : text
+  revierte_a_id : bigint
+  periodo_id : bigint
+  dispositivo_id : bigint
+  fecha_dispositivo : timestamptz
+  fecha_servidor : timestamptz
+}
+class Recepcion {
+  uuid_cliente : uuid
+  compra_id : bigint «ref. lógica»
+  motivo_exceso : text
+  fecha_servidor : timestamptz
+}
+class Traslado {
+  uuid_cliente : uuid
+  origen_almacen_id : bigint
+  destino_almacen_id : bigint
+  motivo : text
+  es_cierre : bool
+}
+class Conteo {
+  uuid_cliente : uuid
+  fecha : date
+  estado : abierto | confirmado
+  es_cierre : bool
+}
+class ConteoLinea {
+  saldo_teorico : numeric
+  cantidad_contada : numeric
+  diferencia : numeric «calculada»
+  motivo : text
+}
+class AlmacenRef <<réplica de obras>> {
+  nombre : text
+  estado : text
+}
+class InsumoRef <<réplica de catálogo>> {
+  codigo : text
+  unidad : text
+}
+class Saldo <<vista>> {
+  Σ sentido × cantidad por almacén e insumo
+}
+class Kardex <<vista>> {
+  movimientos con su saldo acumulado
+}
+class RecibidoPorCompra <<vista>> {
+  recibido por compra e insumo
+}
+class DisparadorMovimiento <<trigger tg_movimiento_validar>> {
+  fija la hora del servidor
+  bloquea almacén + insumo
+  rechaza sin stock (SIGRO-A1)
+  congela el costo promedio
+  copia el reverso con signo cambiado
+}
+class AlmacenController <<@RestController>> {
+  +salida() / ingreso() / recepcion()
+  +traslado() / anularTraslado()
+  +reverso()
+  +abrirConteo() / contar() / confirmar()
+  +stock() / kardex() / semana()
+}
+class AlmacenService <<@Service · casos de uso>> {
+  +salida(actor, obraId, datos) : Resultado
+  +ingreso() / recepcion() / traslado()
+  +reverso(motivo)
+  +abrirConteo() / confirmarConteo()
+  -dispositivo() «celular autorizado»
+  -periodo() «abierto»
+  -porUuid() «idempotencia»
+}
+class MovimientoRepository <<interfaz>> {
+  +insertar(movimiento) : long
+  +porId() / porUuid()
+}
+class JdbcMovimientoRepository <<JDBC>> {
+  NamedParameterJdbcTemplate
+  publica el hecho en outbox (misma transacción)
+}
+class ConsultaRepository <<interfaz>> {
+  +stock() / kardex() / semana()
+  +resumenValorizado(corte)
+}
+class Reglas <<reglas puras>> {
+  +resolverPeriodo(periodos, dia, esReverso)
+  +aUnidadS10() / aCostoS10()
+  +costoRecepcion()
+  +uuidDerivado() «idempotencia»
+  +excesoSobreRequerido()
+  +disponibleParaPrestar()
+}
+class PrestamoController <<@RestController>> {
+  +prestar() / devolver() / listar()
+}
+class PrestamoService <<@Service>> {
+  +prestar() «no presta más de lo disponible»
+  +devolver(estado) «bueno | danado | perdido»
+}
+class Prestamo <<préstamo de herramienta>> {
+  insumo_id : bigint
+  almacen_id : bigint
+  cantidad : numeric
+  responsable : text
+  devolver_el : date
+  devuelto_en : timestamptz
+  estado_devolucion : bueno | danado | perdido
+}
+class "Almacen «almacen»" as Almacen_api <<API del módulo>> {
+  +resumenValorizado(obraId, corte) «la usa costo»
+}
+}
+package "Outbox · esquema outbox" #FFF7ED {
+class Evento <<outbox>> #F3F4F6;line:9CA3AF
+}
+Recepcion "1" -- "1..*" Movimiento : genera ingresos
+Movimiento "0..1" --> "1" Movimiento : revierte_a
+Conteo "1" *-- "1..*" ConteoLinea
+Conteo "1" -- "0..*" Movimiento : ajustes
+Traslado "1" -- "2" Movimiento : salida + ingreso
+AlmacenRef "1" -- "0..*" Movimiento
+InsumoRef "1" -- "0..*" Movimiento
+Saldo ..> Movimiento : suma (no hay campo saldo)
+Kardex ..> Movimiento
+RecibidoPorCompra ..> Recepcion
+DisparadorMovimiento ..> Movimiento : BEFORE INSERT
+Recepcion ..> Compra : compra_id (sin FK entre esquemas)
+Movimiento ..> Periodo : periodo_id (ref. lógica)
+Movimiento ..> Dispositivo : dispositivo_id (ref. lógica)
+AlmacenService ..> Recepcion : registra
+AlmacenService ..> Reglas : usa
+AlmacenService ..> Saldo : consulta
+AlmacenService ..> Kardex : consulta
+AlmacenService ..> Evento : publica (misma transacción)
+AlmacenService ..> Requerimiento : requerido (en proceso, compras)
+AlmacenService ..> Compra : pedido (en proceso, compras)
+AlmacenController ..> Acceso : exigir(permiso, obra)
+AlmacenController --> AlmacenService : delega
+AlmacenService --> MovimientoRepository : usa
+JdbcMovimientoRepository ..|> MovimientoRepository
+JdbcMovimientoRepository ..> Movimiento : INSERT (solo)
+PrestamoController --> PrestamoService : delega
+PrestamoService ..> Prestamo : inserta / devuelve
+PrestamoService ..> Reglas : disponibleParaPrestar()
+legend bottom left
+Reglas 1 a 4 del dominio: el movimiento no se borra (solo INSERT), el saldo se deriva,
+un reenvío no duplica (uuid_cliente) y el costo promedio ponderado se congela en la salida (NIC 2).
+<i>Gris: clases de otros módulos (se les pide a su clase, sin FK entre esquemas).</i>
+endlegend
+@enduml

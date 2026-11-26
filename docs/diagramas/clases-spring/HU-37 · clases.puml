@@ -1,0 +1,86 @@
+@startuml
+skinparam defaultFontName "DejaVu Sans"
+skinparam defaultFontSize 12
+skinparam shadowing false
+skinparam roundCorner 8
+skinparam ArrowColor #1F2A44
+skinparam ActivityBorderColor #1F2A44
+skinparam ActivityBackgroundColor #FFF7ED
+skinparam ActivityDiamondBackgroundColor #FEF3C7
+skinparam ActivityDiamondBorderColor #92400E
+skinparam SwimlaneTitleFontStyle bold
+skinparam SwimlaneTitleFontColor #1F2A44
+skinparam SwimlaneBorderColor #9CA3AF
+skinparam PartitionBorderColor #9CA3AF
+skinparam ParticipantBorderColor #1F2A44
+skinparam ParticipantBackgroundColor #FFF7ED
+skinparam ActorBorderColor #1F2A44
+skinparam ActorBackgroundColor #FFF7ED
+skinparam DatabaseBorderColor #1F2A44
+skinparam DatabaseBackgroundColor #E0E7FF
+skinparam SequenceLifeLineBorderColor #9CA3AF
+skinparam SequenceGroupBorderColor #C2410C
+skinparam SequenceGroupHeaderFontColor #C2410C
+skinparam StateBorderColor #1F2A44
+skinparam StateBackgroundColor #FFF7ED
+skinparam StateStartColor #1F2A44
+skinparam StateEndColor #1F2A44
+skinparam NoteBackgroundColor #F3F4F6
+skinparam NoteBorderColor #9CA3AF
+skinparam TitleFontSize 15
+skinparam TitleFontColor #C2410C
+skinparam ClassBorderColor #1F2A44
+skinparam ClassBackgroundColor #FFF7ED
+skinparam ClassAttributeFontSize 11
+skinparam ClassFontStyle bold
+skinparam ClassStereotypeFontColor #6B7280
+skinparam ClassStereotypeFontSize 10
+skinparam PackageBorderColor #C2410C
+skinparam PackageFontColor #1F2A44
+skinparam PackageStyle rectangle
+skinparam ArrowFontSize 10
+skinparam ArrowFontColor #374151
+skinparam nodesep 40
+skinparam ranksep 50
+hide empty members
+hide circle
+skinparam LegendBackgroundColor #F9FAFB
+skinparam LegendBorderColor #9CA3AF
+skinparam LegendFontSize 12
+title HU-37 · Registro sin señal\nDiagrama de clases
+package "App del almacenero (Kotlin Multiplatform)" #ECFDF5 {
+class SalidaViewModel <<ViewModel>> {
+  +guardar(obraId)
+  estado : StateFlow
+}
+class ValidarSalida <<dominio>> {
+  +errores(insumo, cantidad, motivo, quienRetira)
+  +normalizarCantidad()
+}
+interface RepositorioSalidas {
+  +registrar(nueva) : SalidaRegistrada
+  +sincronizar() : ResultadoSincronizacion
+}
+class RepositorioSalidasImpl {
+  +registrar()
+  +sincronizar() «una a la vez»
+}
+class SalidaLocalEntity <<Room>> {
+  uuidCliente : String «PK»
+  insumoId, cantidad, motivo, quienRetira
+  estado : PENDIENTE | ENVIADO | RECHAZADO
+  intentos : Int
+  motivoRechazo : String?
+}
+}
+SalidaViewModel --> RepositorioSalidas
+SalidaViewModel ..> ValidarSalida : valida
+RepositorioSalidasImpl ..|> RepositorioSalidas
+RepositorioSalidasImpl --> SalidaLocalEntity : guarda primero
+RepositorioSalidasImpl ..> ValidarSalida
+legend bottom left
+<b>Regla que protege:</b> La salida se guarda primero en el celular (Room) con su uuid_cliente y estado PENDIENTE. La app no
+calcula el saldo.
+<i>Gris: clases de otro módulo o de contexto (se le pide a su clase, nunca a su esquema).</i>
+endlegend
+@enduml

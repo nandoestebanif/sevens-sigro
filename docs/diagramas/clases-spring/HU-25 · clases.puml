@@ -1,0 +1,104 @@
+@startuml
+skinparam defaultFontName "DejaVu Sans"
+skinparam defaultFontSize 12
+skinparam shadowing false
+skinparam roundCorner 8
+skinparam ArrowColor #1F2A44
+skinparam ActivityBorderColor #1F2A44
+skinparam ActivityBackgroundColor #FFF7ED
+skinparam ActivityDiamondBackgroundColor #FEF3C7
+skinparam ActivityDiamondBorderColor #92400E
+skinparam SwimlaneTitleFontStyle bold
+skinparam SwimlaneTitleFontColor #1F2A44
+skinparam SwimlaneBorderColor #9CA3AF
+skinparam PartitionBorderColor #9CA3AF
+skinparam ParticipantBorderColor #1F2A44
+skinparam ParticipantBackgroundColor #FFF7ED
+skinparam ActorBorderColor #1F2A44
+skinparam ActorBackgroundColor #FFF7ED
+skinparam DatabaseBorderColor #1F2A44
+skinparam DatabaseBackgroundColor #E0E7FF
+skinparam SequenceLifeLineBorderColor #9CA3AF
+skinparam SequenceGroupBorderColor #C2410C
+skinparam SequenceGroupHeaderFontColor #C2410C
+skinparam StateBorderColor #1F2A44
+skinparam StateBackgroundColor #FFF7ED
+skinparam StateStartColor #1F2A44
+skinparam StateEndColor #1F2A44
+skinparam NoteBackgroundColor #F3F4F6
+skinparam NoteBorderColor #9CA3AF
+skinparam TitleFontSize 15
+skinparam TitleFontColor #C2410C
+skinparam ClassBorderColor #1F2A44
+skinparam ClassBackgroundColor #FFF7ED
+skinparam ClassAttributeFontSize 11
+skinparam ClassFontStyle bold
+skinparam ClassStereotypeFontColor #6B7280
+skinparam ClassStereotypeFontSize 10
+skinparam PackageBorderColor #C2410C
+skinparam PackageFontColor #1F2A44
+skinparam PackageStyle rectangle
+skinparam ArrowFontSize 10
+skinparam ArrowFontColor #374151
+skinparam nodesep 40
+skinparam ranksep 50
+hide empty members
+hide circle
+skinparam LegendBackgroundColor #F9FAFB
+skinparam LegendBorderColor #9CA3AF
+skinparam LegendFontSize 12
+title HU-25 · Parámetros de reposición\nDiagrama de clases
+package "Web de oficina (React + TypeScript)" #EFF6FF {
+class ParametrosPagina <<página>> {
+  archivo : Parametros.tsx
+}
+class ClienteHttp <<api>> {
+  +pedir() «camelCase ↔ snake_case»
+  +fechaHoraLima() «horaLima.ts»
+}
+}
+package "Seguridad y filtros · Spring Boot (todas las rutas)" #F5F3FF {
+class Filtros <<filtros HTTP>> {
+  CabecerasSeguridad «nosniff, DENY, CSP, HSTS, no-store»
+  BitacoraFiltro «POST y 401/403, sin datos sensibles»
+}
+class Acceso <<seguridad>> {
+  +exigir(accion, obraId) : Actor «401 · 403»
+  +exigirEnAlgunaObra(accion) : Actor
+  -exigirPin(actor, accion) «X-SIGRO-PIN»
+  Permisos.MATRIZ «51 acciones × 5 roles»
+}
+}
+package "Módulo catálogo · esquema catalogo · rol sigro_svc_catalogo" #FFF7ED {
+class Insumo #F3F4F6;line:9CA3AF
+}
+package "Módulo compras · esquema compras · rol sigro_svc_compras" #FFF7ED {
+class RequerimientoController <<@RestController>> {
+  +importar() / ver() / ajustar() / agregar()
+  +saldo() / avance()
+  +registrarParametro() / parametros()
+  +marcarCritico() / criticos()
+}
+class ParametroReposicion <<solo INSERT>> {
+  stock_seguridad : numeric
+  punto_reposicion : numeric
+  nivel_maximo : numeric «> punto»
+  vigente_desde : timestamptz
+}
+class ParametroReposicionVigente <<vista>> {
+  última vigencia por insumo
+}
+}
+ParametroReposicionVigente ..> ParametroReposicion : última vigencia
+RequerimientoController ..> ParametroReposicion : registra
+RequerimientoController ..> ParametroReposicionVigente : consulta
+RequerimientoController ..> Acceso : exigir(permiso, obra)
+ParametrosPagina ..> ClienteHttp
+ClienteHttp ..> Filtros : HTTPS /api/v1 + JWT
+Filtros ..> Acceso : cada petición
+legend bottom left
+<b>Regla que protege:</b> Stock de seguridad, punto de reposición y nivel máximo (> punto) por insumo y obra. Cambiar un
+valor es una fila nueva con su vigencia; la vista da la vigente.
+<i>Gris: clases de otro módulo o de contexto (se le pide a su clase, nunca a su esquema).</i>
+endlegend
+@enduml
