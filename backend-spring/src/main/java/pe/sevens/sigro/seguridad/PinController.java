@@ -33,12 +33,12 @@ public class PinController {
         this.tokens = tokens;
     }
 
-    /** Solo un administrador (en alguna obra) tiene panel y PIN. */
+    /** Tiene PIN quien, en alguna obra, tiene un rol con acciones que lo piden (administrador, residente…). */
     Acceso.Actor admin() {
         var a = acceso.autenticado();
-        Object rol = db.en(() -> db.escalar("SELECT 1 FROM obra.asignacion WHERE usuario_id = :u AND rol = 'administrador' AND fecha_retiro IS NULL LIMIT 1",
-                P.de("u", a.usuarioId())));
-        if (rol == null) throw new ErrorSigro(403, "sin_permiso", "El PIN es del panel de administración.");
+        Object rol = db.en(() -> db.escalar("SELECT 1 FROM obra.asignacion WHERE usuario_id = :u AND rol = ANY(:r) AND fecha_retiro IS NULL LIMIT 1",
+                P.de("u", a.usuarioId(), "r", P.textos(Acceso.rolesConPin()))));
+        if (rol == null) throw new ErrorSigro(403, "sin_permiso", "Tu rol no tiene acciones que pidan PIN.");
         return a;
     }
 

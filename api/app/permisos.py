@@ -13,6 +13,7 @@ ACCIONES: dict[str, frozenset[str]] = {
     # --- preparar la obra
     "proyecto.crear": frozenset({RESIDENTE, ADMIN}),
     "proyecto.ampliar_plazo": frozenset({RESIDENTE, ADMIN}),          # gerente "A": pendiente D-A2
+    "proyecto.recortar_plazo": frozenset({ADMIN}),                     # 0026: solo administrador y con PIN
     "proyecto.cerrar": frozenset({ADMIN}),                           # 25/11: cerrar la obra (nada se borra, R10; no se reabre)
     "proyecto.consultar": TODOS,
     "periodo.consultar": TODOS,

@@ -39,7 +39,8 @@ public class Obras {
     }
 
     public List<Map<String, Object>> periodos(long obraId) {
-        return Interno.json(db.en(() -> db.filas("SELECT id, numero, fecha_inicio, fecha_fin, estado FROM obra.periodo WHERE proyecto_id = :p ORDER BY numero", P.de("p", obraId))));
+        return Interno.json(db.en(() -> db.filas("SELECT pe.id, pe.numero, pe.fecha_inicio, least(pe.fecha_fin, pr.fecha_fin) AS fecha_fin, pe.estado FROM obra.periodo pe "
+                + "JOIN obra.proyecto pr ON pr.id = pe.proyecto_id WHERE pe.proyecto_id = :p AND pe.estado <> 'fuera_de_plazo' AND pe.fecha_inicio <= pr.fecha_fin ORDER BY pe.numero", P.de("p", obraId))));
     }
 
     public List<Map<String, Object>> almacenes(long obraId) {
