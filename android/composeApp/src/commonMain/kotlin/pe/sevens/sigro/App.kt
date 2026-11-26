@@ -145,7 +145,7 @@ private fun Navegacion(e: EstadoRaiz.Dentro, alElegirObra: (ObraAsignada) -> Uni
             Destino.Horas -> PantallaHoras(e.obra.id, e.obra.nombre, alVolver = volver)
             Destino.Asistencia -> PantallaAsistencia(e.obra.id, alVolver = volver, alRegistros = { irA(Destino.Pendientes) })
             Destino.Stock -> PantallaStock(e.obra.id, alVolver = volver)
-            Destino.Herramientas -> pe.sevens.sigro.ui.pantallas.PantallaHerramientas(e.obra.id, alVolver = volver)
+            Destino.Herramientas -> pe.sevens.sigro.ui.pantallas.PantallaHerramientas(e.obra.id, alVolver = volver, puedePrestar = e.obra.rol == "almacenero")
             Destino.Entrada -> PantallaEntrada(e.obra.id, alVolver = volver)
             Destino.IngresoSinCompra -> PantallaIngresoSinCompra(e.obra.id, alVolver = volver)
             Destino.Traslado -> PantallaTraslado(e.obra.id, e.obra.nombre, e.sesion.obras, alVolver = volver)

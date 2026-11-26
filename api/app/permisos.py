@@ -24,20 +24,20 @@ ACCIONES: dict[str, frozenset[str]] = {
     "usuario.consultar": frozenset({ADMIN}),
     "asignacion.escribir": frozenset({ADMIN}),
     "asignacion.consultar": frozenset({ADMIN, RESIDENTE}),
-    "dispositivo.solicitar": frozenset({ALMACENERO, SSOMA}),
+    "dispositivo.solicitar": frozenset({ALMACENERO, SSOMA, ADMIN}),
     "dispositivo.autorizar": frozenset({ADMIN}),
     "dispositivo.consultar": frozenset({ADMIN, RESIDENTE}),
     # --- mano de obra
-    "trabajador.registrar": frozenset({ALMACENERO, SSOMA, ADMIN}),   # 25/11: el administrador también, desde la oficina
+    "trabajador.registrar": frozenset({SSOMA, ADMIN}),   # 25/11: el administrador también, desde la oficina
     "trabajador.consultar": frozenset({ALMACENERO, SSOMA, RESIDENTE, ADMIN}),
-    "jornada.registrar": frozenset({ALMACENERO, SSOMA}),
+    "jornada.registrar": frozenset({SSOMA, ADMIN}),
     "horas.consultar": TODOS,
     # --- compras
     "proveedor.registrar": frozenset({ALMACENERO, RESIDENTE, ADMIN}),
     "proveedor.consultar": frozenset({ALMACENERO, RESIDENTE, ADMIN, GERENTE}),
     "compra.registrar": frozenset({ALMACENERO, RESIDENTE, ADMIN}),       # CR-05 (PO, 13/11): el almacenero también la registra, como dice el Sprint Backlog
     "compra.consultar": frozenset({ALMACENERO, RESIDENTE, ADMIN, GERENTE}),  # HU-35: el almacenero ve lo que va a recibir
-    "solicitud.emitir": frozenset({RESIDENTE}),
+    "solicitud.emitir": frozenset({RESIDENTE, ADMIN}),
     "solicitud.consultar": frozenset({RESIDENTE, ADMIN, GERENTE}),
     # --- requerimiento, saldo por comprar y reposición (HU-19, HU-24, HU-25)
     "requerimiento.importar": frozenset({RESIDENTE, ADMIN}),
@@ -52,18 +52,19 @@ ACCIONES: dict[str, frozenset[str]] = {
     "critico.marcar": frozenset({RESIDENTE, ADMIN}),                  # HU-28: el residente decide; el sistema solo propone
     "avance.consultar": frozenset({RESIDENTE, ADMIN, GERENTE}),       # HU-23 (como «sugerencia de compra» de la matriz)
     # --- almacén (migración 0010): solo el almacenero registra; el residente también corrige con reverso
-    "salida.registrar": frozenset({ALMACENERO}),                       # HU-40 (desde su dispositivo autorizado, R5)
-    "ingreso.registrar": frozenset({ALMACENERO}),                      # HU-41
-    "recepcion.registrar": frozenset({ALMACENERO}),                    # HU-35
-    "traslado.registrar": frozenset({ALMACENERO}),                     # HU-42 (el «A» del residente queda pendiente)
-    "conteo.registrar": frozenset({ALMACENERO}),                       # HU-46
-    "movimiento.revertir": frozenset({ALMACENERO, RESIDENTE}),         # HU-45
+    "salida.registrar": frozenset({ALMACENERO, ADMIN}),                       # HU-40 (desde su dispositivo autorizado, R5)
+    "ingreso.registrar": frozenset({ALMACENERO, ADMIN}),                      # HU-41
+    "recepcion.registrar": frozenset({ALMACENERO, ADMIN}),                    # HU-35
+    "traslado.registrar": frozenset({ALMACENERO, ADMIN}),                     # HU-42 (el «A» del residente queda pendiente)
+    "conteo.registrar": frozenset({ALMACENERO, ADMIN}),                       # HU-46
+    "movimiento.revertir": frozenset({ALMACENERO, RESIDENTE, ADMIN}),         # HU-45
     "stock.consultar": TODOS,                                          # HU-43, kárdex
-    "herramienta.prestar": frozenset({ALMACENERO}),                    # préstamo y devolución de herramientas (0023)
+    "herramienta.prestar": frozenset({ALMACENERO, ADMIN}),                    # préstamo y devolución de herramientas (0023)
     "herramienta.consultar": TODOS,                                    # quién tiene qué herramienta
     # --- costo (modelo de lectura)
     "costo.consultar": frozenset({RESIDENTE, ADMIN, GERENTE}),         # HU-58
     # --- catálogo de insumos (HU-07, HU-08, HU-17)
+    "bitacora.consultar": frozenset({ADMIN}),                         # bitácora de operaciones (0024, solo Spring)
     "insumo.consultar": TODOS,
     "insumo.registrar": frozenset({ALMACENERO, RESIDENTE, ADMIN}),      # el almacenero no espera: lo nombra y el residente lo verifica
     "insumo.verificar": frozenset({RESIDENTE, ADMIN}),

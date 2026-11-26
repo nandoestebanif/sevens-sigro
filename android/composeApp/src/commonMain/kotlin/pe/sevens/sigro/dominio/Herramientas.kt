@@ -70,3 +70,20 @@ object ValidarPrestamo {
     fun errorDevolucion(estado: EstadoDevolucion, nota: String): String? =
         if (estado != EstadoDevolucion.BUENO && nota.isBlank()) "Si vuelve dañada o se perdió, escribe qué pasó: queda como constancia." else null
 }
+
+/**
+ * Qué ve cada rol en el celular (regla 9). Es comodidad: el servidor igual responde 403 a lo que no le toca.
+ * Almacenero: movimientos de almacén. SSOMA: personal y asistencia. Residente, administrador y gerente: consulta.
+ */
+enum class AccesoApp { SALIDA, ENTRADA, INGRESO, CONTEO, PERSONAL, HORAS, STOCK, HERRAMIENTAS, CATALOGO }
+
+object VistaPorRol {
+    fun accesos(rol: String): Set<AccesoApp> = when (rol) {
+        "almacenero" -> setOf(AccesoApp.SALIDA, AccesoApp.ENTRADA, AccesoApp.INGRESO, AccesoApp.CONTEO, AccesoApp.STOCK, AccesoApp.HERRAMIENTAS, AccesoApp.CATALOGO)
+        "ssoma" -> setOf(AccesoApp.PERSONAL, AccesoApp.HORAS, AccesoApp.STOCK, AccesoApp.HERRAMIENTAS, AccesoApp.CATALOGO)
+        else -> setOf(AccesoApp.HORAS, AccesoApp.STOCK, AccesoApp.HERRAMIENTAS, AccesoApp.CATALOGO)
+    }
+
+    /** Registra desde el celular (almacenero o SSOMA) o solo consulta (residente, administrador, gerente). */
+    fun registra(rol: String) = rol == "almacenero" || rol == "ssoma"
+}
