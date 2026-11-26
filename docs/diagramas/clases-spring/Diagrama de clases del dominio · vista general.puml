@@ -1,0 +1,262 @@
+@startuml
+skinparam defaultFontName "DejaVu Sans"
+skinparam defaultFontSize 12
+skinparam shadowing false
+skinparam roundCorner 8
+skinparam ArrowColor #1F2A44
+skinparam ActivityBorderColor #1F2A44
+skinparam ActivityBackgroundColor #FFF7ED
+skinparam ActivityDiamondBackgroundColor #FEF3C7
+skinparam ActivityDiamondBorderColor #92400E
+skinparam SwimlaneTitleFontStyle bold
+skinparam SwimlaneTitleFontColor #1F2A44
+skinparam SwimlaneBorderColor #9CA3AF
+skinparam PartitionBorderColor #9CA3AF
+skinparam ParticipantBorderColor #1F2A44
+skinparam ParticipantBackgroundColor #FFF7ED
+skinparam ActorBorderColor #1F2A44
+skinparam ActorBackgroundColor #FFF7ED
+skinparam DatabaseBorderColor #1F2A44
+skinparam DatabaseBackgroundColor #E0E7FF
+skinparam SequenceLifeLineBorderColor #9CA3AF
+skinparam SequenceGroupBorderColor #C2410C
+skinparam SequenceGroupHeaderFontColor #C2410C
+skinparam StateBorderColor #1F2A44
+skinparam StateBackgroundColor #FFF7ED
+skinparam StateStartColor #1F2A44
+skinparam StateEndColor #1F2A44
+skinparam NoteBackgroundColor #F3F4F6
+skinparam NoteBorderColor #9CA3AF
+skinparam TitleFontSize 15
+skinparam TitleFontColor #C2410C
+skinparam ClassBorderColor #1F2A44
+skinparam ClassBackgroundColor #FFF7ED
+skinparam ClassAttributeFontSize 11
+skinparam ClassFontStyle bold
+skinparam ClassStereotypeFontColor #6B7280
+skinparam ClassStereotypeFontSize 10
+skinparam PackageBorderColor #C2410C
+skinparam PackageFontColor #1F2A44
+skinparam PackageStyle rectangle
+skinparam ArrowFontSize 10
+skinparam ArrowFontColor #374151
+skinparam nodesep 40
+skinparam ranksep 50
+hide empty members
+hide circle
+skinparam LegendBackgroundColor #F9FAFB
+skinparam LegendBorderColor #9CA3AF
+skinparam LegendFontSize 12
+left to right direction
+title SIGRO · Diagrama de clases del dominio · vista general\nBackend Spring Boot (ADR-12): un paquete por módulo · migraciones 0001–0025
+package "Seguridad y filtros · Spring Boot (todas las rutas)" #F5F3FF {
+class Acceso <<seguridad>>
+class Tokens <<seguridad>>
+class Filtros <<filtros HTTP>>
+}
+package "Módulo obra · esquema obra · rol sigro_svc_obras" #FFF7ED {
+class Usuario
+class Proyecto <<obra>>
+class ProyectoPlazoHistorial <<solo INSERT>>
+class Periodo <<semana de control>>
+class Almacen
+class Asignacion
+class Dispositivo
+class ObraController <<@RestController>>
+class PinController <<@RestController>>
+class BitacoraController <<@RestController>>
+class Bitacora <<solo INSERT>>
+}
+package "Módulo catálogo · esquema catalogo · rol sigro_svc_catalogo" #FFF7ED {
+class Insumo
+class InsumoNombreComercial
+class InsumoFactorHistorial <<solo INSERT>>
+class CatalogoController <<@RestController>>
+}
+package "Integraciones (S10, SUNAT, RENIEC) · dentro del backend" #FFF7ED {
+class LectorS10 <<componente>>
+class LecturaS10 <<valor>>
+class Padron <<componente>>
+}
+package "Módulo compras · esquema compras · rol sigro_svc_compras" #FFF7ED {
+class Proveedor
+class Compra
+class CompraDetalle
+class CompraAdjunto <<comprobante>>
+class CompraAdjuntoContenido
+class Requerimiento
+class RequerimientoAjuste <<solo INSERT>>
+class ParametroReposicion <<solo INSERT>>
+class ParametroReposicionVigente <<vista>>
+class SaldoPorComprar <<vista>>
+class InsumoCritico <<solo INSERT>>
+class InsumoCriticoVigente <<vista>>
+class Partida
+class PartidaRecurso
+class ComprasController <<@RestController>>
+class AdjuntosController <<@RestController>>
+class RequerimientoController <<@RestController>>
+class PartidasController <<@RestController>>
+class Dominio <<reglas>>
+class Compras <<API del módulo>>
+}
+package "Módulo almacén · esquema almacen · rol sigro_svc_almacen" #FFF7ED {
+class Movimiento <<libro, solo INSERT>>
+class Recepcion
+class Traslado
+class Conteo
+class ConteoLinea
+class AlmacenRef <<réplica de obras>>
+class InsumoRef <<réplica de catálogo>>
+class Saldo <<vista>>
+class Kardex <<vista>>
+class RecibidoPorCompra <<vista>>
+class DisparadorMovimiento <<trigger tg_movimiento_validar>>
+class AlmacenController <<@RestController>>
+class AlmacenService <<@Service · casos de uso>>
+class MovimientoRepository <<interfaz>>
+class JdbcMovimientoRepository <<JDBC>>
+class ConsultaRepository <<interfaz>>
+class Reglas <<reglas puras>>
+class PrestamoController <<@RestController>>
+class PrestamoService <<@Service>>
+class Prestamo <<préstamo de herramienta>>
+class "Almacen «almacen»" as Almacen_api <<API del módulo>>
+}
+package "Módulo costo · esquema costo · rol sigro_svc_costo" #FFF7ED {
+class Hecho <<modelo de lectura>>
+class EventoRecibido
+class GastoPorObra <<vista>>
+class CostoController <<@RestController>>
+class EventosCosto <<@RestController>>
+class RelevoCosto <<@Scheduled cada 5 s>>
+}
+package "Módulo tareo · esquema tareo · rol sigro_svc_tareo" #FFF7ED {
+class Trabajador
+class Jornada <<solo INSERT>>
+class JornadaVigente <<vista>>
+class HorasAcumuladas <<vista>>
+class TareoController <<@RestController>>
+class Tareo <<API del módulo>>
+}
+package "Outbox · esquema outbox" #FFF7ED {
+class Evento <<outbox>>
+}
+Proyecto "1" *-- "1..*" Periodo : se divide en
+Proyecto "1" *-- "1..*" Almacen
+Proyecto "1" -- "0..*" ProyectoPlazoHistorial : ampliaciones
+Usuario "1" -- "0..*" Asignacion
+Proyecto "1" -- "0..*" Asignacion
+Usuario "1" -- "0..2" Dispositivo : celular de
+Proyecto "1" -- "0..*" Dispositivo
+Insumo "1" -- "0..*" InsumoNombreComercial
+Insumo "1" -- "0..*" InsumoFactorHistorial : historial
+LectorS10 ..> LecturaS10 : devuelve
+Proveedor "1" -- "0..*" Compra
+Compra "1" *-- "1..*" CompraDetalle : líneas
+Compra "1" -- "0..*" CompraAdjunto : comprobantes
+CompraAdjunto "1" -- "1" CompraAdjuntoContenido : bytes
+CompraDetalle "*" --> "1" Insumo : insumo_id
+Requerimiento "1" -- "0..*" RequerimientoAjuste : ajustes
+Requerimiento "*" --> "1" Insumo : insumo_id
+ParametroReposicionVigente ..> ParametroReposicion : última vigencia
+InsumoCriticoVigente ..> InsumoCritico : última marca
+SaldoPorComprar ..> Requerimiento : requerido
+SaldoPorComprar ..> CompraDetalle : comprado
+Partida "1" *-- "1..*" PartidaRecurso
+PartidaRecurso "*" --> "1" Insumo
+Recepcion "1" -- "1..*" Movimiento : genera ingresos
+Movimiento "0..1" --> "1" Movimiento : revierte_a
+Conteo "1" *-- "1..*" ConteoLinea
+Conteo "1" -- "0..*" Movimiento : ajustes
+Traslado "1" -- "2" Movimiento : salida + ingreso
+AlmacenRef "1" -- "0..*" Movimiento
+InsumoRef "1" -- "0..*" Movimiento
+Saldo ..> Movimiento : suma (no hay campo saldo)
+Kardex ..> Movimiento
+RecibidoPorCompra ..> Recepcion
+DisparadorMovimiento ..> Movimiento : BEFORE INSERT
+Recepcion ..> Compra : compra_id (sin FK entre esquemas)
+Movimiento ..> Periodo : periodo_id (ref. lógica)
+Movimiento ..> Dispositivo : dispositivo_id (ref. lógica)
+Trabajador "1" -- "0..*" Jornada
+Jornada "0..1" --> "1" Jornada : corrige_a
+JornadaVigente ..> Jornada
+HorasAcumuladas ..> Jornada
+EventoRecibido "1" -- "0..*" Hecho : evento_id
+GastoPorObra ..> Hecho
+RelevoCosto ..> Evento : lee y marca enviado
+ObraController ..> Proyecto : crea
+ObraController ..> Periodo : genera
+ObraController ..> Asignacion : asigna
+ObraController ..> Dispositivo : autoriza / revoca
+ObraController ..> ProyectoPlazoHistorial : registra
+ObraController ..> Usuario : verifica
+CatalogoController ..> Insumo : crea / actualiza
+CatalogoController ..> InsumoFactorHistorial : registra
+CatalogoController ..> LectorS10 : lee el PDF (en proceso)
+CatalogoController ..> InsumoNombreComercial
+ComprasController ..> Proveedor
+ComprasController ..> Padron : consulta RUC (Padron)
+ComprasController ..> Dominio : usa
+ComprasController ..> Compra : registra / anula
+ComprasController ..> CompraAdjunto : sube / anula
+ComprasController ..> CompraDetalle
+ComprasController ..> CompraAdjuntoContenido : guarda
+RequerimientoController ..> Requerimiento
+RequerimientoController ..> RequerimientoAjuste : registra
+RequerimientoController ..> ParametroReposicion : registra
+RequerimientoController ..> SaldoPorComprar : consulta
+RequerimientoController ..> InsumoCritico : marca
+RequerimientoController ..> ParametroReposicionVigente : consulta
+RequerimientoController ..> InsumoCriticoVigente : consulta
+RequerimientoController ..> LectorS10 : lee el S10
+RequerimientoController ..> RecibidoPorCompra : llamada en proceso (almacén)
+PartidasController ..> Partida
+PartidasController ..> PartidaRecurso
+AlmacenService ..> Recepcion : registra
+AlmacenService ..> Reglas : usa
+AlmacenService ..> Saldo : consulta
+AlmacenService ..> Kardex : consulta
+AlmacenService ..> Evento : publica (misma transacción)
+AlmacenService ..> Requerimiento : requerido (en proceso, compras)
+AlmacenService ..> Compra : pedido (en proceso, compras)
+RelevoCosto ..> CostoController : entrega el evento
+CostoController ..> Hecho : registra / suma
+CostoController ..> EventoRecibido : deduplica
+CostoController ..> GastoPorObra : consulta
+CostoController ..> Requerimiento : planificado (en proceso, compras)
+CostoController ..> Reglas : saldos valorizados (en proceso)
+CostoController ..> Compra : comprado (en proceso, compras)
+CostoController ..> HorasAcumuladas : horas (en proceso, tareo)
+TareoController ..> Trabajador
+TareoController ..> Jornada : inserta / corrige
+TareoController ..> Padron : consulta DNI (Padron)
+TareoController ..> HorasAcumuladas : consulta
+TareoController ..> JornadaVigente : consulta
+ObraController ..> Acceso : exigir(permiso, obra)
+CatalogoController ..> Acceso : exigir(permiso, obra)
+ComprasController ..> Acceso : exigir(permiso, obra)
+RequerimientoController ..> Acceso : exigir(permiso, obra)
+PartidasController ..> Acceso : exigir(permiso, obra)
+AlmacenController ..> Acceso : exigir(permiso, obra)
+CostoController ..> Acceso : exigir(permiso, obra)
+TareoController ..> Acceso : exigir(permiso, obra)
+Filtros ..> Acceso : cada petición
+Acceso ..> Tokens : lee el JWT
+Filtros ..> Bitacora : anota (sin datos)
+AlmacenController --> AlmacenService : delega
+AlmacenService --> MovimientoRepository : usa
+JdbcMovimientoRepository ..|> MovimientoRepository
+JdbcMovimientoRepository ..> Movimiento : INSERT (solo)
+PrestamoController --> PrestamoService : delega
+PrestamoService ..> Prestamo : inserta / devuelve
+PrestamoService ..> Reglas : disponibleParaPrestar()
+PinController ..> Usuario : pin_hash
+BitacoraController ..> Bitacora : consulta
+PinController ..> Tokens : crearPin()
+RelevoCosto ..> EventosCosto : registrar() en proceso
+CostoController ..> Almacen_api : resumenValorizado() en proceso
+CostoController ..> Compras : comprado() en proceso
+CostoController ..> Tareo : horas() en proceso
+@enduml

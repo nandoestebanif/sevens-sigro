@@ -1,0 +1,120 @@
+@startuml
+skinparam defaultFontName "DejaVu Sans"
+skinparam defaultFontSize 12
+skinparam shadowing false
+skinparam roundCorner 8
+skinparam ArrowColor #1F2A44
+skinparam ActivityBorderColor #1F2A44
+skinparam ActivityBackgroundColor #FFF7ED
+skinparam ActivityDiamondBackgroundColor #FEF3C7
+skinparam ActivityDiamondBorderColor #92400E
+skinparam SwimlaneTitleFontStyle bold
+skinparam SwimlaneTitleFontColor #1F2A44
+skinparam SwimlaneBorderColor #9CA3AF
+skinparam PartitionBorderColor #9CA3AF
+skinparam ParticipantBorderColor #1F2A44
+skinparam ParticipantBackgroundColor #FFF7ED
+skinparam ActorBorderColor #1F2A44
+skinparam ActorBackgroundColor #FFF7ED
+skinparam DatabaseBorderColor #1F2A44
+skinparam DatabaseBackgroundColor #E0E7FF
+skinparam SequenceLifeLineBorderColor #9CA3AF
+skinparam SequenceGroupBorderColor #C2410C
+skinparam SequenceGroupHeaderFontColor #C2410C
+skinparam StateBorderColor #1F2A44
+skinparam StateBackgroundColor #FFF7ED
+skinparam StateStartColor #1F2A44
+skinparam StateEndColor #1F2A44
+skinparam NoteBackgroundColor #F3F4F6
+skinparam NoteBorderColor #9CA3AF
+skinparam TitleFontSize 15
+skinparam TitleFontColor #C2410C
+skinparam ClassBorderColor #1F2A44
+skinparam ClassBackgroundColor #FFF7ED
+skinparam ClassAttributeFontSize 11
+skinparam ClassFontStyle bold
+skinparam ClassStereotypeFontColor #6B7280
+skinparam ClassStereotypeFontSize 10
+skinparam PackageBorderColor #C2410C
+skinparam PackageFontColor #1F2A44
+skinparam PackageStyle rectangle
+skinparam ArrowFontSize 10
+skinparam ArrowFontColor #374151
+skinparam nodesep 40
+skinparam ranksep 50
+hide empty members
+hide circle
+skinparam LegendBackgroundColor #F9FAFB
+skinparam LegendBorderColor #9CA3AF
+skinparam LegendFontSize 12
+title HU-19 · Requerimiento total\nDiagrama de clases
+package "Web de oficina (React + TypeScript)" #EFF6FF {
+class RequerimientoPagina <<página>> {
+  archivo : Requerimiento.tsx
+}
+class ImportarPagina <<página>> {
+  archivo : Importar.tsx
+}
+class ClienteHttp <<api>> {
+  +pedir() «camelCase ↔ snake_case»
+  +fechaHoraLima() «horaLima.ts»
+}
+}
+package "Seguridad y filtros · Spring Boot (todas las rutas)" #F5F3FF {
+class Filtros <<filtros HTTP>> {
+  CabecerasSeguridad «nosniff, DENY, CSP, HSTS, no-store»
+  BitacoraFiltro «POST y 401/403, sin datos sensibles»
+}
+class Acceso <<seguridad>> {
+  +exigir(accion, obraId) : Actor «401 · 403»
+  +exigirEnAlgunaObra(accion) : Actor
+  -exigirPin(actor, accion) «X-SIGRO-PIN»
+  Permisos.MATRIZ «51 acciones × 5 roles»
+}
+}
+package "Módulo catálogo · esquema catalogo · rol sigro_svc_catalogo" #FFF7ED {
+class Insumo #F3F4F6;line:9CA3AF
+}
+package "Integraciones (S10, SUNAT, RENIEC) · dentro del backend" #FFF7ED {
+class LectorS10 <<componente>> {
+  +leer(pdf) : relación de insumos
+  PDFBox 3
+}
+}
+package "Módulo compras · esquema compras · rol sigro_svc_compras" #FFF7ED {
+class RequerimientoController <<@RestController>> {
+  +importar() / ver() / ajustar() / agregar()
+  +saldo() / avance()
+  +registrarParametro() / parametros()
+  +marcarCritico() / criticos()
+}
+class Requerimiento {
+  cantidad_planificada : numeric
+  precio_planificado : numeric
+  origen : s10 | manual
+  motivo_alta : text
+}
+class RequerimientoAjuste <<solo INSERT>> {
+  cantidad_anterior : numeric
+  cantidad_nueva : numeric
+  motivo : text
+  ajustado_por : bigint
+  ajustado_en : timestamptz
+}
+}
+Requerimiento "1" -- "0..*" RequerimientoAjuste : ajustes
+Requerimiento "*" --> "1" Insumo : insumo_id
+RequerimientoController ..> Requerimiento
+RequerimientoController ..> RequerimientoAjuste : registra
+RequerimientoController ..> LectorS10 : lee el S10
+RequerimientoController ..> Acceso : exigir(permiso, obra)
+ImportarPagina ..> ClienteHttp
+RequerimientoPagina ..> ClienteHttp
+ClienteHttp ..> Filtros : HTTPS /api/v1 + JWT
+Filtros ..> Acceso : cada petición
+legend bottom left
+<b>Regla que protege:</b> Lo planificado sale del S10 (origen s10) o se agrega a mano con motivo (origen manual, T-340).
+Ajustar no borra: queda la cantidad anterior, la nueva, el motivo y quién.
+<i>Gris: clases de otro módulo o de contexto (se le pide a su clase, nunca a su esquema).</i>
+endlegend
+@enduml

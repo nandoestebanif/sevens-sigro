@@ -1,4 +1,4 @@
-"""Lee el modelo FÍSICO real de la base migrada, ordenado por microservicio (ADR-09).
+"""Lee el modelo FÍSICO real de la base migrada, ordenado por módulo (esquema y rol propios; ADR-09, vigente con ADR-12).
 
 Es la única fuente de los diagramas físicos y del diccionario de datos: nada se dibuja ni se escribe a mano,
 así que la documentación no puede contradecir a la base. Si alguien agrega una tabla, una columna o un permiso
@@ -19,14 +19,16 @@ BASE = os.environ.get("SIGRO_DB", "sigro_dev")
 DSN = os.environ.get("SIGRO_DSN", f"postgresql://sigro_owner:sigro_owner_dev@localhost:5432/{BASE}")
 
 # esquema -> microservicio dueño (ADR-09). outbox lo escriben obras y compras, pero lo administra el relevo.
-SERVICIO_DE = {"obra": "obras", "catalogo": "catalogo", "compras": "compras", "tareo": "tareo", "outbox": "relevo"}
+SERVICIO_DE = {"obra": "obras", "catalogo": "catalogo", "compras": "compras", "tareo": "tareo", "almacen": "almacen", "costo": "costo", "outbox": "relevo"}
 ESQUEMAS = list(SERVICIO_DE)
-ROLES = [f"sigro_svc_{s}" for s in ("obras", "catalogo", "compras", "tareo", "relevo")]
+ROLES = [f"sigro_svc_{s}" for s in ("obras", "catalogo", "compras", "tareo", "almacen", "costo", "relevo")]
 COLOR = {  # cabecera, fondo del grupo
     "obra": ("#1F4E79", "#EAF1F8"),
     "catalogo": ("#7A4B00", "#FBF3E4"),
     "compras": ("#2E6B3A", "#EAF5EC"),
     "tareo": ("#6B2E6B", "#F6ECF6"),
+    "almacen": ("#7F6000", "#FFF7E0"),
+    "costo": ("#1F6F6F", "#E6F4F4"),
     "outbox": ("#8A3B12", "#FBEDE6"),
 }
 QUE_HACE = {
@@ -34,7 +36,9 @@ QUE_HACE = {
     "catalogo": "código único de insumo, nombres comerciales, factor de conversión, importación del S10",
     "compras": "proveedores, compras, solicitudes, requerimiento y reposición",
     "tareo": "trabajadores y asistencia (horas hombre)",
-    "relevo": "bandeja de salida (outbox): entrega los eventos a Notificaciones",
+    "almacen": "libro de movimientos (solo INSERT), recepciones, traslados, conteos y préstamos de herramientas; saldo y kárdex derivados",
+    "costo": "modelo de lectura del gasto: hechos valorizados que llegan de almacén por el outbox (RelevoCosto)",
+    "relevo": "bandeja de salida (outbox): eventos hacia costo (integración) y avisos (notificaciones)",
 }
 
 

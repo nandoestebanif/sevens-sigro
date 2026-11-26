@@ -1,0 +1,130 @@
+@startuml
+skinparam defaultFontName "DejaVu Sans"
+skinparam defaultFontSize 12
+skinparam shadowing false
+skinparam roundCorner 8
+skinparam ArrowColor #1F2A44
+skinparam ActivityBorderColor #1F2A44
+skinparam ActivityBackgroundColor #FFF7ED
+skinparam ActivityDiamondBackgroundColor #FEF3C7
+skinparam ActivityDiamondBorderColor #92400E
+skinparam SwimlaneTitleFontStyle bold
+skinparam SwimlaneTitleFontColor #1F2A44
+skinparam SwimlaneBorderColor #9CA3AF
+skinparam PartitionBorderColor #9CA3AF
+skinparam ParticipantBorderColor #1F2A44
+skinparam ParticipantBackgroundColor #FFF7ED
+skinparam ActorBorderColor #1F2A44
+skinparam ActorBackgroundColor #FFF7ED
+skinparam DatabaseBorderColor #1F2A44
+skinparam DatabaseBackgroundColor #E0E7FF
+skinparam SequenceLifeLineBorderColor #9CA3AF
+skinparam SequenceGroupBorderColor #C2410C
+skinparam SequenceGroupHeaderFontColor #C2410C
+skinparam StateBorderColor #1F2A44
+skinparam StateBackgroundColor #FFF7ED
+skinparam StateStartColor #1F2A44
+skinparam StateEndColor #1F2A44
+skinparam NoteBackgroundColor #F3F4F6
+skinparam NoteBorderColor #9CA3AF
+skinparam TitleFontSize 15
+skinparam TitleFontColor #C2410C
+skinparam ClassBorderColor #1F2A44
+skinparam ClassBackgroundColor #FFF7ED
+skinparam ClassAttributeFontSize 11
+skinparam ClassFontStyle bold
+skinparam ClassStereotypeFontColor #6B7280
+skinparam ClassStereotypeFontSize 10
+skinparam PackageBorderColor #C2410C
+skinparam PackageFontColor #1F2A44
+skinparam PackageStyle rectangle
+skinparam ArrowFontSize 10
+skinparam ArrowFontColor #374151
+skinparam nodesep 40
+skinparam ranksep 50
+hide empty members
+hide circle
+skinparam LegendBackgroundColor #F9FAFB
+skinparam LegendBorderColor #9CA3AF
+skinparam LegendFontSize 12
+title HU-12 · Inicio de sesión\nDiagrama de clases
+package "Web de oficina (React + TypeScript)" #EFF6FF {
+class EntrarPagina <<página>> {
+  archivo : Entrar.tsx
+}
+}
+package "App del almacenero (Kotlin Multiplatform)" #ECFDF5 {
+class EntrarViewModel <<ViewModel>> {
+  +entrar()
+}
+interface RepositorioSesion {
+  +iniciarSesion(servidor, usuario, clave)
+  +elegirObra()
+  +cerrarSesion() «no borra la cola»
+}
+class ApiSigro <<Ktor>> {
+  +iniciarSesion()
+  +enviarSalida()
+  +enviarRegistro()
+  +verificarRecepcion()
+  +estadoRecepcion()
+  +stock()
+  +corregirJornada()
+  +solicitarDispositivo()
+}
+}
+package "Seguridad y filtros · Spring Boot (todas las rutas)" #F5F3FF {
+class Filtros <<filtros HTTP>> {
+  CabecerasSeguridad «nosniff, DENY, CSP, HSTS, no-store»
+  BitacoraFiltro «POST y 401/403, sin datos sensibles»
+}
+class Acceso <<seguridad>> {
+  +exigir(accion, obraId) : Actor «401 · 403»
+  +exigirEnAlgunaObra(accion) : Actor
+  -exigirPin(actor, accion) «X-SIGRO-PIN»
+  Permisos.MATRIZ «51 acciones × 5 roles»
+}
+class Tokens <<seguridad>> {
+  +crear(usuarioId) «JWT HS256, 8 h»
+  +leer(token) : Long
+  +crearPin(usuarioId) «pase de 15 min»
+  Claves.verificar() / hashear() «Argon2id»
+}
+}
+package "Módulo obra · esquema obra · rol sigro_svc_obras" #FFF7ED {
+class ObraController <<@RestController>> {
+  +login()
+  +crearObra() / ampliarPlazo() / cerrarObra()
+  +periodos() / cerrarPeriodo()
+  +crearAlmacen()
+  +crearUsuario() / baja() / claveTemporal()
+  +asignar() / retirar()
+  +solicitarDispositivo() / autorizar() / revocar()
+  +yo() / cambiarClave()
+}
+class Usuario {
+  id : bigint
+  nombre : text
+  usuario : text «único»
+  hash_clave : text «Argon2id»
+  estado : activo | baja
+  intentos_fallidos : smallint
+  bloqueado_hasta : timestamptz
+  pin_hash : text «Argon2id, admin»
+  pin_intentos : int
+  pin_bloqueado_hasta : timestamptz
+}
+}
+ObraController ..> Usuario : verifica
+ObraController ..> Acceso : exigir(permiso, obra)
+ApiSigro ..> Filtros : HTTPS /api/v1 + JWT
+EntrarViewModel --> RepositorioSesion
+RepositorioSesion ..> ApiSigro
+Filtros ..> Acceso : cada petición
+Acceso ..> Tokens : lee el JWT
+legend bottom left
+<b>Regla que protege:</b> Argon2id (2 verificaciones a la vez, ADR-10). Mensaje genérico ante usuario o clave incorrectos; a
+los 5 intentos bloquea 15 min. Sesión JWT de 8 h.
+<i>Gris: clases de otro módulo o de contexto (se le pide a su clase, nunca a su esquema).</i>
+endlegend
+@enduml

@@ -1,0 +1,85 @@
+@startuml
+skinparam defaultFontName DejaVu Sans
+skinparam shadowing false
+skinparam componentStyle rectangle
+skinparam rectangleBorderColor #6B7280
+title C4 · Nivel 3 · Componentes de la API SIGRO (Spring Boot)
+rectangle "Filtros HTTP" #F5F3FF {
+  [CabecerasSeguridad] as F1
+  [BitacoraFiltro] as F2
+}
+rectangle "seguridad" #F5F3FF {
+  [Acceso\nexigir(acción, obra)] as ACC
+  [Permisos\n51 acciones × 5 roles] as PER
+  [Tokens · Claves\nJWT HS256 · Argon2id] as TOK
+  [PinController] as PIN
+}
+rectangle "obra" #FFF7ED {
+  [ObraController] as OC
+  [BitacoraController] as BC
+  [Obras] as OB
+}
+rectangle "catálogo" #FFF7ED {
+  [CatalogoController] as CC
+}
+rectangle "compras" #FFF7ED {
+  [ComprasController] as COC
+  [RequerimientoController] as RC
+  [AdjuntosController] as AC
+  [Dominio\nreglas] as DOM
+  [Compras\nAPI del módulo] as COMP
+}
+rectangle "almacén" #FFF7ED {
+  [AlmacenController] as ALC
+  [AlmacenService] as ALS
+  [PrestamoController → PrestamoService] as PRE
+  [Movimiento / Documento / Consulta\nRepository → Jdbc…] as REP
+  [Reglas\npuras] as REG
+  [Almacen\nAPI del módulo] as ALM
+}
+rectangle "tareo" #FFF7ED {
+  [TareoController] as TC
+  [Tareo\nAPI del módulo] as TAR
+}
+rectangle "costo" #FFF7ED {
+  [CostoController] as CO
+  [EventosCosto] as EV
+  [RelevoCosto\n@Scheduled] as RL
+}
+rectangle "integraciones" #FFF7ED {
+  [Padron] as PAD
+  [LectorS10] as LS
+}
+rectangle "comun" #F3F4F6 {
+  [Modulo\nun pool y un rol por módulo] as MOD
+  [ManejadorErrores\n{codigo, mensaje}] as ERR
+}
+database "PostgreSQL" as PG
+F1 --> F2
+F2 --> OC
+F2 --> ALC
+ACC --> PER
+ACC --> TOK
+OC ..> ACC
+CC ..> ACC
+COC ..> ACC
+RC ..> ACC
+ALC ..> ACC
+TC ..> ACC
+CO ..> ACC
+ALC --> ALS
+ALS --> REP
+ALS --> REG
+PRE --> REP
+COC --> DOM
+COC ..> PAD : RUC
+TC ..> PAD : DNI
+CC ..> LS : PDF S10
+CO ..> ALM : en proceso
+CO ..> COMP : en proceso
+CO ..> TAR : en proceso
+REP ..> EV : outbox (misma transacción)
+RL --> EV : entrega
+REP --> MOD
+MOD --> PG : SET ROLE sigro_svc_<módulo>
+@enduml

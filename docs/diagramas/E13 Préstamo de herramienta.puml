@@ -1,0 +1,18 @@
+@startuml
+!include ../../estilo.iuml
+hide empty description
+title E13 · Estados del préstamo de herramienta\nmigración 0023 · 25/11/2026
+[*] --> Prestada : prestar (almacenero)\n/ uuid_cliente · no más de lo disponible\n(disponible = en almacén − prestado)
+Prestada : no mueve el saldo:\nla herramienta sigue en la obra
+Prestada --> Atrasada : pasa «devolver el»\n(se calcula, no se guarda)
+Atrasada --> Devuelta : devolver
+Prestada --> Devuelta : devolver / estado y quién
+state Devuelta {
+  [*] --> Buena
+  [*] --> Danada : «dañado» exige nota
+  [*] --> Perdida : «perdido» exige nota;\nel saldo se corrige con el conteo
+  state "Dañada" as Danada
+}
+Devuelta : se registra una sola vez
+Devuelta --> [*]
+@enduml

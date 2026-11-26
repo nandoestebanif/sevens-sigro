@@ -76,7 +76,7 @@ tres costos: el iPhone solo se compila en una Mac con Xcode; iOS no garantiza el
 segundo plano como WorkManager, así que en iOS la app envía al registrar, al abrirse y con «Enviar ahora»
 hasta registrar la tarea de fondo; y Room KMP exige que las consultas sean `suspend` o `Flow`.
 
-## ADR-09 · Arquitectura de microservicios (reemplaza al ADR-01)
+## ADR-09 · Arquitectura de microservicios (reemplaza al ADR-01) — **el despliegue por servicio lo reemplaza ADR-12 (25/11); sus reglas de aislamiento siguen vigentes**
 **Contexto.** El 28/10 el equipo acordó que SIGRO sea una arquitectura de microservicios en todas sus
 piezas, no un monolito modular con servicios satélite. Los seis módulos ya tenían esquema propio y no se
 consultaban directamente, así que las fronteras existían: faltaba que cada uno fuera un servicio de verdad.
@@ -123,7 +123,7 @@ Un bus de mensajes (RabbitMQ, Kafka): para el volumen de una obra, el outbox con
   por el mismo contrato HTTP; `pruebas/test_microservicios.py` verifica las cinco reglas de arriba.
 
 
-## ADR-10 · Ambiente de pruebas en un solo nodo (03/11/2026)
+## ADR-10 · Ambiente de pruebas en un solo nodo (03/11/2026) — **reemplazado por ADR-12 (25/11)**
 **Contexto.** El ambiente de pruebas (HT-01, ADR-06) corría en Render con **ocho servicios Docker gratuitos**, uno
 por microservicio, y dos problemas que no se arreglan con código:
 - **La red privada no sirve en el plan gratuito.** Un servicio gratuito puede *enviar* tráfico privado pero no
@@ -287,3 +287,42 @@ credenciales para un volumen de decenas de archivos al mes); base64 en la fila d
 
 **Consecuencias.** La base de pruebas crece con los archivos; a 10 MB y ~30 compras al mes cabe holgado en el plan
 gratuito de Neon, pero se vigila. Revertir 0015 con comprobantes guardados se rechaza a propósito: exportar primero.
+
+## ADR-12 · Backend en Spring Boot 3 como monolito modular (25/11/2026) · cambia el despliegue de ADR-09 y ADR-10
+**Contexto.**
+- La especificación del curso de Aplicaciones Móviles pide el backend en **Spring Boot 3 + Java 17**; el equipo lo
+  supo tarde (25/11). Primero se hizo `movil-api` (puerta Spring para la app) y esa misma noche se portó **todo** el
+  servicio FastAPI (≈7 500 líneas, 116 rutas) a `backend-spring/`.
+- ADR-10 ya había juntado los microservicios en un solo nodo por los límites del plan gratuito (429 de Cloudflare
+  entre servicios, despertares de 25 s por servicio, memoria). Diez procesos Python en un contenedor seguían siendo
+  frágiles (OOM).
+
+**Decisión.** Un solo desplegable Spring Boot (`sevens-sigro` en Render), **monolito modular**: un paquete por
+dominio (`obra`, `catalogo`, `compras`, `tareo`, `almacen`, `costo`) + `seguridad`, `comun` e `integraciones`.
+Se conservan las reglas de ADR-09 que dan el aislamiento:
+1. **Esquema y rol de base por módulo.** Cada módulo tiene su `Modulo` (pool Hikari) que entra con `SET ROLE
+   sigro_svc_<módulo>` (`ConfigModulos`): almacén sigue sin poder escribir en compras.
+2. **Lo de otro módulo se pide por su API, nunca por SQL.** Antes era HTTP `/interno`; ahora es una llamada en el
+   mismo proceso a la clase del módulo dueño (p. ej. `Almacen.resumenValorizado`, `Compras.comprado`).
+3. **Autorización centralizada.** `Acceso.exigir(acción, obra)` + matriz `Permisos` (la misma de `permisos.py` y
+   `permisos.ts`; una prueba falla si se desfasan).
+4. **Outbox.** Los hechos de almacén hacia costo salen en la misma transacción (outbox) y los entrega
+   `RelevoCosto` dentro del proceso (migración 0025).
+5. **Capas** dentro de cada módulo: `@RestController` (HTTP y contrato) → servicio/reglas → repositorio JDBC.
+   Almacén, el módulo más grande, lo tiene explícito: `AlmacenController` → `AlmacenService` →
+   `MovimientoRepository`/`DocumentoRepository`/`ConsultaRepository` (interfaces) → `Jdbc…`.
+
+**Qué no cambió.** La base PostgreSQL (Neon) y su esquema: **Alembic sigue siendo la fuente** (migraciones
+0001–0025) y las reglas que viven en la base (disparadores, UNIQUE, CHECK, solo-insertar) se conservan. El contrato
+HTTP `/api/v1` es el mismo: la web y la app no cambiaron de rutas.
+
+**Cómo se comprobó.** Las pruebas de nivel API (`api/pruebas`, pytest) se corren contra Spring por HTTP real
+(`SIGRO_SPRING_URL`): **372 pasan**, 3 no aplican por HTTP. Además JUnit en `backend-spring/src/test`.
+
+**Consecuencias que se aceptan.**
+- Se pierde el despliegue independiente por servicio (que en el plan gratuito no se podía aprovechar). Las fronteras
+  siguen en el código y en la base: separar un módulo de nuevo es moverlo a su propio desplegable.
+- Hay dos implementaciones del backend en el repositorio: la de Python queda como **referencia** del contrato y de
+  las migraciones; la que corre en producción es Spring.
+- Los diagramas de secuencia se rehicieron (26/11) con las clases reales del backend Spring
+  (`docs/diagramas/secuencias-spring/`).
