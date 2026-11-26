@@ -318,6 +318,11 @@ data class EstadoTrabajadorNuevo(
     val guardando: Boolean = false,
     val error: String? = null,
     val creado: Trabajador? = null,
+    /** RENIEC (vía el servidor): consultando, y lo que se le dice a la persona. */
+    val consultandoDni: Boolean = false,
+    val avisoDni: String? = null,
+    /** El nombre lo puso RENIEC (si la persona lo cambia, deja de serlo y no se pisa). */
+    val nombreDeReniec: Boolean = false,
 ) {
     val nuevo get() = NuevoTrabajador(nombre, "DNI", documento, categoria, cuadrilla, fechaIngreso)
 }
@@ -336,13 +341,33 @@ class TrabajadorNuevoViewModel(private val trabajadores: RepositorioTrabajadores
 
     fun conocer(gente: List<Trabajador>) { deLaObra = gente; enVivo.revisarYa() }
 
-    /** Solo dígitos, máximo 8 (DNI). Con los 8 se revisa ya (un DNI repetido se ve sin esperar). */
+    private var obraId: Int? = null
+    fun obra(id: Int) { obraId = id }
+
+    /** Solo dígitos, máximo 8 (DNI). Con los 8 se revisa ya (un DNI repetido se ve sin esperar) y, si no está repetido,
+        se consulta RENIEC a través del servidor para completar el nombre. Sin señal: se escribe a mano. */
     fun documento(v: String) {
         val d = v.filter(Char::isDigit).take(8)
-        _e.update { it.copy(documento = d) }
-        if (d.length == 8) enVivo.salir("documento") else enVivo.cambio("documento")
+        _e.update { it.copy(documento = d, avisoDni = null, nombre = if (it.nombreDeReniec && d != it.documento) "" else it.nombre, nombreDeReniec = it.nombreDeReniec && d == it.documento) }
+        if (d.length == 8) { enVivo.salir("documento"); consultarReniec(d) } else enVivo.cambio("documento")
     }
-    fun nombre(v: String) { _e.update { it.copy(nombre = v) }; enVivo.cambio("nombre") }
+
+    private fun consultarReniec(dni: String) {
+        val obra = obraId ?: return
+        if (deLaObra.any { it.documento == dni }) return            // repetido: ya se avisa, no se consulta
+        if (_e.value.nombre.isNotBlank() && !_e.value.nombreDeReniec) return   // ya lo escribió a mano: no se pisa
+        _e.update { it.copy(consultandoDni = true) }
+        viewModelScope.launch {
+            val nombre = trabajadores.consultarDni(obra, dni)
+            _e.update {
+                if (it.documento != dni) it.copy(consultandoDni = false)   // cambió el DNI mientras consultaba
+                else if (nombre != null) it.copy(consultandoDni = false, nombre = nombre, nombreDeReniec = true, avisoDni = "Nombre según RENIEC")
+                else it.copy(consultandoDni = false, avisoDni = "Sin señal o RENIEC no respondió: escribe el nombre a mano.")
+            }
+            if (nombre != null) enVivo.salir("nombre")
+        }
+    }
+    fun nombre(v: String) { _e.update { it.copy(nombre = v, nombreDeReniec = false) }; enVivo.cambio("nombre") }
     fun categoria(c: Categoria) { _e.update { it.copy(categoria = c) }; enVivo.salir("categoria") }
     fun cuadrilla(c: String) { _e.update { it.copy(cuadrilla = c, cuadrillaNueva = false) }; enVivo.salir("cuadrilla") }
     fun cuadrillaNueva() { _e.update { it.copy(cuadrilla = "", cuadrillaNueva = true) }; enVivo.revisarYa() }
@@ -376,6 +401,7 @@ fun PantallaTrabajadorNuevo(obraId: Int, alVolver: () -> Unit, vm: TrabajadorNue
     val gente by flujo.collectAsState(initial = emptyList())
     val cuadrillas = remember(gente) { gente.map { it.cuadrilla }.distinct().sorted() }
     LaunchedEffect(gente) { vm.conocer(gente) }
+    LaunchedEffect(obraId) { vm.obra(obraId) }
 
     PantallaVidrio("Nuevo trabajador", plano = { planoTrabajadorNuevo(it) }, alVolver = alVolver, subtitulo = "Se incorpora a la obra con su fecha", modulo = Modulo.PERSONAL) {
         val creado = e.creado
@@ -397,6 +423,7 @@ fun PantallaTrabajadorNuevo(obraId: Int, alVolver: () -> Unit, vm: TrabajadorNue
             )
             CampoVidrio(
                 e.nombre, vm::nombre, "Nombres y apellidos *", error = e.errores["nombre"],
+                ayuda = if (e.consultandoDni) "Consultando RENIEC…" else e.avisoDni,
                 alSalir = { vm.salirDe("nombre") }, correcto = "nombre" in e.correctos,
             )
             Text("Categoría *", fontSize = 14.sp, color = Paleta.Texto3)

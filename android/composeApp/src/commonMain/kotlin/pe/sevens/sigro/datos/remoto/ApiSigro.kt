@@ -121,6 +121,15 @@ import pe.sevens.sigro.dominio.ErrorSigro
 @Serializable data class DevolucionIn(val estado: String, val nota: String? = null)
 @Serializable data class DevolucionDto(val advertencias: List<String> = emptyList())
 
+@Serializable data class DniDto(
+    val dni: String = "",
+    val nombres: String = "",
+    @SerialName("apellido_paterno") val apellidoPaterno: String = "",
+    @SerialName("apellido_materno") val apellidoMaterno: String = "",
+) {
+    val nombreCompleto get() = listOf(nombres, apellidoPaterno, apellidoMaterno).map(String::trim).filter(String::isNotEmpty).joinToString(" ")
+}
+
 @Serializable data class TrabajadorDto(
     val id: Int,
     val nombre: String,
@@ -313,6 +322,10 @@ class ApiSigro(
 
     suspend fun trabajadores(servidor: String, obraId: Int): List<TrabajadorDto> =
         llamar { http.get(url(servidor, "/obras/$obraId/trabajadores")) }
+
+    /** RENIEC a través del servidor (Factiliza): el celular nunca lleva el token. 404 si RENIEC no respondió. */
+    suspend fun consultarDni(servidor: String, obraId: Int, dni: String): DniDto =
+        llamar { http.get(url(servidor, "/obras/$obraId/trabajadores/consulta-dni/$dni")) }
 
     suspend fun registrarTrabajador(servidor: String, obraId: Int, nuevo: TrabajadorIn): TrabajadorDto =
         llamar { http.post(url(servidor, "/obras/$obraId/trabajadores")) { cuerpo(nuevo) } }
