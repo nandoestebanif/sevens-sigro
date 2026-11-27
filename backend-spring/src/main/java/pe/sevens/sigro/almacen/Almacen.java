@@ -19,10 +19,12 @@ import pe.sevens.sigro.comun.P;
 public class Almacen {
     private final Modulo db;
     private final ConsultaRepository consultas;
+    private final AlmacenService servicio;
 
-    public Almacen(Modulo almacen, ConsultaRepository consultas) {
+    public Almacen(Modulo almacen, ConsultaRepository consultas, AlmacenService servicio) {
         this.db = almacen;
         this.consultas = consultas;
+        this.servicio = servicio;
     }
 
     /** El corte pedido, sin pasar de ahora (un corte futuro no ve nada que aún no existe). */
@@ -56,6 +58,14 @@ public class Almacen {
             out.put("corte", ef);
             return out;
         }));
+    }
+
+    /**
+     * HU-73: ¿queda algo por recibir de esa compra? Lo mismo que responde GET /compras/{id}/recepcion: alguna línea con
+     * pendiente mayor que cero. Así el cotejo del QR y la pantalla de recepción no pueden decir cosas distintas.
+     */
+    public boolean quedaPorRecibir(long obraId, long compraId) {
+        return servicio.estadoRecepcion(obraId, compraId).stream().anyMatch(x -> ((BigDecimal) x.get("pendiente")).signum() > 0);
     }
 
     public Map<String, Object> consumoPorInsumo(long obraId, Instant corte) {
