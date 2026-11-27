@@ -13,6 +13,8 @@ interface RepositorioSesion {
     val obraElegida: Flow<ObraAsignada?>
     suspend fun servidorGuardado(): String
     suspend fun iniciarSesion(servidor: String, usuario: String, clave: String): Sesion
+    /** ¿Es su contraseña? Sin tocar la sesión abierta (para cifrarla con la huella solo si es la correcta). */
+    suspend fun comprobarClave(servidor: String, usuario: String, clave: String): Boolean = true
     suspend fun elegirObra(obra: ObraAsignada)
     suspend fun cambiarDeObra()
     suspend fun cerrarSesion()

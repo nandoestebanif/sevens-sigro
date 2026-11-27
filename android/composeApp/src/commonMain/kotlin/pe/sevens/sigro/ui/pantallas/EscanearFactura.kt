@@ -186,6 +186,8 @@ fun PantallaEscanear(
         ) {
             val r = e.resultado
             when {
+                // un QR ya leído se muestra siempre (también si después se quitó el permiso)
+                r != null -> Resultado(r, alRecibir, vm::otra)
                 !lectorQrDisponible || permiso == PermisoCamara.NO_DISPONIBLE ->
                     Texto2("Leer el QR con la cámara está disponible en la app de Android. Puedes elegir la compra en la lista de Entrada.")
                 permiso == PermisoCamara.DENEGADO_PARA_SIEMPRE -> {
@@ -201,13 +203,12 @@ fun PantallaEscanear(
                     CircularProgressIndicator(Modifier.size(24.dp), color = Paleta.Naranja, strokeWidth = 3.dp)
                     Texto2("Buscando la compra de esta factura…")
                 }
-                r == null -> {
+                else -> {
                     Text("Apunta al QR de la factura", fontSize = 17.sp, fontWeight = FontWeight.Bold, color = Paleta.Tinta)
                     Texto2("Funciona sin señal. Con señal, el servidor confirma la compra.")
                     e.aviso?.let { Text(it, fontSize = 14.sp, lineHeight = 19.sp, color = Paleta.RechazadoTexto, fontWeight = FontWeight.SemiBold,
                         modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite }) }
                 }
-                else -> Resultado(r, alRecibir, vm::otra)
             }
             TextButton(onClick = alCerrar) { Text("Elegir la compra de la lista", color = Paleta.Naranja, fontWeight = FontWeight.Bold) }
         }

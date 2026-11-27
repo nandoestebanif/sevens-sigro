@@ -657,3 +657,13 @@ h1, .h1, h2, .h2, h3, .h3 { letter-spacing: -0.02em; }
 
 // Lighthouse (27/11): botones del paginador de al menos 44 px para tocarlos bien en el celular (WCAG 2.5.5)
 .pagination .page-link { min-width: 2.75rem; min-height: 2.75rem; display: inline-flex; align-items: center; justify-content: center; }
+
+
+/* Auditoría 27/11 (celular): toques de al menos ~40 px en los botones de texto («ⓘ Sobre estos datos», «Qué es…»,
+   encabezados que ordenan), el botón de cerrar el menú y los interruptores. Solo con dedo (pointer: coarse). */
+@media (pointer: coarse) {
+  .btn-link.p-0 { padding-block: .55rem !important; padding-inline: .5rem !important; }
+  .btn-close { padding: .75rem; }
+  .btn-sm { min-height: 2.5rem; min-width: 2.5rem; }
+  .form-switch .form-check-input { width: 3.25em; height: 1.75em; }
+}

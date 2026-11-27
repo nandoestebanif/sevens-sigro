@@ -15,6 +15,8 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -178,9 +180,11 @@ fun PantallaStock(obraId: Int, alVolver: () -> Unit, vm: StockViewModel = koinVi
                 )
             } else {
                 // Rediseño: cada insumo es su propia tarjeta, con un cuadro de color e ilustración que se turnan
+                var cuantas by androidx.compose.runtime.saveable.rememberSaveable(e.texto, e.vista) { androidx.compose.runtime.mutableIntStateOf(pe.sevens.sigro.ui.componentes.FILAS_POR_TANDA) }
                 Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    filas.forEachIndexed { i, f -> FilaDeStock(f, i) }
+                    filas.take(cuantas).forEachIndexed { i, f -> FilaDeStock(f, i) }
                 }
+                pe.sevens.sigro.ui.componentes.MostrarMas(minOf(cuantas, filas.size), filas.size) { cuantas += pe.sevens.sigro.ui.componentes.FILAS_POR_TANDA }
             }
         }
     }
