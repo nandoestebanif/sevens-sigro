@@ -20,17 +20,29 @@ public class Acceso {
 
     private final Modulo obras;
     private final Tokens tokens;
+    /** 27/11: el PIN es obligatorio en las acciones de CON_PIN (quien no lo tiene, debe crearlo primero). Solo las pruebas
+        de paridad lo apagan (SIGRO_PIN_OBLIGATORIO=0) y nunca en producción: ver {@link #pinObligatorio}. */
+    private final boolean pinObligatorio;
 
-    public Acceso(Modulo obras, Tokens tokens) {
+    public Acceso(Modulo obras, Tokens tokens,
+                  @org.springframework.beans.factory.annotation.Value("${SIGRO_PIN_OBLIGATORIO:1}") String pinObligatorio,
+                  @org.springframework.beans.factory.annotation.Value("${SIGRO_ENTORNO:}") String entorno) {
         this.obras = obras;
         this.tokens = tokens;
+        this.pinObligatorio = pinObligatorio(pinObligatorio, entorno);
+    }
+
+    /** Apagar el PIN obligatorio solo se acepta fuera de producción: en producción siempre se exige. */
+    static boolean pinObligatorio(String valor, String entorno) {
+        if ("produccion".equalsIgnoreCase(entorno == null ? "" : entorno.strip())) return true;
+        return !"0".equals(valor == null ? "" : valor.strip()) && !"false".equalsIgnoreCase(valor == null ? "" : valor.strip());
     }
 
     static ErrorSigro noAutenticado() { return new ErrorSigro(401, "no_autenticado", "Inicia sesión para continuar."); }
     static ErrorSigro sinPermiso() { return new ErrorSigro(403, "sin_permiso", "No tienes permiso para esta operación en esta obra."); }
 
     /**
-     * Acciones que, si la persona configuró su PIN, también lo exigen (cabecera X-SIGRO-PIN):
+     * Acciones que exigen el PIN (cabecera X-SIGRO-PIN; sin PIN configurado: 403 pin_no_configurado):
      * el panel de administración y lo irreversible o que cambia el plan de la obra (26/11, decisión del equipo).
      * «compra.anular» no es una acción de la matriz: el permiso es compra.registrar y aquí solo se marca que pide PIN.
      */
@@ -55,7 +67,11 @@ public class Acceso {
     }
 
     public void exigirPin(Actor a, String accion) {
-        if (!CON_PIN.contains(accion) || !tienePin(a.usuarioId())) return;
+        if (!CON_PIN.contains(accion)) return;
+        if (!tienePin(a.usuarioId())) {
+            if (!pinObligatorio) return;
+            throw new ErrorSigro(403, "pin_no_configurado", "Esta acción pide PIN y aún no tienes uno: créalo con tu contraseña y vuelve a intentarlo.");
+        }
         String t = cabecera("X-SIGRO-PIN");
         Long uid = t == null ? null : tokens.leerPin(t);
         if (uid == null || uid != a.usuarioId()) throw new ErrorSigro(403, "pin_requerido", "Esta acción pide tu PIN: escríbelo para continuar.");
