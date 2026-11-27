@@ -105,6 +105,81 @@ class CandadoTest {
     }
 
     @Test
+    fun bloquearAhoraSigueBloqueadaAunqueSeCierreLaApp() = runTest(principal) {
+        // 27/11, prueba en celular: «Bloquear ahora» y cerrar la app la dejaba abierta al volver
+        val ahora = 100 * minuto
+        val guardado = Guardado(mutableMapOf(7 to activa), uso = 99 * minuto)
+        val vm = CandadoViewModel(Sesiones(7), guardado, reloj = { ahora })
+        advanceUntilIdle()
+        assertFalse(vm.estado.value.bloqueada)
+        vm.bloquearAhora(); advanceUntilIdle()
+        vm.alSalir(); advanceUntilIdle() // pasa a segundo plano estando bloqueada: no se pisa el bloqueo
+        assertEquals(CandadoViewModel.BLOQUEADA, guardado.uso)
+        val reabierta = CandadoViewModel(Sesiones(7), guardado, reloj = { ahora + 1_000 })
+        advanceUntilIdle()
+        assertTrue(reabierta.estado.value.bloqueada, "al reabrir un segundo después sigue bloqueada")
+        reabierta.alDesbloquear(ResultadoHuella.Ok); advanceUntilIdle()
+        assertEquals(ahora + 1_000, guardado.uso, "desbloqueada, vuelve a contar desde ahora")
+    }
+
+    @Test
+    fun alEntrarConContrasenaSeBorraUnBloqueoGuardado() = runTest(principal) {
+        val sesiones = Sesiones(null)
+        val guardado = Guardado(mutableMapOf(7 to activa), uso = CandadoViewModel.BLOQUEADA)
+        val vm = CandadoViewModel(sesiones, guardado, reloj = { 50 * minuto })
+        advanceUntilIdle()
+        sesiones.sesionFlujo.value = Sesion("s", "t", 7, "Adiel Luján", "adiel", emptyList()); advanceUntilIdle()
+        assertFalse(vm.estado.value.bloqueada)
+        assertEquals(50 * minuto, guardado.uso)
+    }
+
+    @Test
+    fun huellaActivaSinSuContrasenaGuardadaSeVuelveAOfrecer() = runTest(principal) {
+        // 27/11: Adiel entraba y la huella «venía activada», pero su contraseña cifrada ya no estaba en el celular
+        val sesiones = Sesiones(null)
+        val guardado = Guardado(mutableMapOf(7 to activa))
+        val vm = CandadoViewModel(sesiones, guardado, reloj = { 0 })
+        advanceUntilIdle()
+        sesiones.sesionFlujo.value = Sesion("s", "t", 7, "Adiel Luján", "adiel", emptyList()); advanceUntilIdle()
+        assertTrue(vm.estado.value.recienEntrado)
+        vm.revisarVinculo(guardaClaves = false); advanceUntilIdle()
+        assertTrue(guardado.ajustes.getValue(7).activa, "en Android 10 o menos la huella solo desbloquea: se queda")
+        vm.revisarVinculo(guardaClaves = true); advanceUntilIdle()
+        assertFalse(guardado.ajustes.getValue(7).activa)
+        assertFalse(guardado.ajustes.getValue(7).ofrecida, "se le ofrece activarla con la contraseña que acaba de escribir")
+    }
+
+    @Test
+    fun conSuContrasenaGuardadaNoSeTocaLaHuella() = runTest(principal) {
+        val sesiones = Sesiones(null)
+        val guardado = Guardado(mutableMapOf(7 to activa)).apply { cuentaGuardada = CuentaConHuella(7, "adiel", "Adiel Luján", "s", "sobre") }
+        val vm = CandadoViewModel(sesiones, guardado, reloj = { 0 })
+        advanceUntilIdle()
+        sesiones.sesionFlujo.value = Sesion("s", "t", 7, "Adiel Luján", "adiel", emptyList()); advanceUntilIdle()
+        vm.revisarVinculo(guardaClaves = true); advanceUntilIdle()
+        assertTrue(guardado.ajustes.getValue(7).activa)
+    }
+
+    @Test
+    fun laContrasenaDePerfilSeCompruebaAntesDeCifrarla() = runTest(principal) {
+        val sesiones = object : RepositorioSesion by Sesiones(7) {
+            override suspend fun comprobarClave(servidor: String, usuario: String, clave: String) = clave == "Correcta2026"
+        }
+        val claveReciente = ClaveReciente({ 0 })
+        val vm = CandadoViewModel(sesiones, Guardado(mutableMapOf(7 to activa)), reloj = { 0 }, clave = claveReciente)
+        advanceUntilIdle()
+        assertEquals("La contraseña no es correcta.", vm.comprobarClave("mal"))
+        assertFalse(claveReciente.hay("adiel"), "una contraseña equivocada no se cifra con la huella")
+        assertNull(vm.comprobarClave("Correcta2026"))
+        assertTrue(claveReciente.hay("adiel"))
+        val sinSenal = CandadoViewModel(object : RepositorioSesion by Sesiones(7) {
+            override suspend fun comprobarClave(servidor: String, usuario: String, clave: String): Boolean = throw pe.sevens.sigro.dominio.ErrorSigro("sin_conexion", "sin señal")
+        }, Guardado(mutableMapOf(7 to activa)), reloj = { 0 })
+        advanceUntilIdle()
+        assertTrue(sinSenal.comprobarClave("x")!!.contains("señal"))
+    }
+
+    @Test
     fun usarLaAppReiniciaLaCuenta() = runTest(principal) {
         var ahora = 0L
         val vm = CandadoViewModel(Sesiones(7), Guardado(mutableMapOf(7 to activa), uso = 0), reloj = { ahora })

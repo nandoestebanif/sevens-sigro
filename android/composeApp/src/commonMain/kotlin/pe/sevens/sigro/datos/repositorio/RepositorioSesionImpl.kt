@@ -56,6 +56,13 @@ class RepositorioSesionImpl(
         return vigente
     }
 
+    override suspend fun comprobarClave(servidor: String, usuario: String, clave: String): Boolean = try {
+        api.iniciarSesion(Servidores.migrar(servidor.trim().trimEnd('/')), usuario, clave)
+        true // el token de esta comprobación no se guarda: la sesión abierta sigue igual
+    } catch (x: ErrorSigro) {
+        if (x is ErrorSigro.SesionVencida) false else throw x
+    }
+
     override suspend fun iniciarSesion(servidor: String, usuario: String, clave: String): Sesion {
         val base = Servidores.migrar(servidor.trim().trimEnd('/'))
         if (!base.startsWith("http://") && !base.startsWith("https://")) {

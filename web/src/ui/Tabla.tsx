@@ -24,11 +24,11 @@ export function Paginador({ p, enPagina, tam, enTam, tamanos = [25, 50, 100] }: 
   return (
     <nav aria-label="Páginas" className="d-flex flex-wrap justify-content-between align-items-center gap-2 mt-3">
       <span className="small text-body-secondary n">Mostrando {p.desde}–{p.hasta} de {p.total.toLocaleString('es-PE')}</span>
-      <div className="d-flex align-items-center gap-2">
+      <div className="d-flex flex-wrap align-items-center gap-2">
         <Form.Select size="sm" aria-label="Filas por página" value={tam} onChange={(e) => enTam(Number(e.target.value))} style={{ width: 'auto' }}>
           {tamanos.map((t) => <option key={t} value={t}>{t} por página</option>)}
         </Form.Select>
-        <Pagination size="sm" className="mb-0">
+        <Pagination size="sm" className="mb-0 flex-wrap">
           <Pagination.Prev disabled={p.pagina === 1} onClick={() => enPagina(p.pagina - 1)} aria-label="Anterior" />
           {numerosDePagina(p.pagina, p.paginas).map((n, i) => n === null
             ? <Pagination.Ellipsis key={`e${i}`} disabled />

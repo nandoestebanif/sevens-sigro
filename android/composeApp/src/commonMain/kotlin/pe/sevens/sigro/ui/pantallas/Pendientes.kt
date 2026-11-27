@@ -231,7 +231,9 @@ fun PantallaPendientes(
             }
         }
         var abierto by rememberSaveable { mutableStateOf<String?>(null) }
-        visibles.forEach { f -> Fila(f, abierto == f.clave, alCorregir) { abierto = if (abierto == f.clave) null else f.clave } }
+        var cuantas by rememberSaveable(filtro, tipo) { androidx.compose.runtime.mutableIntStateOf(pe.sevens.sigro.ui.componentes.FILAS_POR_TANDA) }
+        visibles.take(cuantas).forEach { f -> Fila(f, abierto == f.clave, alCorregir) { abierto = if (abierto == f.clave) null else f.clave } }
+        pe.sevens.sigro.ui.componentes.MostrarMas(minOf(cuantas, visibles.size), visibles.size) { cuantas += pe.sevens.sigro.ui.componentes.FILAS_POR_TANDA }
     }
 }
 

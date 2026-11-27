@@ -109,7 +109,7 @@ export function Fecha({ id, valor, alCambiar, min, max, etiqueta, invalido, vali
       <InputGroup hasValidation>
         <Form.Control id={id} value={texto} placeholder="dd/mm/aaaa" inputMode="numeric" autoComplete="off" maxLength={10}
           aria-label={etiqueta} aria-describedby={[describedBy, aviso ? `${id}-aviso` : ''].filter(Boolean).join(' ') || undefined}
-          isInvalid={invalido || !!aviso} isValid={valido && !aviso} disabled={deshabilitado}
+          isInvalid={invalido || !!aviso} isValid={!!valido && !aviso && !!valor} disabled={deshabilitado}
           onChange={(e) => escribir(e.target.value)} onBlur={() => enSalir?.()} />
         <Dropdown show={abierto} onToggle={abrir} align="end" autoClose="outside">
           <Dropdown.Toggle variant="outline-secondary" className="sin-flecha sigro-fecha-boton" disabled={deshabilitado}
