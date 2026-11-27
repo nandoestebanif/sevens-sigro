@@ -49,6 +49,7 @@ import pe.sevens.sigro.ui.pantallas.TrabajadorNuevoViewModel
 import pe.sevens.sigro.ui.pantallas.TrabajadoresViewModel
 import pe.sevens.sigro.ui.pantallas.HorasViewModel
 import pe.sevens.sigro.ui.pantallas.DispositivoViewModel
+import pe.sevens.sigro.ui.pantallas.CelularObraViewModel
 import pe.sevens.sigro.ui.pantallas.InsumoNuevoViewModel
 import pe.sevens.sigro.ui.pantallas.EntrarViewModel
 import pe.sevens.sigro.ui.pantallas.InicioViewModel
@@ -111,6 +112,7 @@ val moduloPresentacion = module {
     viewModel { PendientesViewModel(get(), get()) }
     viewModel { HorasViewModel(get()) }
     viewModel { DispositivoViewModel(get()) }
+    viewModel { CelularObraViewModel(get()) }
     viewModel { ObrasViewModel(get(), get(), get()) }
     viewModel { CatalogoViewModel(get()) }
     viewModel { InsumoNuevoViewModel(get()) }
@@ -118,7 +120,7 @@ val moduloPresentacion = module {
     viewModel { TrabajadorNuevoViewModel(get()) }
     viewModel { AsistenciaViewModel(get(), get(), get(), get()) }
     viewModel { StockViewModel(get()) }
-    viewModel { pe.sevens.sigro.ui.pantallas.HerramientasViewModel(get()) }
+    viewModel { pe.sevens.sigro.ui.pantallas.HerramientasViewModel(get(), getOrNull()) }
     viewModel { EntradaViewModel(get(), get(), get()) }
     viewModel { EscanearViewModel(get()) }
     viewModel { IngresoSinCompraViewModel(get(), get(), get(), get()) }

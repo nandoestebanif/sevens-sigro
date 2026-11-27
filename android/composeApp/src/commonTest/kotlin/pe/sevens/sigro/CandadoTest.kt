@@ -25,6 +25,9 @@ import pe.sevens.sigro.dominio.Sesion
 import pe.sevens.sigro.ui.pantallas.CandadoViewModel
 import pe.sevens.sigro.ui.pantallas.EstadoRaiz
 import pe.sevens.sigro.ui.pantallas.sesionDe
+import pe.sevens.sigro.ui.pantallas.AvisoDeCelular
+import pe.sevens.sigro.ui.pantallas.avisoDeCelular
+import pe.sevens.sigro.dominio.EstadoDispositivo
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
@@ -61,10 +64,10 @@ class CandadoTest {
 
     @Test
     fun elAjusteSeGuardaComoTextoYUnoDanadoApagaLaHuella() {
-        val a = AjusteHuella(activa = true, minutos = 30, ofrecida = true)
+        val a = AjusteHuella(activa = true, minutos = 5, ofrecida = true)
         assertEquals(a, ReglaCandado.decodificar(ReglaCandado.codificar(a)))
         assertEquals(AjusteHuella(), ReglaCandado.decodificar("basura"))
-        assertEquals(15, ReglaCandado.decodificar("activa=1;min=7;ofrecida=1").minutos, "minutos que no están en la lista: los de siempre")
+        assertEquals(0, ReglaCandado.decodificar("activa=1;min=7;ofrecida=1").minutos, "minutos que no están en la lista: al abrir la app")
     }
 
     private class Sesiones(id: Int?) : RepositorioSesion {
@@ -482,7 +485,53 @@ class CandadoTest {
         vm.entrarConHuella(HuellaFalsa(alDescifrar = { ResultadoSecreto.Fallo("Demasiados intentos. Prueba más tarde.") })); advanceUntilIdle()
         assertEquals("Demasiados intentos. Prueba más tarde.", vm.estado.value.error)
         assertEquals(cuenta, guardado.cuentaGuardada, "un fallo del sensor no borra la huella")
-        vm.entrarConHuella(HuellaFalsa(alDescifrar = { ResultadoSecreto.Cancelada })); advanceUntilIdle()
-        assertFalse(vm.estado.value.conFormulario, "cancelar el diálogo deja la pantalla de la huella")
+        assertTrue(vm.estado.value.conFormulario, "tras un fallo se ofrece la contraseña")
+        assertEquals(cuenta.usuario, vm.estado.value.usuario, "con el usuario ya escrito")
+        val otro = EntrarViewModel(Entradas(), guardado, ClaveReciente({ 0 }))
+        advanceUntilIdle()
+        otro.entrarConHuella(HuellaFalsa(alDescifrar = { ResultadoSecreto.Cancelada })); advanceUntilIdle()
+        assertFalse(otro.estado.value.conFormulario, "cancelar el diálogo deja la pantalla de la huella")
+    }
+
+    @Test
+    fun alAbrirLaAppPideLaHuellaComoUnBancoConUnMinutoDeGracia() {
+        val alAbrir = AjusteHuella(activa = true, minutos = 0, ofrecida = true)
+        assertEquals(0, AjusteHuella().minutos, "por defecto: al abrir la app")
+        assertFalse(ReglaCandado.vencido(alAbrir, 0, 99 * minuto), "con la app en uso nunca se bloquea sola")
+        assertFalse(ReglaCandado.vencido(alAbrir, 0, 30_000, alVolver = true), "salió a la cámara o a WhatsApp 30 s: no molesta")
+        assertTrue(ReglaCandado.vencido(alAbrir, 0, minuto, alVolver = true), "volvió al minuto: pide la huella")
+        assertTrue(ReglaCandado.vencido(alAbrir, null, 0, alVolver = true), "sin último uso: pide la huella")
+        assertEquals("Al abrir la app", ReglaCandado.legible(0))
+        assertEquals("5 min sin usarla", ReglaCandado.legible(5))
+    }
+
+    @Test
+    fun conCincoOQuinceMinutosSeBloqueaAunqueVuelvaAntes() {
+        assertFalse(ReglaCandado.vencido(activa, 0, 10 * minuto, alVolver = true), "volvió a los 10 de 15: sigue abierta")
+        assertTrue(ReglaCandado.vencido(activa, 0, 15 * minuto, alVolver = false), "a los 15 en primer plano: se bloquea")
+    }
+
+    @Test
+    fun elAvisoDelCelularDiceSiPuedeRegistrarEnLaObra() {
+        assertNull(avisoDeCelular(null), "sin datos todavía: no se muestra nada")
+        assertNull(avisoDeCelular(EstadoDispositivo("x", null, visible = false)), "su rol no lo ve: no se inventa")
+        assertEquals(AvisoDeCelular.AUTORIZADO, avisoDeCelular(EstadoDispositivo("x", "autorizado")))
+        assertEquals(AvisoDeCelular.PENDIENTE, avisoDeCelular(EstadoDispositivo("x", "pendiente")))
+        assertEquals(AvisoDeCelular.SIN_AUTORIZAR, avisoDeCelular(EstadoDispositivo("x", null)))
+        assertEquals(AvisoDeCelular.SIN_AUTORIZAR, avisoDeCelular(EstadoDispositivo("x", "revocado")))
+    }
+
+    @Test
+    fun alVolverALaPantallaDeEntrarSeLeeOtraVezSiHayHuella() = runTest(principal) {
+        val guardado = Guardado()
+        val vm = EntrarViewModel(Entradas(), guardado, ClaveReciente({ 0 }))
+        advanceUntilIdle(); vm.alAparecer(); advanceUntilIdle()
+        assertNull(vm.estado.value.cuentaHuella, "sin huella: usuario y contraseña")
+        guardado.cuentaGuardada = cuenta // activó la huella y cerró sesión: el mismo ViewModel vuelve a mostrarse
+        vm.alAparecer(); advanceUntilIdle()
+        assertEquals(cuenta, vm.estado.value.cuentaHuella, "ofrece «Entrar con tu huella» sin cerrar la app")
+        guardado.cuentaGuardada = null // apagó la huella
+        vm.alAparecer(); advanceUntilIdle()
+        assertNull(vm.estado.value.cuentaHuella, "ya no ofrece la huella")
     }
 }

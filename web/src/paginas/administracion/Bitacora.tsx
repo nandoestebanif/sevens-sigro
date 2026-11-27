@@ -7,6 +7,7 @@ import { ErrorApi } from '../../api/error'
 import { bitacora } from '../../api/pinApi'
 import type { FilaBitacora, FiltroBitacora } from '../../api/pin'
 import { Chip } from '../../ui/base'
+import { Fecha } from '../../ui/Fecha'
 import { PanelDetalle } from '../../ui/PanelDetalle'
 import { EnVivo, useActualizacion } from '../../ui/Actualizacion'
 import { Paginador } from '../../ui/Tabla'
@@ -77,10 +78,10 @@ export function Bitacora() {
         <EnVivo {...vivo} />
       </div>
       <Form className="d-flex flex-wrap gap-2 align-items-end" onSubmit={(e) => e.preventDefault()} aria-label="Filtros de la bitácora">
-        <Form.Group controlId="bit-desde"><Form.Label className="small mb-1">Desde</Form.Label>
-          <Form.Control size="sm" type="date" value={f.desde ?? ''} max={f.hasta || undefined} onChange={(e) => cambiar({ desde: e.target.value || undefined })} /></Form.Group>
-        <Form.Group controlId="bit-hasta"><Form.Label className="small mb-1">Hasta</Form.Label>
-          <Form.Control size="sm" type="date" value={f.hasta ?? ''} min={f.desde || undefined} onChange={(e) => cambiar({ hasta: e.target.value || undefined })} /></Form.Group>
+        <Form.Group><Form.Label htmlFor="bit-desde" className="small mb-1">Desde</Form.Label>
+          <div style={{ width: 188 }}><Fecha id="bit-desde" valor={f.desde ?? ''} max={f.hasta || undefined} alCambiar={(v) => cambiar({ desde: v || undefined })} /></div></Form.Group>
+        <Form.Group><Form.Label htmlFor="bit-hasta" className="small mb-1">Hasta</Form.Label>
+          <div style={{ width: 188 }}><Fecha id="bit-hasta" valor={f.hasta ?? ''} min={f.desde || undefined} alCambiar={(v) => cambiar({ hasta: v || undefined })} /></div></Form.Group>
         <Form.Group controlId="bit-quien"><Form.Label className="small mb-1">Quién</Form.Label>
           <Form.Select size="sm" value={f.usuarioId ?? ''} onChange={(e) => cambiar({ usuarioId: e.target.value ? Number(e.target.value) : undefined })}>
             <option value="">Todos</option>

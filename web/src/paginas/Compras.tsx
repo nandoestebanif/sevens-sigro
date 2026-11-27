@@ -794,6 +794,8 @@ export function Compras() {
         <Vidrio estilo={{ display: 'flex', flexDirection: 'column', gap: 12 }} etiqueta="Compras registradas">
           {compras === null ? <EsqueletoTabla filas={6} /> : <TablaDatos
             etiqueta="Compras registradas"
+            detalle={false}
+            fechas={[{ clave: 'emision', titulo: 'Emisión', valor: (c) => c.fecha }]}
             filas={compras.filter((c) => filtro === 'todas' ? true : filtro === 'anuladas' ? c.estado === 'anulada'
               : filtro === 'por_recibir' ? c.estado !== 'anulada' && c.estado !== 'recibida' : c.estado !== 'anulada')}
             clave={(c) => c.id}

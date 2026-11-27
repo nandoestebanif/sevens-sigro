@@ -165,6 +165,8 @@ export function ManoDeObra() {
             </div>
             <TablaDatos
               etiqueta="Trabajadores"
+              detalle={false}
+              fechas={[{ clave: 'ingreso', titulo: 'Ingreso', valor: (t) => t.fechaIngreso }, { clave: 'salida', titulo: 'Salida', valor: (t) => t.fechaSalida }]}
               filas={lista}
               clave={(t) => t.id}
               buscar={(t) => `${t.nombre} ${t.documento} ${t.cuadrilla} ${categoria(t.categoria)}`}

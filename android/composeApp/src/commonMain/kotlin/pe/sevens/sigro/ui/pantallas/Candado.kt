@@ -148,7 +148,7 @@ class CandadoViewModel(
     init {
         viewModelScope.launch {
             var primera = true
-            sesiones.sesion.distinctUntilChanged { a, b -> a?.usuarioId == b?.usuarioId }.collect { s ->
+            sesiones.sesion.distinctUntilChanged { a, b -> a?.usuarioId == b?.usuarioId && a?.usuario == b?.usuario }.collect { s ->
                 sesion = s
                 val id = s?.usuarioId
                 if (id == null) {
@@ -158,7 +158,7 @@ class CandadoViewModel(
                     val bloquear = if (primera) {
                         // al abrir la app con la sesión guardada: el candado decide con el último uso guardado
                         ultimoUso = repo.ultimoUso()
-                        ReglaCandado.vencido(ajuste, ultimoUso, reloj())
+                        ReglaCandado.vencido(ajuste, ultimoUso, reloj(), alVolver = true)
                     } else {
                         // acaba de entrar con su contraseña: no se le vuelve a pedir (y se borra un bloqueo guardado antes)
                         val ahora = reloj(); ultimoUso = ahora; runCatching { repo.guardarUltimoUso(ahora) }; false
@@ -175,10 +175,13 @@ class CandadoViewModel(
     fun tocar() { if (!_e.value.bloqueada) ultimoUso = reloj() }
 
     /** Cada tanto, y al volver a la app: ¿pasó el tiempo elegido? */
-    fun revisar() {
+    fun revisar(alVolver: Boolean = false) {
         val s = _e.value
-        if (s.usuarioId != null && !s.bloqueada && ReglaCandado.vencido(s.ajuste, ultimoUso, reloj())) bloquear()
+        if (s.usuarioId != null && !s.bloqueada && ReglaCandado.vencido(s.ajuste, ultimoUso, reloj(), alVolver)) bloquear()
     }
+
+    /** Volvió a la app (estaba en segundo plano o se abrió de nuevo). */
+    fun alVolver() = revisar(alVolver = true)
 
     /**
      * Bloquea y lo deja guardado (27/11, prueba en celular: «Bloquear ahora» se perdía al cerrar la app). El último uso
@@ -543,7 +546,6 @@ fun SeccionSeguridad(vm: CandadoViewModel, biometria: Biometria) {
                     if (error == null) { pidiendoClave = false; activar() } else errorClave = error
                 }
             },
-            alOmitir = { pidiendoClave = false; activar() },
             alCerrar = { pidiendoClave = false; errorClave = null },
             comprobando = comprobando, error = errorClave,
         )
@@ -578,12 +580,13 @@ fun SeccionSeguridad(vm: CandadoViewModel, biometria: Biometria) {
         }
         if (e.ajuste.activa) {
             Text(
-                if (e.entraConHuella) "✓ Si cierras sesión, vuelves a entrar con tu huella. Si en este celular entra otra cuenta, tu huella se borra."
-                else "Desbloquea la app. Para entrar con huella tras cerrar sesión, apágala y vuelve a activarla con tu contraseña.",
+                if (e.entraConHuella) "✓ Tu huella abre la app y, si cierras sesión, te deja volver a entrar. Si en este celular entra otra cuenta, tu huella se borra."
+                else "Tu huella abre la app. Este celular no puede guardar tu contraseña con la huella: si cierras sesión, entras con tu contraseña.",
                 fontSize = 12.sp, lineHeight = 17.sp, color = if (e.entraConHuella) Paleta.EnviadoTexto else Paleta.Texto3,
             )
-            Text("Se bloquea si no la usas durante", fontSize = 13.sp, color = Paleta.Texto2, modifier = Modifier.padding(top = 4.dp))
-            Opciones(MINUTOS_BLOQUEO, e.ajuste.minutos, { "$it min" }, vm::minutos, colorActivo = Paleta.Naranja)
+            Text("Pedir la huella", fontSize = 13.sp, color = Paleta.Texto2, modifier = Modifier.padding(top = 4.dp))
+            Opciones(MINUTOS_BLOQUEO, e.ajuste.minutos, { ReglaCandado.legible(it) }, vm::minutos, colorActivo = Paleta.Naranja)
+            Text(ReglaCandado.explicar(e.ajuste.minutos), fontSize = 12.sp, lineHeight = 16.sp, color = Paleta.Texto3)
             Row(
                 Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).clickable(role = Role.Button, onClickLabel = "Bloquear ahora", onClick = vm::bloquearAhora)
                     .heightIn(min = 52.dp).padding(vertical = 4.dp),
@@ -609,16 +612,16 @@ fun SeccionSeguridad(vm: CandadoViewModel, biometria: Biometria) {
 
 /** Perfil › activar huella: la contraseña, una sola vez, para cifrarla con la huella. Se puede omitir (solo candado). */
 @Composable
-private fun DialogoClave(alConfirmar: (String) -> Unit, alOmitir: () -> Unit, alCerrar: () -> Unit, comprobando: Boolean = false, error: String? = null) {
+private fun DialogoClave(alConfirmar: (String) -> Unit, alCerrar: () -> Unit, comprobando: Boolean = false, error: String? = null) {
     var clave by remember { mutableStateOf("") }
     androidx.compose.material3.AlertDialog(
         onDismissRequest = alCerrar,
         icon = { Icon(Icons.Filled.Fingerprint, contentDescription = null, tint = Paleta.Naranja) },
-        title = { Text("Escribe tu contraseña una vez") },
+        title = { Text("Activar la huella") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text(
-                    "Se guarda cifrada con tu huella: así entras con la huella aunque cierres sesión. SIGRO no puede leerla sin tu huella.",
+                    "Escribe tu contraseña de SIGRO una sola vez. Se comprueba y se guarda cifrada con tu huella: así la huella abre la app y también te deja volver a entrar si cierras sesión. Sin tu huella nadie puede leerla.",
                     fontSize = 13.sp, lineHeight = 19.sp, color = Paleta.Texto2,
                 )
                 pe.sevens.sigro.ui.componentes.CampoVidrio(
@@ -629,11 +632,11 @@ private fun DialogoClave(alConfirmar: (String) -> Unit, alOmitir: () -> Unit, al
         },
         confirmButton = {
             androidx.compose.material3.TextButton(onClick = { alConfirmar(clave) }, enabled = clave.isNotEmpty() && !comprobando) {
-                Text(if (comprobando) "Comprobando…" else "Seguir con la huella", fontWeight = FontWeight.Bold, color = Paleta.Naranja)
+                Text(if (comprobando) "Comprobando…" else "Activar", fontWeight = FontWeight.Bold, color = Paleta.Naranja)
             }
         },
         dismissButton = {
-            androidx.compose.material3.TextButton(onClick = alOmitir) { Text("Solo desbloquear", color = Paleta.Texto2) }
+            androidx.compose.material3.TextButton(onClick = alCerrar) { Text("Cancelar", color = Paleta.Texto2) }
         },
     )
 }

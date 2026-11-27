@@ -31,7 +31,7 @@ class RepositorioSesionImpl(
         // La primera lectura migra el token que una versión anterior dejó en `ajuste` (y lo borra de ahí).
         val token = boveda.token() ?: return@map null
         // Al entrar, el token se guarda antes que el usuario: sin usuario todavía no hay sesión que mostrar.
-        if (m[Clave.USUARIO_ID] == null) return@map null
+        if (m[Clave.USUARIO_ID] == null) return@map null // sesiones de versiones viejas pueden no traer USUARIO: siguen abiertas
         Sesion(
             servidor = m[Clave.SERVIDOR]?.let(Servidores::migrar) ?: Plataforma.servidorPorDefecto,
             token = token,
@@ -77,13 +77,16 @@ class RepositorioSesionImpl(
         boveda.guardarToken(s.token)
         api.olvidarToken()
         guardar(Clave.SERVIDOR, base)
-        guardar(Clave.USUARIO_ID, s.usuario.id.toString())
         guardar(Clave.NOMBRE, s.usuario.nombre)
         guardar(Clave.USUARIO, s.usuario.usuario)
         guardar(Clave.OBRAS, jsonSigro.encodeToString(listaObras, s.obras))
         // Con una sola obra no se pregunta: se entra directo.
         if (s.obras.size == 1) guardar(Clave.OBRA_ID, s.obras.first().id.toString())
         else ajustes.quitar(listOf(Clave.OBRA_ID))
+        // El id va AL FINAL: con él se enciende la sesión. Antes iba primero y quien escuchaba la sesión (el candado)
+        // la recibía con el usuario y el nombre aún vacíos: la huella no guardaba la contraseña y la comprobación
+        // mandaba «usuario» vacío (prueba en celular, 27/11).
+        guardar(Clave.USUARIO_ID, s.usuario.id.toString())
         return Sesion(base, s.token, s.usuario.id, s.usuario.nombre, s.usuario.usuario, s.obras.map(::aObra))
     }
 

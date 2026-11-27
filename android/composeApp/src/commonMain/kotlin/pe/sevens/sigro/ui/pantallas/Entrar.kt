@@ -116,11 +116,30 @@ class EntrarViewModel(
 
     init {
         viewModelScope.launch { _estado.update { it.copy(servidor = sesiones.servidorGuardado()) } }
+        recargar()
+    }
+
+    private var recienCreado = true
+
+    /**
+     * La pantalla de entrar vuelve a aparecer al cerrar sesión, pero su ViewModel puede ser el mismo de antes: se vuelve
+     * a leer quién entra con huella en este celular. Sin esto (prueba en celular, 27/11) al cerrar sesión justo después
+     * de activar la huella se pedía la contraseña, y después de apagarla seguía ofreciendo «Entrar como … con tu huella».
+     */
+    fun alAparecer() {
+        if (recienCreado) { recienCreado = false; return } // recién creado: el init ya lo leyó
+        recargar()
+    }
+
+    private fun recargar() {
         viewModelScope.launch {
             val c = runCatching { candado?.cuenta() }.getOrNull()
             // desde el candado pidió «entrar con mi contraseña»: formulario directo, con su usuario puesto
             val conContrasena = claveReciente?.tomarPreferirContrasena() == true
-            _estado.update { it.copy(cuentaHuella = c, conFormulario = conContrasena, usuario = if (conContrasena) c?.usuario ?: it.usuario else it.usuario) }
+            _estado.update {
+                it.copy(cuentaHuella = c, conFormulario = conContrasena, cargando = false, clave = "",
+                    usuario = if (conContrasena) c?.usuario ?: it.usuario else it.usuario)
+            }
         }
     }
 
@@ -154,7 +173,8 @@ class EntrarViewModel(
                 }
             }
             ResultadoSecreto.Cancelada -> Unit
-            is ResultadoSecreto.Fallo -> _estado.update { it.copy(error = r.mensaje) }
+            // no se pudo abrir (huella apagada, demasiados intentos…): el formulario con su usuario, sin perder el mensaje
+            is ResultadoSecreto.Fallo -> _estado.update { it.copy(error = r.mensaje, conFormulario = true, usuario = c.usuario) }
             ResultadoSecreto.HuellaNueva -> olvidarHuella(bio, "Se agregó una huella nueva en el celular. Por seguridad, entra con tu contraseña.", c.usuario)
             ResultadoSecreto.NoSoportado -> _estado.update { it.copy(conFormulario = true) }
         }
@@ -216,6 +236,7 @@ class EntrarViewModel(
 @Composable
 fun PantallaEntrar(vm: EntrarViewModel = koinViewModel(), biometria: Biometria = rememberBiometria()) {
     val e by vm.estado.collectAsState()
+    LaunchedEffect(Unit) { vm.alAparecer() }
     val alcance = rememberCoroutineScope()
     val cuenta = e.cuentaHuella
     val conHuella = cuenta != null && !e.conFormulario && biometria.guardaClaves()

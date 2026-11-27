@@ -9,14 +9,20 @@
    - acciones por fila (dar de baja, anular, retirar…), que la pantalla muestra
      según el rol: el servidor igual lo verifica (regla 9);
    - en el celular, cada fila se vuelve una tarjeta con «etiqueta: valor»;
-   - vacío y «sin resultados» con su mensaje.
+   - vacío y «sin resultados» con su mensaje;
+   - filtro por fechas (27/11): desde/hasta con el calendario de la web, y si la fila tiene varias fechas
+     (pedido, autorización, revocación…) se elige cuál; los días son los de Lima;
+   - «Ver detalle» en cada fila (27/11): un panel lateral con todo lo de la fila; la lista puede dar el suyo, más
+     completo, o apagarlo si ya tiene su propio detalle.
    Las funciones puras (ordenar, paginar, filtrarTexto) están en tablas.ts.
    ───────────────────────────────────────────────────────────────────────── */
 import { useMemo, useState, type ReactNode } from 'react'
 import { Dropdown, Form, InputGroup } from 'react-bootstrap'
 import { Vacio } from './base'
+import { Fecha } from './Fecha'
+import { PanelDetalle, type SeccionDetalle } from './PanelDetalle'
 import { Paginador, ThOrden } from './Tabla'
-import { TAMANOS, alternarOrden, filtrarTexto, ordenar, paginar, type Orden } from './tablas'
+import { TAMANOS, alternarOrden, filtrarFechas, filtrarTexto, ordenar, paginar, type Orden } from './tablas'
 
 export interface Columna<T> {
   clave: string
@@ -31,9 +37,25 @@ export interface Columna<T> {
   soloEscritorio?: boolean
 }
 
+/** Una fecha de la fila por la que se puede filtrar (p. ej. «Pedido», «Autorización»). */
+export interface CampoFecha<T> {
+  clave: string
+  titulo: string
+  valor: (fila: T) => string | null | undefined
+}
+
+/** Lo que muestra el panel «Ver detalle» de una fila. */
+export interface DetalleFila {
+  titulo: ReactNode
+  subtitulo?: ReactNode
+  chips?: ReactNode
+  secciones: SeccionDetalle[]
+  extra?: ReactNode
+}
+
 export function TablaDatos<T>({
   filas, columnas, clave, etiqueta, buscar, marcadorBusqueda = 'Buscar…', acciones, tituloAcciones = 'Acciones',
-  vacio, sinResultados, ordenInicial = null, tamInicial = 10, filtros, claseFila,
+  vacio, sinResultados, ordenInicial = null, tamInicial = 10, filtros, claseFila, fechas, detalle,
 }: {
   filas: readonly T[]
   columnas: Columna<T>[]
@@ -51,24 +73,51 @@ export function TablaDatos<T>({
   /** controles junto al buscador (segmentados, selects) */
   filtros?: ReactNode
   claseFila?: (fila: T) => string | undefined
+  /** fechas por las que se puede filtrar; la primera es la que se ofrece al abrir */
+  fechas?: CampoFecha<T>[]
+  /**
+   * «Ver detalle»: sin darlo, el panel muestra todas las columnas de la fila (también las que el celular oculta);
+   * una función da un detalle propio; `false` lo apaga (la lista ya tiene su propio «Ver detalle»).
+   */
+  detalle?: ((fila: T) => DetalleFila) | false
 }) {
   const [q, setQ] = useState('')
   const [orden, setOrden] = useState<Orden<string> | null>(ordenInicial)
   const [pagina, setPagina] = useState(1)
   const [tam, setTam] = useState(tamInicial)
+  const [campoFecha, setCampoFecha] = useState(fechas?.[0]?.clave ?? '')
+  const [desde, setDesde] = useState('')
+  const [hasta, setHasta] = useState('')
+  const [viendo, setViendo] = useState<T | null>(null)
+  const fecha = fechas?.find((f) => f.clave === campoFecha) ?? fechas?.[0]
+  const conFechas = Boolean(fecha && (desde || hasta))
 
   const valorDe = useMemo(() => Object.fromEntries(columnas.filter((c) => c.valor).map((c) => [c.clave, c.valor!])), [columnas])
   const visibles = useMemo(() => {
-    const f = buscar ? filtrarTexto(filas, q, buscar) : [...filas]
+    const t = buscar ? filtrarTexto(filas, q, buscar) : [...filas]
+    const f = fecha ? filtrarFechas(t, fecha.valor, desde, hasta) : t
     return ordenar(f, orden, (x, k) => valorDe[k]?.(x) ?? null)
-  }, [filas, q, buscar, orden, valorDe])
+  }, [filas, q, buscar, orden, valorDe, fecha, desde, hasta])
   const p = paginar(visibles, pagina, tam)
   const enOrdenar = (k: string) => { setOrden((o) => alternarOrden(o, k)); setPagina(1) }
   const rotulo = (c: Columna<T>) => c.rotulo ?? (typeof c.titulo === 'string' ? c.titulo : '')
+  const conDetalle = detalle !== false
+  const detalleDe = (f: T): DetalleFila => {
+    if (typeof detalle === 'function') return detalle(f)
+    const [primera, ...resto] = columnas
+    const nombre = primera?.valor?.(f)
+    return {
+      titulo: nombre != null && nombre !== '' ? String(nombre) : primera ? primera.celda(f) : etiqueta,
+      subtitulo: etiqueta,
+      secciones: [{ datos: (nombre != null ? resto : columnas).filter((c) => rotulo(c)).map((c) => [rotulo(c), c.celda(f)] as [string, ReactNode]) }],
+    }
+  }
+  const nombreFila = (f: T) => { const v = columnas[0]?.valor?.(f); return v != null ? String(v) : etiqueta }
+  const d = viendo ? detalleDe(viendo) : null
 
   return (
     <div className="d-flex flex-column gap-3">
-      {(buscar || filtros) && filas.length > 0 && (
+      {(buscar || filtros || fechas?.length) && filas.length > 0 && (
         <div className="d-flex flex-wrap gap-2 align-items-center">
           {buscar && (
             <InputGroup style={{ flex: '1 1 260px', maxWidth: 420 }}>
@@ -80,14 +129,20 @@ export function TablaDatos<T>({
             </InputGroup>
           )}
           {filtros}
-          {q && <span className="small text-body-secondary n" role="status">{visibles.length} de {filas.length}</span>}
+          {fechas && fechas.length > 0 && fecha && (
+            <FiltroFechas id={etiqueta} campos={fechas} campo={fecha.clave} desde={desde} hasta={hasta}
+              enCambio={(c) => { if (c.campo !== undefined) setCampoFecha(c.campo); if (c.desde !== undefined) setDesde(c.desde); if (c.hasta !== undefined) setHasta(c.hasta); setPagina(1) }} />
+          )}
+          {(q || conFechas) && <span className="small text-body-secondary n" role="status">{visibles.length} de {filas.length}</span>}
         </div>
       )}
 
       {filas.length === 0 ? (
         <Vacio titulo={vacio.titulo} detalle={vacio.detalle} />
       ) : visibles.length === 0 ? (
-        <Vacio titulo="Sin resultados" detalle={sinResultados ?? 'Prueba con otra palabra o quita los filtros.'} />
+        <Vacio titulo="Sin resultados" detalle={conFechas
+          ? `Nada con fecha de ${fecha!.titulo.toLowerCase()} en ese rango. Amplía las fechas o quítalas.`
+          : sinResultados ?? 'Prueba con otra palabra o quita los filtros.'} />
       ) : (
         <>
           <div className="overflow-x-auto">
@@ -97,7 +152,7 @@ export function TablaDatos<T>({
                   {columnas.map((c) => c.valor
                     ? <ThOrden key={c.clave} clave={c.clave} orden={orden} enOrdenar={enOrdenar} className={c.numerica ? 'n' : undefined}>{c.titulo}</ThOrden>
                     : <th key={c.clave} className={c.numerica ? 'n' : undefined}>{c.titulo}</th>)}
-                  {acciones && <th className="text-end">{tituloAcciones}</th>}
+                  {(acciones || conDetalle) && <th className="text-end">{tituloAcciones}</th>}
                 </tr>
               </thead>
               <tbody>
@@ -108,7 +163,21 @@ export function TablaDatos<T>({
                         {c.celda(f)}
                       </td>
                     ))}
-                    {acciones && <td className="text-end acciones" data-label="">{acciones(f)}</td>}
+                    {(acciones || conDetalle) && (
+                      <td className="text-end acciones" data-label="">
+                        <div className="d-inline-flex align-items-center gap-1">
+                          {conDetalle && (
+                            <button type="button" className="sigro-accion accion-ver" onClick={() => setViendo(f)}
+                              aria-label={`Ver detalle: ${nombreFila(f)}`} title="Ver detalle">
+                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                                {TRAZOS.ver.split('|').map((x, i) => <path key={i} d={x} />)}
+                              </svg>
+                            </button>
+                          )}
+                          {acciones?.(f)}
+                        </div>
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>
@@ -117,6 +186,40 @@ export function TablaDatos<T>({
           {p.total > TAMANOS[0] && <Paginador p={p} enPagina={setPagina} tam={tam} tamanos={TAMANOS} enTam={(n) => { setTam(n); setPagina(1) }} />}
         </>
       )}
+      {viendo && d && (
+        <PanelDetalle titulo={d.titulo} subtitulo={d.subtitulo} chips={d.chips} secciones={d.secciones} enCerrar={() => setViendo(null)}>
+          {d.extra}
+        </PanelDetalle>
+      )}
+    </div>
+  )
+}
+
+/**
+ * Desde / hasta con el calendario de la web (dd/mm/aaaa, días de Lima). Si hay varias fechas, se elige cuál
+ * («Fecha de pedido», «Fecha de autorización»…). Lo usan TablaDatos y las tablas propias (kárdex, bitácora).
+ */
+export function FiltroFechas({ id, campos, campo, desde, hasta, enCambio }: {
+  id: string
+  campos: { clave: string; titulo: string }[]
+  campo?: string
+  desde: string
+  hasta: string
+  enCambio: (c: { campo?: string; desde?: string; hasta?: string }) => void
+}) {
+  const actual = campos.find((c) => c.clave === campo) ?? campos[0]
+  const base = id.replace(/\W+/g, '-')
+  return (
+    <div className="d-flex flex-wrap align-items-center gap-2 sigro-filtro-fechas" role="group" aria-label="Filtrar por fecha">
+      {campos.length > 1 ? (
+        <Form.Select size="sm" aria-label="Qué fecha" value={actual?.clave} style={{ width: 'auto' }} onChange={(e) => enCambio({ campo: e.target.value })}>
+          {campos.map((f) => <option key={f.clave} value={f.clave}>Fecha de {f.titulo.toLowerCase()}</option>)}
+        </Form.Select>
+      ) : actual && <span className="small text-body-secondary">{actual.titulo}:</span>}
+      <div style={{ width: 188 }}><Fecha id={`${base}-desde`} etiqueta={`Desde (${actual?.titulo ?? 'fecha'})`} valor={desde} max={hasta || undefined} alCambiar={(v) => enCambio({ desde: v })} /></div>
+      <span className="small text-body-secondary" aria-hidden>a</span>
+      <div style={{ width: 188 }}><Fecha id={`${base}-hasta`} etiqueta={`Hasta (${actual?.titulo ?? 'fecha'})`} valor={hasta} min={desde || undefined} alCambiar={(v) => enCambio({ hasta: v })} /></div>
+      {(desde || hasta) && <button type="button" className="btn btn-sm btn-link" onClick={() => enCambio({ desde: '', hasta: '' })}>Quitar fechas</button>}
     </div>
   )
 }

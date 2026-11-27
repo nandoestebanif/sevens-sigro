@@ -83,7 +83,7 @@ fun App() {
             // entrar con huella: el candado mide el uso (toques) y la salida/vuelta de la app
             val candado: CandadoViewModel = koinViewModel()
             val biometria = rememberBiometria()
-            CicloDeVida(alSalir = candado::alSalir, alVolver = candado::revisar)
+            CicloDeVida(alSalir = candado::alSalir, alVolver = candado::alVolver)
             Box(Modifier.fillMaxSize().medirUso(candado)) {
             // Al entrar, la capa «el plano se dibuja» de PantallaEntrar se desvanece y crece 6 % (0,6 s)
             // dejando ver la pantalla siguiente, que va debajo.
@@ -131,8 +131,8 @@ private fun Navegacion(e: EstadoRaiz.Dentro, alElegirObra: (ObraAsignada) -> Uni
     AnimatedContent(actual, transitionSpec = { fadeIn() togetherWith fadeOut() }) { d ->
         when (d) {
             Destino.Inicio -> PantallaInicio(e.sesion, e.obra, irA = irA, alElegirObra = alElegirObra)
-            Destino.Salida -> PantallaSalida(e.obra.id, alVolver = volver)
-            is Destino.SalidaDe -> PantallaSalida(e.obra.id, alVolver = volver, base = d.base)
+            Destino.Salida -> PantallaSalida(e.obra.id, alVolver = volver, alCelular = { irA(Destino.Dispositivo) })
+            is Destino.SalidaDe -> PantallaSalida(e.obra.id, alVolver = volver, base = d.base, alCelular = { irA(Destino.Dispositivo) })
             Destino.Pendientes -> PantallaPendientes(e.obra.id, alVolver = volver, alCorregir = { irA(Destino.SalidaDe(it)) })
             Destino.Rechazados -> PantallaPendientes(e.obra.id, alVolver = volver, soloRechazados = true, alCorregir = { irA(Destino.SalidaDe(it)) })
             Destino.Perfil -> PantallaPerfil(e.sesion, e.obra, alVolver = volver, alCelular = { irA(Destino.Dispositivo) }, seguridad = seguridad)
@@ -146,7 +146,7 @@ private fun Navegacion(e: EstadoRaiz.Dentro, alElegirObra: (ObraAsignada) -> Uni
             Destino.Asistencia -> PantallaAsistencia(e.obra.id, alVolver = volver, alRegistros = { irA(Destino.Pendientes) })
             Destino.Stock -> PantallaStock(e.obra.id, alVolver = volver)
             Destino.Herramientas -> pe.sevens.sigro.ui.pantallas.PantallaHerramientas(e.obra.id, alVolver = volver, puedePrestar = e.obra.rol == "almacenero")
-            Destino.Entrada -> PantallaEntrada(e.obra.id, alVolver = volver)
+            Destino.Entrada -> PantallaEntrada(e.obra.id, alVolver = volver, alCelular = { irA(Destino.Dispositivo) })
             Destino.IngresoSinCompra -> PantallaIngresoSinCompra(e.obra.id, alVolver = volver)
             Destino.Traslado -> PantallaTraslado(e.obra.id, e.obra.nombre, e.sesion.obras, alVolver = volver)
             Destino.Conteo -> PantallaConteo(e.obra.id, alVolver = volver)

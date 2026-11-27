@@ -86,8 +86,8 @@ android {
         applicationId = "pe.sevens.sigro"
         minSdk = 26
         targetSdk = 35
-        versionCode = 18
-        versionName = "1.2.1"
+        versionCode = 20
+        versionName = "1.2.3"
         // Release: red sin excepciones http. Debug: también emulador y PC local (MobSF, 27/11).
         manifestPlaceholders["redSegura"] = "@xml/seguridad_red"
         // SQLite empaquetado (Room KMP) trae su .so por ABI (~2 MB cada una). x86 de 32 bits no existe en
