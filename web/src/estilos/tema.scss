@@ -139,7 +139,11 @@ h1, .h1, h2, .h2, h3, .h3 { letter-spacing: -0.02em; }
 
 .sigro-barra {
   display: flex; flex-wrap: wrap; align-items: center; gap: 0.75rem;
-  padding: 1rem 1.5rem 0;
+  padding: 1rem 1.5rem 0.75rem;
+  // 27/11: la obra activa y «Pantalla» quedan siempre a la vista al bajar (fija arriba, con fondo para leerse)
+  position: sticky; top: 0; z-index: 1020;
+  background: color-mix(in srgb, var(--bs-body-bg) 88%, transparent);
+  backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
   .form-select { min-width: 14rem; border-radius: 999px; background-color: var(--sigro-tarjeta); border-color: transparent; font-weight: 500; }
   .badge { background: var(--sigro-tarjeta) !important; color: var(--bs-body-color) !important; border: 0; }
   .nav-link { border-radius: 999px; background: var(--sigro-tarjeta); padding: 0.5rem 1rem !important; color: var(--bs-body-color); font-weight: 500; }
