@@ -201,3 +201,19 @@ fun AvisoNaranja(mensaje: String, modifier: Modifier = Modifier) {
         Text(mensaje, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(14.dp))
     }
 }
+
+
+/** Cuántas filas se muestran de golpe en las listas largas (stock, registros): el resto con «Mostrar más». */
+const val FILAS_POR_TANDA = 30
+
+/**
+ * «Mostrar 30 más · se ven 30 de 284» (auditoría 27/11): una obra con todo su S10 dibujaba cientos de tarjetas de golpe
+ * dentro de una columna con scroll, lo que se notaba lento en el celular. Igual que el paginador de la web.
+ */
+@Composable
+fun MostrarMas(vistas: Int, total: Int, alPulsar: () -> Unit) {
+    if (total <= vistas) return
+    androidx.compose.material3.TextButton(onClick = alPulsar, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
+        Text("Mostrar ${minOf(FILAS_POR_TANDA, total - vistas)} más · se ven $vistas de $total", color = Paleta.Naranja, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+    }
+}
