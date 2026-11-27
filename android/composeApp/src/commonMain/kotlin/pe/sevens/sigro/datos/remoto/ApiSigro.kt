@@ -17,6 +17,7 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import pe.sevens.sigro.dominio.ErrorSigro
@@ -184,6 +185,22 @@ import pe.sevens.sigro.dominio.ErrorSigro
     val fecha: String,
     val estado: String,
     val lineas: List<LineaCompraDto> = emptyList(),
+    /** HU-73: para cotejar el QR de la factura sin señal (contrato 3.2). Nulos si el servidor aún no los manda. */
+    @SerialName("proveedor_ruc") val proveedorRuc: String? = null,
+    val moneda: String? = null,
+    val total: JsonPrimitive? = null,
+    /** Ya existe en el servidor: {base, igv, total}. Número o texto según el servidor: se lee como primitivo. */
+    val totales: TotalesCompraDto? = null,
+)
+@Serializable data class TotalesCompraDto(val base: JsonPrimitive? = null, val igv: JsonPrimitive? = null, val total: JsonPrimitive? = null)
+
+/** HU-73 · POST /obras/{id}/compras/cotejar-qr (contrato 3.1). */
+@Serializable data class CotejoQrIn(val qr: String)
+@Serializable data class CompraCotejadaDto(val id: Int, val estado: String? = null)
+@Serializable data class CotejoQrDto(
+    val resultado: String,
+    val compra: CompraCotejadaDto? = null,
+    val avisos: List<String> = emptyList(),
 )
 
 @Serializable data class DispositivoIn(val identificador: String)
@@ -359,6 +376,10 @@ class ApiSigro(
 
     suspend fun compras(servidor: String, obraId: Int): List<CompraDto> =
         llamar { http.get(url(servidor, "/obras/$obraId/compras")) { parameter("estado", "registrada") } }
+
+    /** HU-73: el servidor coteja el QR de la factura con las compras de la obra. No guarda nada. */
+    suspend fun cotejarQr(servidor: String, obraId: Int, qr: String): CotejoQrDto =
+        llamar { http.post(url(servidor, "/obras/$obraId/compras/cotejar-qr")) { cuerpo(CotejoQrIn(qr)) } }
 
     /** HU-35: pedido, recibido y pendiente por línea, en el orden de las líneas de la compra. */
     suspend fun estadoRecepcion(servidor: String, obraId: Int, compraId: Int): List<RecepcionLineaDto> =

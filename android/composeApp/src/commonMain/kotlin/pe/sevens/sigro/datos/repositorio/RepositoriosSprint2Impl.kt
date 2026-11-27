@@ -21,6 +21,9 @@ import pe.sevens.sigro.dominio.AlmacenObra
 import pe.sevens.sigro.dominio.BusquedaInsumos
 import pe.sevens.sigro.dominio.CatalogoTexto
 import pe.sevens.sigro.dominio.CompraParaRecibir
+import pe.sevens.sigro.dominio.Cotejo
+import pe.sevens.sigro.dominio.ResultadoCotejo
+import kotlinx.serialization.json.contentOrNull
 import pe.sevens.sigro.dominio.ElegirAlmacen
 import pe.sevens.sigro.dominio.ErrorSigro
 import pe.sevens.sigro.dominio.EstadoLineaRecepcion
@@ -173,6 +176,12 @@ class RepositorioObraImpl(private val api: ApiSigro, private val cred: Credencia
                     val base = CompraParaRecibir(
                         c.id, c.proveedor, "${c.tipoComprobante} ${c.numeroComprobante}", c.fecha,
                         c.lineas.map { LineaCompra(it.insumoCodigo, it.descripcion, it.cantidad, it.unidadCompra) },
+                        proveedorRuc = c.proveedorRuc,
+                        total = (c.total ?: c.totales?.total)?.contentOrNull,
+                        igv = c.totales?.igv?.contentOrNull,
+                        tipoComprobante = c.tipoComprobante,
+                        numeroComprobante = c.numeroComprobante,
+                        moneda = c.moneda,
                     )
                     val estado = runCatching {
                         api.estadoRecepcion(servidor, obraId, c.id).map { EstadoLineaRecepcion(it.insumoId, it.unidadCompra, it.pedido, it.recibido, it.pendiente) }
@@ -183,6 +192,18 @@ class RepositorioObraImpl(private val api: ApiSigro, private val cred: Credencia
                 }
             }.awaitAll().filterNotNull()
         }
+    }
+
+    override suspend fun cotejarQr(obraId: Int, texto: String): Cotejo? {
+        val r = try {
+            api.cotejarQr(cred.exigir(), obraId, texto)
+        } catch (x: ErrorSigro) {
+            // el servidor desplegado aún no tiene el cotejo: la app coteja con lo que ya bajó
+            if (x.estadoHttp == 404 || x.estadoHttp == 405) return null
+            throw x
+        }
+        val resultado = ResultadoCotejo.deCodigo(r.resultado) ?: return null
+        return Cotejo(resultado, r.compra?.id, r.avisos)
     }
 
     override suspend fun obrasDestino(obraId: Int): List<ObraAsignada> {

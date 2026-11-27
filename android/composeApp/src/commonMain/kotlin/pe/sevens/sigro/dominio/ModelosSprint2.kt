@@ -342,7 +342,21 @@ data class CompraParaRecibir(
      * lo requerido en el S10 y lo ya recibido. Sirve para avisar del exceso y pedir el motivo SIN señal.
      */
     val referencia: VerificacionRecepcion? = null,
+    /** HU-73 · para cotejar el QR de la factura sin señal. Nulos si el servidor no los manda. */
+    val proveedorRuc: String? = null,
+    val total: String? = null,
+    val igv: String? = null,
+    val tipoComprobante: String? = null,
+    val numeroComprobante: String? = null,
+    val moneda: String? = null,
 ) {
+    /** HU-73 · lo que el cotejo del QR necesita saber de esta compra (las de la lista están vigentes). */
+    fun cotejable(): CompraCotejable? {
+        val numero = numeroComprobante ?: return null
+        return CompraCotejable(id, proveedorRuc, tipoComprobante ?: "factura", numero, total, igv, "registrada",
+            if (recibidaCompleta) false else null, fecha = fecha.takeIf { it.length >= 10 }, moneda = moneda ?: "PEN")
+    }
+
     /** Con el estado de recepción del servidor cada línea sabe su insumo y su pendiente: se puede recibir una parte. */
     val conPendientes: Boolean get() = lineas.isNotEmpty() && lineas.all { it.insumoId != null && it.pendiente != null }
 

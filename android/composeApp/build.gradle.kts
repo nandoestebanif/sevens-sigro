@@ -66,6 +66,12 @@ kotlin {
             implementation(libs.ktor.client.okhttp)
             implementation(libs.koin.android)
             implementation(libs.work.runtime)
+            // HU-73 · escanear el QR de la factura: cámara (CameraX) y ZXing (Java puro, ~0,5 MB): lee sin señal,
+            // sin Google Play Services y sin enviar datos de uso. ML Kit sumaba 14 MB de librerías nativas y telemetría.
+            implementation(libs.camerax.camera2)
+            implementation(libs.camerax.lifecycle)
+            implementation(libs.camerax.view)
+            implementation(libs.zxing.core)
         }
         iosMain.dependencies {
             implementation(libs.ktor.client.darwin)
@@ -80,8 +86,8 @@ android {
         applicationId = "pe.sevens.sigro"
         minSdk = 26
         targetSdk = 35
-        versionCode = 16
-        versionName = "1.1.4"
+        versionCode = 17
+        versionName = "1.2.0"
         // Release: red sin excepciones http. Debug: también emulador y PC local (MobSF, 27/11).
         manifestPlaceholders["redSegura"] = "@xml/seguridad_red"
         // SQLite empaquetado (Room KMP) trae su .so por ABI (~2 MB cada una). x86 de 32 bits no existe en
