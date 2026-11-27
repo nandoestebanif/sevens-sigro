@@ -339,10 +339,10 @@ fun PantallaBloqueada(
     disponible: DisponibilidadHuella, mensaje: String?, alDesbloquear: () -> Unit, alCerrarSesion: () -> Unit,
     /** No puede poner la huella: sale a «Entrar» con su usuario puesto para escribir la contraseña (su huella queda). */
     alContrasena: () -> Unit = {},
-    pedirAlAbrir: Boolean = true,
+    /** Abrir el diálogo de la huella al aparecer. Apagado: la huella se pide solo al tocarla (25/11, prueba en campo). */
+    pedirAlAbrir: Boolean = false,
 ) {
     ManejarAtras(activo = true) {} // «atrás» no deja ver lo de debajo
-    // al aparecer se abre el diálogo de la huella solo (una vez): es lo que la persona viene a hacer
     LaunchedEffect(Unit) { if (pedirAlAbrir && disponible == DisponibilidadHuella.DISPONIBLE) alDesbloquear() }
     val amarillo = Paleta.TicketAmarillo
     Box(
@@ -526,11 +526,11 @@ fun SeccionSeguridad(vm: CandadoViewModel, biometria: Biometria) {
         }
         if (e.ajuste.activa) {
             Text(
-                if (e.entraConHuella) "✓ También entras con tu huella aunque cierres sesión."
+                if (e.entraConHuella) "✓ Si cierras sesión, vuelves a entrar con tu huella. Si en este celular entra otra cuenta, tu huella se borra."
                 else "Desbloquea la app. Para entrar con huella tras cerrar sesión, apágala y vuelve a activarla con tu contraseña.",
                 fontSize = 12.sp, lineHeight = 17.sp, color = if (e.entraConHuella) Paleta.EnviadoTexto else Paleta.Texto3,
             )
-            Text("Bloquear tras este tiempo sin usarla", fontSize = 13.sp, color = Paleta.Texto2, modifier = Modifier.padding(top = 4.dp))
+            Text("Se bloquea si no la usas durante", fontSize = 13.sp, color = Paleta.Texto2, modifier = Modifier.padding(top = 4.dp))
             Opciones(MINUTOS_BLOQUEO, e.ajuste.minutos, { "$it min" }, vm::minutos, colorActivo = Paleta.Naranja)
             Row(
                 Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).clickable(role = Role.Button, onClickLabel = "Bloquear ahora", onClick = vm::bloquearAhora)

@@ -80,8 +80,10 @@ android {
         applicationId = "pe.sevens.sigro"
         minSdk = 26
         targetSdk = 35
-        versionCode = 13
-        versionName = "1.1.1"
+        versionCode = 16
+        versionName = "1.1.4"
+        // Release: red sin excepciones http. Debug: también emulador y PC local (MobSF, 27/11).
+        manifestPlaceholders["redSegura"] = "@xml/seguridad_red"
         // SQLite empaquetado (Room KMP) trae su .so por ABI (~2 MB cada una). x86 de 32 bits no existe en
         // celulares; x86_64 se queda para el emulador.
         ndk { abiFilters += listOf("arm64-v8a", "armeabi-v7a", "x86_64") }
@@ -91,6 +93,9 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
     buildTypes {
+        getByName("debug") {
+            manifestPlaceholders["redSegura"] = "@xml/seguridad_red_debug"
+        }
         getByName("release") {
             // R8: quita el código y los recursos que no se usan (Material Icons Extended pesa varios MB).
             isMinifyEnabled = true

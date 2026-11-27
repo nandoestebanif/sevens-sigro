@@ -24,3 +24,11 @@
 # (pe/sevens/sigro/**) y se aplican después de R8. Si R8 mudara las clases de la app a otro paquete,
 # el perfil no las encontraría: se conservan los nombres de paquete (las clases igual se acortan).
 -keeppackagenames pe.sevens.sigro.**
+
+# Seguridad (MobSF, 27/11): la release no escribe en el log de Android. La app no usa Log; esto quita también
+# los Log.v/d/i de las librerías (los w/e se conservan: son fallas que el sistema necesita reportar).
+-assumenosideeffects class android.util.Log {
+    public static int v(...);
+    public static int d(...);
+    public static int i(...);
+}
