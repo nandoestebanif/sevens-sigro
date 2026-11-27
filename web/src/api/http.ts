@@ -104,9 +104,9 @@ export async function pedir<T>(metodo: 'GET' | 'POST', ruta: string, cuerpo?: ob
   const texto = await r.text()
   if (!r.ok) {
     const e = construirErrorHttp(r, texto)
-    if (e.codigo === 'pin_requerido') {
+    if (e.codigo === 'pin_requerido' || e.codigo === 'pin_no_configurado') {   // 27/11: sin PIN creado, la ventana lo crea
       olvidarPin()   // venció: el panel vuelve a pedirlo
-      if (!reintentoPin && rutaPidePin(metodo, ruta) && (await solicitarPin('Tu PIN venció: escríbelo otra vez.'))) return pedir<T>(metodo, ruta, cuerpo, true)
+      if (!reintentoPin && rutaPidePin(metodo, ruta) && (await solicitarPin(e.codigo === 'pin_no_configurado' ? 'Esta acción pide PIN: créalo con tu contraseña.' : 'Tu PIN venció: escríbelo otra vez.'))) return pedir<T>(metodo, ruta, cuerpo, true)
     }
     throw e
   }
