@@ -39,6 +39,7 @@ import pe.sevens.sigro.dominio.RepositorioStock
 import pe.sevens.sigro.ui.pantallas.AsistenciaViewModel
 import pe.sevens.sigro.ui.pantallas.CatalogoViewModel
 import pe.sevens.sigro.ui.pantallas.EntradaViewModel
+import pe.sevens.sigro.ui.pantallas.EscanearViewModel
 import pe.sevens.sigro.ui.pantallas.IngresoSinCompraViewModel
 import pe.sevens.sigro.ui.pantallas.CierreViewModel
 import pe.sevens.sigro.ui.pantallas.ConteoViewModel
@@ -119,6 +120,7 @@ val moduloPresentacion = module {
     viewModel { StockViewModel(get()) }
     viewModel { pe.sevens.sigro.ui.pantallas.HerramientasViewModel(get()) }
     viewModel { EntradaViewModel(get(), get(), get()) }
+    viewModel { EscanearViewModel(get()) }
     viewModel { IngresoSinCompraViewModel(get(), get(), get(), get()) }
     viewModel { TrasladoViewModel(get(), get(), get()) }
     viewModel { ConteoViewModel(get(), get(), get()) }

@@ -106,6 +106,12 @@ interface RepositorioObra {
      */
     suspend fun verificarRecepcion(obraId: Int, compraId: Int, lineas: List<Pair<Int, String>>?): VerificacionRecepcion? = null
 
+    /**
+     * HU-73: el servidor coteja el QR de la factura (manda el servidor). Nulo si este servidor todavía no ofrece el
+     * cotejo (la app coteja con lo que ya bajó). Sin señal lanza ErrorSigro transitorio.
+     */
+    suspend fun cotejarQr(obraId: Int, texto: String): Cotejo? = null
+
     /** Obras a las que se puede trasladar (GET /obras), sin la propia. */
     suspend fun obrasDestino(obraId: Int): List<ObraAsignada>
 }
