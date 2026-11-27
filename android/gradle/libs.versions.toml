@@ -15,7 +15,7 @@ room = "2.7.1"
 sqlite = "2.5.1"
 work = "2.10.1"
 camerax = "1.4.2"
-mlkit-barcode = "17.3.0"
+zxing = "3.5.3"
 
 [libraries]
 androidx-biometric = { module = "androidx.biometric:biometric", version.ref = "androidx-biometric" }
@@ -44,7 +44,7 @@ work-runtime = { module = "androidx.work:work-runtime-ktx", version.ref = "work"
 camerax-camera2 = { module = "androidx.camera:camera-camera2", version.ref = "camerax" }
 camerax-lifecycle = { module = "androidx.camera:camera-lifecycle", version.ref = "camerax" }
 camerax-view = { module = "androidx.camera:camera-view", version.ref = "camerax" }
-mlkit-barcode = { module = "com.google.mlkit:barcode-scanning", version.ref = "mlkit-barcode" }
+zxing-core = { module = "com.google.zxing:core", version.ref = "zxing" }
 
 [plugins]
 kover = { id = "org.jetbrains.kotlinx.kover", version.ref = "kover" }

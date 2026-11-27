@@ -60,12 +60,16 @@ class QrFacturaContratoTest {
         casos["cotejo"]!!.jsonArray.forEach { c ->
             val indice = c.texto("qr")!!.substringAfter('[').substringBefore(']').toInt()
             val qr = QrFactura.leer(validos[indice].texto("qr"))!!
-            val compras = c.jsonObject["compra"]?.takeIf { it !is JsonNull }?.let { k ->
-                listOf(CompraCotejable(1, k.texto("proveedor_ruc"), k.texto("tipo_comprobante")!!, k.texto("numero_comprobante")!!,
-                    k.texto("total"), k.texto("igv"), k.texto("estado")!!, k.jsonObject["queda_por_recibir"]!!.jsonPrimitive.boolean))
-            } ?: emptyList()
+            fun compra(k: JsonElement) = CompraCotejable(k.jsonObject["id"]?.jsonPrimitive?.content?.toInt(), k.texto("proveedor_ruc"),
+                k.texto("tipo_comprobante")!!, k.texto("numero_comprobante")!!, k.texto("total"), k.texto("igv"), k.texto("estado")!!,
+                k.jsonObject["queda_por_recibir"]!!.jsonPrimitive.boolean, k.texto("fecha"), k.texto("moneda") ?: "PEN", k.texto("motivo_anulacion"))
+            val compras = c.jsonObject["compras"]?.jsonArray?.map(::compra)
+                ?: c.jsonObject["compra"]?.takeIf { it !is JsonNull }?.let { listOf(compra(it)) } ?: emptyList()
             val r = CotejoQr.cotejar(qr, compras, casos.texto("ruc_sevens")!!)
-            assertEquals(c.texto("resultado"), r.resultado.codigo, c.texto("nombre"))
+            val nombre = c.texto("nombre")
+            assertEquals(c.texto("resultado"), r.resultado.codigo, nombre)
+            c.jsonObject["avisos"]?.jsonArray?.let { esperados -> assertEquals(esperados.map { it.jsonPrimitive.content }, r.avisos, nombre) }
+            c.jsonObject["compra_id"]?.let { assertEquals(it.jsonPrimitive.content.toInt(), r.compraId, nombre) }
             if (r.resultado == ResultadoCotejo.RECIBIR_CON_AVISOS) assertTrue(r.avisos.isNotEmpty())
             vistos += r.resultado
         }
