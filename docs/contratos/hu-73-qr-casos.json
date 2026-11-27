@@ -1,0 +1,184 @@
+{
+ "_nota": "Casos compartidos HU-73: los leen las pruebas del backend (JUnit) y de la app (commonTest). RUC de emisor sintéticos: pasan el dígito verificador, no son de proveedores reales. Si se agrega un caso, se agrega aquí y lo prueban los dos lados.",
+ "ruc_sevens": "20606456892",
+ "validos": [
+  {
+   "nombre": "factura típica con fecha ISO",
+   "qr": "20999999990|01|F001|00001234|180.00|1180.00|2026-11-20|6|20606456892|",
+   "esperado": {
+    "ruc_emisor": "20999999990",
+    "tipo_comprobante": "factura",
+    "numero_comprobante": "F001-1234",
+    "igv": "180.00",
+    "total": "1180.00",
+    "fecha": "2026-11-20",
+    "adquirente_tipo": "6",
+    "adquirente_documento": "20606456892"
+   }
+  },
+  {
+   "nombre": "fecha dd/mm/aaaa, espacios y resumen al final",
+   "qr": " 20888888889 | 01 | F100 | 2323 | 36.61 | 240.00 | 19/11/2026 | 6 | 20606456892 | aGFzaA== ",
+   "esperado": {
+    "ruc_emisor": "20888888889",
+    "tipo_comprobante": "factura",
+    "numero_comprobante": "F100-2323",
+    "igv": "36.61",
+    "total": "240.00",
+    "fecha": "2026-11-19",
+    "adquirente_tipo": "6",
+    "adquirente_documento": "20606456892"
+   }
+  },
+  {
+   "nombre": "boleta",
+   "qr": "20999999990|03|B001|00000077|9.00|59.00|2026-11-21|6|20606456892",
+   "esperado": {
+    "ruc_emisor": "20999999990",
+    "tipo_comprobante": "boleta",
+    "numero_comprobante": "B001-77",
+    "igv": "9.00",
+    "total": "59.00",
+    "fecha": "2026-11-21",
+    "adquirente_tipo": "6",
+    "adquirente_documento": "20606456892"
+   }
+  },
+  {
+   "nombre": "emitida a otro RUC (se reconoce; el cotejo dirá no_es_de_sevens)",
+   "qr": "20999999990|01|F001|00000005|18.00|118.00|2026-11-20|6|20888888889|",
+   "esperado": {
+    "ruc_emisor": "20999999990",
+    "tipo_comprobante": "factura",
+    "numero_comprobante": "F001-5",
+    "igv": "18.00",
+    "total": "118.00",
+    "fecha": "2026-11-20",
+    "adquirente_tipo": "6",
+    "adquirente_documento": "20888888889"
+   }
+  }
+ ],
+ "no_reconocidos": [
+  {
+   "nombre": "texto cualquiera",
+   "qr": "https://ejemplo.pe/promo"
+  },
+  {
+   "nombre": "faltan campos",
+   "qr": "20999999990|01|F001|00001234|180.00"
+  },
+  {
+   "nombre": "RUC con dígito verificador mal",
+   "qr": "20999999991|01|F001|00001234|180.00|1180.00|2026-11-20|6|20606456892|"
+  },
+  {
+   "nombre": "nota de crédito (no se recibe)",
+   "qr": "20999999990|07|F001|00000003|18.00|118.00|2026-11-20|6|20606456892|"
+  },
+  {
+   "nombre": "monto no numérico",
+   "qr": "20999999990|01|F001|00001234|ciento|1180.00|2026-11-20|6|20606456892|"
+  },
+  {
+   "nombre": "fecha imposible",
+   "qr": "20999999990|01|F001|00001234|180.00|1180.00|2026-13-40|6|20606456892|"
+  },
+  {
+   "nombre": "número con letras",
+   "qr": "20999999990|01|F001|12A4|180.00|1180.00|2026-11-20|6|20606456892|"
+  }
+ ],
+ "cotejo": [
+  {
+   "nombre": "coincide y queda por recibir",
+   "compra": {
+    "proveedor_ruc": "20999999990",
+    "numero_comprobante": "F001-1234",
+    "tipo_comprobante": "factura",
+    "total": "1180.00",
+    "igv": "180.00",
+    "estado": "registrada",
+    "queda_por_recibir": true
+   },
+   "qr": "validos[0]",
+   "resultado": "recibir"
+  },
+  {
+   "nombre": "total distinto por S/ 118.00",
+   "compra": {
+    "proveedor_ruc": "20999999990",
+    "numero_comprobante": "F001-1234",
+    "tipo_comprobante": "factura",
+    "total": "1062.00",
+    "igv": "162.00",
+    "estado": "registrada",
+    "queda_por_recibir": true
+   },
+   "qr": "validos[0]",
+   "resultado": "recibir_con_avisos"
+  },
+  {
+   "nombre": "diferencia de un céntimo: tolerada",
+   "compra": {
+    "proveedor_ruc": "20999999990",
+    "numero_comprobante": "F001-1234",
+    "tipo_comprobante": "factura",
+    "total": "1180.01",
+    "igv": "180.00",
+    "estado": "registrada",
+    "queda_por_recibir": true
+   },
+   "qr": "validos[0]",
+   "resultado": "recibir"
+  },
+  {
+   "nombre": "ya recibida",
+   "compra": {
+    "proveedor_ruc": "20999999990",
+    "numero_comprobante": "F001-1234",
+    "tipo_comprobante": "factura",
+    "total": "1180.00",
+    "igv": "180.00",
+    "estado": "registrada",
+    "queda_por_recibir": false
+   },
+   "qr": "validos[0]",
+   "resultado": "ya_recibida"
+  },
+  {
+   "nombre": "anulada",
+   "compra": {
+    "proveedor_ruc": "20999999990",
+    "numero_comprobante": "F001-1234",
+    "tipo_comprobante": "factura",
+    "total": "1180.00",
+    "igv": "180.00",
+    "estado": "anulada",
+    "queda_por_recibir": true
+   },
+   "qr": "validos[0]",
+   "resultado": "anulada"
+  },
+  {
+   "nombre": "mismo número, otro proveedor",
+   "compra": {
+    "proveedor_ruc": "20888888889",
+    "numero_comprobante": "F001-1234",
+    "tipo_comprobante": "factura",
+    "total": "1180.00",
+    "igv": "180.00",
+    "estado": "registrada",
+    "queda_por_recibir": true
+   },
+   "qr": "validos[0]",
+   "resultado": "sin_compra"
+  },
+  {
+   "nombre": "emitida a otro RUC",
+   "compra": null,
+   "qr": "validos[3]",
+   "resultado": "no_es_de_sevens"
+  }
+ ]
+}
