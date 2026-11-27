@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
@@ -128,6 +129,11 @@ data class EstadoEntrada(
     val excesoSinSenal: Boolean = false,
     /** Foto de la guía de remisión (ruta en el almacenamiento privado de la app); opcional. */
     val fotoGuia: String? = null,
+    /** HU-73: la cámara está abierta para leer el QR de la factura. */
+    val escaneando: Boolean = false,
+    /** HU-73: la compra se eligió con el QR de la factura; los avisos del cotejo quedan a la vista hasta guardar. */
+    val porQr: Boolean = false,
+    val avisosFactura: List<String> = emptyList(),
 ) {
     /** Recibir una parte exige saber el insumo y el pendiente de cada línea (con señal). */
     val puedeParcial: Boolean get() = compra?.conPendientes == true
@@ -185,7 +191,18 @@ class EntradaViewModel(
         }
     }
 
-    fun cambiarCompra() { _e.update { it.copy(compra = null, consultando = false, recibido = emptyMap(), errores = emptyMap()).sinExceso() }; enVivo.reiniciar() }
+    fun cambiarCompra() { _e.update { it.copy(compra = null, consultando = false, recibido = emptyMap(), errores = emptyMap(), porQr = false, avisosFactura = emptyList()).sinExceso() }; enVivo.reiniciar() }
+
+    /** HU-73 · abre la cámara para leer el QR de la factura (el permiso se pide recién ahí). */
+    fun escanear() = _e.update { it.copy(escaneando = true) }
+    fun cerrarEscaner() = _e.update { it.copy(escaneando = false) }
+
+    /** HU-73 · el QR encontró la compra: se abre su recepción como si se hubiera tocado en la lista, con los avisos. */
+    fun recibirEscaneada(obraId: Int, c: CompraParaRecibir, avisos: List<String>) {
+        _e.update { it.copy(escaneando = false) }
+        elegir(obraId, c)
+        _e.update { it.copy(porQr = true, avisosFactura = avisos) }
+    }
 
     fun elegirAlmacen(obraId: Int, a: AlmacenObra) {
         almacen.elegir(obraId, a)
@@ -355,6 +372,10 @@ fun PantallaEntrada(obraId: Int, alVolver: () -> Unit, vm: EntradaViewModel = ko
     val e by vm.estado.collectAsState()
     val almacen by vm.almacen.estado.collectAsState()
     LaunchedEffect(obraId) { vm.cargar(obraId) }
+    if (e.escaneando) {
+        PantallaEscanear(obraId, e.compras, alRecibir = { c, avisos -> vm.recibirEscaneada(obraId, c, avisos) }, alCerrar = vm::cerrarEscaner)
+        return
+    }
 
     PantallaVidrio(
         "Entrada", plano = { planoEntrada(it) }, alVolver = alVolver, subtitulo = "Lo que llegó de una compra", modulo = Modulo.ENTRADA,
@@ -376,6 +397,8 @@ fun PantallaEntrada(obraId: Int, alVolver: () -> Unit, vm: EntradaViewModel = ko
         if (compra == null) {
             TarjetaVidrio {
                 PasoAlmacen("1", "¿De qué compra?")
+                // HU-73: con el QR de la factura no se busca ni se escribe; también sin señal
+                BotonNegro("Escanear factura", vm::escanear, icono = Icons.Filled.QrCodeScanner)
                 if (e.cargando) CircularProgressIndicator(color = Paleta.Naranja)
                 e.aviso?.let { Text(it, fontSize = 15.sp, lineHeight = 21.sp, color = Paleta.Texto2) }
                 e.compras.forEach { c ->
@@ -397,6 +420,11 @@ fun PantallaEntrada(obraId: Int, alVolver: () -> Unit, vm: EntradaViewModel = ko
             Text("Compra", fontSize = 13.sp, color = Paleta.Texto3)
             Text("${compra.proveedor} · ${Texto.fecha(compra.fecha)}", fontSize = 17.sp, fontWeight = FontWeight.Bold, color = Paleta.Tinta)
             Text("${compra.comprobante} · ${compra.lineas.size} insumos", fontSize = 14.sp, color = Paleta.Texto2)
+            if (e.porQr) Text(
+                if (e.avisosFactura.isEmpty()) "✓ Elegida con el QR de la factura: comprobante y montos coinciden." else "Elegida con el QR de la factura:",
+                fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = if (e.avisosFactura.isEmpty()) Paleta.EnviadoTexto else Paleta.PendienteTexto,
+            )
+            e.avisosFactura.forEach { AvisoNaranja(it) }
             TextButton(onClick = vm::cambiarCompra) { Text("Cambiar de compra", color = Paleta.Naranja, fontWeight = FontWeight.Bold) }
             ElegirAlmacenObra(almacen, { vm.elegirAlmacen(obraId, it) })
         }
