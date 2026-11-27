@@ -66,12 +66,12 @@ kotlin {
             implementation(libs.ktor.client.okhttp)
             implementation(libs.koin.android)
             implementation(libs.work.runtime)
-            // HU-73 · escanear el QR de la factura: cámara (CameraX) y lector de ML Kit con el modelo dentro de la app
-            // (funciona sin señal y sin Google Play Services descargando nada)
+            // HU-73 · escanear el QR de la factura: cámara (CameraX) y ZXing (Java puro, ~0,5 MB): lee sin señal,
+            // sin Google Play Services y sin enviar datos de uso. ML Kit sumaba 14 MB de librerías nativas y telemetría.
             implementation(libs.camerax.camera2)
             implementation(libs.camerax.lifecycle)
             implementation(libs.camerax.view)
-            implementation(libs.mlkit.barcode)
+            implementation(libs.zxing.core)
         }
         iosMain.dependencies {
             implementation(libs.ktor.client.darwin)

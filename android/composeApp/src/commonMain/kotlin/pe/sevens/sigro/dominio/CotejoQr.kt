@@ -33,6 +33,11 @@ data class CompraCotejable(
     val estado: String,
     /** `null`: no se sabe (sin la consulta del pendiente); se trata como «queda». */
     val quedaPorRecibir: Boolean?,
+    /** aaaa-mm-dd; `null` si no se sabe (no se compara). */
+    val fecha: String? = null,
+    /** PEN o USD: el símbolo de los avisos. */
+    val moneda: String = "PEN",
+    val motivoAnulacion: String? = null,
 )
 
 data class Cotejo(val resultado: ResultadoCotejo, val compraId: Int? = null, val avisos: List<String> = emptyList())
@@ -43,14 +48,20 @@ object CotejoQr {
 
     fun cotejar(qr: QrFactura, compras: List<CompraCotejable>, rucSevens: String = RUC_SEVENS): Cotejo {
         if (qr.adquirenteTipo != "6" || qr.adquirenteDocumento != rucSevens) return Cotejo(ResultadoCotejo.NO_ES_DE_SEVENS)
-        val candidatas = compras.filter { it.proveedorRuc == qr.rucEmisor && normalizarNumero(it.numeroComprobante) == qr.numeroComprobante }
-        // si hay una vigente y otra anulada con el mismo comprobante, cuenta la vigente
-        val c = candidatas.firstOrNull { it.estado != "anulada" } ?: candidatas.firstOrNull() ?: return Cotejo(ResultadoCotejo.SIN_COMPRA)
-        if (c.estado == "anulada") return Cotejo(ResultadoCotejo.ANULADA, c.id)
+        // contrato 3.1: con el mismo proveedor y serie-número, gana 1) el mismo tipo, 2) la vigente, 3) la más reciente (id mayor)
+        val c = compras.filter { it.proveedorRuc == qr.rucEmisor && normalizarNumero(it.numeroComprobante) == qr.numeroComprobante }
+            .sortedWith(compareBy<CompraCotejable>({ it.tipoComprobante != qr.tipoComprobante }, { it.estado == "anulada" }, { -(it.id ?: 0) }))
+            .firstOrNull() ?: return Cotejo(ResultadoCotejo.SIN_COMPRA)
+        if (c.estado == "anulada") {
+            val motivo = c.motivoAnulacion?.trim()?.trimEnd('.')?.takeIf { it.isNotEmpty() }
+            return Cotejo(ResultadoCotejo.ANULADA, c.id, listOf("La compra ${qr.numeroComprobante} está anulada" + (motivo?.let { ": $it." } ?: ".")))
+        }
         if (c.quedaPorRecibir == false) return Cotejo(ResultadoCotejo.YA_RECIBIDA, c.id)
+        val m = simbolo(c.moneda)
         val avisos = buildList {
-            diferencia("total", qr.total, c.total)?.let(::add)
-            diferencia("IGV", qr.igv, c.igv)?.let(::add)
+            diferencia("El total", qr.total, c.total, m)?.let(::add)
+            diferencia("El IGV", qr.igv, c.igv, m)?.let(::add)
+            if (c.fecha != null && c.fecha.take(10) != qr.fecha) add("La fecha del QR (${dma(qr.fecha)}) no coincide con la registrada en la compra (${dma(c.fecha.take(10))}).")
             if (c.tipoComprobante != qr.tipoComprobante) add("El QR es de una ${qr.tipoComprobante} y la compra se registró como ${c.tipoComprobante}.")
         }
         return Cotejo(if (avisos.isEmpty()) ResultadoCotejo.RECIBIR else ResultadoCotejo.RECIBIR_CON_AVISOS, c.id, avisos)
@@ -64,17 +75,22 @@ object CotejoQr {
         return t.substring(0, i) + "-" + t.substring(i + 1).trimStart('0').ifEmpty { "0" }
     }
 
-    private fun diferencia(que: String, delQr: String, deLaCompra: String?): String? {
+    private fun diferencia(que: String, delQr: String, deLaCompra: String?, m: String): String? {
         val q = QrFactura.centimos(delQr) ?: return null
         val c = QrFactura.centimos(deLaCompra) ?: return null // la compra no lo trae: no se puede comparar
         val d = kotlin.math.abs(q - c)
         if (d <= TOLERANCIA_CENTIMOS) return null
-        return "El $que del QR (${soles(q)}) difiere en ${soles(d)} del registrado en la compra (${soles(c)})."
+        return "$que del QR (${soles(q, m)}) difiere en ${soles(d, m)} del registrado en la compra (${soles(c, m)})."
     }
 
+    /** PEN → «S/», USD → «US$». */
+    fun simbolo(moneda: String?): String = if (moneda.equals("USD", ignoreCase = true)) "US$" else "S/"
+
+    private fun dma(iso: String): String = iso.split('-').let { if (it.size == 3) "${it[2]}/${it[1]}/${it[0]}" else iso }
+
     /** 118000 → «S/ 1 180.00» (miles con espacio, como en el contrato). */
-    fun soles(centimos: Long): String {
+    fun soles(centimos: Long, simbolo: String = "S/"): String {
         val e = (centimos / 100).toString().reversed().chunked(3).joinToString(" ").reversed()
-        return "S/ $e.${(centimos % 100).toString().padStart(2, '0')}"
+        return "$simbolo $e.${(centimos % 100).toString().padStart(2, '0')}"
     }
 }

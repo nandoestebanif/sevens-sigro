@@ -348,11 +348,13 @@ data class CompraParaRecibir(
     val igv: String? = null,
     val tipoComprobante: String? = null,
     val numeroComprobante: String? = null,
+    val moneda: String? = null,
 ) {
     /** HU-73 · lo que el cotejo del QR necesita saber de esta compra (las de la lista están vigentes). */
     fun cotejable(): CompraCotejable? {
         val numero = numeroComprobante ?: return null
-        return CompraCotejable(id, proveedorRuc, tipoComprobante ?: "factura", numero, total, igv, "registrada", if (recibidaCompleta) false else null)
+        return CompraCotejable(id, proveedorRuc, tipoComprobante ?: "factura", numero, total, igv, "registrada",
+            if (recibidaCompleta) false else null, fecha = fecha.takeIf { it.length >= 10 }, moneda = moneda ?: "PEN")
     }
 
     /** Con el estado de recepción del servidor cada línea sabe su insumo y su pendiente: se puede recibir una parte. */

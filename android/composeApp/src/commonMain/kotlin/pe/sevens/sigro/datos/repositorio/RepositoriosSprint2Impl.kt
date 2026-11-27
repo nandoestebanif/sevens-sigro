@@ -181,6 +181,7 @@ class RepositorioObraImpl(private val api: ApiSigro, private val cred: Credencia
                         igv = c.totales?.igv?.contentOrNull,
                         tipoComprobante = c.tipoComprobante,
                         numeroComprobante = c.numeroComprobante,
+                        moneda = c.moneda,
                     )
                     val estado = runCatching {
                         api.estadoRecepcion(servidor, obraId, c.id).map { EstadoLineaRecepcion(it.insumoId, it.unidadCompra, it.pedido, it.recibido, it.pendiente) }

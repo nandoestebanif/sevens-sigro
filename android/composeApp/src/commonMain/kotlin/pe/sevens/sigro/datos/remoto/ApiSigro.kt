@@ -187,6 +187,7 @@ import pe.sevens.sigro.dominio.ErrorSigro
     val lineas: List<LineaCompraDto> = emptyList(),
     /** HU-73: para cotejar el QR de la factura sin señal (contrato 3.2). Nulos si el servidor aún no los manda. */
     @SerialName("proveedor_ruc") val proveedorRuc: String? = null,
+    val moneda: String? = null,
     val total: JsonPrimitive? = null,
     /** Ya existe en el servidor: {base, igv, total}. Número o texto según el servidor: se lee como primitivo. */
     val totales: TotalesCompraDto? = null,
