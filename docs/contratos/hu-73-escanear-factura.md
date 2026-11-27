@@ -104,7 +104,7 @@ Tolerancia de los montos: **0.01** (redondeo).
 |---|---|
 | total distinto | `El total del QR (M 1 180.00) difiere en M 118.00 del registrado en la compra (M 1 062.00).` |
 | IGV distinto | `El IGV del QR (M 180.00) difiere en M 18.00 del registrado en la compra (M 162.00).` |
-| fecha distinta | `La fecha del QR (20/11/2026) no coincide con la registrada en la compra (19/11/2026).` |
+| fecha distinta | `La fecha del QR (20/11/2026) no coincide con la de la compra (19/11/2026).` |
 | tipo distinto | `El QR es de una boleta y la compra se registró como factura.` |
 | anulada | `La compra F001-1234 está anulada: <motivo>.` (sin motivo: `La compra F001-1234 está anulada.`) |
 
