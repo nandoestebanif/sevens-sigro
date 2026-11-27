@@ -122,7 +122,8 @@ private class BiometriaAndroid(private val actividad: FragmentActivity?) : Biome
         val partes = sobre.split(':')
         if (partes.size != 2) return ResultadoSecreto.Fallo("El acceso con huella guardado está dañado: entra con tu contraseña.")
         val cifrador = try {
-            val llave = llave(ALIAS_CLAVE) ?: return ResultadoSecreto.HuellaNueva
+            // sin llave: la huella se apagó en este celular (no es una huella nueva)
+            val llave = llave(ALIAS_CLAVE) ?: return ResultadoSecreto.Fallo("La huella ya no está activa en este celular. Entra con tu contraseña.")
             Cipher.getInstance(TRANSFORMACION).apply { init(Cipher.DECRYPT_MODE, llave, GCMParameterSpec(128, deB64(partes[0]))) }
         } catch (e: KeyPermanentlyInvalidatedException) {
             olvidarClave(); return ResultadoSecreto.HuellaNueva

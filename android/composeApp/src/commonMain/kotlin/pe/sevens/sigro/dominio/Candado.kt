@@ -8,8 +8,11 @@ package pe.sevens.sigro.dominio
  */
 
 /** Minutos sin usar la app que se pueden elegir en Perfil. */
-val MINUTOS_BLOQUEO = listOf(5, 15, 30)
-const val MINUTOS_POR_DEFECTO = 15
+/** 0 = «al abrir la app»: cada vez que vuelve a SIGRO (como la app de un banco); 5 y 15 = tras esos minutos sin usarla. */
+val MINUTOS_BLOQUEO = listOf(0, 5, 15)
+const val MINUTOS_POR_DEFECTO = 0
+/** Con «al abrir la app», salir un momento (contestar una llamada, la cámara del sistema) no bloquea: 1 minuto de gracia. */
+const val GRACIA_AL_ABRIR_MS = 60_000L
 
 /** Ajuste de cada usuario en ESTE celular. [ofrecida]: ya se le preguntó una vez si la quería (no se insiste). */
 data class AjusteHuella(val activa: Boolean = false, val minutos: Int = MINUTOS_POR_DEFECTO, val ofrecida: Boolean = false)
@@ -126,11 +129,20 @@ object ReglaCandado {
      * del último uso (primera vez tras instalar) o con el reloj del celular atrasado, se bloquea: ante la duda,
      * el candado.
      */
-    fun vencido(ajuste: AjusteHuella, ultimoUsoMs: Long?, ahoraMs: Long): Boolean {
+    fun vencido(ajuste: AjusteHuella, ultimoUsoMs: Long?, ahoraMs: Long, alVolver: Boolean = false): Boolean {
         if (!ajuste.activa) return false
+        // «al abrir la app»: mientras la usa no se bloquea; solo al volver a ella
+        if (ajuste.minutos == 0 && !alVolver) return false
         if (ultimoUsoMs == null || ahoraMs < ultimoUsoMs) return true
-        return ahoraMs - ultimoUsoMs >= ajuste.minutos * 60_000L
+        val limite = if (ajuste.minutos == 0) GRACIA_AL_ABRIR_MS else ajuste.minutos * 60_000L
+        return ahoraMs - ultimoUsoMs >= limite
     }
+
+    fun legible(minutos: Int): String = if (minutos == 0) "Al abrir la app" else "$minutos min sin usarla"
+
+    fun explicar(minutos: Int): String = if (minutos == 0)
+        "Cada vez que vuelves a SIGRO (después de cerrarla o de usar otra app más de un minuto) se pide tu huella."
+    else "Mientras la usas no se bloquea; si la dejas $minutos minutos sin tocar, o al volver después de ese tiempo, pide tu huella."
 
     /** ¿Quien entra con contraseña es otra persona que la dueña de la huella en este celular? */
     fun esOtraCuenta(c: CuentaConHuella, usuario: String): Boolean =

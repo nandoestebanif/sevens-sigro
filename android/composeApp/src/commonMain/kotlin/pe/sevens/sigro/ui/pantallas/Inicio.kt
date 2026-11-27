@@ -285,6 +285,8 @@ fun PantallaInicio(
                 CabeceraInicio(sesion, obra, resumen, pendientes, alCambiarObra = { cambiandoObra = true })
                 CifrasDeHoy(resumen, alVerRegistros = { irA(Destino.Pendientes) }, alVerRechazados = { irA(Destino.Rechazados) })
                 AvisosCola(resumen, pendientes, e.enviando, alEnviar = vm::enviarAhora, alVerRegistros = { irA(Destino.Pendientes) })
+                // HU-15: antes de registrar, si este celular puede hacerlo en esta obra (solo quien registra)
+                if (VistaPorRol.registra(obra.rol)) AvisoCelular(obra.id, alPedir = { irA(Destino.Dispositivo) })
                 // Cada rol ve lo suyo (regla 9; el servidor igual responde 403 a lo que no le toca)
                 val accesos = VistaPorRol.accesos(obra.rol)
                 if (AccesoApp.SALIDA in accesos) {
