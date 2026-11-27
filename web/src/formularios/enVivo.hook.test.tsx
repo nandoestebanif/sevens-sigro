@@ -44,3 +44,15 @@ describe('useEnVivo con Campo', () => {
     expect(caja.textContent).toContain('Escribe la cantidad.')
   })
 })
+
+describe('un campo opcional vacío no lleva ✓ (27/11)', () => {
+  it('Campo con valido pero sin texto no se pinta como correcto', () => {
+    const c = document.createElement('div'); document.body.appendChild(c)
+    const r = createRoot(c)
+    act(() => r.render(<Campo id="correo" etiqueta="Correo (opcional)" valor="" enCambio={() => {}} valido />))
+    expect(c.querySelector('input')!.classList.contains('is-valid')).toBe(false)
+    act(() => r.render(<Campo id="correo" etiqueta="Correo (opcional)" valor="a@b.pe" enCambio={() => {}} valido />))
+    expect(c.querySelector('input')!.classList.contains('is-valid')).toBe(true)
+    act(() => r.unmount()); c.remove()
+  })
+})

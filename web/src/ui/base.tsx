@@ -85,7 +85,8 @@ export function Campo({ etiqueta, valor, enCambio, marcador, error, autoFoco, id
         autoFocus={autoFoco}
         disabled={deshabilitado}
         isInvalid={!!error}
-        isValid={!!valido && !error}
+        // un campo vacío (opcional) no lleva ✓: no hay nada que dar por bueno (27/11)
+        isValid={!!valido && !error && valor.trim() !== ''}
         inputMode={modoTeclado}
         aria-describedby={error ? `${id}-error` : ayuda ? `${id}-ayuda` : undefined}
         maxLength={maxLargo}

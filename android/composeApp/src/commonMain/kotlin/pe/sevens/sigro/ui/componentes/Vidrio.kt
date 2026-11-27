@@ -165,7 +165,8 @@ fun CampoVidrio(
 ) {
     val pie = error ?: ayuda
     var tuvoFoco by remember { mutableStateOf(false) }
-    val icono = finalIcono ?: if (correcto && error == null) {
+    // un campo vacío (opcional) no lleva ✓: no hay nada que dar por bueno (27/11)
+    val icono = finalIcono ?: if (correcto && error == null && valor.isNotBlank()) {
         { Icon(Icons.Filled.CheckCircle, contentDescription = "Correcto", tint = Paleta.EnviadoTexto) }
     } else null
     OutlinedTextField(

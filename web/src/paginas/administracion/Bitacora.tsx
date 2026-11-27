@@ -9,6 +9,8 @@ import type { FilaBitacora, FiltroBitacora } from '../../api/pin'
 import { Chip } from '../../ui/base'
 import { PanelDetalle } from '../../ui/PanelDetalle'
 import { EnVivo, useActualizacion } from '../../ui/Actualizacion'
+import { Paginador } from '../../ui/Tabla'
+import { paginar } from '../../ui/tablas'
 
 /** «/api/v1/obras/7/almacen/salidas» → «Almacen · salidas». Solo para leerla mejor; la ruta exacta va debajo. */
 export function queHizo(ruta: string): string {
@@ -49,6 +51,9 @@ export function Bitacora() {
   const [f, setF] = useState<FiltroBitacora>({ solo: '' })
   const [error, setError] = useState('')
   const [abierta, setAbierta] = useState<FilaBitacora | null>(null)
+  // paginación (27/11): hasta 500 operaciones de golpe eran una lista interminable
+  const [pagina, setPagina] = useState(1)
+  const [tam, setTam] = useState(25)
   const personas = useRef(new Map<number, string>())
   const filtro = useRef(f)
   filtro.current = f
@@ -56,12 +61,13 @@ export function Bitacora() {
     r.forEach((x) => { if (x.usuarioId && x.usuario) personas.current.set(x.usuarioId, x.usuario) })
     setFilas(r); setError('')
   }).catch((e) => setError(e instanceof ErrorApi ? e.message : 'No se pudo consultar la bitácora.')))
-  const cambiar = (n: Partial<FiltroBitacora>) => { setF((v) => { const x = { ...v, ...n }; filtro.current = x; return x }); setTimeout(vivo.actualizar) }
+  const cambiar = (n: Partial<FiltroBitacora>) => { setF((v) => { const x = { ...v, ...n }; filtro.current = x; return x }); setPagina(1); setTimeout(vivo.actualizar) }
   const hayFiltro = Boolean(f.desde || f.hasta || f.usuarioId || f.q || f.solo)
   const resumen = useMemo(() => {
     const l = filas ?? []
     return { total: l.length, rechazos: l.filter((x) => x.estado === 401 || x.estado === 403).length, personas: new Set(l.map((x) => x.usuarioId)).size }
   }, [filas])
+  const p = paginar(filas ?? [], pagina, tam)
   const quienes = [...personas.current.entries()].sort((a, b) => a[1].localeCompare(b[1]))
 
   return (
@@ -95,7 +101,7 @@ export function Bitacora() {
         <table className="table table-sm table-hover align-middle mb-0">
           <thead><tr><th>Cuándo</th><th>Quién</th><th>Qué</th><th>Resultado</th><th className="text-end">ms</th></tr></thead>
           <tbody>
-            {(filas ?? []).map((x) => (
+            {p.items.map((x) => (
               <tr key={x.id} role="button" tabIndex={0} onClick={() => setAbierta(x)} onKeyDown={(e) => { if (e.key === 'Enter') setAbierta(x) }} aria-label={`Ver detalle de ${queHizo(x.ruta)}`}>
                 <td className="small n text-nowrap">{fecha(x.momento)}</td>
                 <td className="small">{x.usuario ?? <span className="text-body-secondary">sin sesión</span>}</td>
@@ -108,6 +114,7 @@ export function Bitacora() {
           </tbody>
         </table>
       </div>
+      {p.total > 0 && <Paginador p={p} enPagina={setPagina} tam={tam} enTam={(n) => { setTam(n); setPagina(1) }} />}
       {abierta && (
         <PanelDetalle titulo={queHizo(abierta.ruta)} subtitulo={fecha(abierta.momento)} enCerrar={() => setAbierta(null)}
           chips={<><Chip tono={tonoEstado(abierta.estado)}>{abierta.estado}</Chip><Chip tono="neutro">{abierta.metodo === 'POST' ? 'cambio' : 'consulta'}</Chip></>}
