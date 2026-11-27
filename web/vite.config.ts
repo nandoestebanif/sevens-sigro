@@ -12,6 +12,7 @@ export default defineConfig(({ mode }) => ({
     // sin red con lo último que se vio. Solo se guarda la interfaz; los datos siempre vienen del servidor.
     VitePWA({
       registerType: 'autoUpdate', // al desplegar una versión nueva, se actualiza sola
+      injectRegister: 'script-defer', // Lighthouse (27/11): el registro del service worker no bloquea el primer pintado
       includeAssets: ['favicon.ico', 'apple-touch-icon.png'],
       manifest: {
         name: 'SIGRO · Gestión de recursos de obra',
