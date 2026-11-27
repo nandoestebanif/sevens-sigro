@@ -1,0 +1,111 @@
+@startuml
+skinparam defaultFontName "DejaVu Sans"
+skinparam defaultFontSize 12
+skinparam shadowing false
+skinparam roundCorner 8
+skinparam ArrowColor #1F2A44
+skinparam ActivityBorderColor #1F2A44
+skinparam ActivityBackgroundColor #FFF7ED
+skinparam ActivityDiamondBackgroundColor #FEF3C7
+skinparam ActivityDiamondBorderColor #92400E
+skinparam SwimlaneTitleFontStyle bold
+skinparam SwimlaneTitleFontColor #1F2A44
+skinparam SwimlaneBorderColor #9CA3AF
+skinparam PartitionBorderColor #9CA3AF
+skinparam ParticipantBorderColor #1F2A44
+skinparam ParticipantBackgroundColor #FFF7ED
+skinparam ActorBorderColor #1F2A44
+skinparam ActorBackgroundColor #FFF7ED
+skinparam DatabaseBorderColor #1F2A44
+skinparam DatabaseBackgroundColor #E0E7FF
+skinparam SequenceLifeLineBorderColor #9CA3AF
+skinparam SequenceGroupBorderColor #C2410C
+skinparam SequenceGroupHeaderFontColor #C2410C
+skinparam StateBorderColor #1F2A44
+skinparam StateBackgroundColor #FFF7ED
+skinparam StateStartColor #1F2A44
+skinparam StateEndColor #1F2A44
+skinparam NoteBackgroundColor #F3F4F6
+skinparam NoteBorderColor #9CA3AF
+skinparam TitleFontSize 15
+skinparam TitleFontColor #C2410C
+skinparam ClassBorderColor #1F2A44
+skinparam ClassBackgroundColor #FFF7ED
+skinparam SequenceBoxBorderColor #9CA3AF
+skinparam SequenceGroupBorderColor #9CA3AF
+skinparam ParticipantPadding 6
+skinparam BoxPadding 8
+skinparam SequenceLifeLineBorderColor #9CA3AF
+skinparam NoteBackgroundColor #FFF7ED
+skinparam NoteBorderColor #C2410C
+title HU-73 · Escanear la factura electrónica al recibir la compra\nDiagrama de secuencia · App (Vista · ViewModel · Dominio · Datos) → API (Controller → Acceso → reglas → PostgreSQL)
+autonumber "<b>0."
+actor "Almacenero" as U
+box "Vista" #FFF7ED
+participant "PantallaEscanear\n<<Compose · CameraX>>" as V
+end box
+box "ViewModel" #FFEDD5
+participant "EscanearViewModel\n<<ViewModel>>" as VM
+end box
+box "Dominio (reglas puras · Kotlin común)" #ECFDF5
+participant "QrFactura\n<<parser SUNAT>>" as Q
+participant "CotejoQr\n<<cotejo sin señal>>" as CQ
+end box
+box "Datos (app)" #EFF6FF
+participant "LectorQr\n<<ML Kit · en el celular>>" as MK
+participant "RepositorioCompras\n<<interfaz → Impl>>" as R
+participant "ApiSigro\n<<Ktor>>" as K
+end box
+box "Backend · servicio de compras (esquema compras, rol sigro_svc_compras)" #F3F4F6
+participant "Filtros\nCabecerasSeguridad · BitacoraFiltro" as F
+participant "ComprasController\n<<@RestController>>" as S
+participant "Acceso\n<<seguridad>>" as O
+participant "QrFacturaSunat · CotejoQr\n<<reglas del módulo compras>>" as SV
+database "PostgreSQL · esquema compras" as PG
+end box
+U -> V : Entrada › «Escanear factura»
+V -> VM : abrirCamara()
+VM -> V : pide permiso de cámara (solo al tocar)
+V -> MK : analizar(cuadro) · solo FORMAT_QR_CODE
+MK --> VM : texto del QR
+VM -> Q : leer(texto)
+alt QR no reconocido
+  Q --> VM : null
+  VM --> V : «No es el QR de una factura electrónica» · seguir escaneando
+else reconocido
+  Q --> VM : QrFactura(ruc, tipo, F001-1234, igv, total, fecha, adquirente)
+  alt sin señal
+    VM -> R : comprasGuardadas(obraId)
+    R --> VM : compras bajadas (proveedor_ruc, número, total, pendiente)
+    VM -> CQ : cotejar(qr, compras, RUC de SEVENS)
+    CQ --> VM : resultado + avisos · «se confirma al volver la señal»
+  else con señal
+    VM -> R : cotejarQr(obraId, texto)
+    R -> K : POST /obras/{id}/compras/cotejar-qr
+    K -> F : Authorization: Bearer token
+    F -> F : cabeceras de seguridad (nosniff, DENY, no-store)
+    F -> S : cotejarQr(…)
+    S -> O : exigir("recepcion.registrar", obraId)\n¿su rol en ESTA obra?
+    O --> S : Actor (o 401/403)
+    S -> SV : QrFacturaSunat.leer(texto)
+    alt formato inválido
+      SV --> S : 422 qr_no_reconocido
+    else válido
+      SV -> SV : adquirente = RUC de SEVENS?
+      SV -> PG : SELECT compra JOIN proveedor\nWHERE ruc = :emisor AND numero_comprobante = :n
+      PG --> SV : compra + pendiente de recepción
+      SV -> SV : CotejoQr: total e IGV (tolerancia S/ 0.01), estado
+      SV --> S : resultado + avisos
+    end
+    F -> F : BitacoraFiltro: quién · obra · F001-1234 · resultado\n(sin el texto del QR, sin tokens)
+    S --> K : 200 { comprobante, resultado, compra, avisos }
+    K --> R : CotejoDto
+    R --> VM : Cotejo (manda el servidor)
+  end
+  alt recibir / recibir_con_avisos
+    VM --> V : abre PantallaEntrada con la compra elegida y los avisos
+  else ya_recibida / anulada / sin_compra / no_es_de_sevens
+    VM --> V : lo explica; no ofrece recibir
+  end
+end
+@enduml
