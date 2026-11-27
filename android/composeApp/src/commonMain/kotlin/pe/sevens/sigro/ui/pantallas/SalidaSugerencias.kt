@@ -1,6 +1,7 @@
 package pe.sevens.sigro.ui.pantallas
 
 import pe.sevens.sigro.dominio.AvisoStock
+import pe.sevens.sigro.dominio.Busqueda
 import pe.sevens.sigro.dominio.HoraLima
 import pe.sevens.sigro.dominio.Insumo
 import pe.sevens.sigro.dominio.SalidaRegistrada
@@ -70,12 +71,12 @@ data class InsumoConStock(val insumo: Insumo, val cantidad: String)
 fun insumosConStock(stock: StockObra?, almacenId: Int?, texto: String): List<InsumoConStock>? {
     if (stock == null) return null
     val filas = if (almacenId != null) stock.porAlmacen.filter { it.almacenId == almacenId } else stock.consolidado
-    val t = texto.trim().lowercase()
-    return filas
+    val conStock = filas
         .filter { (it.cantidad.toDoubleOrNull() ?: 0.0) > 0.0 }
-        .filter { t.isEmpty() || it.descripcion.lowercase().contains(t) || it.codigo.lowercase().contains(t) }
         .distinctBy { it.insumoId }
         .sortedBy { it.descripcion.lowercase() }
+    // sin tildes, cada palabra en cualquier orden y primero lo que empieza con lo escrito (Busqueda)
+    return Busqueda.filtrar(conStock, texto) { listOf(it.descripcion, it.codigo) }
         .map { InsumoConStock(Insumo(it.insumoId, it.codigo, it.descripcion, it.unidad), it.cantidad) }
 }
 
@@ -84,8 +85,7 @@ fun trabajadoresQueCoinciden(nombres: List<String>, texto: String): List<String>
     fun norm(s: String) = s.lowercase()
         .replace('á', 'a').replace('é', 'e').replace('í', 'i').replace('ó', 'o').replace('ú', 'u').replace('ñ', 'n')
         .replace(Regex("\\s+"), " ").trim()
-    val t = norm(texto)
-    return nombres.distinctBy { norm(it) }.filter { t.isEmpty() || norm(it).contains(t) }.sortedBy { norm(it) }
+    return Busqueda.filtrar(nombres.distinctBy { norm(it) }.sortedBy { norm(it) }, texto) { listOf(it) }
 }
 
 /** Con la lista de la obra cargada, quien retira debe ser uno de ellos (así el registro dice exactamente quién fue). */

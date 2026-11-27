@@ -120,7 +120,7 @@ val moduloPresentacion = module {
     viewModel { TrabajadorNuevoViewModel(get()) }
     viewModel { AsistenciaViewModel(get(), get(), get(), get()) }
     viewModel { StockViewModel(get()) }
-    viewModel { pe.sevens.sigro.ui.pantallas.HerramientasViewModel(get()) }
+    viewModel { pe.sevens.sigro.ui.pantallas.HerramientasViewModel(get(), getOrNull()) }
     viewModel { EntradaViewModel(get(), get(), get()) }
     viewModel { EscanearViewModel(get()) }
     viewModel { IngresoSinCompraViewModel(get(), get(), get(), get()) }

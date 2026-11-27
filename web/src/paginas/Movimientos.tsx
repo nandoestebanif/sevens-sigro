@@ -22,14 +22,15 @@ import { useRef, useState, useMemo } from 'react'
 import { ErrorApi, api } from '../api/cliente'
 import type { Movimiento, StockInsumo } from '../api/tipos'
 import { Chip, Modal } from '../ui/base'
-import { Chips, Encabezado, Pildora, TituloSeccion, Vidrio } from '../ui/piezas'
+import { Chips, Encabezado, Pildora, Segmentado, TituloSeccion, Vidrio } from '../ui/piezas'
 import { useAvisos } from '../ui/Avisos'
 import { Termino } from '../ui/Glosario'
-import { alternarOrden, ordenar, paginar, type Orden } from '../ui/tablas'
+import { alternarOrden, filtrarFechas, filtrarTexto, ordenar, paginar, type Orden } from '../ui/tablas'
 import { Paginador, ThOrden } from '../ui/Tabla'
 import { EsqueletoTabla } from '../ui/Esqueleto'
 import { BotonExportar } from '../ui/BotonExportar'
-import { TablaDatos } from '../ui/TablaDatos'
+import { FiltroFechas, TablaDatos } from '../ui/TablaDatos'
+import { PanelDetalle } from '../ui/PanelDetalle'
 import { Form } from 'react-bootstrap'
 import { EnVivo, nuevos, useActualizacion } from '../ui/Actualizacion'
 
@@ -142,7 +143,18 @@ export function Movimientos() {
   const [orden, setOrden] = useState<Orden<ColKardex> | null>(null)
   const [pagina, setPagina] = useState(1)
   const [tam, setTam] = useState(25)
-  const pag = useMemo(() => paginar(ordenar(kardex ?? [], orden, valorKardex), pagina, tam), [kardex, orden, pagina, tam])
+  // filtros del kárdex (27/11): palabra, tipo y rango de fechas del servidor (días de Lima)
+  const [q, setQ] = useState('')
+  const [tipo, setTipo] = useState<'todos' | Movimiento['tipo']>('todos')
+  const [desde, setDesde] = useState('')
+  const [hasta, setHasta] = useState('')
+  const [viendo, setViendo] = useState<Movimiento | null>(null)
+  const filtrado = useMemo(() => {
+    const t = filtrarTexto(kardex ?? [], q, (m) => `${m.id} ${m.descripcion} ${m.motivo} ${m.almacen} ${m.autor}`)
+    return filtrarFechas(t, (m) => m.fechaServidor, desde, hasta).filter((m) => tipo === 'todos' || m.tipo === tipo)
+  }, [kardex, q, tipo, desde, hasta])
+  const hayFiltro = Boolean(q || desde || hasta || tipo !== 'todos')
+  const pag = useMemo(() => paginar(ordenar(filtrado, orden, valorKardex), pagina, tam), [filtrado, orden, pagina, tam])
   const enOrdenar = (k: ColKardex) => { setOrden((o) => alternarOrden(o, k)); setPagina(1) }
 
   return (
@@ -220,7 +232,7 @@ export function Movimientos() {
             <BotonExportar
               titulo="Kárdex de la obra"
               subtitulo="Libro de movimientos · costo congelado al instante de cada movimiento"
-              filas={ordenar(kardex ?? [], orden, valorKardex)}
+              filas={ordenar(filtrado, orden, valorKardex)}
               columnas={[
                 { titulo: 'Mov.', valor: (m) => m.id, ancho: 9 },
                 { titulo: 'Fecha (servidor)', valor: (m) => hora(m.fechaServidor), ancho: 16 },
@@ -237,8 +249,21 @@ export function Movimientos() {
             />
           </div>
         </div>
+        {kardex !== null && kardex.length > 0 && (
+          <div className="d-flex flex-wrap gap-2 align-items-center">
+            <Form.Control size="sm" value={q} placeholder="Buscar por insumo, motivo, almacén o quién…" aria-label="Buscar en el kárdex"
+              style={{ flex: '1 1 240px', maxWidth: 380 }} onChange={(e) => { setQ(e.target.value); setPagina(1) }} />
+            <Segmentado etiqueta="Tipo de movimiento" valor={tipo} enCambio={(v) => { setTipo(v); setPagina(1) }}
+              opciones={[{ valor: 'todos', texto: 'Todos' }, { valor: 'ingreso', texto: 'Ingresos' }, { valor: 'salida', texto: 'Salidas' }, { valor: 'reverso', texto: 'Reversos' }]} />
+            <FiltroFechas id="kardex" campos={[{ clave: 'servidor', titulo: 'Movimiento' }]} desde={desde} hasta={hasta}
+              enCambio={(c) => { if (c.desde !== undefined) setDesde(c.desde); if (c.hasta !== undefined) setHasta(c.hasta); setPagina(1) }} />
+            {hayFiltro && <span className="small text-body-secondary n" role="status">{filtrado.length} de {kardex.length}</span>}
+          </div>
+        )}
         {kardex === null ? (
           <EsqueletoTabla columnas={6} />
+        ) : hayFiltro && filtrado.length === 0 ? (
+          <p className="small text-body-secondary mb-0" role="status">Ningún movimiento con esos filtros. Amplía las fechas o quita la búsqueda.</p>
         ) : (
           <>
           <div className="overflow-x-auto">
@@ -284,9 +309,16 @@ export function Movimientos() {
                         S/ {importe.toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </td>
                       <td className="text-end">
-                        {m.tipo !== 'reverso' && !anulado && puedo('movimiento.revertir') && (
-                          <Pildora tipo="secundario" chica enClic={() => setCorrigiendo(m)}>Corregir</Pildora>
-                        )}
+                        <div className="d-inline-flex align-items-center gap-1">
+                          <button type="button" className="sigro-accion accion-ver" onClick={() => setViendo(m)} aria-label={`Ver detalle: ${m.id}`} title="Ver detalle">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                              <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" /><path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z" />
+                            </svg>
+                          </button>
+                          {m.tipo !== 'reverso' && !anulado && puedo('movimiento.revertir') && (
+                            <Pildora tipo="secundario" chica enClic={() => setCorrigiendo(m)}>Corregir</Pildora>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   )
@@ -298,6 +330,32 @@ export function Movimientos() {
           </>
         )}
         <span className="small text-body-secondary">Cada salida congela el promedio de ese momento.</span>
+        {viendo && (
+          <PanelDetalle titulo={`${TIPO[viendo.tipo].texto} ${viendo.id}`} subtitulo={viendo.descripcion} enCerrar={() => setViendo(null)}
+            chips={<>
+              <Chip tono={viendo.tipo === 'ingreso' ? 'bien' : viendo.tipo === 'salida' ? 'marca' : 'aviso'}>{TIPO[viendo.tipo].texto}</Chip>
+              {viendo.anuladoPor && <Chip tono="neutro">Anulado por {viendo.anuladoPor}</Chip>}
+            </>}
+            secciones={[
+              { titulo: 'Movimiento', datos: [
+                ['Fecha (servidor)', hora(viendo.fechaServidor)], ['Almacén', viendo.almacen], ['Registró', viendo.autor],
+                ['Motivo', viendo.motivo], ...(viendo.semana != null ? [['Semana', String(viendo.semana)] as [string, string]] : []),
+              ] },
+              { titulo: 'Cantidad y costo', datos: [
+                ['Cantidad', `${TIPO[viendo.tipo].signo} ${n(viendo.cantidad)} ${viendo.unidad}`],
+                ['Costo congelado', `S/ ${viendo.costoUnitario.toFixed(2)}`],
+                ['Importe', `S/ ${(viendo.importe ?? viendo.cantidad * viendo.costoUnitario).toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`],
+                ...(viendo.saldoDespues != null ? [['Saldo después', `${n(viendo.saldoDespues)} ${viendo.unidad}`] as [string, string]] : []),
+              ] },
+              { titulo: 'Rastro', datos: [
+                ...(viendo.reversaA ? [['Anula a', viendo.reversaA] as [string, string]] : []),
+                ...(viendo.anuladoPor ? [['Anulado por', viendo.anuladoPor] as [string, string]] : []),
+                ['Código del registro en el celular', <span key="u" className="n text-break small">{viendo.uuidCliente}</span>],
+              ] },
+            ]}>
+            <p className="small text-body-secondary mb-0">El costo queda congelado al instante del movimiento (NIC 2). Un error no se edita: se corrige con un reverso que apunta a este.</p>
+          </PanelDetalle>
+        )}
       </Vidrio>
 
       <p className="small text-body-secondary px-1">

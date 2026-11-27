@@ -176,6 +176,7 @@ export function Parametros() {
           : (
             <TablaDatos
               etiqueta="Parámetros vigentes"
+              fechas={[{ clave: 'desde', titulo: 'Vigencia', valor: (p) => p.vigenteDesde }]}
               filas={vigentes}
               clave={(p) => p.insumoCodigo}
               buscar={(p) => `${p.descripcion} ${p.insumoCodigo}`}

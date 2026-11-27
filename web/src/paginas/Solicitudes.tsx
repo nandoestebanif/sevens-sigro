@@ -72,6 +72,8 @@ export function Solicitudes() {
               {xs === null && !error ? <EsqueletoTabla /> : (
                 <TablaDatos
                   etiqueta="Solicitudes"
+                  detalle={false}
+                  fechas={[{ clave: 'fecha', titulo: 'Solicitud', valor: (s) => s.fecha }]}
                   filas={filas}
                   clave={(s) => s.id}
                   buscar={(s) => `${s.numero} ${s.lineas.map((l) => `${l.descripcion} ${l.codigo ?? ''}`).join(' ')}`}
@@ -192,6 +194,7 @@ function NuevaSolicitud({ enListo }: { enListo: (s: Solicitud) => void }) {
 
       <TablaDatos
         etiqueta="Líneas de la solicitud"
+        detalle={false}
         filas={lineas}
         clave={(l) => l.clave}
         vacio={{ titulo: 'Sin líneas', detalle: 'Agrega insumos o usa «Cargar lo que falta comprar».' }}
@@ -232,6 +235,7 @@ function DetalleSolicitud({ s, enCerrar }: { s: Solicitud; enCerrar: () => void 
         {s.motivoAnulacion && <Aviso tono="grave">Anulada: {s.motivoAnulacion}</Aviso>}
         <TablaDatos
           etiqueta={`Líneas de la solicitud ${s.numero}`}
+          detalle={false}
           filas={s.lineas}
           clave={(l) => `${l.codigo ?? ''}${l.descripcion}`}
           vacio={{ titulo: 'Sin líneas', detalle: '' }}

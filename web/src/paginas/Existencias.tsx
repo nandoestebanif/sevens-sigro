@@ -95,6 +95,7 @@ export function Existencias({ soloEquipos = false }: { soloEquipos?: boolean }) 
             <TablaDatos
               key={`${estado}-${almacen}`}
               etiqueta={titulo}
+              fechas={[{ clave: 'ultimo', titulo: 'Último movimiento', valor: (x) => x.ultimoMovimiento }]}
               filas={filas}
               clave={(x) => x.insumoId}
               buscar={(x) => `${x.codigo} ${x.descripcion}`}
