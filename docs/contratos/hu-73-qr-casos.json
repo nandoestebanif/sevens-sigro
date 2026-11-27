@@ -240,7 +240,7 @@
    "resultado": "recibir_con_avisos",
    "compra_id": 12,
    "avisos": [
-    "La fecha del QR (20/11/2026) no coincide con la registrada en la compra (19/11/2026)."
+    "La fecha del QR (20/11/2026) no coincide con la de la compra (19/11/2026)."
    ]
   },
   {

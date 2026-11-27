@@ -61,7 +61,7 @@ object CotejoQr {
         val avisos = buildList {
             diferencia("El total", qr.total, c.total, m)?.let(::add)
             diferencia("El IGV", qr.igv, c.igv, m)?.let(::add)
-            if (c.fecha != null && c.fecha.take(10) != qr.fecha) add("La fecha del QR (${dma(qr.fecha)}) no coincide con la registrada en la compra (${dma(c.fecha.take(10))}).")
+            if (c.fecha != null && c.fecha.take(10) != qr.fecha) add("La fecha del QR (${dma(qr.fecha)}) no coincide con la de la compra (${dma(c.fecha.take(10))}).")
             if (c.tipoComprobante != qr.tipoComprobante) add("El QR es de una ${qr.tipoComprobante} y la compra se registró como ${c.tipoComprobante}.")
         }
         return Cotejo(if (avisos.isEmpty()) ResultadoCotejo.RECIBIR else ResultadoCotejo.RECIBIR_CON_AVISOS, c.id, avisos)
