@@ -21,7 +21,8 @@ Depende de: HU-32 (compra), HU-35 (recepción), HU-31 (padrón SUNAT).
 5. Si la compra ya está **recibida por completo** o **anulada**, lo dice y no ofrece recibirla.
 6. Si no hay compra con ese comprobante, ofrece avisar al residente (no la registra el almacenero: CR-05).
 7. Con señal, el servidor vuelve a hacer el cotejo (la app no es la única que decide).
-8. El texto del QR no se guarda entero en la bitácora (solo serie-número y resultado).
+8. El texto del QR no se guarda en ningún lado: ni en la base ni en la bitácora, que registra solo ruta y estado HTTP, como en toda la API.
+   (Corrección del 27/11: la bitácora no tiene columnas para la serie-número y no vale una migración solo para eso.)
 
 ## 2. El QR de la factura electrónica (SUNAT)
 
@@ -41,9 +42,11 @@ El QR del comprobante electrónico trae los datos separados por `|`, en este ord
 | 10+ | Resumen / firma | (opcional) | se ignora |
 
 **Normalización (la misma en la app y en el servidor):**
-- `numero_comprobante` = `SERIE-NÚMERO` sin ceros a la izquierda en el número: `F001` + `00001234` → `F001-1234`
-  (así se guarda hoy en `compras.compra`).
-- Espacios alrededor de cada campo se quitan; el separador puede venir como `|`.
+- `numero_comprobante` = `SERIE-NÚMERO` sin ceros a la izquierda en el número: `F001` + `00001234` → `F001-1234`.
+- **Los dos lados se normalizan al comparar**: al registrar la compra no se quitan los ceros, así que una compra
+  guardada como `F001-00001234` coincide con el QR `F001` + `1234` (serie en mayúsculas, número sin ceros a la izquierda).
+- El separador es `|`. Se quitan los espacios alrededor de cada campo y se ignoran los campos que sobren al final
+  (un `|` final vacío, el resumen o la firma).
 - Menos de 9 campos, RUC inválido, tipo desconocido o montos no numéricos → **QR no reconocido** (no se adivina).
 
 Los casos de prueba compartidos están en [`hu-73-qr-casos.json`](hu-73-qr-casos.json): **los dos lados
@@ -83,25 +86,42 @@ Salida 200:
 | `recibir` | hay compra vigente con algo pendiente | abre la recepción de esa compra |
 | `recibir_con_avisos` | coincide, pero difiere el total, el IGV o la fecha | muestra los avisos y deja continuar |
 | `ya_recibida` | la compra ya se recibió por completo | lo dice; no ofrece recibir |
-| `anulada` | la compra está anulada | lo dice con el motivo |
+| `anulada` | la compra está anulada | lo dice; el motivo viene en `avisos` |
 | `sin_compra` | no hay compra con ese proveedor y comprobante | ofrece avisar al residente |
 | `no_es_de_sevens` | el adquirente no es el RUC de SEVENS | advierte; no busca la compra |
 
 Errores: `422 qr_no_reconocido` (no cumple el formato de la sección 2) · `403` sin permiso · `401` sin sesión.
 
-Avisos (texto listo para mostrar), por ejemplo:
-`"El total del QR (S/ 1 180.00) difiere en S/ 118.00 del registrado en la compra (S/ 1 062.00)."`
-Tolerancia: **S/ 0.01** (redondeo).
+**Qué compra se elige** cuando varias tienen el mismo proveedor y la misma serie-número normalizada
+(la base lo permite con distinto tipo de comprobante): 1) la del mismo tipo que el QR, 2) la vigente sobre la anulada,
+3) la más reciente (`id` mayor).
+
+**Avisos: textos exactos** (la app los arma igual sin señal; los prueban los casos del JSON). `M` es el símbolo de la
+moneda de la compra: `S/` para PEN y `US$` para USD. Montos con 2 decimales y miles separados por un espacio.
+Tolerancia de los montos: **0.01** (redondeo).
+
+| Cuándo | Texto |
+|---|---|
+| total distinto | `El total del QR (M 1 180.00) difiere en M 118.00 del registrado en la compra (M 1 062.00).` |
+| IGV distinto | `El IGV del QR (M 180.00) difiere en M 18.00 del registrado en la compra (M 162.00).` |
+| fecha distinta | `La fecha del QR (20/11/2026) no coincide con la registrada en la compra (19/11/2026).` |
+| tipo distinto | `El QR es de una boleta y la compra se registró como factura.` |
+| anulada | `La compra F001-1234 está anulada: <motivo>.` (sin motivo: `La compra F001-1234 está anulada.`) |
+
+Orden de los avisos: total, IGV, fecha, tipo. El número del aviso de anulada es el del QR ya normalizado.
 
 ### 3.2 Cambio pequeño en `GET /obras/{obra_id}/compras`
 
-Agregar `proveedor_ruc` y `total` a cada compra. Lo necesita la app para **cotejar sin señal** con las compras
-que ya bajó (criterio 1). No cambia nada más del listado.
+Agregar `proveedor_ruc` a cada compra. Lo necesita la app para **cotejar sin señal** con las compras
+que ya bajó (criterio 1). El total, el IGV, la fecha y la moneda ya vienen en el listado (`totales.total`,
+`totales.igv`, `fecha`, `moneda`); `total` arriba es opcional. No cambia nada más del listado.
 
 ## 4. Lo que hace la app (Fernando)
 
 1. **Entrada → «Escanear factura»**: pide permiso de cámara solo al tocar (si lo niega, explica y deja seguir a mano).
-2. Cámara con **CameraX + ML Kit Barcode Scanning** (modelo incluido en la app: funciona sin señal; solo `FORMAT_QR_CODE`).
+2. Cámara con **CameraX + ZXing** (Java puro, solo QR: funciona sin señal y sin Google Play Services).
+   Cambio del 27/11: ML Kit con el modelo incluido sumaba 14 MB de librerías nativas (APK de 9 a 24 MB) y
+   envía datos de uso a Google; ZXing suma 0,5 MB y no envía nada. No cambia el contrato con el servidor.
 3. `dominio/QrFactura.kt`: parser puro (Kotlin común) con la sección 2 → `QrFactura` o `null`. Probado con el JSON compartido.
 4. **Sin señal**: cotejo local contra las compras ya bajadas (`proveedor_ruc` + `numero_comprobante`, total con tolerancia
    S/ 0.01) → mismos `resultado` que el servidor. Muestra «se confirmará al volver la señal».
@@ -121,7 +141,7 @@ Vista → ViewModel → dominio (`QrFactura`, `CotejoQr`) → repositorio → AP
 |---|---|---|
 | 0 | Revisa y aprueba este contrato (PR `hu73-contrato-qr`) | Abre el PR del contrato y la HU-73 en el Backlog |
 | 1 | `QrFacturaSunat.java` (parser) + JUnit con el JSON compartido | `QrFactura.kt` (parser) + pruebas con el mismo JSON |
-| 2 | `proveedor_ruc` y `total` en `GET /compras` (3.2) | Cámara: CameraX + ML Kit, permiso y pantalla «Escanear» |
+| 2 | `proveedor_ruc` y `total` en `GET /compras` (3.2) | Cámara: CameraX + ZXing, permiso y pantalla «Escanear» |
 | 3 | `POST /compras/cotejar-qr` con los 6 resultados + pruebas de API | Cotejo sin señal (`CotejoQr.kt`) + pruebas |
 | 4 | Bitácora: solo serie-número y resultado (criterio 8) | Con señal llama a `cotejar-qr`; integra con Entrada |
 | 5 | **Prueba la app** con una factura real (DoD T8) | **Prueba la API** con Postman/curl (DoD T8) |
@@ -144,7 +164,7 @@ factura real (foto tapada en la evidencia) · aceptado por el PO desde la app.
 - **Adecuación funcional (exactitud):** el comprobante físico se coteja con la compra registrada; un total distinto se ve en la puerta del almacén, no a fin de mes.
 - **Usabilidad (protección contra errores):** no se escribe la serie ni el número a mano, con guantes y en obra.
 - **Seguridad (integridad):** una factura emitida a otra empresa o ya recibida no entra al almacén de SEVENS.
-- **Fiabilidad:** funciona sin señal (modelo de ML Kit en el celular) y el servidor confirma después.
+- **Fiabilidad:** funciona sin señal (el lector ZXing va dentro de la app) y el servidor confirma después.
 
 ## 9. Para empezar (pedido a Claude Code en cada rama)
 
@@ -152,14 +172,14 @@ factura real (foto tapada en la evidencia) · aceptado por el PO desde la app.
 > Lee `docs/contratos/hu-73-escanear-factura.md` y `hu-73-qr-casos.json`. En el módulo compras de backend-spring crea
 > `QrFacturaSunat` (parser, sección 2) y `CotejoQr` (reglas de la sección 3.1, tolerancia S/ 0.01), el endpoint
 > `POST /obras/{obra_id}/compras/cotejar-qr` con `acceso.exigir("recepcion.registrar", obraId)`, y agrega
-> `proveedor_ruc` y `total` a `GET /obras/{obra_id}/compras`. JUnit que lea el JSON compartido (válidos, no
+> `proveedor_ruc` a `GET /obras/{obra_id}/compras`. JUnit que lea el JSON compartido (válidos, no
 > reconocidos y cotejo) y pruebas de API de los 6 resultados y del 422. La bitácora no guarda el texto del QR.
 > Sin migraciones. No cambies el contrato: si hace falta, avisa para corregir primero el documento.
 
 **Fernando · `hu73-app-escanear` (base `main`, con la 1.1.4 ya fusionada):**
 > Lee `docs/contratos/hu-73-escanear-factura.md` y `hu-73-qr-casos.json`. En `android/composeApp` crea en commonMain
 > `dominio/QrFactura.kt` (parser) y `dominio/CotejoQr.kt` (mismos resultados que el servidor), con pruebas que lean
-> el JSON compartido. En androidMain, `LectorQr` con CameraX + ML Kit Barcode Scanning (modelo incluido, solo
+> el JSON compartido. En androidMain, `LectorQr` con CameraX + ZXing (solo
 > QR) y el permiso de cámara pedido al tocar. Pantalla «Escanear factura» desde Entrada, MVVM, que con señal llama a
 > `cotejar-qr` y sin señal usa `CotejoQr` con las compras bajadas; abre la recepción de la compra elegida con sus avisos.
 > Versión 1.2.0 (versionCode 17). Si algo del contrato no alcanza, avisa antes de cambiarlo.
