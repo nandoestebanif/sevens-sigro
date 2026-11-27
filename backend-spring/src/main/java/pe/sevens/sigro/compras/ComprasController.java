@@ -51,13 +51,15 @@ public class ComprasController {
                 if ((c == null || c.isEmpty()) && (l == null || l.strip().isEmpty())) throw error("cada línea necesita un insumo del catálogo o una descripción");
             });
     static final Esquema SOLICITUD = de(lista("lineas", LINEA_SOL).min(1).max(200));
+    /** HU-73: el texto que leyó la cámara. El formato lo revisa {@link QrFacturaSunat}; aquí solo que venga y no sea enorme. */
+    static final Esquema COTEJAR_QR = de(texto("qr").min(1).max(2000));
 
     static final String SQL_PROV = "SELECT p.id, p.ruc, p.razon_social, CASE WHEN p.estado = 'baja' THEN 'de_baja' ELSE p.estado_validacion END AS estado, "
             + "p.alerta_sunat, p.consultado_en, "
             + "(SELECT count(*) FROM compras.compra c WHERE c.proveedor_id = p.id AND c.estado = 'registrada') AS compras_registradas, "
             + "(SELECT max(c.fecha) FROM compras.compra c WHERE c.proveedor_id = p.id AND c.estado = 'registrada') AS ultima_compra FROM compras.proveedor p ";
     static final String[] PROV_OUT = {"id", "ruc", "razon_social", "estado", "alerta_sunat", "consultado_en", "compras_registradas", "ultima_compra", "advertencia"};
-    static final String SQL_COMPRA = "SELECT c.id, c.proveedor_id, p.razon_social AS proveedor_razon_social, "
+    static final String SQL_COMPRA = "SELECT c.id, c.proveedor_id, p.ruc AS proveedor_ruc, p.razon_social AS proveedor_razon_social, "
             + "CASE WHEN p.estado = 'baja' THEN 'de_baja' ELSE p.estado_validacion END AS proveedor_estado, p.alerta_sunat AS proveedor_alerta_sunat, "
             + "(SELECT count(*) FROM compras.compra_adjunto j WHERE j.compra_id = c.id AND j.anulado_en IS NULL) AS comprobantes_vigentes, "
             + "c.tipo_comprobante, c.numero_comprobante, c.fecha, c.moneda, c.estado, c.motivo_anulacion, c.solicitud_id, c.base_imponible, c.igv, c.total, "
@@ -70,9 +72,10 @@ public class ComprasController {
     private final Almacen almacen;
     private final Eventos eventos;
     private final BigDecimal limitePct;
+    private final CotejoQrService cotejo;
 
     public ComprasController(Modulo compras, Acceso acceso, Integraciones integraciones, CatalogoCliente catalogo, Almacen almacen, Eventos eventos,
-                             @Value("${SIGRO_LIMITE_PRECIO_PCT:10}") String limitePct) {
+                             @Value("${SIGRO_LIMITE_PRECIO_PCT:10}") String limitePct, CotejoQrService cotejo) {
         this.db = compras;
         this.acceso = acceso;
         this.integraciones = integraciones;
@@ -80,6 +83,7 @@ public class ComprasController {
         this.almacen = almacen;
         this.eventos = eventos;
         this.limitePct = new BigDecimal(limitePct);
+        this.cotejo = cotejo;
     }
 
     static BigDecimal redondear(BigDecimal x) { return x.setScale(2, RoundingMode.HALF_UP); }
@@ -184,8 +188,9 @@ public class ComprasController {
             m.put("totales", R.mapa("base", c.get("base_imponible"), "igv", c.get("igv"), "total", c.get("total")));
             m.put("lineas", porCompra.getOrDefault(c.get("id"), List.of()));
             m.put("advertencias", List.of());
-            out.add(R.de(m, "id", "proveedor_id", "proveedor_razon_social", "proveedor_estado", "proveedor_alerta_sunat", "comprobantes_vigentes",
-                    "tipo_comprobante", "numero_comprobante", "fecha", "moneda", "estado", "motivo_anulacion", "solicitud_id", "totales", "lineas",
+            // HU-73 (contrato 3.2): proveedor_ruc y total a la vista, para que la app coteje el QR sin señal.
+            out.add(R.de(m, "id", "proveedor_id", "proveedor_ruc", "proveedor_razon_social", "proveedor_estado", "proveedor_alerta_sunat", "comprobantes_vigentes",
+                    "tipo_comprobante", "numero_comprobante", "fecha", "moneda", "estado", "motivo_anulacion", "solicitud_id", "total", "totales", "lineas",
                     "advertencias", "registrado_por", "creado_en"));
         }
         return out;
@@ -291,6 +296,17 @@ public class ComprasController {
         Pagina pagina = Pagina.leer();
         return db.en(() -> compraOut(pagina.recortar(db.filas(SQL_COMPRA + "WHERE c.proyecto_id = :p AND (CAST(:e AS text) IS NULL OR c.estado = :e) "
                 + "AND (CAST(:pv AS bigint) IS NULL OR c.proveedor_id = :pv) ORDER BY c.fecha DESC, c.id DESC" + pagina.sql(), P.de("p", obraId, "e", estado, "pv", pv)))));
+    }
+
+    /**
+     * HU-73 · Coteja el QR de la factura electrónica con las compras de la obra (contrato 3.1). Solo consulta: no
+     * registra nada. Seis resultados: recibir, recibir_con_avisos, ya_recibida, anulada, sin_compra, no_es_de_sevens;
+     * 422 qr_no_reconocido si no es un QR de SUNAT. La bitácora anota la ruta y el estado, nunca el texto del QR.
+     */
+    @PostMapping("/obras/{obra_id}/compras/cotejar-qr")
+    public Object cotejarQr(@PathVariable("obra_id") long obraId, @RequestBody(required = false) JsonNode cuerpo) {
+        acceso.exigir("recepcion.registrar", obraId);
+        return cotejo.cotejar(obraId, COTEJAR_QR.validar(cuerpo).texto("qr"));
     }
 
     @GetMapping("/obras/{obra_id}/compras/{compra_id}")

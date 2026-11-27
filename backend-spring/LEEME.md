@@ -34,3 +34,27 @@ cd ../api && SIGRO_SPRING_URL=http://localhost:8080 python -m pytest pruebas/tes
 
 Resultado al 25/11/2026: **372 pasan, 3 no aplican por HTTP** (simulan la caída de un servicio interno o cambian
 variables del proceso).
+
+## HU-73 · Cotejar el QR de la factura electrónica
+
+Contrato: [`docs/contratos/hu-73-escanear-factura.md`](../docs/contratos/hu-73-escanear-factura.md) (secciones 2, 3.1 y 3.2).
+
+| Pieza | Qué hace |
+|---|---|
+| `compras/QrFacturaSunat` | Parser del QR de SUNAT (sección 2). Lo que no cumple el formato devuelve `null` → `422 qr_no_reconocido` |
+| `compras/CotejoQr` | Las reglas de la sección 3.1, sin base de datos: 6 resultados, avisos en soles, tolerancia S/ 0.01 |
+| `compras/CotejoQrService` | Lee el QR, busca la compra (`compras/datos/CompraCotejoRepository`) y pregunta a almacén si queda algo por recibir (`Almacen.quedaPorRecibir`, lo mismo que `GET /compras/{id}/recepcion`) |
+| `POST /obras/{obra_id}/compras/cotejar-qr` | Permiso `recepcion.registrar` (almacenero, administrador). Solo consulta: no registra nada |
+| `GET /obras/{obra_id}/compras` | Cada compra trae además `proveedor_ruc` y `total` (para cotejar sin señal en la app) |
+
+La bitácora anota el cotejo como cualquier POST (usuario, obra, ruta, estado, duración) y **nunca el texto del QR**:
+la petición no se guarda y el 422 no repite lo que se leyó.
+
+Pruebas:
+
+```bash
+mvn test        # JUnit: los casos compartidos con la app (docs/contratos/hu-73-qr-casos.json), reglas del cotejo,
+                # API con MockMvc (6 resultados, 422, 403, 401, GET /compras) y bitácora sin el QR
+# contra PostgreSQL real, con el backend corriendo como en «Prueba de paridad»:
+cd ../api && SIGRO_SPRING_URL=http://localhost:8080 python -m pytest pruebas/test_api_cotejo_qr.py
+```
