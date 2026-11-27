@@ -71,10 +71,17 @@ class CasosQrCompartidosTest {
         return lista("cotejo").map(c -> dynamicTest(c.get("nombre").asText(), () -> {
             QrFacturaSunat qr = QrFacturaSunat.leer(qrDe(c.get("qr").asText()));
             assertNotNull(qr);
-            JsonNode j = c.get("compra");
-            List<CotejoQr.Compra> compras = j == null || j.isNull() ? List.of() : List.of(compra(j));
+            var compras = new ArrayList<CotejoQr.Compra>();
+            if (c.hasNonNull("compras")) c.get("compras").forEach(j -> compras.add(compra(j)));
+            else if (c.hasNonNull("compra")) compras.add(compra(c.get("compra")));
             var cotejo = CotejoQr.cotejar(qr, compras, rucSevens);
             assertEquals(c.get("resultado").asText(), cotejo.resultado().valor());
+            if (c.has("avisos")) {
+                var esperados = new ArrayList<String>();
+                c.get("avisos").forEach(a -> esperados.add(a.asText()));
+                assertEquals(esperados, cotejo.avisos(), "mismos textos y orden que la app (contrato v2)");
+            }
+            if (c.has("compra_id")) assertEquals(c.get("compra_id").asLong(), cotejo.compra().id(), "compra elegida");
             boolean conAvisos = cotejo.resultado() == CotejoQr.Resultado.RECIBIR_CON_AVISOS;
             if (cotejo.resultado() == CotejoQr.Resultado.RECIBIR || conAvisos)
                 assertEquals(conAvisos, !cotejo.avisos().isEmpty(), "recibir ⇔ sin avisos; recibir_con_avisos ⇔ con avisos");
@@ -111,8 +118,10 @@ class CasosQrCompartidosTest {
     }
 
     static CotejoQr.Compra compra(JsonNode j) {
-        return new CotejoQr.Compra(1L, j.get("proveedor_ruc").asText(), "Proveedor de prueba S.A.C.", j.get("tipo_comprobante").asText(),
-                j.get("numero_comprobante").asText(), new BigDecimal(j.get("total").asText()), new BigDecimal(j.get("igv").asText()), null, "PEN",
-                j.get("estado").asText(), "anulada".equals(j.get("estado").asText()) ? "Comprobante equivocado" : null, j.get("queda_por_recibir").asBoolean());
+        return new CotejoQr.Compra(j.hasNonNull("id") ? j.get("id").asLong() : 1L, j.get("proveedor_ruc").asText(), "Proveedor de prueba S.A.C.",
+                j.get("tipo_comprobante").asText(), j.get("numero_comprobante").asText(), new BigDecimal(j.get("total").asText()),
+                new BigDecimal(j.get("igv").asText()), j.hasNonNull("fecha") ? java.time.LocalDate.parse(j.get("fecha").asText()) : null,
+                j.hasNonNull("moneda") ? j.get("moneda").asText() : "PEN", j.get("estado").asText(),
+                j.hasNonNull("motivo_anulacion") ? j.get("motivo_anulacion").asText() : null, j.get("queda_por_recibir").asBoolean());
     }
 }

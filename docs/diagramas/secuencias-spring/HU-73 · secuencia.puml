@@ -52,7 +52,7 @@ participant "QrFactura\n<<parser SUNAT>>" as Q
 participant "CotejoQr\n<<cotejo sin señal>>" as CQ
 end box
 box "Datos (app)" #EFF6FF
-participant "LectorQr\n<<ML Kit · en el celular>>" as MK
+participant "LectorQr\n<<CameraX + ZXing · en el celular>>" as MK
 participant "RepositorioCompras\n<<interfaz → Impl>>" as R
 participant "ApiSigro\n<<Ktor>>" as K
 end box
@@ -94,10 +94,10 @@ else reconocido
       SV -> SV : adquirente = RUC de SEVENS?
       SV -> PG : SELECT compra JOIN proveedor\nWHERE ruc = :emisor AND numero_comprobante = :n
       PG --> SV : compra + pendiente de recepción
-      SV -> SV : CotejoQr: total e IGV (tolerancia S/ 0.01), estado
+      SV -> SV : CotejoQr: mismo tipo › vigente › más reciente;\ntotal, IGV, fecha y tipo (tolerancia 0.01), estado
       SV --> S : resultado + avisos
     end
-    F -> F : BitacoraFiltro: quién · obra · F001-1234 · resultado\n(sin el texto del QR, sin tokens)
+    F -> F : BitacoraFiltro: quién · obra · ruta · estado HTTP\n(sin el texto del QR, sin tokens)
     S --> K : 200 { comprobante, resultado, compra, avisos }
     K --> R : CotejoDto
     R --> VM : Cotejo (manda el servidor)

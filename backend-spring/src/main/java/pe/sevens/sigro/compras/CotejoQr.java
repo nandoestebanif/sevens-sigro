@@ -51,8 +51,9 @@ public final class CotejoQr {
         Compra c = buscar(qr, compras).orElse(null);
         if (c == null) return new Cotejo(Resultado.SIN_COMPRA, null, List.of());
         if (c.anulada()) {
-            String motivo = c.motivoAnulacion() == null || c.motivoAnulacion().isBlank() ? "" : ": " + c.motivoAnulacion().strip();
-            return new Cotejo(Resultado.ANULADA, c, List.of("La compra " + c.numeroComprobante() + " está anulada" + motivo + "."));
+            // el número del QR ya normalizado (no el guardado, que puede traer ceros) y sin doble punto final
+            String m = c.motivoAnulacion() == null ? "" : c.motivoAnulacion().strip().replaceAll("\\.+$", "").strip();
+            return new Cotejo(Resultado.ANULADA, c, List.of("La compra " + qr.numeroComprobante() + " está anulada" + (m.isEmpty() ? "" : ": " + m) + "."));
         }
         if (!c.quedaPorRecibir()) return new Cotejo(Resultado.YA_RECIBIDA, c, List.of());
         List<String> avisos = diferencias(qr, c);
@@ -81,7 +82,7 @@ public final class CotejoQr {
         return n.matches("[0-9]+") ? QrFacturaSunat.numeroComprobante(serie, n) : numero.strip().toUpperCase(Locale.ROOT);
     }
 
-    /** Total, IGV y fecha del QR contra lo registrado. Texto listo para mostrar (sección 3.1). */
+    /** Total, IGV, fecha y tipo del QR contra lo registrado. Texto listo para mostrar (sección 3.1). */
     static List<String> diferencias(QrFacturaSunat qr, Compra c) {
         var avisos = new ArrayList<String>();
         String m = simbolo(c.moneda());
@@ -93,6 +94,9 @@ public final class CotejoQr {
                     + " del registrado en la compra (" + m + " " + soles(c.igv()) + ").");
         if (c.fecha() != null && !c.fecha().equals(qr.fecha()))
             avisos.add("La fecha del QR (" + qr.fecha().format(DMY) + ") no coincide con la de la compra (" + c.fecha().format(DMY) + ").");
+        // contrato v2: solo pasa si no hay compra del mismo tipo con ese número (la búsqueda prefiere el mismo tipo)
+        if (!qr.tipoComprobante().equals(c.tipoComprobante()))
+            avisos.add("El QR es de una " + qr.tipoComprobante() + " y la compra se registró como " + c.tipoComprobante() + ".");
         return avisos;
     }
 
