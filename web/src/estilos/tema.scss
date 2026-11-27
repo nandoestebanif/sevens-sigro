@@ -654,3 +654,6 @@ h1, .h1, h2, .h2, h3, .h3 { letter-spacing: -0.02em; }
   content: attr(data-n); position: absolute; top: 20px; left: 0; font-size: 9.5px; color: var(--bs-secondary-color); font-variant-numeric: tabular-nums;
 }
 .sigro-tira-semanas { row-gap: 16px !important; padding-bottom: 12px; }
+
+// Lighthouse (27/11): botones del paginador de al menos 44 px para tocarlos bien en el celular (WCAG 2.5.5)
+.pagination .page-link { min-width: 2.75rem; min-height: 2.75rem; display: inline-flex; align-items: center; justify-content: center; }
