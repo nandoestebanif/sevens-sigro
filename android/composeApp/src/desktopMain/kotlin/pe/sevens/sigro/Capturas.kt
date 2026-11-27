@@ -247,6 +247,8 @@ private object ObraFalsa : RepositorioObra {
         CompraParaRecibir(
             10, "[Proveedor]", "Factura [número]", "2026-10-27",
             listOf("CEMENTO PORTLAND TIPO I", "ARENA GRUESA", "CLAVOS").map { insumo(it) }.map { LineaCompra(it.codigo, it.descripcion, "10", it.unidad) },
+            // HU-73 · datos sintéticos para las capturas del escaneo (RUC de ejemplo que pasa el dígito verificador)
+            proveedorRuc = "20999999990", total = "1180.00", igv = "180.00", tipoComprobante = "factura", numeroComprobante = "F001-1234",
         ),
     )
     override suspend fun obrasDestino(obraId: Int) = listOf(ObraAsignada(2, "[Otra obra registrada en SIGRO]", ""))
@@ -385,7 +387,7 @@ fun main(args: Array<String>) {
     capturar(dir, "13-catalogo-nuevo", ms = 2500, preparar = { nuevo.material("Fierro corrugado"); nuevo.medida("1/2"); nuevo.unidad("unidades") }) { PantallaInsumoNuevo({}, {}, nuevo) }
     capturar(dir, "14-trabajadores") { PantallaTrabajadores(1, "Multifamiliar Flores", {}, {}, TrabajadoresViewModel(TrabajadoresFalsos, registros)) }
     val tn = TrabajadorNuevoViewModel(TrabajadoresFalsos)
-    capturar(dir, "15-trabajador-nuevo", preparar = { tn.documento("1234567"); tn.nombre("Trabajador 08 (ejemplo)") }) {
+    capturar(dir, "15-trabajador-nuevo", preparar = { tn.documento("12345678"); tn.nombre("Trabajador 08 (ejemplo)") }) {
         PantallaTrabajadorNuevo(1, {}, tn, TrabajadoresViewModel(TrabajadoresFalsos, registros))
     }
     // validación en vivo (25/11): lo bien escrito lleva ✓ y lo que está mal se marca mientras se escribe
@@ -429,5 +431,27 @@ fun main(args: Array<String>) {
         PantallaConteo(1, {}, conteo)
     }
     capturar(dir, "22-cierre") { PantallaCierre(1, "Multifamiliar Flores", {}, CierreViewModel(ObraFalsa, registros)) }
+    // HU-73 · escanear la factura (QR de prueba con el formato de SUNAT; en escritorio no hay cámara: se entrega el texto)
+    val qrBien = "20999999990|01|F001|00001234|180.00|1180.00|2026-10-27|6|20606456892|"
+    val entradaQr = EntradaViewModel(ObraFalsa, registros, sinProgramar)
+    capturar(dir, "43-entrada-escanear-factura", preparar = { entradaQr.cargar(1); Thread.sleep(300) }) { PantallaEntrada(1, {}, entradaQr) }
+    listOf(
+        "44-escaneo-coincide" to qrBien,
+        "45-escaneo-no-cuadra" to "20999999990|01|F001|00001234|198.00|1298.00|2026-10-27|6|20606456892|",
+        "46-escaneo-no-es-sevens" to "20999999990|01|F001|00001234|180.00|1180.00|2026-10-27|6|20888888889|",
+        "47-escaneo-sin-compra" to "20999999990|01|F001|00009999|180.00|1180.00|2026-10-27|6|20606456892|",
+    ).forEach { (nombre, qr) ->
+        val esc = pe.sevens.sigro.ui.pantallas.EscanearViewModel(ObraFalsa)
+        val compras = kotlinx.coroutines.runBlocking { ObraFalsa.compras(1) }
+        capturar(dir, nombre, alto = 1000, preparar = { esc.leido(1, qr, compras); Thread.sleep(300) }) {
+            pe.sevens.sigro.ui.pantallas.PantallaEscanear(1, compras, { _, _ -> }, {}, esc)
+        }
+    }
+    val porQr = EntradaViewModel(ObraFalsa, registros, sinProgramar)
+    capturar(dir, "48-entrada-elegida-por-qr", preparar = {
+        porQr.cargar(1); Thread.sleep(300)
+        porQr.recibirEscaneada(1, porQr.estado.value.compras.first(), listOf("El total del QR (S/ 1 298.00) difiere en S/ 118.00 del registrado en la compra (S/ 1 180.00)."))
+        Thread.sleep(300)
+    }) { PantallaEntrada(1, {}, porQr) }
     kotlin.system.exitProcess(0)
 }
