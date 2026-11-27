@@ -122,6 +122,8 @@ data class EstadoCandado(
     val mensaje: String? = null,
     /** Esta cuenta puede entrar con la huella aunque cierre sesión (su contraseña está cifrada con la huella). */
     val entraConHuella: Boolean = false,
+    /** Acaba de entrar con su contraseña (no es la app reabierta con la sesión guardada). */
+    val recienEntrado: Boolean = false,
 )
 
 class CandadoViewModel(
@@ -158,10 +160,11 @@ class CandadoViewModel(
                         ultimoUso = repo.ultimoUso()
                         ReglaCandado.vencido(ajuste, ultimoUso, reloj())
                     } else {
-                        ultimoUso = reloj(); false // acaba de entrar con su contraseña: no se le vuelve a pedir
+                        // acaba de entrar con su contraseña: no se le vuelve a pedir (y se borra un bloqueo guardado antes)
+                        val ahora = reloj(); ultimoUso = ahora; runCatching { repo.guardarUltimoUso(ahora) }; false
                     }
                     val conCuenta = runCatching { repo.cuenta()?.usuarioId == id }.getOrDefault(false)
-                    _e.value = EstadoCandado(id, ajuste, bloqueada = bloquear, listo = true, entraConHuella = conCuenta)
+                    _e.value = EstadoCandado(id, ajuste, bloqueada = bloquear, listo = true, entraConHuella = conCuenta, recienEntrado = !primera)
                 }
                 primera = false
             }
@@ -174,7 +177,17 @@ class CandadoViewModel(
     /** Cada tanto, y al volver a la app: ¿pasó el tiempo elegido? */
     fun revisar() {
         val s = _e.value
-        if (s.usuarioId != null && !s.bloqueada && ReglaCandado.vencido(s.ajuste, ultimoUso, reloj())) _e.update { it.copy(bloqueada = true) }
+        if (s.usuarioId != null && !s.bloqueada && ReglaCandado.vencido(s.ajuste, ultimoUso, reloj())) bloquear()
+    }
+
+    /**
+     * Bloquea y lo deja guardado (27/11, prueba en celular: «Bloquear ahora» se perdía al cerrar la app). El último uso
+     * queda en 0: al reabrir, [ReglaCandado.vencido] decide «bloqueada» aunque la app se haya cerrado al instante.
+     */
+    private fun bloquear() {
+        _e.update { it.copy(bloqueada = true) }
+        ultimoUso = BLOQUEADA
+        viewModelScope.launch { runCatching { repo.guardarUltimoUso(BLOQUEADA) } }
     }
 
     /** La app pasa a segundo plano: se guarda la hora para que el candado valga aunque Android cierre la app. */
@@ -238,7 +251,33 @@ class CandadoViewModel(
         olvidarCuentaPropia()
     }
     fun minutos(m: Int) = guardarAjuste { it.copy(minutos = ReglaCandado.minutosValidos(m)) }
-    fun bloquearAhora() { if (_e.value.ajuste.activa) _e.update { it.copy(bloqueada = true) } }
+    fun bloquearAhora() { if (_e.value.ajuste.activa) bloquear() }
+
+    /**
+     * Recién entrado con su contraseña: si la huella figura activa pero su contraseña cifrada ya no está en este celular
+     * (la borró otra cuenta, o se activó en una versión anterior), la huella no le sirve para volver a entrar. En vez de
+     * mostrarla «activa» a medias, se apaga y se le vuelve a ofrecer: así la activa con la contraseña que acaba de escribir.
+     * Solo en celulares que guardan la contraseña con la huella (Android 11+); en los demás la huella solo desbloquea.
+     */
+    fun revisarVinculo(guardaClaves: Boolean) {
+        val s = _e.value
+        if (!guardaClaves || !s.recienEntrado || !s.ajuste.activa || s.entraConHuella) return
+        _e.update { it.copy(recienEntrado = false) }
+        guardarAjuste { it.copy(activa = false, ofrecida = false) }
+    }
+
+    /**
+     * Antes de cifrar la contraseña escrita en Perfil se comprueba con el servidor: si estaba mal, la huella guardaba una
+     * contraseña equivocada y al cerrar sesión no se podía entrar (27/11, prueba en celular).
+     */
+    suspend fun comprobarClave(c: String): String? {
+        val s = sesion ?: return "Vuelve a entrar con tu contraseña."
+        return try {
+            if (sesiones.comprobarClave(s.servidor, s.usuario, c)) { clave.guardar(s.usuario, c); null } else "La contraseña no es correcta."
+        } catch (x: pe.sevens.sigro.dominio.ErrorSigro) {
+            if (x is pe.sevens.sigro.dominio.ErrorSigro.SinConexion) "Hace falta señal para comprobar tu contraseña. Inténtalo con señal." else x.message
+        }
+    }
     fun mensajeVisto() = _e.update { it.copy(mensaje = null) }
 
     /**
@@ -279,6 +318,8 @@ class CandadoViewModel(
         const val MENSAJE_HUELLA_NUEVA = "Se agregó una huella nueva en el celular. Por seguridad, entra con tu contraseña y vuelve a activar la huella."
         /** Cada cuánto se revisa, con la app abierta, si ya pasó el tiempo sin usarla. */
         const val REVISAR_CADA_MS = 20_000L
+        /** Último uso guardado cuando se bloquea: siempre «vencido» al reabrir. */
+        const val BLOQUEADA = 0L
     }
 }
 
@@ -308,6 +349,7 @@ fun BoxScope.CapaCandado(vm: CandadoViewModel, sesion: Sesion?, obra: ObraAsigna
     LaunchedEffect(vm) { while (true) { delay(CandadoViewModel.REVISAR_CADA_MS); vm.revisar() } }
 
     val disponible = remember(e.usuarioId) { biometria.disponibilidad() }
+    LaunchedEffect(e.usuarioId, e.recienEntrado, e.listo) { if (e.listo) vm.revisarVinculo(biometria.guardaClaves()) }
     val ofrecer = e.listo && puedeOfrecer && !e.bloqueada && sesion != null && ReglaCandado.ofrecer(e.ajuste, disponible)
     AnimatedVisibility(ofrecer, enter = fadeIn(), exit = fadeOut()) {
         Box(Modifier.fillMaxSize().background(Color(0x8C0A0A0A)).clickable(remember { MutableInteractionSource() }, null) { vm.ahoraNo() })
@@ -490,10 +532,20 @@ fun SeccionSeguridad(vm: CandadoViewModel, biometria: Biometria) {
     var pidiendoClave by remember { mutableStateOf(false) }
     val activar = { activando = true; alcance.launch { vm.activar(biometria); activando = false }; Unit }
     if (pidiendoClave) {
+        var comprobando by remember { mutableStateOf(false) }
+        var errorClave by remember { mutableStateOf<String?>(null) }
         DialogoClave(
-            alConfirmar = { c -> pidiendoClave = false; vm.recordarClave(c); activar() },
+            alConfirmar = { c ->
+                comprobando = true; errorClave = null
+                alcance.launch {
+                    val error = vm.comprobarClave(c)
+                    comprobando = false
+                    if (error == null) { pidiendoClave = false; activar() } else errorClave = error
+                }
+            },
             alOmitir = { pidiendoClave = false; activar() },
-            alCerrar = { pidiendoClave = false },
+            alCerrar = { pidiendoClave = false; errorClave = null },
+            comprobando = comprobando, error = errorClave,
         )
     }
     TarjetaVidrio {
@@ -557,7 +609,7 @@ fun SeccionSeguridad(vm: CandadoViewModel, biometria: Biometria) {
 
 /** Perfil › activar huella: la contraseña, una sola vez, para cifrarla con la huella. Se puede omitir (solo candado). */
 @Composable
-private fun DialogoClave(alConfirmar: (String) -> Unit, alOmitir: () -> Unit, alCerrar: () -> Unit) {
+private fun DialogoClave(alConfirmar: (String) -> Unit, alOmitir: () -> Unit, alCerrar: () -> Unit, comprobando: Boolean = false, error: String? = null) {
     var clave by remember { mutableStateOf("") }
     androidx.compose.material3.AlertDialog(
         onDismissRequest = alCerrar,
@@ -571,13 +623,13 @@ private fun DialogoClave(alConfirmar: (String) -> Unit, alOmitir: () -> Unit, al
                 )
                 pe.sevens.sigro.ui.componentes.CampoVidrio(
                     clave, { clave = it }, "Contraseña", teclado = androidx.compose.ui.text.input.KeyboardType.Password,
-                    transformacion = androidx.compose.ui.text.input.PasswordVisualTransformation(),
+                    transformacion = androidx.compose.ui.text.input.PasswordVisualTransformation(), error = error,
                 )
             }
         },
         confirmButton = {
-            androidx.compose.material3.TextButton(onClick = { alConfirmar(clave) }, enabled = clave.isNotEmpty()) {
-                Text("Seguir con la huella", fontWeight = FontWeight.Bold, color = Paleta.Naranja)
+            androidx.compose.material3.TextButton(onClick = { alConfirmar(clave) }, enabled = clave.isNotEmpty() && !comprobando) {
+                Text(if (comprobando) "Comprobando…" else "Seguir con la huella", fontWeight = FontWeight.Bold, color = Paleta.Naranja)
             }
         },
         dismissButton = {
