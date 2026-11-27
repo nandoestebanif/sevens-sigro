@@ -421,7 +421,7 @@ function Sistema({ preparando = false, nombreObra = '', alTerminar }: {
             <div className="sigro-panel">
               <div className="d-flex align-items-start justify-content-between">
                 <NavLink to="/tablero" aria-label="SIGRO · inicio" className="d-block px-2 pt-1" onClick={() => setMenuAbierto(false)}>
-                  <img src={logoBlanco} alt="SEVEN'S Ingenieros SAC" height={compacto ? 34 : 44} />
+                  <img src={logoBlanco} alt="SEVEN'S Ingenieros SAC" width={compacto ? 48 : 63} height={compacto ? 34 : 44} />
                 </NavLink>
                 <button type="button" className="btn-close btn-close-white d-lg-none" aria-label="Cerrar menú" onClick={() => setMenuAbierto(false)} />
               </div>

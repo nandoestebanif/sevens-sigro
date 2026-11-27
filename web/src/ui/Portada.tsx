@@ -38,7 +38,7 @@ export function Portada({ titulo, remate, children, tarjetas = PARTES_SIGRO }: {
 }) {
   return (
     <div className="sigro-portada w-100 p-5 d-flex flex-column justify-content-between gap-4">
-      <img src={logo} alt="SEVEN'S Ingenieros SAC" height={86} className="align-self-start" />
+      <img src={logo} alt="SEVEN'S Ingenieros SAC" width={122} height={86} className="align-self-start" />
       <div>
         <h1 className="display-6 fw-semibold mb-4" style={{ maxWidth: 560 }}>
           <span className="visually-hidden">{titulo}{remate ? ' ' : ''}{remate}</span>

@@ -53,7 +53,7 @@ export function CapaPlano({ titulo, detalle, progreso, saliendo, alDibujarse, ac
     >
       {/* tarjeta negra de la marca, igual en los dos modos: logo, la grúa trabajando y el avance */}
       <div className="sigro-capa text-center" aria-live="polite">
-        <img src={logo} alt="SEVEN'S Ingenieros SAC" height={52} className="mb-4" />
+        <img src={logo} alt="SEVEN'S Ingenieros SAC" width={74} height={52} className="mb-4" />
         <div className="grua mx-auto mb-3"><DibujoObra cual="grua" ancho={120} /></div>
         <h1 className="h5">{titulo}</h1>
         {detalle && <p className="small mb-3">{detalle}</p>}
