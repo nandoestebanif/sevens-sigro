@@ -1,5 +1,5 @@
 {
- "_nota": "Casos compartidos HU-73: los leen las pruebas del backend (JUnit) y de la app (commonTest). RUC de emisor sintéticos: pasan el dígito verificador, no son de proveedores reales. Si se agrega un caso, se agrega aquí y lo prueban los dos lados.",
+ "_nota": "Casos compartidos HU-73: los leen las pruebas del backend (JUnit) y de la app (commonTest). RUC de emisor sintéticos: pasan el dígito verificador, no son de proveedores reales. Si se agrega un caso, se agrega aquí y lo prueban los dos lados. Cotejo: cada caso trae 'compra' (una) o 'compras' (varias); 'avisos' son los textos exactos esperados (en orden) y 'compra_id' la compra elegida.",
  "ruc_sevens": "20606456892",
  "validos": [
   {
@@ -93,6 +93,10 @@
   {
    "nombre": "coincide y queda por recibir",
    "compra": {
+    "id": 12,
+    "fecha": "2026-11-20",
+    "moneda": "PEN",
+    "motivo_anulacion": null,
     "proveedor_ruc": "20999999990",
     "numero_comprobante": "F001-1234",
     "tipo_comprobante": "factura",
@@ -102,11 +106,17 @@
     "queda_por_recibir": true
    },
    "qr": "validos[0]",
-   "resultado": "recibir"
+   "resultado": "recibir",
+   "avisos": [],
+   "compra_id": 12
   },
   {
    "nombre": "total distinto por S/ 118.00",
    "compra": {
+    "id": 12,
+    "fecha": "2026-11-20",
+    "moneda": "PEN",
+    "motivo_anulacion": null,
     "proveedor_ruc": "20999999990",
     "numero_comprobante": "F001-1234",
     "tipo_comprobante": "factura",
@@ -116,11 +126,20 @@
     "queda_por_recibir": true
    },
    "qr": "validos[0]",
-   "resultado": "recibir_con_avisos"
+   "resultado": "recibir_con_avisos",
+   "avisos": [
+    "El total del QR (S/ 1 180.00) difiere en S/ 118.00 del registrado en la compra (S/ 1 062.00).",
+    "El IGV del QR (S/ 180.00) difiere en S/ 18.00 del registrado en la compra (S/ 162.00)."
+   ],
+   "compra_id": 12
   },
   {
    "nombre": "diferencia de un céntimo: tolerada",
    "compra": {
+    "id": 12,
+    "fecha": "2026-11-20",
+    "moneda": "PEN",
+    "motivo_anulacion": null,
     "proveedor_ruc": "20999999990",
     "numero_comprobante": "F001-1234",
     "tipo_comprobante": "factura",
@@ -130,11 +149,17 @@
     "queda_por_recibir": true
    },
    "qr": "validos[0]",
-   "resultado": "recibir"
+   "resultado": "recibir",
+   "avisos": [],
+   "compra_id": 12
   },
   {
    "nombre": "ya recibida",
    "compra": {
+    "id": 12,
+    "fecha": "2026-11-20",
+    "moneda": "PEN",
+    "motivo_anulacion": null,
     "proveedor_ruc": "20999999990",
     "numero_comprobante": "F001-1234",
     "tipo_comprobante": "factura",
@@ -144,11 +169,17 @@
     "queda_por_recibir": false
    },
    "qr": "validos[0]",
-   "resultado": "ya_recibida"
+   "resultado": "ya_recibida",
+   "avisos": [],
+   "compra_id": 12
   },
   {
    "nombre": "anulada",
    "compra": {
+    "id": 12,
+    "fecha": "2026-11-20",
+    "moneda": "PEN",
+    "motivo_anulacion": "Precio mal registrado",
     "proveedor_ruc": "20999999990",
     "numero_comprobante": "F001-1234",
     "tipo_comprobante": "factura",
@@ -158,11 +189,19 @@
     "queda_por_recibir": true
    },
    "qr": "validos[0]",
-   "resultado": "anulada"
+   "resultado": "anulada",
+   "avisos": [
+    "La compra F001-1234 está anulada: Precio mal registrado."
+   ],
+   "compra_id": 12
   },
   {
    "nombre": "mismo número, otro proveedor",
    "compra": {
+    "id": 12,
+    "fecha": "2026-11-20",
+    "moneda": "PEN",
+    "motivo_anulacion": null,
     "proveedor_ruc": "20888888889",
     "numero_comprobante": "F001-1234",
     "tipo_comprobante": "factura",
@@ -172,13 +211,232 @@
     "queda_por_recibir": true
    },
    "qr": "validos[0]",
-   "resultado": "sin_compra"
+   "resultado": "sin_compra",
+   "avisos": []
   },
   {
    "nombre": "emitida a otro RUC",
    "compra": null,
    "qr": "validos[3]",
-   "resultado": "no_es_de_sevens"
+   "resultado": "no_es_de_sevens",
+   "avisos": []
+  },
+  {
+   "nombre": "fecha distinta",
+   "compra": {
+    "id": 12,
+    "proveedor_ruc": "20999999990",
+    "numero_comprobante": "F001-1234",
+    "tipo_comprobante": "factura",
+    "total": "1180.00",
+    "igv": "180.00",
+    "estado": "registrada",
+    "queda_por_recibir": true,
+    "fecha": "2026-11-19",
+    "moneda": "PEN",
+    "motivo_anulacion": null
+   },
+   "qr": "validos[0]",
+   "resultado": "recibir_con_avisos",
+   "compra_id": 12,
+   "avisos": [
+    "La fecha del QR (20/11/2026) no coincide con la de la compra (19/11/2026)."
+   ]
+  },
+  {
+   "nombre": "compra en dólares con total distinto",
+   "compra": {
+    "id": 12,
+    "proveedor_ruc": "20999999990",
+    "numero_comprobante": "F001-1234",
+    "tipo_comprobante": "factura",
+    "total": "1062.00",
+    "igv": "180.00",
+    "estado": "registrada",
+    "queda_por_recibir": true,
+    "fecha": "2026-11-20",
+    "moneda": "USD",
+    "motivo_anulacion": null
+   },
+   "qr": "validos[0]",
+   "resultado": "recibir_con_avisos",
+   "compra_id": 12,
+   "avisos": [
+    "El total del QR (US$ 1 180.00) difiere en US$ 118.00 del registrado en la compra (US$ 1 062.00)."
+   ]
+  },
+  {
+   "nombre": "número guardado con ceros",
+   "compra": {
+    "id": 12,
+    "proveedor_ruc": "20999999990",
+    "numero_comprobante": "F001-00001234",
+    "tipo_comprobante": "factura",
+    "total": "1180.00",
+    "igv": "180.00",
+    "estado": "registrada",
+    "queda_por_recibir": true,
+    "fecha": "2026-11-20",
+    "moneda": "PEN",
+    "motivo_anulacion": null
+   },
+   "qr": "validos[0]",
+   "resultado": "recibir",
+   "compra_id": 12,
+   "avisos": []
+  },
+  {
+   "nombre": "anulada sin motivo",
+   "compra": {
+    "id": 12,
+    "proveedor_ruc": "20999999990",
+    "numero_comprobante": "F001-1234",
+    "tipo_comprobante": "factura",
+    "total": "1180.00",
+    "igv": "180.00",
+    "estado": "anulada",
+    "queda_por_recibir": true,
+    "fecha": "2026-11-20",
+    "moneda": "PEN",
+    "motivo_anulacion": null
+   },
+   "qr": "validos[0]",
+   "resultado": "anulada",
+   "compra_id": 12,
+   "avisos": [
+    "La compra F001-1234 está anulada."
+   ]
+  },
+  {
+   "nombre": "mismo número: gana el mismo tipo de comprobante",
+   "compras": [
+    {
+     "id": 20,
+     "proveedor_ruc": "20999999990",
+     "numero_comprobante": "F001-1234",
+     "tipo_comprobante": "boleta",
+     "total": "1180.00",
+     "igv": "180.00",
+     "estado": "registrada",
+     "queda_por_recibir": true,
+     "fecha": "2026-11-20",
+     "moneda": "PEN",
+     "motivo_anulacion": null
+    },
+    {
+     "id": 10,
+     "proveedor_ruc": "20999999990",
+     "numero_comprobante": "F001-1234",
+     "tipo_comprobante": "factura",
+     "total": "1180.00",
+     "igv": "180.00",
+     "estado": "registrada",
+     "queda_por_recibir": true,
+     "fecha": "2026-11-20",
+     "moneda": "PEN",
+     "motivo_anulacion": null
+    }
+   ],
+   "qr": "validos[0]",
+   "resultado": "recibir",
+   "compra_id": 10,
+   "avisos": []
+  },
+  {
+   "nombre": "mismo número y tipo: gana la vigente",
+   "compras": [
+    {
+     "id": 9,
+     "proveedor_ruc": "20999999990",
+     "numero_comprobante": "F001-1234",
+     "tipo_comprobante": "factura",
+     "total": "1180.00",
+     "igv": "180.00",
+     "estado": "registrada",
+     "queda_por_recibir": true,
+     "fecha": "2026-11-20",
+     "moneda": "PEN",
+     "motivo_anulacion": null
+    },
+    {
+     "id": 15,
+     "proveedor_ruc": "20999999990",
+     "numero_comprobante": "F001-1234",
+     "tipo_comprobante": "factura",
+     "total": "1180.00",
+     "igv": "180.00",
+     "estado": "anulada",
+     "queda_por_recibir": true,
+     "fecha": "2026-11-20",
+     "moneda": "PEN",
+     "motivo_anulacion": "Duplicada"
+    }
+   ],
+   "qr": "validos[0]",
+   "resultado": "recibir",
+   "compra_id": 9,
+   "avisos": []
+  },
+  {
+   "nombre": "solo de otro tipo: se recibe con aviso",
+   "compras": [
+    {
+     "id": 20,
+     "proveedor_ruc": "20999999990",
+     "numero_comprobante": "F001-1234",
+     "tipo_comprobante": "boleta",
+     "total": "1180.00",
+     "igv": "180.00",
+     "estado": "registrada",
+     "queda_por_recibir": true,
+     "fecha": "2026-11-20",
+     "moneda": "PEN",
+     "motivo_anulacion": null
+    }
+   ],
+   "qr": "validos[0]",
+   "resultado": "recibir_con_avisos",
+   "compra_id": 20,
+   "avisos": [
+    "El QR es de una factura y la compra se registró como boleta."
+   ]
+  },
+  {
+   "nombre": "dos anuladas: la más reciente",
+   "compras": [
+    {
+     "id": 4,
+     "proveedor_ruc": "20999999990",
+     "numero_comprobante": "F001-1234",
+     "tipo_comprobante": "factura",
+     "total": "1180.00",
+     "igv": "180.00",
+     "estado": "anulada",
+     "queda_por_recibir": true,
+     "fecha": "2026-11-20",
+     "moneda": "PEN",
+     "motivo_anulacion": "Primera"
+    },
+    {
+     "id": 8,
+     "proveedor_ruc": "20999999990",
+     "numero_comprobante": "F001-1234",
+     "tipo_comprobante": "factura",
+     "total": "1180.00",
+     "igv": "180.00",
+     "estado": "anulada",
+     "queda_por_recibir": true,
+     "fecha": "2026-11-20",
+     "moneda": "PEN",
+     "motivo_anulacion": "Segunda"
+    }
+   ],
+   "qr": "validos[0]",
+   "resultado": "anulada",
+   "compra_id": 8,
+   "avisos": [
+    "La compra F001-1234 está anulada: Segunda."
+   ]
   }
  ]
 }
