@@ -411,13 +411,13 @@ fun main(args: Array<String>) {
     capturar(dir, "17-stock", preparar = { stock.cargar(1); Thread.sleep(300) }) { PantallaStock(1, {}, stock) }
     val entrada = EntradaViewModel(ObraFalsa, registros, sinProgramar)
     capturar(dir, "18-entrada", preparar = { entrada.cargar(1); Thread.sleep(300); entrada.estado.value.compras.firstOrNull()?.let { entrada.elegir(1, it) }; Thread.sleep(300); entrada.alternarModo(); entrada.recibido(0, "6") }) {
-        PantallaEntrada(1, {}, entrada)
+        PantallaEntrada(1, {}, vm = entrada)
     }
     val exceso = EntradaViewModel(ObraFalsa, registros, sinProgramar)
     capturar(dir, "18b-entrada-pasa-lo-requerido", alto = 1500, preparar = {
         exceso.cargar(1); Thread.sleep(300); exceso.estado.value.compras.firstOrNull()?.let { exceso.elegir(1, it) }; Thread.sleep(300)
         exceso.guardar(1); Thread.sleep(300); exceso.motivo(pe.sevens.sigro.dominio.MotivoExceso.S10_CORTO)
-    }) { PantallaEntrada(1, {}, exceso) }
+    }) { PantallaEntrada(1, {}, vm = exceso) }
     val ingreso = IngresoSinCompraViewModel(CatalogoFalso, ObraFalsa, registros, sinProgramar)
     capturar(dir, "19-ingreso-sin-compra", preparar = { ingreso.origen(pe.sevens.sigro.dominio.OrigenIngreso.OTRA_OBRA); ingreso.elegir(insumo("ARENA GRUESA")); ingreso.cantidad("1,5"); ingreso.guardar(1) }) {
         PantallaIngresoSinCompra(1, {}, ingreso)
@@ -434,7 +434,7 @@ fun main(args: Array<String>) {
     // HU-73 · escanear la factura (QR de prueba con el formato de SUNAT; en escritorio no hay cámara: se entrega el texto)
     val qrBien = "20999999990|01|F001|00001234|180.00|1180.00|2026-10-27|6|20606456892|"
     val entradaQr = EntradaViewModel(ObraFalsa, registros, sinProgramar)
-    capturar(dir, "43-entrada-escanear-factura", preparar = { entradaQr.cargar(1); Thread.sleep(300) }) { PantallaEntrada(1, {}, entradaQr) }
+    capturar(dir, "43-entrada-escanear-factura", preparar = { entradaQr.cargar(1); Thread.sleep(300) }) { PantallaEntrada(1, {}, vm = entradaQr) }
     listOf(
         "44-escaneo-coincide" to qrBien,
         "45-escaneo-no-cuadra" to "20999999990|01|F001|00001234|198.00|1298.00|2026-10-27|6|20606456892|",
@@ -452,6 +452,6 @@ fun main(args: Array<String>) {
         porQr.cargar(1); Thread.sleep(300)
         porQr.recibirEscaneada(1, porQr.estado.value.compras.first(), listOf("El total del QR (S/ 1 298.00) difiere en S/ 118.00 del registrado en la compra (S/ 1 180.00)."))
         Thread.sleep(300)
-    }) { PantallaEntrada(1, {}, porQr) }
+    }) { PantallaEntrada(1, {}, vm = porQr) }
     kotlin.system.exitProcess(0)
 }

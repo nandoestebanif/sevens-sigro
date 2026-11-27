@@ -368,7 +368,7 @@ private fun AvisoExceso(e: EstadoEntrada, compra: CompraParaRecibir, vm: Entrada
 }
 
 @Composable
-fun PantallaEntrada(obraId: Int, alVolver: () -> Unit, vm: EntradaViewModel = koinViewModel()) {
+fun PantallaEntrada(obraId: Int, alVolver: () -> Unit, alCelular: () -> Unit = {}, vm: EntradaViewModel = koinViewModel()) {
     val e by vm.estado.collectAsState()
     val almacen by vm.almacen.estado.collectAsState()
     LaunchedEffect(obraId) { vm.cargar(obraId) }
@@ -394,6 +394,7 @@ fun PantallaEntrada(obraId: Int, alVolver: () -> Unit, vm: EntradaViewModel = ko
             return@PantallaVidrio
         }
         val compra = e.compra
+        AvisoCelular(obraId, alPedir = alCelular, compacto = true) // HU-15
         if (compra == null) {
             TarjetaVidrio {
                 PasoAlmacen("1", "¿De qué compra?")

@@ -250,7 +250,7 @@ class SalidaViewModel(
 private val NaranjaTexto get() = Paleta.NaranjaTexto
 
 @Composable
-fun PantallaSalida(obraId: Int, alVolver: () -> Unit, base: SalidaRegistrada? = null, vm: SalidaViewModel = koinViewModel()) {
+fun PantallaSalida(obraId: Int, alVolver: () -> Unit, base: SalidaRegistrada? = null, alCelular: () -> Unit = {}, vm: SalidaViewModel = koinViewModel()) {
     val e by vm.estado.collectAsState()
     val almacen by vm.almacen.estado.collectAsState()
     LaunchedEffect(obraId) {
@@ -282,6 +282,7 @@ fun PantallaSalida(obraId: Int, alVolver: () -> Unit, base: SalidaRegistrada? = 
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 if (base?.motivoRechazo != null) AvisoRojo("La anterior no se registró: ${base.motivoRechazo}")
+                AvisoCelular(obraId, alPedir = alCelular, compacto = true) // HU-15: se avisa antes, no al enviar
                 Column(
                     Modifier.fillMaxWidth().vidrio(RoundedCornerShape(26.dp)).padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp),
