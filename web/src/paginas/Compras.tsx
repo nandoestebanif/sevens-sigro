@@ -290,19 +290,28 @@ function ComprobantesCompra({ compra, enCerrar, enCambio }: {
 
   // Ver el comprobante aquí mismo (PDF o imagen), sin descargarlo
   const [viendo, setViendo] = useState<{ nombre: string; url: string; tipo: 'pdf' | 'imagen' | 'otro' } | null>(null)
+  // 27/11: abrir o bajar un comprobante tarda (viene del servidor): el botón muestra que está trabajando y no acepta
+  // un segundo clic hasta terminar.
+  const [trabajando, setTrabajando] = useState<{ id: number | string; que: 'ver' | 'bajar' } | null>(null)
   const ver = async (c: ComprobanteCompra) => {
+    if (trabajando) return
     setError('')
+    setTrabajando({ id: c.id, que: 'ver' })
     try {
       const blob = await api.descargarComprobante(compra.id, c.id)
       if (!blob) { avisar('En modo demostración solo se ven archivos subidos en esta sesión.', 'info'); return }
       setViendo({ nombre: c.nombre, url: URL.createObjectURL(blob), tipo: tipoVista(blob.type, c.nombre) })
     } catch (e) {
       setError(e instanceof ErrorApi ? e.message : 'No se pudo abrir el comprobante.')
+    } finally {
+      setTrabajando(null)
     }
   }
   const cerrarVista = () => { if (viendo) URL.revokeObjectURL(viendo.url); setViendo(null) }
   const descargar = async (c: ComprobanteCompra) => {
+    if (trabajando) return
     setError('')
+    setTrabajando({ id: c.id, que: 'bajar' })
     try {
       const blob = await api.descargarComprobante(compra.id, c.id)
       if (!blob) { avisar('En modo demostración solo se descargan archivos subidos en esta sesión.', 'info'); return }
@@ -314,6 +323,8 @@ function ComprobantesCompra({ compra, enCerrar, enCambio }: {
       URL.revokeObjectURL(url)
     } catch (e) {
       setError(e instanceof ErrorApi ? e.message : 'No se pudo descargar el comprobante.')
+    } finally {
+      setTrabajando(null)
     }
   }
 
@@ -387,8 +398,14 @@ function ComprobantesCompra({ compra, enCerrar, enCambio }: {
                   <div className="small text-danger">Motivo de anulación: {c.motivoAnulacion}</div>
                 )}
                 <div className="d-flex gap-2 flex-wrap justify-content-end">
-                  <Pildora chica enClic={() => void ver(c)} etiqueta={`Ver ${c.nombre}`}>Ver</Pildora>
-                  <Pildora tipo="secundario" chica enClic={() => void descargar(c)}>Descargar</Pildora>
+                  <Pildora chica enClic={() => void ver(c)} etiqueta={`Ver ${c.nombre}`} deshabilitado={trabajando !== null}>
+                    {trabajando?.id === c.id && trabajando.que === 'ver'
+                      ? <><span className="spinner-border spinner-border-sm me-1" aria-hidden />Abriendo…</> : 'Ver'}
+                  </Pildora>
+                  <Pildora tipo="secundario" chica enClic={() => void descargar(c)} deshabilitado={trabajando !== null}>
+                    {trabajando?.id === c.id && trabajando.que === 'bajar'
+                      ? <><span className="spinner-border spinner-border-sm me-1" aria-hidden />Descargando…</> : 'Descargar'}
+                  </Pildora>
                   {c.estado === 'vigente' && anulandoId !== c.id && (
                     <Pildora tipo="secundario" chica enClic={() => { setAnulandoId(c.id); setMotivoAnulacion(''); setError('') }}>Anular</Pildora>
                   )}
@@ -473,7 +490,7 @@ export function Compras() {
   const [filtro, setFiltro] = useState<'vigentes' | 'por_recibir' | 'anuladas' | 'todas'>('vigentes')
   const [proveedores, setProveedores] = useState<Proveedor[]>([])
   const [insumos, setInsumos] = useState<InsumoCatalogo[]>([])
-  const [compras, setCompras] = useState<Compra[]>([])
+  const [compras, setCompras] = useState<Compra[] | null>(null)   // null = cargando: no se muestra «Todavía no hay compras»
 
   // cabecera de la compra
   const [proveedorId, setProveedorId] = useState('')
@@ -524,7 +541,7 @@ export function Compras() {
     const alFallar = (e: unknown) => setError(e instanceof ErrorApi ? e.message : 'No se pudieron cargar los datos de compras.')
     api.proveedoresParaComprar().then(setProveedores).catch(alFallar) // excluye a los de baja (HU-29)
     api.listarInsumos().then(setInsumos).catch(alFallar)
-    api.listarCompras().then(setCompras).catch(alFallar)
+    api.listarCompras().then(setCompras).catch((e) => { setCompras([]); alFallar(e) })
   }
   useEffect(cargar, [])
 
@@ -615,7 +632,7 @@ export function Compras() {
 
       {puedeRegistrar && (
         <Segmentado etiqueta="Compras" pestanas valor={vista} enCambio={irA}
-          opciones={[{ valor: 'lista', texto: `Compras registradas${compras.length ? ` · ${compras.length}` : ''}` }, { valor: 'nueva', texto: 'Registrar compra' }]} />
+          opciones={[{ valor: 'lista', texto: `Compras registradas${compras?.length ? ` · ${compras.length}` : ''}` }, { valor: 'nueva', texto: 'Registrar compra' }]} />
       )}
 
       {vista === 'nueva' && (
@@ -775,7 +792,7 @@ export function Compras() {
 
       {vista === 'lista' && (
         <Vidrio estilo={{ display: 'flex', flexDirection: 'column', gap: 12 }} etiqueta="Compras registradas">
-          <TablaDatos
+          {compras === null ? <EsqueletoTabla filas={6} /> : <TablaDatos
             etiqueta="Compras registradas"
             filas={compras.filter((c) => filtro === 'todas' ? true : filtro === 'anuladas' ? c.estado === 'anulada'
               : filtro === 'por_recibir' ? c.estado !== 'anulada' && c.estado !== 'recibida' : c.estado !== 'anulada')}
@@ -817,7 +834,7 @@ export function Compras() {
                 { texto: 'Comprobantes', icono: 'archivo', enClic: () => setComprobantesDe(c) },
               ]} />
             )}
-          />
+          />}
         </Vidrio>
       )}
 

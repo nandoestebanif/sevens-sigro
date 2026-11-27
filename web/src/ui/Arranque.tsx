@@ -28,8 +28,10 @@ export function useInerte(ref: RefObject<HTMLElement>, activo: boolean) {
 }
 
 /** Capa de espera a pantalla completa. La usan el arranque y la entrada a la obra. */
-export function CapaPlano({ titulo, detalle, progreso, saliendo, alDibujarse, acciones, etiqueta }: {
+export function CapaPlano({ titulo, detalle, progreso, saliendo, alDibujarse, acciones, etiqueta, esperando }: {
   titulo: string
+  /** 27/11: mientras el servidor no informa avance, la barra se mueve sola (rayada y animada) para que no parezca colgada */
+  esperando?: boolean
   detalle?: string
   /** 0 a 1 */
   progreso?: number
@@ -51,11 +53,12 @@ export function CapaPlano({ titulo, detalle, progreso, saliendo, alDibujarse, ac
     >
       {/* tarjeta negra de la marca, igual en los dos modos: logo, la grúa trabajando y el avance */}
       <div className="sigro-capa text-center" aria-live="polite">
-        <img src={logo} alt="SEVEN'S Ingenieros SAC" height={52} className="mb-4" />
+        <img src={logo} alt="SEVEN'S Ingenieros SAC" width={74} height={52} className="mb-4" />
         <div className="grua mx-auto mb-3"><DibujoObra cual="grua" ancho={120} /></div>
         <h1 className="h5">{titulo}</h1>
         {detalle && <p className="small mb-3">{detalle}</p>}
-        <ProgressBar now={pct} label={`${pct} %`} visuallyHidden aria-label="Avance de la conexión" className="mb-3" />
+        <ProgressBar now={esperando && pct === 0 ? 100 : pct} striped={esperando} animated={esperando} label={`${pct} %`} visuallyHidden
+          aria-label="Avance de la conexión" className="mb-3" />
         {acciones}
       </div>
     </div>
@@ -69,6 +72,7 @@ export function Arranque({ children }: { children: ReactNode }) {
   const [estado, setEstado] = useState<EstadoArranque>({ fase: 'preparando', listos: 0, total: 0 })
   const [lento, setLento] = useState(false)
   const [intento, setIntento] = useState(0)
+  const [segundos, setSegundos] = useState(0)
   const contenido = useRef<HTMLDivElement>(null)
   useInerte(contenido, visible)
 
@@ -78,10 +82,12 @@ export function Arranque({ children }: { children: ReactNode }) {
     setLento(false)
     setEstado({ fase: 'preparando', listos: 0, total: 0 })
     const reloj = setTimeout(() => setLento(true), AVISO_MS)
+    setSegundos(0)
+    const cuenta = setInterval(() => setSegundos((x) => x + 1), 1000)
     esperarServidor({ alCambiar: setEstado, senal: corte.signal }).then((listo) => {
       if (listo && !corte.signal.aborted) setVisible(false)
     })
-    return () => { corte.abort(); clearTimeout(reloj) }
+    return () => { corte.abort(); clearTimeout(reloj); clearInterval(cuenta) }
   }, [intento, debeEsperar])
 
   // al quitar la capa, el foco va al primer campo (el autoFocus de Entrar no pudo tomarlo mientras era inerte)
@@ -93,7 +99,7 @@ export function Arranque({ children }: { children: ReactNode }) {
   const detalle = fallo
     ? 'El servidor no respondió en 90 segundos. Revisa tu conexión a internet y vuelve a intentar.'
     : lento || estado.fase === 'despertando'
-      ? 'El servidor está despertando, puede tardar hasta un minuto'
+      ? `El servidor está despertando, puede tardar hasta un minuto (van ${segundos} s)`
       : undefined
 
   return (
@@ -106,7 +112,12 @@ export function Arranque({ children }: { children: ReactNode }) {
           titulo={fallo ? 'No pudimos conectar' : 'Preparando SIGRO…'}
           detalle={detalle}
           progreso={estado.total ? estado.listos / estado.total : 0}
-          acciones={fallo && <Button onClick={() => setIntento((i) => i + 1)}>Reintentar</Button>}
+          esperando={!fallo}
+          acciones={(fallo || segundos >= 45) && (
+            <Button variant={fallo ? 'primary' : 'outline-secondary'} size={fallo ? undefined : 'sm'} onClick={() => setIntento((i) => i + 1)}>
+              {fallo ? 'Reintentar' : 'Volver a intentar ahora'}
+            </Button>
+          )}
         />
       )}
     </>
