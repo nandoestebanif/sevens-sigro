@@ -1,5 +1,6 @@
 package pe.sevens.sigro.ui.pantallas
 
+import pe.sevens.sigro.dominio.AvisoStock
 import pe.sevens.sigro.dominio.HoraLima
 import pe.sevens.sigro.dominio.Insumo
 import pe.sevens.sigro.dominio.SalidaRegistrada
@@ -32,13 +33,25 @@ fun sugerenciasSalida(salidas: List<SalidaRegistrada>, trabajadores: List<String
 }
 
 /** «Último stock: 40 bolsas · 12/11/2026 12:20». Del servidor, del almacén elegido; null si no se sabe. */
+private fun filaStock(stock: StockObra, insumo: Insumo, almacenId: Int?) =
+    stock.porAlmacen.firstOrNull { it.insumoId == insumo.id && (almacenId == null || it.almacenId == almacenId) }
+        ?: if (almacenId == null) stock.consolidado.firstOrNull { it.insumoId == insumo.id } else null
+
 fun stockConocido(stock: StockObra?, insumo: Insumo?, almacenId: Int?): String? {
     if (stock == null || insumo == null) return null
-    val fila = stock.porAlmacen.firstOrNull { it.insumoId == insumo.id && (almacenId == null || it.almacenId == almacenId) }
-        ?: if (almacenId == null) stock.consolidado.firstOrNull { it.insumoId == insumo.id } else null
+    val fila = filaStock(stock, insumo, almacenId)
     val hora = HoraLima.deIso(stock.corte)
     val cuanto = fila?.let { Texto.cantidadConUnidad(it.cantidad, insumo.unidad) } ?: "sin movimientos"
     return "Último stock: $cuanto" + (hora?.let { " · $it" } ?: "")
+}
+
+/** Aviso (no bloquea) si lo pedido pasa el último stock conocido de ese almacén; «sin movimientos» cuenta como 0. */
+fun avisoSobreStock(stock: StockObra?, insumo: Insumo?, almacenId: Int?, cantidad: String): String? {
+    if (stock == null || insumo == null) return null
+    val fila = if (almacenId == null) stock.consolidado.firstOrNull { it.insumoId == insumo.id }   // sin almacén: toda la obra
+        else stock.porAlmacen.firstOrNull { it.insumoId == insumo.id && it.almacenId == almacenId }
+    val conocido = fila?.cantidad ?: "0"
+    return AvisoStock.mensaje(cantidad, conocido, insumo.unidad, HoraLima.deIso(stock.corte))
 }
 
 

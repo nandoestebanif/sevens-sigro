@@ -326,6 +326,13 @@ fun PantallaSalida(obraId: Int, alVolver: () -> Unit, base: SalidaRegistrada? = 
                         ayuda = stockConocido(e.stock, e.insumo, almacen.elegido?.id),
                         alSalir = { vm.salirDe("cantidad") }, correcto = "cantidad" in e.correctos,
                     )
+                    // Pasa el último stock conocido: se avisa, no se bloquea (el servidor decide, regla 2)
+                    avisoSobreStock(e.stock, e.insumo, almacen.elegido?.id, e.cantidad)?.let {
+                        Text(
+                            it, Modifier.fillMaxWidth().background(Paleta.AvisoFondo, RoundedCornerShape(14.dp)).padding(12.dp),
+                            fontSize = 13.sp, lineHeight = 18.sp, color = Paleta.AvisoTexto,
+                        )
+                    }
                     // Atajos de cantidad: con guantes es más rápido tocar +5 que escribir
                     AtajosCantidad(e.cantidad) { vm.cantidad(it, alInstante = true) }
                 }

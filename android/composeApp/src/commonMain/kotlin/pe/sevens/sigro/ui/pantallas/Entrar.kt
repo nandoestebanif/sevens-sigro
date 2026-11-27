@@ -58,6 +58,7 @@ import pe.sevens.sigro.dominio.Biometria
 import pe.sevens.sigro.dominio.ClaveReciente
 import pe.sevens.sigro.dominio.CuentaConHuella
 import pe.sevens.sigro.dominio.RepositorioCandado
+import pe.sevens.sigro.dominio.ReglaCandado
 import pe.sevens.sigro.dominio.ResultadoSecreto
 import pe.sevens.sigro.plataforma.rememberBiometria
 import androidx.compose.runtime.LaunchedEffect
@@ -165,11 +166,27 @@ class EntrarViewModel(
         _estado.update { it.copy(cargando = false, cuentaHuella = null, conFormulario = true, usuario = usuario, error = mensaje) }
     }
 
+    private suspend fun olvidarHuellaAjena(usuario: String, bio: Biometria?) {
+        val c = _estado.value.cuentaHuella ?: return
+        if (!ReglaCandado.esOtraCuenta(c, usuario)) return
+        bio?.olvidar(); bio?.olvidarClave()
+        runCatching {
+            candado?.olvidarCuenta()
+            candado?.let { it.guardar(c.usuarioId, it.ajuste(c.usuarioId).copy(activa = false, ofrecida = false)) }
+        }
+        _estado.update { it.copy(cuentaHuella = null) }
+    }
+
     fun servidor(v: String) = _estado.update { it.copy(servidor = v, error = null) }
     fun usuario(v: String) = _estado.update { it.copy(usuario = v, error = null) }
     fun clave(v: String) = _estado.update { it.copy(clave = v, error = null) }
 
-    fun entrar() {
+    /**
+     * Entrar con contraseña. Si entra una cuenta distinta de la que tenía la huella en este celular, la huella de la
+     * otra se borra (regla 5: un celular, un responsable): así, al cerrar sesión, no aparece «Entrar como …» de otra
+     * persona ni queda su contraseña cifrada en un celular que ya no usa.
+     */
+    fun entrar(bio: Biometria? = null) {
         val e = _estado.value
         if (e.usuario.isBlank() || e.clave.isBlank()) {
             _estado.update { it.copy(error = "Escribe tu usuario y tu clave.") }
@@ -179,6 +196,7 @@ class EntrarViewModel(
         viewModelScope.launch {
             try {
                 sesiones.iniciarSesion(e.servidor, e.usuario, e.clave)
+                olvidarHuellaAjena(e.usuario, bio)
                 // solo en memoria y por unos minutos: si activa la huella al entrar, se cifra con ella
                 claveReciente?.guardar(e.usuario, e.clave)
                 // La raíz cambia sola de pantalla al ver la sesión guardada.
@@ -290,7 +308,7 @@ fun PantallaEntrar(vm: EntrarViewModel = koinViewModel(), biometria: Biometria =
                                 }
                             }
                         }
-                        BotonNegro("Entrar", vm::entrar, cargando = e.cargando)
+                        BotonNegro("Entrar", { vm.entrar(biometria) }, cargando = e.cargando)
                         if (cuenta != null && e.conFormulario && biometria.guardaClaves()) {
                             TextButton(onClick = vm::volverAHuella, modifier = Modifier.fillMaxWidth()) {
                                 Icon(Icons.Filled.Fingerprint, contentDescription = null, tint = Paleta.Naranja)
@@ -326,13 +344,12 @@ fun PantallaEntrar(vm: EntrarViewModel = koinViewModel(), biometria: Biometria =
 
 /**
  * «Entrar como Adiel con tu huella»: quién es, la huella grande y «otra cuenta». El diálogo de la huella se abre solo
- * al aparecer (es a lo que viene).
+ * cuando la persona toca la huella: si el celular lo tiene otra persona, no le salta la huella de alguien más.
  */
 @Composable
 private fun EntrarConHuella(
     c: CuentaConHuella, cargando: Boolean, error: String?, alEntrar: () -> Unit, alContrasena: () -> Unit, alOtraCuenta: () -> Unit,
 ) {
-    LaunchedEffect(c.usuarioId) { alEntrar() }
     Card(
         Modifier.widthIn(max = 480.dp).fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
