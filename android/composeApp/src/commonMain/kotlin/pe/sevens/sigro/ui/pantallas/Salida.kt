@@ -77,6 +77,7 @@ import pe.sevens.sigro.dominio.Texto
 import pe.sevens.sigro.ui.componentes.AvisoRojo
 import pe.sevens.sigro.ui.componentes.EncabezadoVidrio
 import pe.sevens.sigro.dominio.EstadoEnvio
+import pe.sevens.sigro.dominio.Busqueda
 import pe.sevens.sigro.dominio.Insumo
 import pe.sevens.sigro.dominio.NuevaSalida
 import pe.sevens.sigro.dominio.ProgramadorSincronizacion
@@ -295,18 +296,23 @@ fun PantallaSalida(obraId: Int, alVolver: () -> Unit, base: SalidaRegistrada? = 
                             finalIcono = { Icon(Icons.Filled.Search, contentDescription = null, tint = Paleta.Texto3, modifier = Modifier.padding(end = 10.dp)) },
                         )
                         val disp = insumosConStock(e.stock, almacen.elegido?.id, e.busqueda)
-                        if (disp != null) {
+                        val escribio = e.busqueda.trim().length >= Busqueda.MIN_LETRAS
+                        if (disp != null && !escribio) {
+                            // Sin escribir no se lista nada: en una obra grande serían cientos de insumos (prueba 27/11).
+                            val hay = insumosConStock(e.stock, almacen.elegido?.id, "")?.size ?: 0
+                            Text(if (hay == 0) "Este almacén no tiene stock según la última actualización."
+                                else "Escribe el nombre o el código: hay $hay ${if (hay == 1) "insumo" else "insumos"} con stock en este almacén.",
+                                fontSize = 14.sp, color = Paleta.Texto2)
+                        } else if (disp != null) {
                             // Solo lo que hay en el almacén elegido (último stock del servidor).
                             if (disp.isNotEmpty()) {
                                 ListaVidrio(disp.take(8)) { x ->
                                     FilaElegible(Texto.nombre(x.insumo.descripcion),
                                         "${x.insumo.codigo} · hay ${Texto.cantidadConUnidad(x.cantidad, x.insumo.unidad)}") { vm.elegir(x.insumo) }
                                 }
-                                if (disp.size > 8) Text("Hay ${disp.size} insumos con stock: escribe para acotar.", fontSize = 14.sp, color = Paleta.Texto2)
-                            } else if (e.busqueda.isNotBlank()) {
-                                Text("No hay stock de eso en este almacén.", fontSize = 15.sp, color = Paleta.Texto2)
+                                if (disp.size > 8) Text("${disp.size} coinciden: escribe un poco más para acotar.", fontSize = 14.sp, color = Paleta.Texto2)
                             } else {
-                                Text("Este almacén no tiene stock según la última actualización.", fontSize = 15.sp, color = Paleta.Texto2)
+                                Text("No hay stock de «${e.busqueda.trim()}» en este almacén.", fontSize = 15.sp, color = Paleta.Texto2)
                             }
                         } else if (e.resultados.isNotEmpty()) {
                             Text("Sin stock guardado en el celular: se muestra todo el catálogo. Abre «Stock» con señal para ver solo lo que hay.",
@@ -373,7 +379,7 @@ fun PantallaSalida(obraId: Int, alVolver: () -> Unit, base: SalidaRegistrada? = 
 
 /** Lista de opciones sobre vidrio, separadas por una línea (insumos, trabajadores). */
 @Composable
-private fun <T> ListaVidrio(items: List<T>, fila: @Composable (T) -> Unit) {
+internal fun <T> ListaVidrio(items: List<T>, fila: @Composable (T) -> Unit) {
     Column(Modifier.fillMaxWidth().background(Paleta.Superficie.copy(alpha = 0.9f), RoundedCornerShape(20.dp))) {
         items.forEachIndexed { i, x ->
             if (i > 0) Box(Modifier.fillMaxWidth().height(1.dp).background(Paleta.Separador))
@@ -383,7 +389,7 @@ private fun <T> ListaVidrio(items: List<T>, fila: @Composable (T) -> Unit) {
 }
 
 @Composable
-private fun FilaElegible(titulo: String, detalle: String?, alElegir: () -> Unit) {
+internal fun FilaElegible(titulo: String, detalle: String?, alElegir: () -> Unit) {
     Column(
         Modifier.fillMaxWidth().clickable(onClickLabel = "Elegir «$titulo»") { alElegir() }.heightIn(min = 56.dp)
             .padding(horizontal = 16.dp, vertical = 10.dp),

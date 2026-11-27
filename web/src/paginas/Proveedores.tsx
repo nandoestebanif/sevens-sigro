@@ -32,6 +32,12 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { Form } from 'react-bootstrap'
 import { esquemaProveedor, type DatosProveedor } from '../formularios/esquemas'
 
+const diaProv = (iso: string) => (/^\d{4}-\d{2}-\d{2}/.test(iso) ? `${iso.slice(8, 10)}/${iso.slice(5, 7)}/${iso.slice(0, 4)}` : iso)
+const fechaHoraProv = (iso: string) => {
+  const t = Date.parse(/[zZ]|[+-]\d\d:?\d\d$/.test(iso) ? iso : `${iso}Z`)
+  return Number.isNaN(t) ? iso : new Date(t).toLocaleString('es-PE', { timeZone: 'America/Lima', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+}
+
 const ESTADO: Record<EstadoProveedor, { texto: string; tono: TonoChip }> = {
   validado: { texto: 'Validado en SUNAT', tono: 'bien' },
   sin_validar: { texto: 'Por validar', tono: 'aviso' },
@@ -225,6 +231,25 @@ export function Proveedores() {
         {filtrados === null ? <EsqueletoTabla /> : (
           <TablaDatos
             etiqueta="Proveedores"
+            fechas={[{ clave: 'ultima', titulo: 'Última compra', valor: (p) => p.ultimaCompra }, { clave: 'sunat', titulo: 'Consulta SUNAT', valor: (p) => p.consultadoEn }]}
+            detalle={(p) => ({
+              titulo: p.razonSocial,
+              subtitulo: `RUC ${p.ruc}`,
+              chips: <Chip tono={ESTADO[p.estado].tono}>{ESTADO[p.estado].texto}</Chip>,
+              secciones: [
+                { titulo: 'SUNAT', datos: [
+                  ['RUC', p.ruc], ['Estado en SIGRO', ESTADO[p.estado].texto],
+                  ['Última consulta a SUNAT', p.consultadoEn ? fechaHoraProv(p.consultadoEn) : 'Sin consultar'],
+                  ...(p.alertaSunat ? [['Alerta SUNAT', p.alertaSunat] as [string, string]] : []),
+                  ...(p.advertencia ? [['Advertencia', p.advertencia] as [string, string]] : []),
+                ] },
+                { titulo: 'Compras', datos: [
+                  ['Compras registradas', String(p.comprasRegistradas)],
+                  ['Última compra', p.ultimaCompra ? diaProv(p.ultimaCompra) : 'Nunca'],
+                  ['Días de entrega', p.diasEntrega != null ? `${p.diasEntrega} ${p.diasEntrega === 1 ? 'día' : 'días'} (alimenta el punto de reposición)` : 'Sin dato'],
+                ] },
+              ],
+            })}
             filas={filtrados}
             clave={(p) => p.id}
             buscar={(p) => `${p.razonSocial} ${p.ruc}`}

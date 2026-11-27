@@ -86,6 +86,7 @@ export function Asignaciones({ obraId, obraNombre }: { obraId: string; obraNombr
           {(xs) => (
             <TablaDatos
               etiqueta={`Asignaciones de ${obraNombre}`}
+              fechas={[{ clave: 'asignacion', titulo: 'Asignación', valor: (a) => a.fechaAsignacion }, { clave: 'retiro', titulo: 'Retiro', valor: (a) => a.fechaRetiro }]}
               filas={xs}
               clave={(a) => a.id}
               buscar={(a) => `${a.usuarioNombre} ${a.usuario} ${textoRol(a.rol)}`}

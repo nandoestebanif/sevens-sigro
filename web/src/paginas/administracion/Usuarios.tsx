@@ -46,6 +46,8 @@ export function Usuarios({ usuarioSesionId }: { usuarioSesionId: number | null }
           {(lista) => (
             <TablaDatos
               etiqueta="Usuarios"
+              detalle={false}
+              fechas={[{ clave: 'alta', titulo: 'Alta', valor: (u) => u.creadoEn }, { clave: 'baja', titulo: 'Baja', valor: (u) => u.fechaBaja }]}
               filas={ordenarUsuarios(lista)}
               clave={(u) => u.id}
               buscar={(u) => `${u.nombre} ${u.usuario} ${u.dni ?? ''} ${u.correo ?? ''} ${u.celular ?? ''}`}

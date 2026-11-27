@@ -149,7 +149,8 @@ fun TarjetaVidrio(modifier: Modifier = Modifier, fuerte: Boolean = false, conten
 
 @Composable
 fun TituloSeccion(texto: String, modifier: Modifier = Modifier) {
-    Text(texto, style = MaterialTheme.typography.titleMedium, modifier = modifier.semantics { heading() })
+    // con color propio: sin él tomaba el negro por defecto y en el tema oscuro no se leía (prueba 27/11)
+    Text(texto, style = MaterialTheme.typography.titleMedium, color = Paleta.Tinta, modifier = modifier.semantics { heading() })
 }
 
 /** Etiqueta de estado: siempre texto (y color), nunca solo color. Card chica con el color de fondo dado. */

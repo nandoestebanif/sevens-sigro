@@ -11,7 +11,8 @@ import { mensajeDeCarga } from '../api/error'
 import type { Movimiento } from '../api/tipos'
 import { Chip } from './base'
 import { EsqueletoTabla } from './Esqueleto'
-import { paginar } from './tablas'
+import { filtrarFechas, paginar } from './tablas'
+import { FiltroFechas } from './TablaDatos'
 
 const n = (v: number) => v.toLocaleString('es-PE', { maximumFractionDigits: 3 })
 const fecha = (iso: string) => new Date(iso).toLocaleString('es-PE', { timeZone: 'America/Lima', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
@@ -25,7 +26,10 @@ export function Kardex({ codigo }: { codigo: string }) {
     api.listarMovimientos().then(setMovs).catch((x) => { setMovs([]); setError(mensajeDeCarga(x)) })
   }, [])
   const propios = useMemo(() => (movs ?? []).filter((m) => m.insumoId === codigo), [movs, codigo])
-  const p = paginar(propios, pagina, POR_PAGINA)
+  const [desde, setDesde] = useState('')
+  const [hasta, setHasta] = useState('')
+  const enRango = useMemo(() => filtrarFechas(propios, (m) => m.fechaServidor, desde, hasta), [propios, desde, hasta])
+  const p = paginar(enRango, pagina, POR_PAGINA)
   const entradas = propios.filter((m) => m.tipo === 'ingreso' && !m.anuladoPor).reduce((s, m) => s + m.cantidad, 0)
   const salidas = propios.filter((m) => m.tipo === 'salida' && !m.anuladoPor).reduce((s, m) => s + m.cantidad, 0)
 
@@ -43,6 +47,11 @@ export function Kardex({ codigo }: { codigo: string }) {
             <Chip tono="aviso">− {n(salidas)} {propios[0].unidad} salieron</Chip>
             <Chip tono="neutro">{propios.length} movimientos</Chip>
           </div>
+          <div className="mb-2">
+            <FiltroFechas id={`kardex-${codigo}`} campos={[{ clave: 'servidor', titulo: 'Movimiento' }]} desde={desde} hasta={hasta}
+              enCambio={(c) => { if (c.desde !== undefined) setDesde(c.desde); if (c.hasta !== undefined) setHasta(c.hasta); setPagina(1) }} />
+          </div>
+          {enRango.length === 0 && <p className="small text-body-secondary mb-0" role="status">Ningún movimiento de este insumo en esas fechas.</p>}
           <div className="overflow-x-auto position-relative">
             <table className="table table-sm align-middle mb-0 small">
               <thead><tr><th>Fecha</th><th>Movimiento</th><th className="n">Cantidad</th><th className="n">Saldo</th></tr></thead>

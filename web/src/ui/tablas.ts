@@ -58,3 +58,29 @@ export function filtrarTexto<T>(lista: readonly T[], busqueda: string, texto: (i
 
 /** Filas por página que se ofrecen en las listas; la primera es la de entrada (pantallas sin scroll largo). */
 export const TAMANOS = [10, 25, 50, 100]
+
+/**
+ * Día en Lima (AAAA-MM-DD) de una fecha de la API. «2026-11-27» queda igual; un instante con hora se pasa a la hora
+ * de Lima (las 23:30 del 26 en Lima son el 27 en UTC: cuenta como 26). Sin zona, la API manda UTC. null si no es fecha.
+ */
+export function diaLima(v: string | null | undefined): string | null {
+  if (!v) return null
+  const t = v.trim()
+  if (/^\d{4}-\d{2}-\d{2}$/.test(t)) return t
+  const ms = Date.parse(/[zZ]|[+-]\d\d:?\d\d$/.test(t) ? t : `${t}Z`)
+  if (Number.isNaN(ms)) return null
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Lima', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(ms))
+}
+
+/**
+ * Filtra por un rango de días (los dos extremos incluidos, AAAA-MM-DD, vacíos = sin límite). Con un rango puesto, la fila
+ * que no tiene esa fecha (p. ej. un celular que nunca se autorizó, al filtrar por autorización) no entra.
+ */
+export function filtrarFechas<T>(lista: readonly T[], valor: (item: T) => string | null | undefined, desde?: string, hasta?: string): T[] {
+  if (!desde && !hasta) return [...lista]
+  const [a, b] = desde && hasta && desde > hasta ? [hasta, desde] : [desde, hasta] // al revés: se entiende igual
+  return lista.filter((x) => {
+    const d = diaLima(valor(x))
+    return d !== null && (!a || d >= a) && (!b || d <= b)
+  })
+}

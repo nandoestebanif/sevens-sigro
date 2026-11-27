@@ -77,6 +77,32 @@ export function Celulares({ obraId }: { obraId: string }) {
                 clave={(d) => d.id}
                 buscar={(d) => `${d.usuarioNombre} ${d.identificador}`}
                 marcadorBusqueda="Buscar por persona o código…"
+                fechas={[
+                  { clave: 'pedido', titulo: 'Pedido', valor: (d) => d.solicitadoEn },
+                  { clave: 'autorizacion', titulo: 'Autorización', valor: (d) => d.fechaAutorizacion },
+                  { clave: 'revocacion', titulo: 'Revocación', valor: (d) => d.fechaRevocacion },
+                ]}
+                detalle={(d) => ({
+                  titulo: d.usuarioNombre,
+                  subtitulo: 'Celular de la obra',
+                  chips: <Chip tono={ESTADO_CELULAR[d.estado]?.tono ?? 'neutro'}>{ESTADO_CELULAR[d.estado]?.texto ?? d.estado}</Chip>,
+                  secciones: [
+                    { titulo: 'Celular', datos: [['Código del celular', <span key="c" className="n text-break">{d.identificador}</span>], ['Persona', d.usuarioNombre]] },
+                    { titulo: 'Historial', datos: [
+                      ['Pedido', fechaLima(d.solicitadoEn)],
+                      ['Autorizado', d.fechaAutorizacion ? fechaLima(d.fechaAutorizacion) : 'Todavía no'],
+                      ...(d.fechaRevocacion ? [['Revocado', fechaLima(d.fechaRevocacion)] as [string, string]] : []),
+                      ...(d.motivoRevocacion ? [['Motivo de la revocación', d.motivoRevocacion] as [string, string]] : []),
+                    ] },
+                  ],
+                  extra: <p className="small text-body-secondary mb-0">
+                    {d.estado === 'activo'
+                      ? 'Desde este celular la persona puede registrar ingresos y salidas en esta obra.'
+                      : d.estado === 'pendiente'
+                        ? 'Lo que registre desde este celular queda en su cola hasta que lo autorices.'
+                        : 'Lo que registre desde este celular el servidor lo rechaza. Para volver a usarlo, que lo pida de nuevo desde la app.'}
+                  </p>,
+                })}
                 vacio={{ titulo: 'Sin celulares', detalle: 'El almacenero o el SSOMA piden la autorización desde la app.' }}
                 columnas={[
                   { clave: 'persona', titulo: 'Persona', valor: (d) => d.usuarioNombre, celda: (d) => <><strong>{d.usuarioNombre}</strong><div className="small text-body-secondary text-break" style={{ maxWidth: 260 }}>{d.identificador}</div></> },

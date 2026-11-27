@@ -5,7 +5,17 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material.icons.Icons
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.filled.Build
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material3.Icon
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import kotlinx.coroutines.flow.first
+import pe.sevens.sigro.ui.componentes.FILAS_POR_TANDA
+import pe.sevens.sigro.ui.componentes.MostrarMas
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -25,7 +35,9 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import org.koin.compose.viewmodel.koinViewModel
+import pe.sevens.sigro.dominio.Busqueda
 import pe.sevens.sigro.dominio.ErrorSigro
+import pe.sevens.sigro.dominio.RepositorioTrabajadores
 import pe.sevens.sigro.dominio.EstadoDevolucion
 import pe.sevens.sigro.dominio.HerramientaDisponible
 import pe.sevens.sigro.dominio.HoraLima
@@ -73,14 +85,25 @@ data class EstadoHerramientas(
     val notaDevolucion: String = "",
     val errores: Map<String, String> = emptyMap(),
     val guardando: Boolean = false,
+    /** buscador de la lista (herramienta, código, almacén o quién la tiene) */
+    val busqueda: String = "",
+    /** buscador del formulario «Prestar» */
+    val buscarHerramienta: String = "",
+    /** trabajadores activos de la obra, para elegir quién se la lleva */
+    val trabajadoresObra: List<String> = emptyList(),
 )
 
-class HerramientasViewModel(private val repo: RepositorioPrestamos) : ViewModel() {
+class HerramientasViewModel(private val repo: RepositorioPrestamos, private val trabajadores: RepositorioTrabajadores? = null) : ViewModel() {
     private val _e = MutableStateFlow(EstadoHerramientas())
     val estado = _e.asStateFlow()
 
     fun cargar(obraId: Int) {
         _e.update { it.copy(cargando = true, error = null) }
+        viewModelScope.launch {
+            // la lista guardada en el celular basta; sin ella se escribe el nombre a mano, como antes
+            val nombres = runCatching { trabajadores?.deObra(obraId)?.first()?.filter { it.fechaSalida == null }?.map { it.nombre } }.getOrNull().orEmpty()
+            _e.update { it.copy(trabajadoresObra = nombres) }
+        }
         viewModelScope.launch {
             try {
                 val p = repo.panel(obraId)
@@ -91,15 +114,19 @@ class HerramientasViewModel(private val repo: RepositorioPrestamos) : ViewModel(
         }
     }
 
-    fun abrirPrestar() = _e.update {
-        it.copy(modo = ModoHerramientas.PRESTAR, herramienta = it.panel?.herramientas?.firstOrNull { h -> (h.disponible.toDoubleOrNull() ?: 0.0) > 0 },
+    /** «Prestar» desde la tarjeta de una herramienta la trae elegida; desde el botón de arriba, se busca. */
+    fun abrirPrestar(h: HerramientaDisponible? = null) = _e.update {
+        it.copy(modo = ModoHerramientas.PRESTAR, herramienta = h, buscarHerramienta = "",
             cantidad = "1", responsable = "", plazo = PlazoDevolucion.SIN, nota = "", errores = emptyMap(), aviso = null)
     }
+    fun buscar(v: String) = _e.update { it.copy(busqueda = Limites.texto(v, 60)) }
+    fun buscarHerramienta(v: String) = _e.update { it.copy(buscarHerramienta = Limites.texto(v, 60)) }
+    fun cambiarHerramienta() = _e.update { it.copy(herramienta = null) }
     fun abrirDevolver(p: PrestamoHerramienta) = _e.update {
         it.copy(modo = ModoHerramientas.DEVOLVER, devolviendo = p, estadoDevolucion = EstadoDevolucion.BUENO, notaDevolucion = "", errores = emptyMap(), aviso = null)
     }
     fun volver() = _e.update { it.copy(modo = ModoHerramientas.LISTA, errores = emptyMap()) }
-    fun herramienta(h: HerramientaDisponible) = _e.update { it.copy(herramienta = h, errores = it.errores - "herramienta") }
+    fun herramienta(h: HerramientaDisponible) = _e.update { it.copy(herramienta = h, buscarHerramienta = "", errores = it.errores - "herramienta") }
     fun cantidad(v: String) = _e.update { it.copy(cantidad = Limites.cantidad(it.cantidad, v), errores = it.errores - "cantidad") }
     fun responsable(v: String) = _e.update { it.copy(responsable = Limites.texto(v, Limites.QUIEN_RETIRA), errores = it.errores - "responsable") }
     fun plazo(p: PlazoDevolucion) = _e.update { it.copy(plazo = p) }
@@ -169,12 +196,30 @@ fun PantallaHerramientas(obraId: Int, alVolver: () -> Unit, puedePrestar: Boolea
 @Composable
 private fun Lista(e: EstadoHerramientas, vm: HerramientasViewModel, puedePrestar: Boolean) {
     val p = e.panel ?: return
-    if (puedePrestar) BotonNegro("Prestar herramienta", vm::abrirPrestar, icono = Icons.Filled.Build, habilitado = p.herramientas.isNotEmpty())
+    val q = e.busqueda
+    val disponibles = p.herramientas.filter { (it.disponible.toDoubleOrNull() ?: 0.0) > 0 }
+    if (puedePrestar) BotonNegro("Prestar herramienta", { vm.abrirPrestar() }, icono = Icons.Filled.Build, habilitado = disponibles.isNotEmpty())
     else Text("Prestar y recibir herramientas lo hace el almacenero; aquí ves quién tiene cada una.", fontSize = 14.sp, color = Paleta.Texto2)
-    Text("Prestar no mueve el saldo: la herramienta sigue en la obra. Desliza hacia abajo para actualizar.", fontSize = 13.sp, color = Paleta.Texto2)
+    // resumen en una línea: cuántas hay, cuántas están afuera y si alguna está atrasada
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Resumen("${p.herramientas.size}", if (p.herramientas.size == 1) "herramienta" else "herramientas", Modifier.weight(1f))
+        Resumen("${p.sinDevolver.size}", if (p.sinDevolver.size == 1) "prestada" else "prestadas", Modifier.weight(1f))
+        Resumen("${p.atrasados}", if (p.atrasados == 1) "atrasada" else "atrasadas", Modifier.weight(1f), alerta = p.atrasados > 0)
+    }
+    if (p.herramientas.size + p.sinDevolver.size > 0) {
+        CampoVidrio(q, vm::buscar, "Buscar", marcador = "Herramienta, código, almacén o quién la tiene",
+            finalIcono = { Icon(Icons.Filled.Search, contentDescription = null, tint = Paleta.Texto3, modifier = Modifier.padding(end = 10.dp)) })
+    }
+    val prestadas = Busqueda.filtrar(p.sinDevolver, q) { listOf(it.descripcion, it.codigo, it.responsable, it.almacen) }
+    val enAlmacen = Busqueda.filtrar(p.herramientas, q) { listOf(it.descripcion, it.codigo, it.almacen) }
+
     TituloSeccion("Prestadas ahora")
-    if (p.sinDevolver.isEmpty()) Text("Todas las herramientas están en el almacén.", fontSize = 15.sp, color = Paleta.Texto2)
-    p.sinDevolver.forEach { x ->
+    when {
+        p.sinDevolver.isEmpty() -> Text("Ninguna prestada: todas están en el almacén.", fontSize = 15.sp, color = Paleta.Texto2)
+        prestadas.isEmpty() -> Text("Ninguna prestada coincide con «${q.trim()}».", fontSize = 15.sp, color = Paleta.Texto2)
+    }
+    // atrasadas primero: es lo que hay que ir a buscar
+    prestadas.sortedByDescending { it.atrasado }.forEach { x ->
         TarjetaVidrio(Modifier.semantics(mergeDescendants = true) {}) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
@@ -184,11 +229,41 @@ private fun Lista(e: EstadoHerramientas, vm: HerramientasViewModel, puedePrestar
                         fontSize = 13.sp, color = if (x.atrasado) Paleta.Rojo else Paleta.Texto2, fontWeight = if (x.atrasado) FontWeight.Bold else FontWeight.Normal)
                     if (x.atrasado) Text("Atrasada", fontSize = 13.sp, color = Paleta.Rojo, fontWeight = FontWeight.Bold)
                 }
-                if (puedePrestar) TextButton(onClick = { vm.abrirDevolver(x) }) { Text("Devolver", color = Paleta.Naranja, fontWeight = FontWeight.Bold) }
+                if (puedePrestar) TextButton(onClick = { vm.abrirDevolver(x) }, modifier = Modifier.heightIn(min = 48.dp)) {
+                    Text("Devolver", color = Paleta.Naranja, fontWeight = FontWeight.Bold)
+                }
             }
         }
     }
-    val devueltas = p.prestamos.filter { it.devueltoEn != null }.take(10)
+
+    TituloSeccion("En el almacén")
+    when {
+        p.herramientas.isEmpty() -> Text("Esta obra todavía no tiene herramientas en sus almacenes.", fontSize = 15.sp, color = Paleta.Texto2)
+        enAlmacen.isEmpty() -> Text("Ninguna herramienta coincide con «${q.trim()}».", fontSize = 15.sp, color = Paleta.Texto2)
+    }
+    var cuantas by remember(q) { mutableIntStateOf(FILAS_POR_TANDA) }
+    enAlmacen.take(cuantas).forEach { h ->
+        val libre = (h.disponible.toDoubleOrNull() ?: 0.0) > 0
+        TarjetaVidrio(Modifier.semantics(mergeDescendants = true) {}) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Text(Texto.nombre(h.descripcion), fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Paleta.Tinta)
+                    Text("${h.codigo} · ${h.almacen}", fontSize = 13.sp, color = Paleta.Texto2)
+                    Text(
+                        if (libre) "${Texto.cantidad(h.disponible)} disponibles de ${Texto.cantidadConUnidad(h.enAlmacen, h.unidad)}"
+                        else "Todas prestadas (${Texto.cantidadConUnidad(h.enAlmacen, h.unidad)})",
+                        fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = if (libre) Paleta.Tinta else Paleta.Naranja,
+                    )
+                }
+                if (puedePrestar && libre) TextButton(onClick = { vm.abrirPrestar(h) }, modifier = Modifier.heightIn(min = 48.dp)) {
+                    Text("Prestar", color = Paleta.Naranja, fontWeight = FontWeight.Bold)
+                }
+            }
+        }
+    }
+    MostrarMas(cuantas, enAlmacen.size) { cuantas += FILAS_POR_TANDA }
+
+    val devueltas = Busqueda.filtrar(p.prestamos.filter { it.devueltoEn != null }, q) { listOf(it.descripcion, it.responsable) }.take(10)
     if (devueltas.isNotEmpty()) {
         TituloSeccion("Devueltas hace poco")
         devueltas.forEach { x ->
@@ -196,12 +271,14 @@ private fun Lista(e: EstadoHerramientas, vm: HerramientasViewModel, puedePrestar
                 fontSize = 14.sp, color = if (x.estadoDevolucion == EstadoDevolucion.BUENO) Paleta.Texto2 else Paleta.Rojo)
         }
     }
-    if (p.herramientas.isNotEmpty()) {
-        TituloSeccion("Disponibles en el almacén")
-        p.herramientas.forEach { h ->
-            Text("${Texto.nombre(h.descripcion)} · ${h.almacen}: ${Texto.cantidad(h.disponible)} de ${Texto.cantidadConUnidad(h.enAlmacen, h.unidad)}",
-                fontSize = 14.sp, color = Paleta.Tinta)
-        }
+    Text("Prestar no mueve el saldo: la herramienta sigue en la obra. Desliza hacia abajo para actualizar.", fontSize = 13.sp, color = Paleta.Texto2)
+}
+
+@Composable
+private fun Resumen(numero: String, que: String, modifier: Modifier, alerta: Boolean = false) {
+    TarjetaVidrio(modifier.semantics(mergeDescendants = true) {}) {
+        Text(numero, fontSize = 22.sp, fontWeight = FontWeight.Bold, color = if (alerta) Paleta.Rojo else Paleta.Tinta)
+        Text(que, fontSize = 13.sp, color = Paleta.Texto2)
     }
 }
 
@@ -210,11 +287,43 @@ private fun FormPrestar(e: EstadoHerramientas, vm: HerramientasViewModel, obraId
     val hs = e.panel?.herramientas.orEmpty().filter { (it.disponible.toDoubleOrNull() ?: 0.0) > 0 }
     if (hs.isEmpty()) { AvisoNaranja("No hay herramientas disponibles para prestar en los almacenes de la obra."); return }
     TituloSeccion("Herramienta")
-    Opciones(hs, e.herramienta, { "${Texto.nombre(it.descripcion)} · ${it.almacen} · ${Texto.cantidad(it.disponible)} disp." }, vm::herramienta)
-    e.errores["herramienta"]?.let { AvisoRojo(it) }
+    val h = e.herramienta
+    if (h == null) {
+        // se busca: con muchas herramientas, una lista de botones sería interminable
+        CampoVidrio(e.buscarHerramienta, vm::buscarHerramienta, "Buscar herramienta", marcador = "Nombre o código",
+            error = e.errores["herramienta"],
+            finalIcono = { Icon(Icons.Filled.Search, contentDescription = null, tint = Paleta.Texto3, modifier = Modifier.padding(end = 10.dp)) })
+        val escribio = e.buscarHerramienta.trim().length >= Busqueda.MIN_LETRAS
+        val r = Busqueda.filtrar(hs, e.buscarHerramienta) { listOf(it.descripcion, it.codigo) }
+        when {
+            !escribio && hs.size > 8 -> Text("Escribe el nombre o el código: hay ${hs.size} herramientas disponibles.", fontSize = 14.sp, color = Paleta.Texto2)
+            r.isEmpty() -> Text("Ninguna disponible coincide con «${e.buscarHerramienta.trim()}».", fontSize = 15.sp, color = Paleta.Texto2)
+            else -> {
+                ListaVidrio(r.take(8)) { x ->
+                    FilaElegible(Texto.nombre(x.descripcion), "${x.codigo} · ${x.almacen} · ${Texto.cantidad(x.disponible)} disponibles") { vm.herramienta(x) }
+                }
+                if (r.size > 8) Text("${r.size} coinciden: escribe un poco más para acotar.", fontSize = 14.sp, color = Paleta.Texto2)
+            }
+        }
+        return
+    }
+    TarjetaVidrio(Modifier.semantics(mergeDescendants = true) {}) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text(Texto.nombre(h.descripcion), fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Paleta.Tinta)
+                Text("${h.almacen} · ${Texto.cantidad(h.disponible)} disponibles", fontSize = 14.sp, color = Paleta.Texto2)
+            }
+            TextButton(onClick = vm::cambiarHerramienta, modifier = Modifier.heightIn(min = 48.dp)) { Text("Cambiar", color = Paleta.Naranja, fontWeight = FontWeight.Bold) }
+        }
+    }
     CampoVidrio(e.cantidad, vm::cantidad, "Cantidad", teclado = androidx.compose.ui.text.input.KeyboardType.Decimal,
         sufijo = e.herramienta?.let { Texto.unidad(it.unidad) } ?: "", error = e.errores["cantidad"])
     CampoVidrio(e.responsable, vm::responsable, "Quién se la lleva", marcador = "Nombre del trabajador", error = e.errores["responsable"])
+    // los trabajadores de la obra que coinciden, para no escribir el nombre entero (y que quede igual en el registro)
+    if (e.trabajadoresObra.isNotEmpty() && e.responsable.trim().length >= Busqueda.MIN_LETRAS) {
+        val quienes = trabajadoresQueCoinciden(e.trabajadoresObra, e.responsable).filterNot { it.equals(e.responsable.trim(), ignoreCase = true) }
+        if (quienes.isNotEmpty()) ListaVidrio(quienes.take(5)) { n -> FilaElegible(n, null) { vm.responsable(n) } }
+    }
     TituloSeccion("Devolver el")
     Opciones(PlazoDevolucion.entries, e.plazo, { it.legible }, vm::plazo)
     CampoVidrio(e.nota, vm::nota, "Nota (opcional)", marcador = "p. ej. para el encofrado del 3.er piso")
