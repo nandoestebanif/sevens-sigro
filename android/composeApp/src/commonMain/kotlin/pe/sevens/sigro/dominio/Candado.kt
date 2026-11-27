@@ -62,7 +62,8 @@ interface Biometria {
 /**
  * La cuenta que entra con huella en ESTE celular (una sola: la última que la activó). [sobre] es la contraseña
  * cifrada con una llave del Keystore que solo se abre con la huella: sin la huella no sirve, ni copiando la base.
- * Cerrar sesión NO la borra (es justo para volver a entrar con la huella); «no soy yo» sí.
+ * Cerrar sesión NO la borra (es justo para volver a entrar con la huella); «no soy yo» sí, y también que entre
+ * otra cuenta con su contraseña en este celular ([ReglaCandado.esOtraCuenta]).
  */
 data class CuentaConHuella(val usuarioId: Int, val usuario: String, val nombre: String, val servidor: String, val sobre: String) {
     /** El primer nombre, para «Entrar como Adiel». */
@@ -130,6 +131,10 @@ object ReglaCandado {
         if (ultimoUsoMs == null || ahoraMs < ultimoUsoMs) return true
         return ahoraMs - ultimoUsoMs >= ajuste.minutos * 60_000L
     }
+
+    /** ¿Quien entra con contraseña es otra persona que la dueña de la huella en este celular? */
+    fun esOtraCuenta(c: CuentaConHuella, usuario: String): Boolean =
+        c.usuario.trim().lowercase() != usuario.trim().lowercase()
 
     /** Se ofrece una sola vez, si el celular puede y la persona aún no la tiene. */
     fun ofrecer(ajuste: AjusteHuella, disponible: DisponibilidadHuella): Boolean =

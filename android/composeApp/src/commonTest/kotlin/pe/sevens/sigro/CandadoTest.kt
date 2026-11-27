@@ -328,6 +328,37 @@ class CandadoTest {
     }
 
     @Test
+    fun siEntraOtraCuentaConSuContrasenaSeBorraLaHuellaDeLaAnterior() = runTest(principal) {
+        // 25/11: la huella de Adiel (SSOMA) seguía en el celular y, al cerrar la sesión de Nicolás, pedía la de Adiel
+        val guardado = Guardado(mutableMapOf(7 to AjusteHuella(activa = true, ofrecida = true))).apply { cuentaGuardada = cuenta }
+        val vm = EntrarViewModel(Entradas(), guardado, ClaveReciente({ 0 }))
+        advanceUntilIdle()
+        val huella = HuellaFalsa()
+        vm.otraCuenta(); vm.usuario("nicolas"); vm.clave("Clave2026y"); vm.entrar(huella); advanceUntilIdle()
+        assertNull(guardado.cuentaGuardada, "ya no aparece «Entrar como Adiel»")
+        assertTrue(huella.olvidoClave, "la contraseña cifrada de Adiel se borra del Keystore")
+        assertFalse(guardado.ajustes.getValue(7).activa, "la huella de Adiel queda apagada")
+        assertNull(vm.estado.value.cuentaHuella)
+    }
+
+    @Test
+    fun siEntraLaMismaCuentaConSuContrasenaLaHuellaSeQueda() = runTest(principal) {
+        val guardado = Guardado().apply { cuentaGuardada = cuenta }
+        val vm = EntrarViewModel(Entradas(), guardado, ClaveReciente({ 0 }))
+        advanceUntilIdle()
+        val huella = HuellaFalsa()
+        vm.conContrasena(); vm.usuario(" Adiel "); vm.clave("Clave2026x"); vm.entrar(huella); advanceUntilIdle()
+        assertEquals(cuenta, guardado.cuentaGuardada)
+        assertFalse(huella.olvidoClave)
+    }
+
+    @Test
+    fun otraCuentaSeComparaSinMayusculasNiEspacios() {
+        assertFalse(ReglaCandado.esOtraCuenta(cuenta, " ADIEL "))
+        assertTrue(ReglaCandado.esOtraCuenta(cuenta, "nicolas"))
+    }
+
+    @Test
     fun entrarConContrasenaLaDejaEnMemoriaParaActivarLaHuella() = runTest(principal) {
         val clave = ClaveReciente({ 0 })
         val vm = EntrarViewModel(Entradas(), Guardado(), clave)
